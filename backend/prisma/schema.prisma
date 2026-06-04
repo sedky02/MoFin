@@ -1,0 +1,201 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum AccountType {
+  CASH
+  BANK
+  SAVINGS
+  CRYPTO
+}
+
+enum CategoryType {
+  INCOME
+  EXPENSE
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+  TRANSFER
+}
+
+enum DraftStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum LedgerDirection {
+  DEBIT
+  CREDIT
+}
+
+enum BudgetPeriod {
+  MONTHLY
+  YEARLY
+}
+
+model User {
+  id              String             @id @default(uuid())
+  email           String             @unique
+  passwordHash    String?
+  displayName     String?
+  googleId        String?            @unique
+  settings        Json               @default("{}")
+  apiKeys         ApiKey[]
+  accounts        Account[]
+  categories      Category[]
+  transactions    Transaction[]
+  transactionItems TransactionItem[]
+  drafts          DraftTransaction[]
+  budgets         Budget[]
+  goals           Goal[]
+  analyticsCaches AnalyticsCache[]
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+}
+
+model ApiKey {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  keyHash     String    @unique
+  lastUsedAt  DateTime?
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+}
+
+model Account {
+  id              String            @id @default(uuid())
+  userId          String
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name            String
+  type            AccountType
+  currency        String
+  metadata        Json              @default("{}")
+  archivedAt      DateTime?
+  transactionItems TransactionItem[]
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([userId, currency])
+}
+
+model Category {
+  id            String        @id @default(uuid())
+  userId        String?
+  user          User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name          String
+  type          CategoryType
+  color         String?
+  icon          String?
+  transactions  Transaction[]
+  budgets       Budget[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@unique([userId, name, type])
+}
+
+model Transaction {
+  id             String             @id @default(uuid())
+  userId         String
+  user           User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categoryId     String?
+  category       Category?          @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  draftId        String?            @unique
+  draft          DraftTransaction?  @relation(fields: [draftId], references: [id], onDelete: SetNull)
+  type           TransactionType
+  description    String
+  currency       String
+  occurredAt     DateTime
+  items          TransactionItem[]
+  searchVector   Unsupported("tsvector")?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  @@index([userId, occurredAt])
+  @@index([userId, categoryId])
+}
+
+model TransactionItem {
+  id             String          @id @default(uuid())
+  userId         String
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactionId  String
+  transaction    Transaction     @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  accountId      String
+  account        Account         @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  direction      LedgerDirection
+  amount         Decimal         @db.Decimal(18, 4)
+  currency       String
+  memo           String?
+  createdAt      DateTime        @default(now())
+
+  @@index([userId, accountId, createdAt])
+  @@index([transactionId])
+}
+
+model DraftTransaction {
+  id              String            @id @default(uuid())
+  userId          String
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transaction     Transaction?
+  rawInput        String
+  parsedData      Json
+  confidenceScore Decimal           @db.Decimal(5, 4)
+  status          DraftStatus       @default(PENDING)
+  rejectionReason String?
+  approvedAt      DateTime?
+  rejectedAt      DateTime?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([userId, status, createdAt])
+}
+
+model AnalyticsCache {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cacheKey   String
+  payload    Json
+  computedAt DateTime @default(now())
+  expiresAt  DateTime
+
+  @@unique([userId, cacheKey])
+}
+
+model Budget {
+  id         String       @id @default(uuid())
+  userId     String
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categoryId String?
+  category   Category?    @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  name       String
+  amount     Decimal      @db.Decimal(18, 4)
+  currency   String
+  period     BudgetPeriod @default(MONTHLY)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+}
+
+model Goal {
+  id             String   @id @default(uuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name           String
+  targetAmount   Decimal  @db.Decimal(18, 4)
+  currentAmount  Decimal  @default(0) @db.Decimal(18, 4)
+  currency       String
+  targetDate     DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
