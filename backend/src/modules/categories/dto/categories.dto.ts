@@ -1,32 +1,17 @@
 import { CategoryType } from '@prisma/client';
-import { IsEnum, IsOptional, IsString } from 'class-validator';
+import { z } from 'zod';
 
-export class CreateCategoryDto {
-  @IsString()
-  name: string;
+export const createCategorySchema = z.object({
+  name: z.string().min(1),
+  type: z.nativeEnum(CategoryType),
+  color: z.string().optional(),
+  icon: z.string().optional(),
+});
+export type CreateCategoryDto = z.infer<typeof createCategorySchema>;
 
-  @IsEnum(CategoryType)
-  type: CategoryType;
-
-  @IsOptional()
-  @IsString()
-  color?: string;
-
-  @IsOptional()
-  @IsString()
-  icon?: string;
-}
-
-export class UpdateCategoryDto {
-  @IsOptional()
-  @IsString()
-  name?: string;
-
-  @IsOptional()
-  @IsString()
-  color?: string;
-
-  @IsOptional()
-  @IsString()
-  icon?: string;
-}
+export const updateCategorySchema = z.object({
+  name: z.string().min(1).optional(),
+  color: z.string().optional(),
+  icon: z.string().optional(),
+});
+export type UpdateCategoryDto = z.infer<typeof updateCategorySchema>;

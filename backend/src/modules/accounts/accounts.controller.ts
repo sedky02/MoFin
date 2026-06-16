@@ -1,9 +1,15 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import { AuthenticatedUser } from '../../common/types/authenticated-user';
 import { AccountsService } from './accounts.service';
-import { CreateAccountDto, UpdateAccountDto } from './dto/accounts.dto';
+import {
+  CreateAccountDto,
+  UpdateAccountDto,
+  createAccountSchema,
+  updateAccountSchema,
+} from './dto/accounts.dto';
 
 @UseGuards(JwtAuthGuard)
 @Controller('accounts')
@@ -11,7 +17,10 @@ export class AccountsController {
   constructor(private readonly accountsService: AccountsService) {}
 
   @Post()
-  create(@CurrentUser() user: AuthenticatedUser, @Body() dto: CreateAccountDto) {
+  create(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body(new ZodValidationPipe(createAccountSchema)) dto: CreateAccountDto,
+  ) {
     return this.accountsService.create(user.id, dto);
   }
 
@@ -21,7 +30,11 @@ export class AccountsController {
   }
 
   @Patch(':id')
-  update(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string, @Body() dto: UpdateAccountDto) {
+  update(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(updateAccountSchema)) dto: UpdateAccountDto,
+  ) {
     return this.accountsService.update(user.id, id, dto);
   }
 

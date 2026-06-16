@@ -1,27 +1,24 @@
-import { IsEmail, IsOptional, IsString, MinLength } from 'class-validator';
+import { z } from 'zod';
 
-export class RegisterDto {
-  @IsEmail()
-  email: string;
+export const registerSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8),
+  displayName: z.string().optional(),
+});
+export type RegisterDto = z.infer<typeof registerSchema>;
 
-  @IsString()
-  @MinLength(8)
-  password: string;
+export const loginSchema = z.object({
+  email: z.string().email(),
+  password: z.string(),
+});
+export type LoginDto = z.infer<typeof loginSchema>;
 
-  @IsOptional()
-  @IsString()
-  displayName?: string;
-}
+export const createApiKeySchema = z.object({
+  name: z.string().min(1),
+});
+export type CreateApiKeyDto = z.infer<typeof createApiKeySchema>;
 
-export class LoginDto {
-  @IsEmail()
-  email: string;
-
-  @IsString()
-  password: string;
-}
-
-export class CreateApiKeyDto {
-  @IsString()
-  name: string;
-}
+export const refreshTokenSchema = z.object({
+  refreshToken: z.string().min(1),
+});
+export type RefreshTokenDto = z.infer<typeof refreshTokenSchema>;

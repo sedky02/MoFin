@@ -1,14 +1,9 @@
-import { IsOptional, IsString } from 'class-validator';
+import { z } from 'zod';
+import { currencySchema } from '../../../common/dto/common-fields';
 
-export class ParseTransactionIntentDto {
-  @IsString()
-  input: string;
-
-  @IsOptional()
-  @IsString()
-  defaultAccountId?: string;
-
-  @IsOptional()
-  @IsString()
-  defaultCurrency?: string;
-}
+export const parseTransactionIntentSchema = z.object({
+  input: z.string().min(1),
+  defaultAccountId: z.string().optional(),
+  defaultCurrency: currencySchema.optional(),
+});
+export type ParseTransactionIntentDto = z.infer<typeof parseTransactionIntentSchema>;

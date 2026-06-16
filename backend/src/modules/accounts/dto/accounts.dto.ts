@@ -1,31 +1,18 @@
 import { AccountType } from '@prisma/client';
-import { IsEnum, IsObject, IsOptional, IsString, Matches } from 'class-validator';
+import { z } from 'zod';
+import { currencySchema } from '../../../common/dto/common-fields';
 
-export class CreateAccountDto {
-  @IsString()
-  name: string;
+export const createAccountSchema = z.object({
+  name: z.string().min(1),
+  type: z.nativeEnum(AccountType),
+  currency: currencySchema,
+  metadata: z.record(z.unknown()).optional(),
+});
+export type CreateAccountDto = z.infer<typeof createAccountSchema>;
 
-  @IsEnum(AccountType)
-  type: AccountType;
-
-  @Matches(/^[A-Z0-9]{3,8}$/)
-  currency: string;
-
-  @IsOptional()
-  @IsObject()
-  metadata?: Record<string, unknown>;
-}
-
-export class UpdateAccountDto {
-  @IsOptional()
-  @IsString()
-  name?: string;
-
-  @IsOptional()
-  @IsEnum(AccountType)
-  type?: AccountType;
-
-  @IsOptional()
-  @IsObject()
-  metadata?: Record<string, unknown>;
-}
+export const updateAccountSchema = z.object({
+  name: z.string().min(1).optional(),
+  type: z.nativeEnum(AccountType).optional(),
+  metadata: z.record(z.unknown()).optional(),
+});
+export type UpdateAccountDto = z.infer<typeof updateAccountSchema>;

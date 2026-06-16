@@ -39,7 +39,8 @@ export class SearchService {
       },
       include: { items: true, category: true },
       orderBy: { occurredAt: 'desc' },
-      take: 50
+      skip: query.offset,
+      take: query.limit
     });
   }
 }

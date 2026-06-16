@@ -1,14 +1,10 @@
-import { IsOptional, IsString } from 'class-validator';
+import { z } from 'zod';
 
-export class GetBalanceQueryDto {
-  @IsOptional()
-  @IsString()
-  accountId?: string;
-
-  @IsOptional()
-  @IsString()
-  currency?: string;
-}
+export const getBalanceQuerySchema = z.object({
+  accountId: z.string().optional(),
+  currency: z.string().optional(),
+});
+export type GetBalanceQueryDto = z.infer<typeof getBalanceQuerySchema>;
 
 export interface LedgerEntryInput {
   accountId: string;

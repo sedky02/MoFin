@@ -31,7 +31,9 @@ export class DraftTransactionsService {
   list(userId: string, query: DraftListQuery) {
     return this.prisma.draftTransaction.findMany({
       where: { userId, ...(query.status ? { status: query.status } : {}) },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
+      skip: query.offset,
+      take: query.limit
     });
   }
 
