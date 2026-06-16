@@ -1,6 +1,8 @@
 import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { ApiZodBody } from '../../common/swagger/api-zod';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import { AuthenticatedUser } from '../../common/types/authenticated-user';
 import { CategoriesService } from './categories.service';
@@ -11,12 +13,15 @@ import {
   updateCategorySchema,
 } from './dto/categories.dto';
 
+@ApiTags('categories')
+@ApiBearerAuth('jwt')
 @UseGuards(JwtAuthGuard)
 @Controller('categories')
 export class CategoriesController {
   constructor(private readonly categoriesService: CategoriesService) {}
 
   @Post()
+  @ApiZodBody(createCategorySchema)
   create(
     @CurrentUser() user: AuthenticatedUser,
     @Body(new ZodValidationPipe(createCategorySchema)) dto: CreateCategoryDto,
@@ -30,6 +35,7 @@ export class CategoriesController {
   }
 
   @Patch(':id')
+  @ApiZodBody(updateCategorySchema)
   update(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,

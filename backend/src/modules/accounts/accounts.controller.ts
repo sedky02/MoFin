@@ -1,6 +1,8 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { ApiZodBody } from '../../common/swagger/api-zod';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import { AuthenticatedUser } from '../../common/types/authenticated-user';
 import { AccountsService } from './accounts.service';
@@ -11,12 +13,15 @@ import {
   updateAccountSchema,
 } from './dto/accounts.dto';
 
+@ApiTags('accounts')
+@ApiBearerAuth('jwt')
 @UseGuards(JwtAuthGuard)
 @Controller('accounts')
 export class AccountsController {
   constructor(private readonly accountsService: AccountsService) {}
 
   @Post()
+  @ApiZodBody(createAccountSchema)
   create(
     @CurrentUser() user: AuthenticatedUser,
     @Body(new ZodValidationPipe(createAccountSchema)) dto: CreateAccountDto,
@@ -30,6 +35,7 @@ export class AccountsController {
   }
 
   @Patch(':id')
+  @ApiZodBody(updateAccountSchema)
   update(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,

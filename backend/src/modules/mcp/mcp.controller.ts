@@ -1,5 +1,6 @@
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { Controller, Delete, Get, HttpStatus, Post, Req, Res, UseGuards } from '@nestjs/common';
+import { ApiBody, ApiExcludeEndpoint, ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { McpApiKeyGuard } from '../../common/guards/mcp-api-key.guard';
@@ -13,12 +14,30 @@ import { McpServerFactory } from './mcp-server.factory';
  * MCP server + transport is built per request and scoped to that user. Stateless
  * means no session map and a single JSON response per call (enableJsonResponse).
  */
+@ApiTags('mcp')
+@ApiSecurity('api-key')
 @UseGuards(McpApiKeyGuard)
 @Controller('mcp')
 export class McpController {
   constructor(private readonly factory: McpServerFactory) {}
 
   @Post()
+  @ApiOperation({
+    summary: 'MCP Streamable HTTP endpoint',
+    description:
+      'Speaks the Model Context Protocol over JSON-RPC 2.0. Use an MCP client (e.g. MCP Inspector) rather than calling directly. Authenticate with the x-api-key header.',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        jsonrpc: { type: 'string', example: '2.0' },
+        id: { type: 'number', example: 1 },
+        method: { type: 'string', example: 'tools/list' },
+        params: { type: 'object' },
+      },
+    },
+  })
   async handle(
     @CurrentUser() user: AuthenticatedUser,
     @Req() req: Request,
@@ -41,11 +60,13 @@ export class McpController {
 
   // Stateless transport does not use server-initiated streams or session deletion.
   @Get()
+  @ApiExcludeEndpoint()
   notAllowedGet(@Res() res: Response): void {
     this.methodNotAllowed(res);
   }
 
   @Delete()
+  @ApiExcludeEndpoint()
   notAllowedDelete(@Res() res: Response): void {
     this.methodNotAllowed(res);
   }

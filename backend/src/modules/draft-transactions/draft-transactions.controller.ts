@@ -1,6 +1,8 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { ApiZodBody, ApiZodQuery } from '../../common/swagger/api-zod';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import { AuthenticatedUser } from '../../common/types/authenticated-user';
 import {
@@ -13,12 +15,15 @@ import {
 } from './dto/draft-transactions.dto';
 import { DraftTransactionsService } from './draft-transactions.service';
 
+@ApiTags('draft-transactions')
+@ApiBearerAuth('jwt')
 @UseGuards(JwtAuthGuard)
 @Controller('draft-transactions')
 export class DraftTransactionsController {
   constructor(private readonly draftsService: DraftTransactionsService) {}
 
   @Post()
+  @ApiZodBody(createDraftTransactionSchema)
   create(
     @CurrentUser() user: AuthenticatedUser,
     @Body(new ZodValidationPipe(createDraftTransactionSchema)) dto: CreateDraftTransactionDto,
@@ -27,6 +32,7 @@ export class DraftTransactionsController {
   }
 
   @Get()
+  @ApiZodQuery(draftListQuerySchema)
   list(
     @CurrentUser() user: AuthenticatedUser,
     @Query(new ZodValidationPipe(draftListQuerySchema)) query: DraftListQuery,
@@ -40,6 +46,7 @@ export class DraftTransactionsController {
   }
 
   @Patch(':id/reject')
+  @ApiZodBody(rejectDraftSchema)
   reject(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
