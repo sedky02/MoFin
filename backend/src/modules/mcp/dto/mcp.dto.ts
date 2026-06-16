@@ -4,12 +4,6 @@ import { createDraftTransactionSchema } from '../../draft-transactions/dto/draft
 import { getBalanceQuerySchema } from '../../ledger/dto/ledger.dto';
 import { searchTransactionsSchema } from '../../search/dto/search.dto';
 
-export const mcpToolRequestSchema = z.object({
-  tool: z.string().min(1),
-  arguments: z.record(z.unknown()).optional(),
-});
-export type McpToolRequestDto = z.infer<typeof mcpToolRequestSchema>;
-
 /**
  * Per-tool argument schemas. Previously MCP arguments were forwarded with
  * `as never` and never validated (audit A2) — a direct violation of the
