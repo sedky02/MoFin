@@ -73,9 +73,13 @@ export default function LoginPage() {
   return (
     <div>
       <div className="mb-8">
-        <h2 className="text-2xl font-bold tracking-tight">Welcome back</h2>
-        <p className="mt-1.5 text-sm text-muted-foreground">
-          Sign in to pick up where you left off.
+        <h2 className="font-heading text-3xl font-bold leading-tight tracking-tight">
+          Secure
+          <br />
+          <span className="text-primary terminal-glow">Authentication</span>
+        </h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Initialize the handshake to pick up where you left off.
         </p>
       </div>
 
@@ -127,8 +131,11 @@ export default function LoginPage() {
               </FormItem>
             )}
           />
-          <SubmitButton className="w-full" pendingText="Signing in…">
-            Sign in
+          <SubmitButton
+            className="h-11 w-full font-mono text-sm font-bold uppercase tracking-widest"
+            pendingText="Synchronizing…"
+          >
+            Initialize
           </SubmitButton>
         </form>
       </Form>

@@ -47,40 +47,58 @@ export function BalanceCards() {
     );
   }
 
+  const [hero, ...rest] = totals;
+
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-      {totals.map(({ currency, amount }, i) => (
-        <Card
-          key={currency}
-          className="relative overflow-hidden border-0 bg-card p-5 shadow-sm"
-        >
-          {/* subtle teal corner glow on the primary card */}
-          {i === 0 && (
-            <div
-              aria-hidden
-              className="pointer-events-none absolute -right-8 -top-8 size-28 rounded-full bg-primary/10 blur-2xl"
-            />
-          )}
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              {currency} balance
-            </span>
-            <span className="rounded-md bg-secondary px-1.5 py-0.5 text-[11px] font-medium text-secondary-foreground tabular">
-              {currency}
-            </span>
-          </div>
-          <MoneyAmount
-            amount={amount}
-            currency={currency}
-            animate
-            colorBySign
-            className="mt-3 block text-3xl font-semibold"
-          />
-          <p className="mt-2 text-xs text-muted-foreground">
-            Across all {currency} accounts
-          </p>
-        </Card>
-      ))}
+    <div className="space-y-6">
+      {/* HERO ZONE: LIVE PORTFOLIO PULSE */}
+      <div className="glass-panel pulse-ring relative overflow-hidden rounded-3xl p-8 sm:p-10">
+        <div className="scanline" aria-hidden />
+        <div className="flex items-center gap-2.5">
+          <span className="size-2 animate-pulse rounded-full bg-primary" aria-hidden />
+          <span className="label-caps tracking-widest! text-primary!">
+            Live Portfolio Pulse
+          </span>
+        </div>
+        <MoneyAmount
+          amount={hero.amount}
+          currency={hero.currency}
+          animate
+          className="terminal-glow mt-4 block font-heading text-5xl font-extrabold tracking-tighter text-foreground sm:text-7xl"
+        />
+        <p className="mt-3 text-sm text-muted-foreground">
+          Across all {hero.currency} accounts · balances always exact
+        </p>
+      </div>
+
+      {/* SECONDARY CURRENCY STAT BLOCKS */}
+      {rest.length > 0 && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {rest.map(({ currency, amount }) => (
+            <Card
+              key={currency}
+              className="glass-panel relative overflow-hidden border-0 border-l-2 border-l-primary p-5 ring-0"
+            >
+              <div className="flex items-center justify-between">
+                <span className="label-caps">{currency} balance</span>
+                <span className="rounded bg-secondary px-1.5 py-0.5 text-[11px] font-medium text-secondary-foreground tabular">
+                  {currency}
+                </span>
+              </div>
+              <MoneyAmount
+                amount={amount}
+                currency={currency}
+                animate
+                colorBySign
+                className="mt-3 block text-3xl font-semibold"
+              />
+              <p className="mt-2 text-xs text-muted-foreground">
+                Across all {currency} accounts
+              </p>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

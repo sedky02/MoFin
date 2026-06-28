@@ -15,10 +15,11 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
         <Link href="/dashboard" onClick={onNavigate} aria-label="MoFin home">
           <Logo />
         </Link>
+        <p className="label-caps mt-1.5 pl-0.5">Terminal Active</p>
       </div>
 
       <div className="px-1 py-2">
-        <Button asChild className="w-full justify-start gap-2">
+        <Button asChild className="w-full justify-start gap-2 font-mono uppercase tracking-wide">
           <Link href="/transactions/new" onClick={onNavigate}>
             <PlusCircle className="size-4" />
             New transaction
@@ -32,7 +33,8 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
         ))}
       </nav>
 
-      <div className="px-3 py-2 text-xs text-muted-foreground">
+      <div className="flex items-center gap-2 px-3 py-2 text-xs text-muted-foreground">
+        <span className="size-1.5 animate-pulse rounded-full bg-primary" aria-hidden />
         <p className="tabular">Ledger-first · balances always exact</p>
       </div>
     </div>

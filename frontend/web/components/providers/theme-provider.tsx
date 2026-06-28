@@ -17,8 +17,8 @@ export const themeInitScript = `
 (function() {
   try {
     var stored = localStorage.getItem('${STORAGE_KEY}');
-    var system = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    var theme = stored || system;
+    // The Terminal look is dark-first; default to dark unless the user opted out.
+    var theme = stored || 'dark';
     document.documentElement.classList.toggle('dark', theme === 'dark');
     document.documentElement.style.colorScheme = theme;
   } catch (e) {}
@@ -36,10 +36,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   // Sync state from what the init script already applied.
   React.useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY) as Theme | null;
-    const system = window.matchMedia("(prefers-color-scheme: dark)").matches
-      ? "dark"
-      : "light";
-    setThemeState(stored ?? system);
+    setThemeState(stored ?? "dark");
   }, []);
 
   // React Compiler memoizes these automatically — no manual useCallback/useMemo.

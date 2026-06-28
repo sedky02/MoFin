@@ -7,9 +7,9 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-jakarta);
+  --font-sans: var(--font-hanken);
   --font-mono: var(--font-jetbrains);
-  --font-heading: var(--font-jakarta);
+  --font-heading: var(--font-bricolage);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -50,81 +50,81 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-/* MoFin — light mode: inverted values (warm white surfaces, navy ink, teal accent) */
+/* MoFin — light mode: a daylight variant of the terminal (paper surfaces, ink, acid-lime accent). */
 :root {
   --radius: 0.5rem;
-  --background: #f8fafc;
-  --foreground: #0f172a;
+  --background: #fafaf9;
+  --foreground: #131313;
   --card: #ffffff;
-  --card-foreground: #0f172a;
+  --card-foreground: #131313;
   --popover: #ffffff;
-  --popover-foreground: #0f172a;
-  --primary: #0d9488;
-  --primary-foreground: #f8fafc;
-  --secondary: #f1f5f9;
-  --secondary-foreground: #0f172a;
-  --muted: #f1f5f9;
-  --muted-foreground: #64748b;
-  --accent: #ccfbf1;
-  --accent-foreground: #0f766e;
-  --destructive: #e11d48;
-  --success: #0d9488;
-  --warning: #d97706;
-  --border: #e2e8f0;
-  --input: #e2e8f0;
-  --ring: #0d9488;
-  --chart-1: #0d9488;
-  --chart-2: #0ea5e9;
-  --chart-3: #f59e0b;
-  --chart-4: #f43f5e;
-  --chart-5: #14b8a6;
-  --chart-6: #fb923c;
+  --popover-foreground: #131313;
+  --primary: #cbe600;
+  --primary-foreground: #131313;
+  --secondary: #f2f2ef;
+  --secondary-foreground: #131313;
+  --muted: #f2f2ef;
+  --muted-foreground: #5c5f5c;
+  --accent: #eef7bf;
+  --accent-foreground: #4a5a00;
+  --destructive: #d92020;
+  --success: #5d6b00;
+  --warning: #b45309;
+  --border: #e6e6e2;
+  --input: #e1e1dd;
+  --ring: #cbe600;
+  --chart-1: #a4b800;
+  --chart-2: #2e5bff;
+  --chart-3: #d97706;
+  --chart-4: #d92020;
+  --chart-5: #6b7a00;
+  --chart-6: #6f8bff;
   --sidebar: #ffffff;
-  --sidebar-foreground: #0f172a;
-  --sidebar-primary: #0d9488;
-  --sidebar-primary-foreground: #f8fafc;
-  --sidebar-accent: #f1f5f9;
-  --sidebar-accent-foreground: #0f172a;
-  --sidebar-border: #e2e8f0;
-  --sidebar-ring: #0d9488;
+  --sidebar-foreground: #131313;
+  --sidebar-primary: #5d6b00;
+  --sidebar-primary-foreground: #fafaf9;
+  --sidebar-accent: #f2f2ef;
+  --sidebar-accent-foreground: #131313;
+  --sidebar-border: #e6e6e2;
+  --sidebar-ring: #cbe600;
 }
 
-/* MoFin — dark mode: the signature look. Dark navy base, teal accent, warm white ink. */
+/* MoFin — dark mode: the signature "Terminal" look. Obsidian base, acid-lime accent, cobalt secondary. */
 .dark {
-  --background: #0f172a;
-  --foreground: #f8fafc;
-  --card: #1e293b;
-  --card-foreground: #f8fafc;
-  --popover: #1e293b;
-  --popover-foreground: #f8fafc;
-  --primary: #14b8a6;
-  --primary-foreground: #042f2e;
-  --secondary: #1e293b;
-  --secondary-foreground: #f8fafc;
-  --muted: #1e293b;
-  --muted-foreground: #94a3b8;
-  --accent: #134e4a;
-  --accent-foreground: #5eead4;
-  --destructive: #fb7185;
-  --success: #2dd4bf;
+  --background: #050505;
+  --foreground: #e5e2e1;
+  --card: #131313;
+  --card-foreground: #e5e2e1;
+  --popover: #1c1b1b;
+  --popover-foreground: #e5e2e1;
+  --primary: #d2f000;
+  --primary-foreground: #0a0a00;
+  --secondary: #1c1b1b;
+  --secondary-foreground: #e5e2e1;
+  --muted: #1c1b1b;
+  --muted-foreground: #8e9192;
+  --accent: #20201f;
+  --accent-foreground: #d2f000;
+  --destructive: #ff5c5c;
+  --success: #c8e600;
   --warning: #fbbf24;
-  --border: #334155;
-  --input: #334155;
-  --ring: #14b8a6;
-  --chart-1: #2dd4bf;
-  --chart-2: #38bdf8;
+  --border: rgba(255, 255, 255, 0.09);
+  --input: rgba(255, 255, 255, 0.12);
+  --ring: #d2f000;
+  --chart-1: #d2f000;
+  --chart-2: #2e5bff;
   --chart-3: #fbbf24;
-  --chart-4: #fb7185;
-  --chart-5: #5eead4;
-  --chart-6: #fdba74;
-  --sidebar: #0b1120;
-  --sidebar-foreground: #f8fafc;
-  --sidebar-primary: #14b8a6;
-  --sidebar-primary-foreground: #042f2e;
-  --sidebar-accent: #1e293b;
-  --sidebar-accent-foreground: #f8fafc;
-  --sidebar-border: #1e293b;
-  --sidebar-ring: #14b8a6;
+  --chart-4: #ff5c5c;
+  --chart-5: #b8c3ff;
+  --chart-6: #b8d300;
+  --sidebar: #0a0a0a;
+  --sidebar-foreground: #e5e2e1;
+  --sidebar-primary: #d2f000;
+  --sidebar-primary-foreground: #0a0a00;
+  --sidebar-accent: rgba(255, 255, 255, 0.06);
+  --sidebar-accent-foreground: #e5e2e1;
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-ring: #d2f000;
 }
 
 @theme inline {
@@ -170,7 +170,71 @@
 }
 
 ::selection {
-  background: color-mix(in oklab, var(--primary) 30%, transparent);
+  background: color-mix(in oklab, var(--primary) 35%, transparent);
+}
+
+/* ── Terminal aesthetic: "Humanized Quant" ──────────────────────────────── */
+@layer components {
+  /* Tonal-layered surface with a ghost border + brighter top/left edges.
+     Depth is communicated through outlines, not shadows. */
+  .glass-panel {
+    background: color-mix(in oklab, var(--card) 70%, transparent);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    border-top-color: color-mix(in oklab, var(--foreground) 14%, transparent);
+    border-left-color: color-mix(in oklab, var(--foreground) 14%, transparent);
+  }
+
+  /* JetBrains-mono micro-label in muted caps — the system's "label-caps" token. */
+  .label-caps {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted-foreground);
+  }
+}
+
+@layer utilities {
+  /* Acid-lime text bloom for headline data. */
+  .terminal-glow {
+    text-shadow: 0 0 18px color-mix(in oklab, var(--primary) 45%, transparent);
+  }
+  /* Slow border breathing for the live "pulse" hero. */
+  .pulse-ring {
+    animation: mofin-pulse 4s infinite ease-in-out;
+  }
+  @keyframes mofin-pulse {
+    0%,
+    100% {
+      box-shadow: 0 0 0 0 color-mix(in oklab, var(--primary) 18%, transparent);
+    }
+    50% {
+      box-shadow: 0 0 44px 8px color-mix(in oklab, var(--primary) 10%, transparent);
+    }
+  }
+  /* Horizontal scan sweep used inside framed nodes. */
+  .scanline {
+    position: absolute;
+    inset-inline: 0;
+    height: 2px;
+    background: linear-gradient(
+      to right,
+      transparent,
+      color-mix(in oklab, var(--primary) 60%, transparent),
+      transparent
+    );
+    animation: mofin-scan 3s linear infinite;
+  }
+  @keyframes mofin-scan {
+    from {
+      top: 0%;
+    }
+    to {
+      top: 100%;
+    }
+  }
 }
 
 /* View Transitions: gentle cross-fade for sidebar navigation */

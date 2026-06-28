@@ -1,55 +1,92 @@
+import { Fingerprint, ShieldCheck, Gauge, Zap } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 
-// Split layout: an editorial brand panel (hidden on mobile) beside the form.
+// Split "Terminal Access": a secure-node visual beside the auth form.
 export default function AuthLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
-    <div className="grid min-h-dvh lg:grid-cols-[1.1fr_1fr]">
-      {/* Brand panel */}
-      <div className="relative hidden flex-col justify-between overflow-hidden bg-[#0b1120] p-12 text-[#f8fafc] lg:flex">
-        {/* atmospheric gradient mesh, no decorative clutter */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 opacity-[0.55]"
-          style={{
-            background:
-              "radial-gradient(60% 50% at 15% 10%, rgba(20,184,166,0.25), transparent 70%), radial-gradient(50% 50% at 90% 90%, rgba(14,165,233,0.18), transparent 70%)",
-          }}
-        />
+    <div className="relative grid min-h-dvh overflow-hidden bg-background lg:grid-cols-2">
+      {/* Atmospheric glows */}
+      <div aria-hidden className="pointer-events-none fixed inset-0 z-0">
+        <div className="absolute left-1/4 top-1/4 size-96 rounded-full bg-chart-5/10 blur-[120px]" />
+        <div className="absolute bottom-1/4 right-1/4 size-96 rounded-full bg-primary/5 blur-[120px]" />
+      </div>
+
+      {/* Left: secure node visual (desktop only) */}
+      <div className="relative z-10 hidden flex-col items-center justify-center gap-8 p-12 lg:flex">
         <div className="relative">
-          <Logo className="[&_span]:text-[#f8fafc]" />
+          <div className="glass-panel relative flex size-64 items-center justify-center overflow-hidden rounded-full">
+            <div className="scanline z-20" aria-hidden />
+            <Fingerprint
+              className="relative z-10 size-20 text-primary"
+              strokeWidth={1}
+            />
+            {/* rotating rings */}
+            <div className="absolute inset-2 animate-[spin_10s_linear_infinite] rounded-full border-t border-primary/30" />
+            <div className="absolute inset-6 animate-[spin_15s_linear_infinite_reverse] rounded-full border-b border-chart-5/20" />
+          </div>
+          <div className="glass-panel absolute -right-4 -top-4 rounded-full px-3 py-1">
+            <span className="label-caps text-primary!">Level 4 Encrypted</span>
+          </div>
+          <div className="glass-panel absolute -bottom-2 -left-4 rounded-full px-3 py-1">
+            <span className="label-caps">Ready for Sync</span>
+          </div>
         </div>
-        <div className="relative max-w-md">
-          <p className="text-sm font-medium uppercase tracking-[0.2em] text-[#2dd4bf]">
-            Personal finance, precisely
+        <div className="space-y-2 text-center">
+          <p className="label-caps tracking-widest! text-chart-5!">
+            Protocol: MoFin_Alpha_9
           </p>
-          <h1 className="mt-4 text-balance text-4xl font-bold leading-tight tracking-tight">
-            Money you can actually reason about.
-          </h1>
-          <p className="mt-4 text-pretty text-base leading-relaxed text-[#94a3b8]">
-            Talk to MoFin in plain language. It drafts the entry, you approve it,
-            and a double-entry ledger keeps every balance exact — down to the cent.
+          <p className="max-w-xs text-pretty text-sm leading-relaxed text-muted-foreground">
+            Hardware-grade verification for terminal access. Talk to MoFin; it
+            keeps a precise, ledger-first record — every balance exact.
           </p>
-        </div>
-        <div className="relative font-mono text-xs tabular-nums text-[#475569]">
-          {/* a quiet ledger flourish */}
-          <span className="text-[#2dd4bf]">$</span> ledger.balance() →{" "}
-          <span className="text-[#f8fafc]">always fetched, never guessed</span>
         </div>
       </div>
 
-      {/* Form panel */}
-      <div className="flex items-center justify-center px-6 py-12">
+      {/* Right: auth form */}
+      <div className="relative z-10 flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-sm">
-          <div className="mb-8 lg:hidden">
-            <Logo />
+          <div className="mb-8 flex items-center gap-3">
+            <Logo showText={false} />
+            <span className="font-heading text-3xl font-extrabold uppercase tracking-tighter">
+              Terminal
+            </span>
           </div>
           {children}
         </div>
       </div>
+
+      {/* Footer security stats */}
+      <footer className="absolute bottom-0 left-0 z-20 flex w-full flex-wrap items-center justify-center gap-6 p-6 lg:justify-start lg:px-12">
+        <Stat icon={<span className="size-2 animate-pulse rounded-full bg-primary" />}>
+          Network: Mainnet-Beta
+        </Stat>
+        <Stat icon={<ShieldCheck className="size-3.5 text-primary" />}>
+          Encryption: AES-4096
+        </Stat>
+        <Stat icon={<Gauge className="size-3.5 text-primary" />}>Latency: 12ms</Stat>
+        <Stat icon={<Zap className="size-3.5 text-primary" />}>Ledger: Synced</Stat>
+      </footer>
+    </div>
+  );
+}
+
+function Stat({
+  icon,
+  children,
+}: {
+  icon: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      {icon}
+      <span className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
+        {children}
+      </span>
     </div>
   );
 }

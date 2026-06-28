@@ -28,7 +28,7 @@ export function MonthlySummaryCard({
 
   if (isLoading) {
     return (
-      <Card className="border-0 p-5 shadow-sm">
+      <Card className="glass-panel border-0 p-5 ring-0">
         <Skeleton className="h-4 w-32" />
         <div className="mt-6 flex flex-col gap-6 sm:flex-row sm:items-center">
           <Skeleton className="size-[168px] rounded-full" />
@@ -44,7 +44,7 @@ export function MonthlySummaryCard({
 
   if (isError || !data) {
     return (
-      <Card className="border-0 p-5 shadow-sm">
+      <Card className="glass-panel border-0 p-5 ring-0">
         <ErrorState description="Couldn't load this month's summary." onRetry={() => refetch()} />
       </Card>
     );
@@ -65,9 +65,9 @@ export function MonthlySummaryCard({
     !tryParse(data.expenses)?.isZero();
 
   return (
-    <Card className="border-0 p-5 shadow-sm">
+    <Card className="glass-panel border-0 p-5 ring-0">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold">{monthLabel}</h2>
+        <h2 className="label-caps text-foreground!">{monthLabel}</h2>
         <span className="rounded-md bg-accent/60 px-2 py-0.5 text-xs font-medium text-accent-foreground tabular">
           {percent(data.savingsRate)} saved
         </span>

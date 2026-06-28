@@ -97,9 +97,13 @@ export default function RegisterPage() {
   return (
     <div>
       <div className="mb-8">
-        <h2 className="text-2xl font-bold tracking-tight">Create your account</h2>
-        <p className="mt-1.5 text-sm text-muted-foreground">
-          Start tracking your money with precision.
+        <h2 className="font-heading text-3xl font-bold leading-tight tracking-tight">
+          Request
+          <br />
+          <span className="text-primary terminal-glow">Node Access</span>
+        </h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Provision a new terminal and track your money with precision.
         </p>
       </div>
 
@@ -188,8 +192,11 @@ export default function RegisterPage() {
               </FormItem>
             )}
           />
-          <SubmitButton className="w-full" pendingText="Creating account…">
-            Create account
+          <SubmitButton
+            className="h-11 w-full font-mono text-sm font-bold uppercase tracking-widest"
+            pendingText="Provisioning…"
+          >
+            Provision Node
           </SubmitButton>
           <FormDescription className="text-center text-xs">
             By continuing you agree to keep your finances honest. 🙂

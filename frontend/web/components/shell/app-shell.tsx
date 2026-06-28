@@ -44,6 +44,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </Sheet>
 
           <div className="flex-1" />
+          <span className="mr-1 hidden items-center gap-1.5 rounded-full border border-border px-2.5 py-1 sm:flex">
+            <span className="size-1.5 animate-pulse rounded-full bg-primary" aria-hidden />
+            <span className="label-caps text-[10px]! tracking-widest!">Mainnet · Live</span>
+          </span>
           <ThemeToggle />
           <UserMenu />
         </header>

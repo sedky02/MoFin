@@ -1,13 +1,19 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
+import { Bricolage_Grotesque, Hanken_Grotesk, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { ThemeProvider, themeInitScript } from "@/components/providers/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 
-// Geometric sans for UI chrome; tabular mono for all money + numbers.
-const jakarta = Plus_Jakarta_Sans({
-  variable: "--font-jakarta",
+// "Humanized Quant": editorial display face, grotesque body, tabular mono for data.
+const bricolage = Bricolage_Grotesque({
+  variable: "--font-bricolage",
+  subsets: ["latin"],
+  display: "swap",
+});
+
+const hanken = Hanken_Grotesk({
+  variable: "--font-hanken",
   subsets: ["latin"],
   display: "swap",
 });
@@ -30,7 +36,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${jakarta.variable} ${jetbrains.variable} h-full antialiased`}
+      className={`${bricolage.variable} ${hanken.variable} ${jetbrains.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <head>
