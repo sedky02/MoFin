@@ -14,7 +14,7 @@ import { RecentTransactions } from "@/components/dashboard/recent-transactions";
 import { PageHeader } from "@/components/common/page-header";
 
 // All dashboard data is user-specific and dynamic — never "use cache".
-//export const dynamic = "force-dynamic";
+// export const dynamic = "force-dynamic";
 
 function pickPrimaryCurrency(
   balances: LedgerBalance[] | null,

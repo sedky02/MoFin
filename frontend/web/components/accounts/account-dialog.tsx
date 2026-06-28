@@ -24,14 +24,21 @@ import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { SubmitButton } from "@/components/common/submit-button";
 import { ACCOUNT_TYPES, CURRENCIES } from "@/lib/constants";
-import { useCreateAccount, useUpdateAccount } from "@/hooks/useAccounts";
+import {
+  useAccounts,
+  useCreateAccount,
+  useUpdateAccount,
+} from "@/hooks/useAccounts";
 import type { Account } from "@/lib/types";
 
 const schema = z.object({
@@ -53,6 +60,19 @@ export function AccountDialog({
   const isEdit = !!account;
   const createMut = useCreateAccount();
   const updateMut = useUpdateAccount();
+  const { data: accounts } = useAccounts();
+
+  // Currencies already in use across the user's accounts, surfaced as a
+  // quick-pick section at the top of the picker. Ordered by frequency.
+  const usedCurrencies = React.useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const a of accounts ?? []) {
+      if (a.currency) counts.set(a.currency, (counts.get(a.currency) ?? 0) + 1);
+    }
+    return Array.from(counts.keys()).sort(
+      (a, b) => (counts.get(b) ?? 0) - (counts.get(a) ?? 0),
+    );
+  }, [accounts]);
 
   const form = useForm<Values>({
     resolver: zodResolver(schema),
@@ -162,11 +182,31 @@ export function AccountDialog({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {CURRENCIES.map((c) => (
-                        <SelectItem key={c} value={c} className="tabular">
-                          {c}
-                        </SelectItem>
-                      ))}
+                      {usedCurrencies.length > 0 && (
+                        <>
+                          <SelectGroup>
+                            <SelectLabel>In use</SelectLabel>
+                            {usedCurrencies.map((c) => (
+                              <SelectItem
+                                key={`used-${c}`}
+                                value={c}
+                                className="tabular"
+                              >
+                                {c}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                          <SelectSeparator />
+                        </>
+                      )}
+                      <SelectGroup>
+                        <SelectLabel>All currencies</SelectLabel>
+                        {CURRENCIES.map((c) => (
+                          <SelectItem key={c} value={c} className="tabular">
+                            {c}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
                     </SelectContent>
                   </Select>
                   <FormMessage />

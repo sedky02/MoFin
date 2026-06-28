@@ -65,6 +65,17 @@ export default function NewTransactionPage() {
   const toAccountId = form.watch("toAccountId");
   const currency = form.watch("currency");
 
+  // Pre-select a default account once accounts load (only if not already set).
+  React.useEffect(() => {
+    if (accountList.length === 0) return;
+    if (!form.getValues("fromAccountId")) {
+      form.setValue("fromAccountId", accountList[0].id);
+    }
+    if (!form.getValues("toAccountId")) {
+      form.setValue("toAccountId", (accountList[1] ?? accountList[0]).id);
+    }
+  }, [accountList, form]);
+
   // Currency auto-fills from the relevant account.
   const sourceAccountId = type === "INCOME" ? toAccountId : fromAccountId;
   React.useEffect(() => {

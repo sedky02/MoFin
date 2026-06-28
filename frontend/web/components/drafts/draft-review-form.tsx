@@ -66,6 +66,17 @@ export function DraftReviewForm({
   const toAccountId = form.watch("toAccountId");
   const currency = form.watch("currency");
 
+  // Pre-select a default account once accounts load, when the parser left it empty.
+  React.useEffect(() => {
+    if (accountList.length === 0) return;
+    if (!form.getValues("fromAccountId")) {
+      form.setValue("fromAccountId", accountList[0].id);
+    }
+    if (!form.getValues("toAccountId")) {
+      form.setValue("toAccountId", (accountList[1] ?? accountList[0]).id);
+    }
+  }, [accountList, form]);
+
   const sourceAccountId = type === "INCOME" ? toAccountId : fromAccountId;
   React.useEffect(() => {
     const acct = accountList.find((a) => a.id === sourceAccountId);
