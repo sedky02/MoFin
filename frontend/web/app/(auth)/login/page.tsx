@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { SubmitButton } from "@/components/common/submit-button";
+import { GoogleButton } from "@/components/common/google-button";
 import { ApiClientError } from "@/lib/api";
 import { handleApiError } from "@/lib/form-errors";
 
@@ -55,6 +56,14 @@ export default function LoginPage() {
           return;
         }
         throw new ApiClientError(res.status, body.message ?? "Login failed.", body);
+      }
+      // If this login was initiated by the MCP OAuth flow, resume the cross-origin
+      // bridge instead of going to the dashboard (full navigation — the handoff
+      // route 302s the browser to the backend, across origins).
+      const mcpAuthorize = new URLSearchParams(window.location.search).get("mcp_authorize");
+      if (mcpAuthorize) {
+        window.location.href = `/api/auth/mcp-handoff?continue=${encodeURIComponent(mcpAuthorize)}`;
+        return;
       }
       router.replace("/dashboard");
       router.refresh();
@@ -139,6 +148,13 @@ export default function LoginPage() {
           </SubmitButton>
         </form>
       </Form>
+
+      <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground">
+        <span className="h-px flex-1 bg-border" />
+        OR
+        <span className="h-px flex-1 bg-border" />
+      </div>
+      <GoogleButton />
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
         New to MoFin?{" "}

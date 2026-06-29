@@ -9,10 +9,12 @@ import { AuthenticatedUser } from '../../common/types/authenticated-user';
 import { AuthService } from './auth.service';
 import {
   CreateApiKeyDto,
+  GoogleLoginDto,
   LoginDto,
   RefreshTokenDto,
   RegisterDto,
   createApiKeySchema,
+  googleLoginSchema,
   loginSchema,
   refreshTokenSchema,
   registerSchema,
@@ -44,8 +46,9 @@ export class AuthController {
   }
 
   @Post('google')
-  googleOAuthStub() {
-    return this.authService.googleOAuthStub();
+  @ApiZodBody(googleLoginSchema)
+  google(@Body(new ZodValidationPipe(googleLoginSchema)) dto: GoogleLoginDto) {
+    return this.authService.loginWithGoogle(dto.code, dto.redirectUri);
   }
 
   @UseGuards(JwtAuthGuard)

@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, ServiceUnavailableException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
@@ -57,11 +57,67 @@ export class AuthService {
     return this.issueTokens(payload.sub, payload.email);
   }
 
-  googleOAuthStub() {
-    return {
-      status: 'stub',
-      message: 'Wire Passport Google strategy here; service should upsert user and issue tokens.',
-    };
+  /**
+   * Exchange a Google authorization code for MoFin tokens. The web BFF calls
+   * this server-to-server after Google redirects back, so the id_token arrives
+   * directly from Google's token endpoint over TLS — we validate its claims
+   * (aud/iss/exp/email_verified) without a separate JWKS signature check, which
+   * is acceptable for the authorization-code flow over a trusted channel.
+   */
+  async loginWithGoogle(code: string, redirectUri: string) {
+    const clientId = this.config.get<string>('GOOGLE_CLIENT_ID');
+    const clientSecret = this.config.get<string>('GOOGLE_CLIENT_SECRET');
+    const tokenUrl = this.config.get<string>('GOOGLE_TOKEN_URL');
+    if (!clientId || !clientSecret || !tokenUrl) {
+      throw new ServiceUnavailableException('Google sign-in is not configured');
+    }
+
+    const tokenRes = await fetch(tokenUrl, {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        code,
+        client_id: clientId,
+        client_secret: clientSecret,
+        redirect_uri: redirectUri,
+        grant_type: 'authorization_code',
+      }),
+    });
+    if (!tokenRes.ok) {
+      throw new UnauthorizedException('Google code exchange failed');
+    }
+
+    const { id_token: idToken } = (await tokenRes.json()) as { id_token?: string };
+    if (!idToken) throw new UnauthorizedException('Google response missing id_token');
+
+    const claims = decodeJwtPayload(idToken);
+    const validIssuers = ['accounts.google.com', 'https://accounts.google.com'];
+    if (
+      claims.aud !== clientId ||
+      !validIssuers.includes(String(claims.iss)) ||
+      typeof claims.exp !== 'number' ||
+      claims.exp * 1000 < Date.now() ||
+      !claims.sub ||
+      !claims.email ||
+      claims.email_verified === false
+    ) {
+      throw new UnauthorizedException('Invalid Google identity token');
+    }
+
+    const googleId = String(claims.sub);
+    const email = String(claims.email).trim().toLowerCase();
+    const displayName = typeof claims.name === 'string' ? claims.name : undefined;
+
+    // Link by googleId, else by existing email, else create a passwordless user.
+    let user = await this.prisma.user.findUnique({ where: { googleId } });
+    if (!user) {
+      const byEmail = await this.prisma.user.findUnique({ where: { email } });
+      user = byEmail
+        ? await this.prisma.user.update({ where: { id: byEmail.id }, data: { googleId } })
+        : await this.prisma.user.create({ data: { email, googleId, displayName } });
+    }
+
+    return this.issueTokens(user.id, user.email);
   }
 
   /**
@@ -108,5 +164,16 @@ export class AuthService {
     ]);
 
     return { accessToken, refreshToken };
+  }
+}
+
+/** Decode (without signature verification) the payload of a JWT. */
+function decodeJwtPayload(token: string): Record<string, unknown> {
+  const parts = token.split('.');
+  if (parts.length < 2) throw new UnauthorizedException('Malformed id_token');
+  try {
+    return JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
+  } catch {
+    throw new UnauthorizedException('Malformed id_token');
   }
 }

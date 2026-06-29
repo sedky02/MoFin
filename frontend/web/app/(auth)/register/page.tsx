@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { SubmitButton } from "@/components/common/submit-button";
+import { GoogleButton } from "@/components/common/google-button";
 import { ApiClientError } from "@/lib/api";
 import { handleApiError } from "@/lib/form-errors";
 import { cn } from "@/lib/utils";
@@ -83,6 +84,12 @@ export default function RegisterPage() {
           return;
         }
         throw new ApiClientError(res.status, body.message ?? "Registration failed.", body);
+      }
+      // Resume the MCP OAuth bridge if this registration came from it.
+      const mcpAuthorize = new URLSearchParams(window.location.search).get("mcp_authorize");
+      if (mcpAuthorize) {
+        window.location.href = `/api/auth/mcp-handoff?continue=${encodeURIComponent(mcpAuthorize)}`;
+        return;
       }
       router.replace("/dashboard");
       router.refresh();
@@ -203,6 +210,13 @@ export default function RegisterPage() {
           </FormDescription>
         </form>
       </Form>
+
+      <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground">
+        <span className="h-px flex-1 bg-border" />
+        OR
+        <span className="h-px flex-1 bg-border" />
+      </div>
+      <GoogleButton label="Sign up with Google" />
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
         Already have an account?{" "}

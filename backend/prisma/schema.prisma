@@ -56,6 +56,10 @@ model User {
   budgets         Budget[]
   goals           Goal[]
   analyticsCaches AnalyticsCache[]
+  oauthCodes      AuthorizationCode[]
+  oauthRefreshTokens OAuthRefreshToken[]
+  oauthGrants     OAuthGrant[]
+  authSessions    AuthSession[]
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
 }
@@ -196,4 +200,82 @@ model Goal {
   targetDate     DateTime?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+}
+
+// --- OAuth 2.1 authorization server (MCP custom connector for claude.ai) ---
+
+// A client registered via Dynamic Client Registration (RFC 7591).
+// claude.ai is a public PKCE client, so there is no client secret.
+model OAuthClient {
+  id                      String   @id @default(uuid())
+  clientId                String   @unique
+  clientName              String?
+  redirectUris            String[]
+  grantTypes              String[]
+  responseTypes           String[]
+  scope                   String?
+  tokenEndpointAuthMethod String   @default("none")
+  createdAt               DateTime @default(now())
+}
+
+// Single-use authorization code issued by /authorize and exchanged at /token.
+// `code` stores a hash of the value handed back in the redirect, never the raw code.
+model AuthorizationCode {
+  id                  String    @id @default(uuid())
+  code                String    @unique
+  clientId            String
+  userId              String
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  redirectUri         String
+  codeChallenge       String
+  codeChallengeMethod String
+  scope               String
+  resource            String?
+  usedAt              DateTime?
+  expiresAt           DateTime
+  createdAt           DateTime  @default(now())
+
+  @@index([userId])
+}
+
+// Persisted, rotating refresh token. `tokenHash` is the hash of the opaque token.
+// `familyId` groups rotations so that reuse of a rotated token revokes the whole family.
+model OAuthRefreshToken {
+  id          String    @id @default(uuid())
+  tokenHash   String    @unique
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clientId    String
+  scope       String
+  resource    String?
+  familyId    String
+  rotatedToId String?
+  revokedAt   DateTime?
+  expiresAt   DateTime
+  createdAt   DateTime  @default(now())
+
+  @@index([userId])
+  @@index([familyId])
+}
+
+// Remembered user consent for a (user, client) pair so consent is shown only once.
+model OAuthGrant {
+  id       String @id @default(uuid())
+  userId   String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clientId String
+  scope    String
+
+  @@unique([userId, clientId])
+}
+
+// First-party backend session created by the cross-origin login bridge.
+// `sessionToken` stores a hash of the value placed in the mofin_as_session cookie.
+model AuthSession {
+  id           String   @id @default(uuid())
+  sessionToken String   @unique
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
 }

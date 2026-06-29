@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { JwtModule } from '@nestjs/jwt';
 import { AccountsModule } from '../accounts/accounts.module';
 import { AnalyticsModule } from '../analytics/analytics.module';
 import { AuthModule } from '../auth/auth.module';
@@ -10,7 +11,7 @@ import { McpController } from './mcp.controller';
 import { McpService } from './mcp.service';
 
 @Module({
-  imports: [AuthModule, DraftTransactionsModule, SearchModule, LedgerModule, AnalyticsModule, AccountsModule],
+  imports: [AuthModule, JwtModule.register({}), DraftTransactionsModule, SearchModule, LedgerModule, AnalyticsModule, AccountsModule],
   controllers: [McpController],
   providers: [McpService, McpServerFactory]
 })

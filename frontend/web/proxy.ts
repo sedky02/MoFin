@@ -14,6 +14,18 @@ export default function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
+  // Already logged in but arriving on /login?mcp_authorize=… from the MCP OAuth
+  // flow → don't bounce to the dashboard; resume the bridge directly.
+  const mcpAuthorize = request.nextUrl.searchParams.get("mcp_authorize");
+  if (refresh && isAuthRoute && mcpAuthorize) {
+    return NextResponse.redirect(
+      new URL(
+        `/api/auth/mcp-handoff?continue=${encodeURIComponent(mcpAuthorize)}`,
+        request.url,
+      ),
+    );
+  }
+
   // Logged in but on an auth route → send to the dashboard.
   if (refresh && isAuthRoute) {
     return NextResponse.redirect(new URL("/dashboard", request.url));

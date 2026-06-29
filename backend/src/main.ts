@@ -1,3 +1,4 @@
+import { RequestMethod } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
@@ -5,7 +6,16 @@ import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  app.setGlobalPrefix('api/v1');
+  // OAuth discovery documents (RFC 8414 / RFC 9728) must live at the origin root,
+  // so they are excluded from the `api/v1` prefix. The authorize/token/register
+  // endpoints stay under the prefix — claude.ai reads their URLs from the metadata.
+  app.setGlobalPrefix('api/v1', {
+    exclude: [
+      { path: '.well-known/oauth-protected-resource', method: RequestMethod.GET },
+      { path: '.well-known/oauth-protected-resource/(.*)', method: RequestMethod.GET },
+      { path: '.well-known/oauth-authorization-server', method: RequestMethod.GET },
+    ],
+  });
 
   // Input validation is handled per-route by ZodValidationPipe; the Prisma
   // exception filter, throttler guard, and logging interceptor are registered

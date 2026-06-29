@@ -17,6 +17,7 @@ import { GoalsModule } from './modules/goals/goals.module';
 import { LedgerModule } from './modules/ledger/ledger.module';
 import { McpModule } from './modules/mcp/mcp.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { OAuthModule } from './modules/oauth/oauth.module';
 import { SearchModule } from './modules/search/search.module';
 import { TransactionsModule } from './modules/transactions/transactions.module';
 import { UsersModule } from './modules/users/users.module';
@@ -36,6 +37,7 @@ import { UsersModule } from './modules/users/users.module';
     LedgerModule,
     AiModule,
     McpModule,
+    OAuthModule,
     AnalyticsModule,
     NotificationsModule,
     SearchModule,
