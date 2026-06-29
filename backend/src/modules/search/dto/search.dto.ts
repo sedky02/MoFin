@@ -3,7 +3,7 @@ import { amountStringSchema, dateStringSchema } from '../../../common/dto/common
 import { paginationSchema } from '../../../common/dto/pagination';
 
 export const searchTransactionsSchema = paginationSchema.extend({
-  q: z.string().min(1),
+  q: z.string().min(1).optional(),
   categoryId: z.string().optional(),
   accountId: z.string().optional(),
   from: dateStringSchema.optional(),

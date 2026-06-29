@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+import { connection } from "next/server";
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
 import { getQueryClient } from "@/lib/query-client";
 import { serverGet } from "@/lib/server-api";
@@ -12,9 +14,7 @@ import { BalanceCards } from "@/components/dashboard/balance-cards";
 import { MonthlySummaryCard } from "@/components/dashboard/monthly-summary";
 import { RecentTransactions } from "@/components/dashboard/recent-transactions";
 import { PageHeader } from "@/components/common/page-header";
-
-// All dashboard data is user-specific and dynamic — never "use cache".
-// export const dynamic = "force-dynamic";
+import { Skeleton } from "@/components/ui/skeleton";
 
 function pickPrimaryCurrency(
   balances: LedgerBalance[] | null,
@@ -34,14 +34,29 @@ function pickPrimaryCurrency(
   return "USD";
 }
 
-export default async function DashboardPage() {
+// Static shell. The dynamic, user-specific dashboard streams in via <Suspense>
+// (required under cacheComponents: runtime data access — cookies in serverGet,
+// new Date() — must live inside a Suspense boundary, not at the route top level).
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<DashboardSkeleton />}>
+      <DashboardContent />
+    </Suspense>
+  );
+}
+
+// Async Server Component performing the (dynamic) server-side prefetch.
+async function DashboardContent() {
+  const queryClient = getQueryClient();
+
+  // Reading the current time requires a request-data source first under
+  // cacheComponents; connection() opts this render out of prerendering.
+  await connection();
   const now = new Date();
   const year = now.getFullYear();
   const month = now.getMonth() + 1;
 
-  const queryClient = getQueryClient();
-
-  // Prefetch all three datasets in parallel on the server (cookies awaited inside serverGet).
+  // Prefetch all datasets in parallel on the server (cookies awaited inside serverGet).
   const [balances, summary, recent, user] = await Promise.all([
     serverGet<LedgerBalance[]>("/ledger/balance"),
     serverGet<MonthlySummary>("/analytics/monthly-summary", { year, month }),
@@ -72,6 +87,26 @@ export default async function DashboardPage() {
         </div>
       </section>
     </HydrationBoundary>
+  );
+}
+
+function DashboardSkeleton() {
+  return (
+    <>
+      <div className="mb-6 space-y-2">
+        <Skeleton className="h-9 w-64" />
+        <Skeleton className="h-4 w-80" />
+      </div>
+
+      <section className="space-y-8">
+        <Skeleton className="h-48 w-full rounded-3xl" />
+
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <Skeleton className="h-72 w-full rounded-2xl" />
+          <Skeleton className="h-72 w-full rounded-2xl" />
+        </div>
+      </section>
+    </>
   );
 }
 

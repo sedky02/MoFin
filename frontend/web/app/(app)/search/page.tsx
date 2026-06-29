@@ -1,14 +1,30 @@
+import { Suspense } from "react";
 import { PageHeader } from "@/components/common/page-header";
 import { SearchView, type SearchInitial } from "@/components/search/search-view";
-
-//export const dynamic = "force-dynamic";
+import { Skeleton } from "@/components/ui/skeleton";
 
 function first(v: string | string[] | undefined): string | undefined {
   return Array.isArray(v) ? v[0] : v;
 }
 
-// Next.js 16: searchParams is a Promise — await it for the initial filter values.
-export default async function SearchPage({
+export default function SearchPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  return (
+    <div className="mx-auto max-w-3xl">
+      <PageHeader title="Search" description="Find any transaction by text, account, category, date, or amount." />
+      <Suspense fallback={<SearchSkeleton />}>
+        <SearchContent searchParams={searchParams} />
+      </Suspense>
+    </div>
+  );
+}
+
+// searchParams is request data — awaiting it must happen inside <Suspense> under
+// cacheComponents so the static shell (header) can prerender immediately.
+async function SearchContent({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -26,10 +42,19 @@ export default async function SearchPage({
     page: first(sp.page) ? Number(first(sp.page)) : 1,
   };
 
+  return <SearchView initial={initial} />;
+}
+
+function SearchSkeleton() {
   return (
-    <div className="mx-auto max-w-3xl">
-      <PageHeader title="Search" description="Find any transaction by text, account, category, date, or amount." />
-      <SearchView initial={initial} />
+    <div className="space-y-4">
+      <Skeleton className="h-10 w-full rounded-lg" />
+      <Skeleton className="h-24 w-full rounded-lg" />
+      <div className="space-y-2">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Skeleton key={i} className="h-14 w-full rounded-lg" />
+        ))}
+      </div>
     </div>
   );
 }
