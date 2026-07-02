@@ -1,85 +1,43 @@
-import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { JwtService } from '@nestjs/jwt';
-import { Request, Response } from 'express';
-import { AuthService } from '../../modules/auth/auth.service';
+import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
+import { Request } from 'express';
+import { ApiKeyAuthGuard } from './api-key-auth.guard';
+import { OAuthMcpAuthGuard } from './oauth-mcp-auth.guard';
 
 /**
- * Authenticates MCP requests via either:
- *  - `x-api-key` (or a legacy `mcp_…` Bearer): the existing API-key path, kept
- *    for MCP Inspector / programmatic use; or
- *  - an OAuth 2.1 Bearer access token (what claude.ai sends): a JWT signed with
- *    JWT_ACCESS_SECRET that MUST carry our issuer, the MCP resource audience and
- *    the `mcp` scope. Requiring aud+scope stops a plain web-session token from
- *    being replayed against the MCP endpoint.
+ * Thin composite that selects the MCP authentication strategy by credential
+ * presence, keeping API-key and OAuth logic fully separated:
  *
- * When no valid credential is present we return 401 with a `WWW-Authenticate`
- * header pointing at the protected-resource metadata — this is what makes
- * claude.ai start the OAuth flow.
+ *  - `x-api-key` header or a `mcp_…` Bearer  → {@link ApiKeyAuthGuard}
+ *    (MCP Inspector / dev / programmatic clients)
+ *  - anything else, including no credential  → {@link OAuthMcpAuthGuard}
+ *    (production MCP clients such as claude.ai)
+ *
+ * Routing on the credential — rather than the environment — means Inspector
+ * keeps working with an API key in production and claude.ai keeps working with
+ * OAuth in development. On any failure the OAuth `WWW-Authenticate` challenge is
+ * guaranteed, preserving the original single-guard behaviour.
  */
 @Injectable()
 export class McpAuthGuard implements CanActivate {
   constructor(
-    private readonly authService: AuthService,
-    private readonly jwt: JwtService,
-    private readonly config: ConfigService,
+    private readonly apiKeyGuard: ApiKeyAuthGuard,
+    private readonly oauthGuard: OAuthMcpAuthGuard,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<Request>();
-
-    const apiKeyHeader = request.header('x-api-key');
-    const bearer = request.header('authorization')?.replace(/^Bearer\s+/i, '');
+    const usesApiKey = ApiKeyAuthGuard.extractKey(request) !== undefined;
 
     try {
-      if (apiKeyHeader) {
-        request.user = await this.authService.validateApiKey(apiKeyHeader);
-        return true;
-      }
-      if (bearer) {
-        // Legacy API keys may arrive as a Bearer; everything else is an OAuth JWT.
-        request.user = bearer.startsWith('mcp_')
-          ? await this.authService.validateApiKey(bearer)
-          : await this.validateOAuthToken(bearer);
-        return true;
-      }
-    } catch {
-      // fall through to the 401 + WWW-Authenticate challenge below
+      return usesApiKey
+        ? await this.apiKeyGuard.canActivate(context)
+        : await this.oauthGuard.canActivate(context);
+    } catch (err) {
+      // Guarantee the RFC 9728 challenge on every failure (the API-key path does
+      // not emit it), so an unauthenticated client is always told how to start
+      // the OAuth flow — matching the original guard's behaviour.
+      this.oauthGuard.writeChallenge(context);
+      throw err;
     }
-
-    this.challenge(context);
-    throw new UnauthorizedException('Missing or invalid MCP credentials');
-  }
-
-  private async validateOAuthToken(token: string) {
-    const issuer = this.config.getOrThrow<string>('OAUTH_ISSUER').replace(/\/$/, '');
-    const audience =
-      this.config.get<string>('OAUTH_RESOURCE_URI') ?? `${issuer}/api/v1/mcp`;
-
-    const payload = await this.jwt.verifyAsync<{
-      sub: string;
-      email: string;
-      scope?: string;
-    }>(token, {
-      secret: this.config.getOrThrow<string>('JWT_ACCESS_SECRET'),
-      issuer,
-      audience,
-    });
-
-    const scopes = (payload.scope ?? '').split(' ');
-    if (!scopes.includes('mcp')) {
-      throw new UnauthorizedException('token missing mcp scope');
-    }
-    return { id: payload.sub, email: payload.email };
-  }
-
-  private challenge(context: ExecutionContext) {
-    const issuer = this.config.getOrThrow<string>('OAUTH_ISSUER').replace(/\/$/, '');
-    const metadataUrl = `${issuer}/.well-known/oauth-protected-resource`;
-    const res = context.switchToHttp().getResponse<Response>();
-    res.setHeader(
-      'WWW-Authenticate',
-      `Bearer resource_metadata="${metadataUrl}", error="invalid_token"`,
-    );
   }
 }
