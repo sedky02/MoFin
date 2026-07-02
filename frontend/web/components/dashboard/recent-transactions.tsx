@@ -43,9 +43,9 @@ export function RecentTransactions() {
         </div>
       ) : (
         <div className="divide-y divide-border">
-          {data.map((tx) => (
+          {data.map((tx) => {console.log(tx); return(
             <TransactionRow key={tx.id} tx={tx} />
-          ))}
+          )})}
         </div>
       )}
     </Card>

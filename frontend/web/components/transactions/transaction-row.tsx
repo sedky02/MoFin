@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import type { Transaction } from "@/lib/types";
 import { MoneyAmount } from "@/components/common/money-amount";
-import { formatDate } from "@/lib/format";
+import { formatDate, transactionAmount } from "@/lib/format";
 import { multiply } from "@/lib/decimal";
 import { cn } from "@/lib/utils";
 
@@ -19,7 +19,8 @@ function CategoryDot({ color }: { color?: string | null }) {
 
 export function TransactionRow({ tx }: { tx: Transaction }) {
   // Expenses display as negative + red; income positive + green; transfer neutral.
-  const signedAmount = tx.type === "EXPENSE" ? multiply(tx.amount, "-1") : tx.amount;
+  const base = transactionAmount(tx);
+  const signedAmount = tx.type === "EXPENSE" ? multiply(base, "-1") : base;
 
   return (
     <Link
@@ -44,7 +45,7 @@ export function TransactionRow({ tx }: { tx: Transaction }) {
       </div>
 
       <MoneyAmount
-        amount={tx.type === "TRANSFER" ? tx.amount : signedAmount}
+        amount={tx.type === "TRANSFER" ? base : signedAmount}
         currency={tx.currency}
         colorBySign={tx.type !== "TRANSFER"}
         className="text-sm font-semibold"

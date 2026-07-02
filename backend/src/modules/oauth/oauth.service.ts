@@ -66,14 +66,8 @@ export class OAuthService {
   // --- Dynamic Client Registration (RFC 7591) ---
 
   async registerClient(dto: RegisterClientDto) {
-    const allowedHosts = this.config
-      .getOrThrow<string>('OAUTH_ALLOWED_REDIRECT_HOSTS')
-      .split(',')
-      .map((h) => h.trim())
-      .filter(Boolean);
-
     for (const uri of dto.redirect_uris) {
-      this.assertRedirectUriAllowed(uri, allowedHosts);
+      this.assertRedirectUriAllowed(uri);
     }
 
     const clientId = `mcp-client-${randomBytes(16).toString('hex')}`;
@@ -101,7 +95,10 @@ export class OAuthService {
     };
   }
 
-  private assertRedirectUriAllowed(uri: string, allowedHosts: string[]) {
+  // Open client registration: any host may register. Security still rests on
+  // exact redirect_uri matching at /authorize, mandatory login, and per-user
+  // consent. We only enforce https (localhost permitted for local dev).
+  private assertRedirectUriAllowed(uri: string) {
     let parsed: URL;
     try {
       parsed = new URL(uri);
@@ -112,9 +109,6 @@ export class OAuthService {
     const devAllowed = this.issuer.startsWith('http://') && isLocalhost;
     if (parsed.protocol !== 'https:' && !devAllowed) {
       throw new BadRequestException('redirect_uri must be https');
-    }
-    if (!isLocalhost && !allowedHosts.includes(parsed.hostname)) {
-      throw new BadRequestException(`redirect_uri host not allowed: ${parsed.hostname}`);
     }
   }
 

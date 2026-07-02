@@ -17,7 +17,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime, transactionAmount } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 export function TransactionDetail({ id }: { id: string }) {
@@ -63,7 +63,7 @@ export function TransactionDetail({ id }: { id: string }) {
             </p>
           </div>
           <MoneyAmount
-            amount={tx.type === "EXPENSE" ? `-${tx.amount}` : tx.amount}
+            amount={tx.type === "EXPENSE" ? `-${transactionAmount(tx)}` : transactionAmount(tx)}
             currency={tx.currency}
             colorBySign={tx.type !== "TRANSFER"}
             className="shrink-0 text-2xl font-semibold"
@@ -116,12 +116,12 @@ export function TransactionDetail({ id }: { id: string }) {
                     <span
                       className={cn(
                         "inline-flex rounded-md px-2 py-0.5 text-xs font-medium",
-                        item.type === "DEBIT"
+                        item.direction === "DEBIT"
                           ? "bg-success/12 text-success"
                           : "bg-destructive/12 text-destructive",
                       )}
                     >
-                      {item.type === "DEBIT" ? "Debit" : "Credit"}
+                      {item.direction === "DEBIT" ? "Debit" : "Credit"}
                     </span>
                   </TableCell>
                   <TableCell className="text-right">

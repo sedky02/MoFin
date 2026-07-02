@@ -49,20 +49,22 @@ export interface LedgerItem {
   transactionId: string;
   accountId: string;
   account?: Account;
-  type: LedgerItemType;
+  // Backend field name; DEBIT = out of account, CREDIT = into account.
+  direction: LedgerItemType;
   amount: string;
   currency: string;
+  memo?: string | null;
 }
 
+// A Transaction is the business event; it has NO amount of its own — the money
+// lives in `items` (double-entry ledger legs). Use transactionAmount() in
+// lib/format to derive the display amount.
 export interface Transaction {
   id: string;
   type: TransactionType;
   description: string;
-  amount: string;
   currency: string;
   occurredAt: string;
-  fromAccountId?: string | null;
-  toAccountId?: string | null;
   categoryId?: string | null;
   category?: Category | null;
   items: LedgerItem[];

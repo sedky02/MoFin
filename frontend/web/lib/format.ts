@@ -1,6 +1,7 @@
 // Money formatting + input parsing. All display goes through here so currency is
 // never hardcoded and amounts always render with tabular figures.
 import { Decimal, tryParse } from "@/lib/decimal";
+import type { Transaction } from "@/lib/types";
 
 const formatterCache = new Map<string, Intl.NumberFormat>();
 
@@ -33,11 +34,39 @@ export function formatMoney(
   if (!d) return amount; // fail visible, not silent
   try {
     // Intl works on numbers; we only convert AFTER decimal-safe storage, for display.
-    return getFormatter(currency, opts?.compact ?? false).format(d.toNumber());
+    const parts = getFormatter(currency, opts?.compact ?? false).formatToParts(
+      d.toNumber(),
+    );
+    const currencyPart = parts.find((p) => p.type === "currency");
+    // Currencies without a symbol render as their letter code (e.g. "TND") and
+    // Intl places that code BEFORE the amount ("TND 30"). Convention for
+    // code-style currencies is to trail the amount ("30 TND"), so move it right.
+    // Symbol currencies ("$", "€") keep Intl's default placement.
+    if (currencyPart && /^[A-Za-z]+$/.test(currencyPart.value)) {
+      const numeric = parts
+        .filter(
+          (p) =>
+            p.type !== "currency" &&
+            !(p.type === "literal" && p.value.trim() === ""),
+        )
+        .map((p) => p.value)
+        .join("");
+      return `${numeric} ${currencyPart.value}`;
+    }
+    return parts.map((p) => p.value).join("");
   } catch {
-    // Unknown currency code — fall back to code + raw value rather than throwing.
-    return `${currency} ${d.toString()}`;
+    // Unknown currency code — fall back to raw value + code rather than throwing.
+    return `${d.toString()} ${currency}`;
   }
+}
+
+/**
+ * Positive display amount for a transaction, derived from its ledger legs.
+ * A Transaction has no amount column; the money lives in `items`. Both legs of
+ * a TRANSFER carry the same amount, so the first item is correct for all types.
+ */
+export function transactionAmount(tx: Transaction): string {
+  return tx.items[0]?.amount ?? "0";
 }
 
 /**
