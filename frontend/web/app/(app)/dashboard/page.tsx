@@ -111,6 +111,6 @@ function DashboardSkeleton() {
 }
 
 function greeting(name?: string | null): string {
-  const first = name?.trim().split(/\s+/)[0];
-  return first ? `Welcome back, ${first}` : "Welcome back";
+  // const first = name?.trim().split(/\s+/)[0];
+  return `Welcome back, ${name}`;
 }

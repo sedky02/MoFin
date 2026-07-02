@@ -1,6 +1,14 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
-import { ACCESS_COOKIE, BACKEND_URL } from "@/lib/auth-cookies";
+import {
+  ACCESS_COOKIE,
+  REFRESH_COOKIE,
+  BACKEND_URL,
+  refreshTokens,
+  setAuthCookies,
+  clearAuthCookies,
+  type BackendTokens,
+} from "@/lib/auth-cookies";
 
 /**
  * Cross-origin login bridge (web → backend).
@@ -15,6 +23,11 @@ import { ACCESS_COOKIE, BACKEND_URL } from "@/lib/auth-cookies";
  * `continue` is the original backend /authorize URL we must return to. Its origin
  * is the public backend origin, so we derive the consume URL from it (this works
  * both in local dev and behind a public tunnel).
+ *
+ * The access token is short-lived (~15 min) while the middleware only gates on
+ * the long-lived refresh token, so this route must self-heal an expired/missing
+ * access token by refreshing — otherwise the middleware keeps forcing us here
+ * while we keep bouncing to /login (an infinite redirect loop).
  */
 export async function GET(req: NextRequest) {
   const cont = req.nextUrl.searchParams.get("continue");
@@ -33,23 +46,54 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(new URL("/login", req.url));
   }
 
-  const accessToken = (await cookies()).get(ACCESS_COOKIE)?.value;
-  if (!accessToken) {
-    // Not authenticated → send back to login carrying the authorize target.
+  const jar = await cookies();
+  let accessToken = jar.get(ACCESS_COOKIE)?.value;
+  const refreshToken = jar.get(REFRESH_COOKIE)?.value;
+
+  // Fall back to login, clearing cookies so the middleware sees no session and
+  // renders the form instead of force-redirecting back here (loop-breaker).
+  // `mcp_authorize` is preserved so the connect resumes after re-login.
+  const bailToLogin = () => {
     const login = new URL("/login", req.url);
     login.searchParams.set("mcp_authorize", cont);
-    return NextResponse.redirect(login);
+    const res = NextResponse.redirect(login);
+    clearAuthCookies(res);
+    return res;
+  };
+
+  // No session at all → send to login.
+  if (!accessToken && !refreshToken) {
+    return bailToLogin();
   }
 
-  const upstream = await fetch(`${BACKEND_URL}/oauth/session/handoff`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${accessToken}` },
-    cache: "no-store",
-  });
+  let refreshed: BackendTokens | null = null;
+
+  // Access token gone but refresh alive → refresh before the handoff.
+  if (!accessToken && refreshToken) {
+    refreshed = await refreshTokens(refreshToken);
+    if (!refreshed) return bailToLogin();
+    accessToken = refreshed.accessToken;
+  }
+
+  const requestHandoff = () =>
+    fetch(`${BACKEND_URL}/oauth/session/handoff`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}` },
+      cache: "no-store",
+    });
+
+  let upstream = await requestHandoff();
+
+  // Access token present but expired → one refresh + retry (mirrors the API proxy).
+  if (upstream.status === 401 && refreshToken && !refreshed) {
+    refreshed = await refreshTokens(refreshToken);
+    if (!refreshed) return bailToLogin();
+    accessToken = refreshed.accessToken;
+    upstream = await requestHandoff();
+  }
+
   if (!upstream.ok) {
-    const login = new URL("/login", req.url);
-    login.searchParams.set("mcp_authorize", cont);
-    return NextResponse.redirect(login);
+    return bailToLogin();
   }
 
   const { handoff } = (await upstream.json()) as { handoff: string };
@@ -57,5 +101,8 @@ export async function GET(req: NextRequest) {
   const consume = new URL("/api/v1/oauth/session/consume", continueUrl.origin);
   consume.searchParams.set("handoff", handoff);
   consume.searchParams.set("continue", cont);
-  return NextResponse.redirect(consume);
+  const res = NextResponse.redirect(consume);
+  // Persist refreshed tokens so later requests use the new access token.
+  if (refreshed) setAuthCookies(res, refreshed);
+  return res;
 }

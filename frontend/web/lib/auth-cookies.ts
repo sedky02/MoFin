@@ -41,3 +41,25 @@ export interface BackendTokens {
   accessToken: string;
   refreshToken: string;
 }
+
+/**
+ * Exchange a refresh token for a fresh token pair. Returns null if the refresh
+ * token is invalid/expired or the backend is unreachable (best-effort; never
+ * throws). Same logic as the deduped refresh in the backend proxy route.
+ */
+export async function refreshTokens(
+  refreshToken: string,
+): Promise<BackendTokens | null> {
+  try {
+    const res = await fetch(`${BACKEND_URL}/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refreshToken }),
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as BackendTokens;
+  } catch {
+    return null;
+  }
+}
