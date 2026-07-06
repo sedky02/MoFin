@@ -56,9 +56,18 @@ export default function NewTransactionPage() {
       fromAccountId: undefined,
       toAccountId: undefined,
       categoryId: undefined,
-      occurredAt: toDatetimeLocal(),
+      occurredAt: "",
     },
   });
+
+  // `new Date()` must not run during the initial (possibly prerendered) render,
+  // so the "now" default is filled in after mount instead of in defaultValues.
+  React.useEffect(() => {
+    if (!form.getValues("occurredAt")) {
+      form.setValue("occurredAt", toDatetimeLocal());
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const type = form.watch("type");
   const fromAccountId = form.watch("fromAccountId");

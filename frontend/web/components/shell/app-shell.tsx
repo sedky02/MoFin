@@ -1,11 +1,13 @@
 "use client";
 
 import * as React from "react";
+import { Suspense } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { Menu } from "lucide-react";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { SidebarNav } from "./sidebar-nav";
 import { ThemeToggle } from "./theme-toggle";
 import { UserMenu } from "./user-menu";
@@ -22,9 +24,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-dvh lg:grid lg:grid-cols-[16rem_1fr]">
-      {/* Desktop sidebar */}
+      {/* Desktop sidebar. usePathname/usePendingDraftCount inside SidebarNav read
+          per-request data, so this subtree needs its own Suspense boundary to keep
+          the rest of the route shell statically prerenderable. */}
       <aside className="sticky top-0 hidden h-dvh border-r border-sidebar-border lg:block">
-        <SidebarNav />
+        <Suspense fallback={<SidebarNavSkeleton />}>
+          <SidebarNav />
+        </Suspense>
       </aside>
 
       <div className="flex min-h-dvh flex-col">
@@ -39,7 +45,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </SheetTrigger>
             <SheetContent side="left" className="w-72 p-0">
               <SheetTitle className="sr-only">Navigation</SheetTitle>
-              <SidebarNav onNavigate={() => setOpen(false)} />
+              <Suspense fallback={<SidebarNavSkeleton />}>
+                <SidebarNav onNavigate={() => setOpen(false)} />
+              </Suspense>
             </SheetContent>
           </Sheet>
 
@@ -59,8 +67,33 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Mobile bottom nav */}
-      <MobileBottomNav />
+      <Suspense fallback={<MobileBottomNavSkeleton />}>
+        <MobileBottomNav />
+      </Suspense>
     </div>
+  );
+}
+
+function SidebarNavSkeleton() {
+  return (
+    <div className="flex h-full flex-col gap-4 bg-sidebar px-3 py-4">
+      <Skeleton className="h-8 w-24" />
+      <Skeleton className="h-9 w-full rounded-lg" />
+      <div className="flex flex-1 flex-col gap-2 pt-2">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Skeleton key={i} className="h-9 w-full rounded-lg" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function MobileBottomNavSkeleton() {
+  return (
+    <nav
+      className="fixed inset-x-0 bottom-0 z-30 h-16 border-t border-border bg-background/90 backdrop-blur-md lg:hidden"
+      aria-hidden
+    />
   );
 }
 
