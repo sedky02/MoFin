@@ -36,4 +36,19 @@ export const MCP_TOOLS: ReadonlyArray<{ name: McpToolName; title: string; descri
     title: 'List accounts',
     description: "List the user's active (non-archived) accounts.",
   },
+  {
+    name: 'list_goals',
+    title: 'List goals',
+    description: "List the user's active goals with their current period's live progress and status.",
+  },
+  {
+    name: 'get_goal',
+    title: 'Get goal',
+    description: 'Get a single goal with its current period live progress and status.',
+  },
+  {
+    name: 'get_goal_history',
+    title: 'Get goal history',
+    description: "Get a goal's past period instances (targetAmount, progressAmount, status) for historical tracking.",
+  },
 ] as const;

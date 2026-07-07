@@ -21,6 +21,6 @@ export class AnalyticsController {
     @CurrentUser() user: AuthenticatedUser,
     @Query(new ZodValidationPipe(monthlySummaryQuerySchema)) query: MonthlySummaryQueryDto,
   ) {
-    return this.analyticsService.getMonthlySummary(user.id, query.year, query.month, query.refresh);
+    return this.analyticsService.getMonthlySummary(user.id, query.year, query.month, query.refresh, query.accountId);
   }
 }

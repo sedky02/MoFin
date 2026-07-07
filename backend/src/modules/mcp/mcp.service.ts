@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { AccountsService } from '../accounts/accounts.service';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { DraftTransactionsService } from '../draft-transactions/draft-transactions.service';
+import { GoalsService } from '../goals/goals.service';
 import { LedgerService } from '../ledger/ledger.service';
 import { SearchService } from '../search/search.service';
 import { McpToolName } from './dto/mcp.dto';
@@ -21,6 +22,7 @@ export class McpService {
     private readonly ledgerService: LedgerService,
     private readonly analyticsService: AnalyticsService,
     private readonly accountsService: AccountsService,
+    private readonly goalsService: GoalsService,
   ) {}
 
   dispatch(userId: string, tool: McpToolName, args: unknown): unknown {
@@ -39,6 +41,12 @@ export class McpService {
       }
       case 'list_accounts':
         return this.accountsService.list(userId);
+      case 'list_goals':
+        return this.goalsService.list(userId);
+      case 'get_goal':
+        return this.goalsService.findOne(userId, (args as { goalId: string }).goalId);
+      case 'get_goal_history':
+        return this.goalsService.history(userId, (args as { goalId: string }).goalId);
     }
   }
 }

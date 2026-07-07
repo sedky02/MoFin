@@ -7,5 +7,6 @@ export const monthlySummaryQuerySchema = z.object({
     .union([z.boolean(), z.string()])
     .optional()
     .transform((value) => value === true || value === 'true'),
+  accountId: z.string().optional(),
 });
 export type MonthlySummaryQueryDto = z.infer<typeof monthlySummaryQuerySchema>;

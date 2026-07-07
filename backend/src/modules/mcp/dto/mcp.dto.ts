@@ -17,6 +17,9 @@ export const mcpToolSchemas = {
   get_balance: getBalanceQuerySchema,
   get_monthly_summary: monthlySummaryQuerySchema,
   list_accounts: z.object({}).strip(),
+  list_goals: z.object({}).strip(),
+  get_goal: z.object({ goalId: z.string().min(1) }),
+  get_goal_history: z.object({ goalId: z.string().min(1) }),
 } as const;
 
 export type McpToolName = keyof typeof mcpToolSchemas;

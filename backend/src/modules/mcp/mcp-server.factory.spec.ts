@@ -15,7 +15,7 @@ describe('MCP tool registration', () => {
     }
   });
 
-  it('builds an MCP server for a user and registers all 6 tools without throwing', () => {
+  it('builds an MCP server for a user and registers all tools without throwing', () => {
     const factory = new McpServerFactory({ dispatch: jest.fn() } as never);
     const server = factory.create('user-1');
     // McpServer keeps registered tools internally; presence of the map confirms wiring.

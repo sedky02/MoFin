@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { PrismaExceptionFilter } from './common/filters/prisma-exception.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
@@ -26,6 +27,7 @@ import { UsersModule } from './modules/users/users.module';
   imports: [
     ConfigModule.forRoot({ isGlobal: true, validate: validateEnv }),
     EventEmitterModule.forRoot({ wildcard: false }),
+    ScheduleModule.forRoot(),
     // Global baseline rate limit; auth endpoints tighten this further (audit B5).
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
     AuthModule,

@@ -8,15 +8,21 @@ import { PrismaService } from '../../database/prisma.service';
 export class AnalyticsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getMonthlySummary(userId: string, year: number, month: number, refresh = false) {
-    const cacheKey = `monthly-summary:${year}:${month}`;
+  async getMonthlySummary(userId: string, year: number, month: number, refresh = false, accountId?: string) {
+    const cacheKey = this.monthlySummaryCacheKey(year, month, accountId);
     const cached = await this.prisma.analyticsCache.findUnique({ where: { userId_cacheKey: { userId, cacheKey } } });
     if (cached && cached.expiresAt > new Date() && !refresh) return cached.payload;
 
     const start = new Date(Date.UTC(year, month - 1, 1));
     const end = new Date(Date.UTC(year, month, 1));
+    // Scoping by userId already prevents cross-user leakage even if accountId belongs to
+    // someone else's account: no transaction of ours will ever carry their account's items.
     const transactions = await this.prisma.transaction.findMany({
-      where: { userId, occurredAt: { gte: start, lt: end } },
+      where: {
+        userId,
+        occurredAt: { gte: start, lt: end },
+        ...(accountId ? { items: { some: { accountId } } } : {}),
+      },
       include: { items: true, category: true }
     });
 
@@ -25,7 +31,10 @@ export class AnalyticsService {
     const categories = new Map<string, Prisma.Decimal>();
 
     for (const transaction of transactions) {
-      const total = transaction.items.reduce((sum, item) => sum.plus(item.amount), new Prisma.Decimal(0));
+      // INCOME/EXPENSE are single-sided, so filtering items down to `accountId` only matters
+      // when it's set — otherwise it's every (single) item on the transaction either way.
+      const items = accountId ? transaction.items.filter((item) => item.accountId === accountId) : transaction.items;
+      const total = items.reduce((sum, item) => sum.plus(item.amount), new Prisma.Decimal(0));
       if (transaction.type === TransactionType.INCOME) income = income.plus(total);
       if (transaction.type === TransactionType.EXPENSE) {
         expenses = expenses.plus(total);
@@ -56,12 +65,21 @@ export class AnalyticsService {
     return payload;
   }
 
+  private monthlySummaryCacheKey(year: number, month: number, accountId?: string): string {
+    return accountId ? `monthly-summary:${year}:${month}:${accountId}` : `monthly-summary:${year}:${month}`;
+  }
+
   @OnEvent(DomainEvents.TransactionCreated)
   async invalidateOnTransaction(event: TransactionCreatedEvent) {
     const year = event.occurredAt.getUTCFullYear();
     const month = event.occurredAt.getUTCMonth() + 1;
+    const base = this.monthlySummaryCacheKey(year, month);
+    // Clears both the unscoped and every account-scoped cache entry for this month at once —
+    // cheap to over-invalidate a cache, and we don't know which accounts this transaction's
+    // items touched without an extra query. Matching `${base}:` (not a bare startsWith(base))
+    // avoids "month 1" wrongly matching "month 10/11/12".
     await this.prisma.analyticsCache.deleteMany({
-      where: { userId: event.userId, cacheKey: `monthly-summary:${year}:${month}` }
+      where: { userId: event.userId, OR: [{ cacheKey: base }, { cacheKey: { startsWith: `${base}:` } }] }
     });
   }
 }

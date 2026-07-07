@@ -40,6 +40,23 @@ enum BudgetPeriod {
   YEARLY
 }
 
+enum GoalType {
+  BALANCE
+  INCOME
+  EXPENSE
+}
+
+enum GoalRecurrenceUnit {
+  MONTH
+  YEAR
+}
+
+enum GoalStatus {
+  IN_PROGRESS
+  ACHIEVED
+  FAILED
+}
+
 model User {
   id              String             @id @default(uuid())
   email           String             @unique
@@ -85,6 +102,7 @@ model Account {
   metadata        Json              @default("{}")
   archivedAt      DateTime?
   transactionItems TransactionItem[]
+  goals           Goal[]
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
 
@@ -190,16 +208,39 @@ model Budget {
 }
 
 model Goal {
-  id             String   @id @default(uuid())
+  id             String              @id @default(uuid())
   userId         String
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountId      String
+  account        Account             @relation(fields: [accountId], references: [id], onDelete: Cascade)
   name           String
-  targetAmount   Decimal  @db.Decimal(18, 4)
-  currentAmount  Decimal  @default(0) @db.Decimal(18, 4)
-  currency       String
-  targetDate     DateTime?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  type           GoalType
+  targetAmount   Decimal             @db.Decimal(18, 4)
+  isRecurring    Boolean             @default(false)
+  recurrenceUnit GoalRecurrenceUnit?
+  periodStart    DateTime
+  periodEnd      DateTime?
+  archivedAt     DateTime?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  instances      GoalInstance[]
+
+  @@index([userId, archivedAt])
+}
+
+model GoalInstance {
+  id             String     @id @default(uuid())
+  goalId         String
+  goal           Goal       @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  periodStart    DateTime
+  periodEnd      DateTime
+  targetAmount   Decimal    @db.Decimal(18, 4)
+  progressAmount Decimal    @default(0) @db.Decimal(18, 4)
+  status         GoalStatus @default(IN_PROGRESS)
+  computedAt     DateTime   @default(now())
+
+  @@unique([goalId, periodStart])
+  @@index([status, periodEnd])
 }
 
 // --- OAuth 2.1 authorization server (MCP custom connector for claude.ai) ---
