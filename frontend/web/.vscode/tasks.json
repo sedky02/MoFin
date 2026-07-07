@@ -1,0 +1,62 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Docker Compose",
+      "type": "shell",
+      "command": "docker compose up -d",
+      "options": {
+        "cwd": "${workspaceFolder}/../../backend"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "panel": "new",
+        "close": false
+      }
+    },
+    {
+      "label": "Backend",
+      "type": "shell",
+      "command": "npm run start:dev",
+      "options": {
+        "cwd": "${workspaceFolder}/../../backend"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "panel": "new",
+        "close": false
+      }
+    },
+    {
+      "label": "Frontend",
+      "type": "shell",
+      "command": "npm run dev",
+      "problemMatcher": [],
+      "presentation": {
+        "panel": "new",
+        "close": false
+      }
+    },
+    {
+      "label": "Ngrok",
+      "type": "shell",
+      "command": "ngrok http 3000",
+      "problemMatcher": [],
+      "presentation": {
+        "panel": "new",
+        "close": false
+      }
+    },
+    {
+      "label": "Start Full Stack",
+      "dependsOn": [
+        "Docker Compose",
+        "Backend",
+        "Frontend",
+        "Ngrok"
+      ],
+      "dependsOrder": "parallel",
+      "problemMatcher": []
+    }
+  ]
+}

@@ -14,12 +14,14 @@ export function MonthlySummaryCard({
   year,
   month,
   currency,
+  accountId,
 }: {
   year: number;
   month: number;
   currency: string;
+  accountId?: string;
 }) {
-  const { data, isLoading, isError, refetch } = useMonthlySummary(year, month);
+  const { data, isLoading, isError, refetch } = useMonthlySummary(year, month, accountId);
 
   const monthLabel = new Intl.DateTimeFormat(undefined, {
     month: "long",

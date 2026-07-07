@@ -6,6 +6,9 @@ export type CategoryType = "INCOME" | "EXPENSE";
 export type TransactionType = "INCOME" | "EXPENSE" | "TRANSFER";
 export type DraftStatus = "PENDING" | "APPROVED" | "REJECTED";
 export type LedgerItemType = "DEBIT" | "CREDIT";
+export type GoalType = "BALANCE" | "INCOME" | "EXPENSE";
+export type GoalRecurrenceUnit = "MONTH" | "YEAR";
+export type GoalStatus = "IN_PROGRESS" | "ACHIEVED" | "FAILED";
 
 export interface User {
   id: string;
@@ -93,6 +96,38 @@ export interface DraftTransaction {
   reason?: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+// A single period's snapshot — history is a series of these per goal.
+export interface GoalInstance {
+  id: string;
+  goalId: string;
+  periodStart: string;
+  periodEnd: string;
+  targetAmount: string;
+  progressAmount: string;
+  status: GoalStatus;
+  computedAt: string;
+}
+
+// BALANCE/INCOME are "reach" goals (achieved once progress hits the target,
+// stays achieved). EXPENSE is "stay under" (fails the moment it's exceeded).
+// `currentInstance` is the live-recomputed open period; null once archived
+// with no instance yet created.
+export interface Goal {
+  id: string;
+  accountId: string;
+  name: string;
+  type: GoalType;
+  targetAmount: string;
+  isRecurring: boolean;
+  recurrenceUnit?: GoalRecurrenceUnit | null;
+  periodStart: string;
+  periodEnd?: string | null;
+  archivedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  currentInstance: GoalInstance | null;
 }
 
 export interface LedgerBalance {

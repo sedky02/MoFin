@@ -8,8 +8,8 @@ import { SkeletonRows, ErrorState, EmptyState } from "@/components/common/states
 import { Button } from "@/components/ui/button";
 import { Receipt, ArrowRight } from "lucide-react";
 
-export function RecentTransactions() {
-  const { data, isLoading, isError, refetch } = useRecentTransactions(10);
+export function RecentTransactions({ accountId }: { accountId?: string } = {}) {
+  const { data, isLoading, isError, refetch } = useRecentTransactions(10, accountId);
 
   return (
     <Card className="glass-panel overflow-hidden border-0 p-0 ring-0">
@@ -43,9 +43,9 @@ export function RecentTransactions() {
         </div>
       ) : (
         <div className="divide-y divide-border">
-          {data.map((tx) => {console.log(tx); return(
+          {data.map((tx) => (
             <TransactionRow key={tx.id} tx={tx} />
-          )})}
+          ))}
         </div>
       )}
     </Card>

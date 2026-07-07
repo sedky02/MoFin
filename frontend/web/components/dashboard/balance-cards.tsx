@@ -18,8 +18,8 @@ function totalsByCurrency(balances: { key: string; balance: string }[]) {
   return [...totals.entries()].map(([currency, amount]) => ({ currency, amount }));
 }
 
-export function BalanceCards() {
-  const { data, isLoading, isError, refetch } = useLedgerBalance();
+export function BalanceCards({ accountId, accountName }: { accountId?: string; accountName?: string } = {}) {
+  const { data, isLoading, isError, refetch } = useLedgerBalance({ accountId });
 
   if (isLoading) {
     return (
@@ -67,7 +67,8 @@ export function BalanceCards() {
           className="terminal-glow mt-4 block font-heading text-5xl font-extrabold tracking-tighter text-foreground sm:text-7xl"
         />
         <p className="mt-3 text-sm text-muted-foreground">
-          Across all {hero.currency} accounts · balances always exact
+          {accountId ? `${accountName ?? "This account"}` : `Across all ${hero.currency} accounts`} · balances
+          always exact
         </p>
       </div>
 
@@ -93,7 +94,7 @@ export function BalanceCards() {
                 className="mt-3 block text-3xl font-semibold"
               />
               <p className="mt-2 text-xs text-muted-foreground">
-                Across all {currency} accounts
+                {accountId ? (accountName ?? "This account") : `Across all ${currency} accounts`}
               </p>
             </Card>
           ))}

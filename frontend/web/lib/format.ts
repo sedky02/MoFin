@@ -153,4 +153,13 @@ export function percent(value: number): string {
   return `${(value * 100).toFixed(1)}%`;
 }
 
+/** Goal progress as a 0-100 ratio for a progress bar. Clamped — an EXPENSE goal can exceed 100%. */
+export function goalProgressRatio(progressAmount: string, targetAmount: string): number {
+  const progress = tryParse(progressAmount);
+  const target = tryParse(targetAmount);
+  if (!progress || !target || target.isZero()) return 0;
+  const ratio = progress.dividedBy(target).toNumber() * 100;
+  return Math.min(100, Math.max(0, ratio));
+}
+
 export { Decimal };

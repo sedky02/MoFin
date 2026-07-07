@@ -14,6 +14,8 @@ export const STALE = {
   accounts: 300_000,
   categories: 600_000,
   analytics: 300_000,
+  // Progress is recomputed live from the ledger on every fetch, same volatility as balances.
+  goals: 30_000,
 } as const;
 
 function makeQueryClient(): QueryClient {

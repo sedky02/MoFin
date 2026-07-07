@@ -69,11 +69,11 @@ function stripEmpty(params: SearchParams): SearchParams {
 }
 
 /** Simple single-page fetch used for the dashboard's "recent 10". */
-export function useRecentTransactions(limit = 10) {
+export function useRecentTransactions(limit = 10, accountId?: string) {
   return useQuery({
-    queryKey: searchKeys.list({ recent: limit }),
+    queryKey: searchKeys.list({ recent: limit, accountId }),
     queryFn: () =>
-      api.get<Transaction[]>("/search/transactions", { limit, offset: 0 }),
+      api.get<Transaction[]>("/search/transactions", { limit, offset: 0, accountId }),
     staleTime: STALE.transactions,
   });
 }

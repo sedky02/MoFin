@@ -10,9 +10,7 @@ import {
 } from "@/lib/query-keys";
 import { parseBalanceKey } from "@/lib/format";
 import type { LedgerBalance, MonthlySummary, Transaction, User } from "@/lib/types";
-import { BalanceCards } from "@/components/dashboard/balance-cards";
-import { MonthlySummaryCard } from "@/components/dashboard/monthly-summary";
-import { RecentTransactions } from "@/components/dashboard/recent-transactions";
+import { DashboardBody } from "@/components/dashboard/dashboard-body";
 import { PageHeader } from "@/components/common/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -78,14 +76,7 @@ async function DashboardContent() {
         description="Here's where your money stands today."
       />
 
-      <section className="space-y-8">
-        <BalanceCards />
-
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <MonthlySummaryCard year={year} month={month} currency={primaryCurrency} />
-          <RecentTransactions />
-        </div>
-      </section>
+      <DashboardBody year={year} month={month} primaryCurrency={primaryCurrency} />
     </HydrationBoundary>
   );
 }

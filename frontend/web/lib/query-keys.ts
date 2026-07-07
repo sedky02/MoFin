@@ -27,8 +27,8 @@ export const ledgerKeys = {
 
 export const analyticsKeys = {
   all: ["analytics"] as const,
-  monthly: (year: number, month: number) =>
-    [...analyticsKeys.all, "monthly", year, month] as const,
+  monthly: (year: number, month: number, accountId?: string) =>
+    [...analyticsKeys.all, "monthly", year, month, accountId] as const,
 };
 
 export const searchKeys = {
@@ -39,4 +39,12 @@ export const searchKeys = {
 
 export const userKeys = {
   me: ["user", "me"] as const,
+};
+
+export const goalKeys = {
+  all: ["goals"] as const,
+  list: (status: "active" | "archived" | "all" = "active") =>
+    [...goalKeys.all, "list", status] as const,
+  detail: (id: string) => [...goalKeys.all, "detail", id] as const,
+  history: (id: string) => [...goalKeys.all, "history", id] as const,
 };
