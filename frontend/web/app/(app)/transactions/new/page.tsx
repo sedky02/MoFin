@@ -126,6 +126,16 @@ export default function NewTransactionPage() {
         toAccountId: v.type !== "EXPENSE" ? v.toAccountId : undefined,
         categoryId: v.type !== "TRANSFER" ? v.categoryId : undefined,
       });
+      form.reset({
+        type: "EXPENSE",
+        description: "",
+        amountRaw: "",
+        currency: "",
+        fromAccountId: undefined,
+        toAccountId: undefined,
+        categoryId: undefined,
+        occurredAt: toDatetimeLocal(),
+      });
       router.push(`/transactions/${tx.id}`);
     } catch (err) {
       handleApiError(err, { setError: form.setError });
