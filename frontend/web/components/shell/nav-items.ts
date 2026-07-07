@@ -6,6 +6,7 @@ import {
   Search,
   Tags,
   Target,
+  Bot,
   Settings,
   type LucideIcon,
 } from "lucide-react";
@@ -26,5 +27,6 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/drafts", label: "Drafts", icon: Sparkles, badge: "drafts" },
   { href: "/search", label: "Search", icon: Search },
   { href: "/categories", label: "Categories", icon: Tags },
+  { href: "/connect", label: "AI Connector", icon: Bot },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
