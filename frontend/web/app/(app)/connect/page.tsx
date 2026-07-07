@@ -101,8 +101,8 @@ export default function ConnectPage() {
 
       {/* CONNECTOR GRID */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-        {/* Client cards */}
-        <div className="space-y-4 lg:col-span-4">
+        {/* Client cards — logo-only row on mobile, full cards from lg up */}
+        <div className="flex gap-3 lg:col-span-4 lg:flex-col lg:gap-4">
           {CLIENTS.map(({ key, label, description, swatch, Logo }) => {
             const isActive = active === key;
             return (
@@ -110,23 +110,29 @@ export default function ConnectPage() {
                 key={key}
                 type="button"
                 onClick={() => setActive(key)}
+                title={label}
                 className={cn(
-                  "glass-panel w-full rounded-2xl border-l-4 p-6 text-left transition-all duration-300 hover:-translate-y-0.5",
+                  "glass-panel flex-1 rounded-2xl border-l-4 p-3 text-left transition-all duration-300 lg:w-full lg:flex-none lg:p-6 lg:hover:-translate-y-0.5",
                   isActive ? "border-l-primary" : "border-l-transparent",
                 )}
               >
-                <div className="mb-6 flex items-start justify-between">
-                  <div className={cn("flex size-12 items-center justify-center rounded-xl", swatch)}>
-                    <Logo className="size-6" />
+                <div className="flex items-center justify-center lg:mb-6 lg:items-start lg:justify-between">
+                  <div
+                    className={cn(
+                      "flex size-10 items-center justify-center rounded-xl lg:size-12",
+                      swatch,
+                    )}
+                  >
+                    <Logo className="size-5 lg:size-6" />
                   </div>
                   {isActive && (
-                    <span className="rounded-lg bg-primary/15 px-2 py-1">
+                    <span className="hidden rounded-lg bg-primary/15 px-2 py-1 lg:inline-block">
                       <span className="label-caps text-primary!">Selected</span>
                     </span>
                   )}
                 </div>
-                <h3 className="font-heading text-xl font-bold">{label}</h3>
-                <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+                <h3 className="mt-3 hidden font-heading text-xl font-bold lg:block">{label}</h3>
+                <p className="mt-1 hidden text-sm text-muted-foreground lg:block">{description}</p>
               </button>
             );
           })}
@@ -134,16 +140,19 @@ export default function ConnectPage() {
           <button
             type="button"
             onClick={() => setActive("other")}
+            title="Other MCP client"
             className={cn(
-              "glass-panel flex w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed p-8 text-center transition-all duration-300 hover:-translate-y-0.5",
+              "glass-panel flex flex-1 flex-col items-center justify-center rounded-2xl border-2 border-dashed p-3 text-center transition-all duration-300 lg:w-full lg:flex-none lg:p-8 lg:hover:-translate-y-0.5",
               active === "other" ? "border-primary/50" : "border-border",
             )}
           >
-            <div className="mb-3 flex size-12 items-center justify-center rounded-full border border-border">
-              <Plus className="size-5 text-muted-foreground" />
+            <div className="flex size-10 items-center justify-center rounded-full border border-border lg:mb-3 lg:size-12">
+              <Plus className="size-4 text-muted-foreground lg:size-5" />
             </div>
-            <h3 className="font-heading text-lg font-bold">Other MCP client</h3>
-            <p className="text-sm text-muted-foreground">Any assistant that supports remote MCP</p>
+            <h3 className="mt-3 hidden font-heading text-lg font-bold lg:block">Other MCP client</h3>
+            <p className="hidden text-sm text-muted-foreground lg:block">
+              Any assistant that supports remote MCP
+            </p>
           </button>
         </div>
 
