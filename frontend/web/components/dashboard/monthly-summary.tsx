@@ -56,7 +56,7 @@ export function MonthlySummaryCard({
     .map((item, i) => ({
       label: item.category,
       value: tryParse(item.amount)?.toNumber() ?? 0,
-      color: colorAt(i),
+      color: item.color || colorAt(i),
     }))
     .filter((s) => s.value > 0)
     .sort((a, b) => b.value - a.value);

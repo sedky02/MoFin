@@ -28,7 +28,7 @@ export class AnalyticsService {
 
     let income = new Prisma.Decimal(0);
     let expenses = new Prisma.Decimal(0);
-    const categories = new Map<string, Prisma.Decimal>();
+    const categories = new Map<string, { name: string; color: string | null; amount: Prisma.Decimal }>();
 
     for (const transaction of transactions) {
       // INCOME/EXPENSE are single-sided, so filtering items down to `accountId` only matters
@@ -38,8 +38,11 @@ export class AnalyticsService {
       if (transaction.type === TransactionType.INCOME) income = income.plus(total);
       if (transaction.type === TransactionType.EXPENSE) {
         expenses = expenses.plus(total);
-        const key = transaction.category?.name ?? 'Uncategorized';
-        categories.set(key, (categories.get(key) ?? new Prisma.Decimal(0)).plus(total));
+        const key = transaction.categoryId ?? 'uncategorized';
+        const name = transaction.category?.name ?? 'Uncategorized';
+        const color = transaction.category?.color ?? null;
+        const existing = categories.get(key);
+        categories.set(key, { name, color, amount: (existing?.amount ?? new Prisma.Decimal(0)).plus(total) });
       }
     }
 
@@ -50,8 +53,9 @@ export class AnalyticsService {
       income: income.toString(),
       expenses: expenses.toString(),
       savingsRate,
-      categoryBreakdown: Array.from(categories.entries()).map(([category, amount]) => ({
-        category,
+      categoryBreakdown: Array.from(categories.values()).map(({ name, color, amount }) => ({
+        category: name,
+        color,
         amount: amount.toString()
       }))
     };
@@ -65,8 +69,10 @@ export class AnalyticsService {
     return payload;
   }
 
+  // v2: categoryBreakdown now carries each category's color — bump so pre-existing
+  // cache rows (missing `color`) aren't served stale after this change deploys.
   private monthlySummaryCacheKey(year: number, month: number, accountId?: string): string {
-    return accountId ? `monthly-summary:${year}:${month}:${accountId}` : `monthly-summary:${year}:${month}`;
+    return accountId ? `monthly-summary:v2:${year}:${month}:${accountId}` : `monthly-summary:v2:${year}:${month}`;
   }
 
   @OnEvent(DomainEvents.TransactionCreated)

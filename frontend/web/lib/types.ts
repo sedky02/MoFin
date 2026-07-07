@@ -138,6 +138,7 @@ export interface LedgerBalance {
 
 export interface CategoryBreakdownItem {
   category: string;
+  color?: string | null;
   amount: string;
 }
 

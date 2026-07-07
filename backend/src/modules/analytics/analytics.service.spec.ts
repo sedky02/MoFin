@@ -24,7 +24,8 @@ describe('AnalyticsService.getMonthlySummary', () => {
       },
       {
         type: TransactionType.EXPENSE,
-        category: { name: 'Groceries' },
+        categoryId: 'cat-groceries',
+        category: { name: 'Groceries', color: '#22c55e' },
         items: [item('acc-b', '40')],
       },
     ];
@@ -33,10 +34,16 @@ describe('AnalyticsService.getMonthlySummary', () => {
     const result = (await service.getMonthlySummary('u1', 2026, 7, false, 'acc-a')) as {
       income: string;
       expenses: string;
+      categoryBreakdown: { category: string; color: string | null; amount: string }[];
     };
 
     expect(result.income).toBe('100');
     expect(result.expenses).toBe('0');
+    // Scoped to acc-a, so the Groceries item (on acc-b) contributes 0 — same
+    // pre-existing scoping behavior, just now keyed/colored by category too.
+    expect(result.categoryBreakdown).toEqual([
+      { category: 'Groceries', color: '#22c55e', amount: '0' },
+    ]);
     // Filters the transaction query itself, not just post-processing.
     expect(prisma.transaction.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: expect.objectContaining({ items: { some: { accountId: 'acc-a' } } }) }),
@@ -64,12 +71,12 @@ describe('AnalyticsService.getMonthlySummary', () => {
 
     await service.getMonthlySummary('u1', 2026, 7, false, 'acc-a');
     expect(prisma.analyticsCache.findUnique).toHaveBeenCalledWith({
-      where: { userId_cacheKey: { userId: 'u1', cacheKey: 'monthly-summary:2026:7:acc-a' } },
+      where: { userId_cacheKey: { userId: 'u1', cacheKey: 'monthly-summary:v2:2026:7:acc-a' } },
     });
 
     await service.getMonthlySummary('u1', 2026, 7, false);
     expect(prisma.analyticsCache.findUnique).toHaveBeenCalledWith({
-      where: { userId_cacheKey: { userId: 'u1', cacheKey: 'monthly-summary:2026:7' } },
+      where: { userId_cacheKey: { userId: 'u1', cacheKey: 'monthly-summary:v2:2026:7' } },
     });
   });
 });
