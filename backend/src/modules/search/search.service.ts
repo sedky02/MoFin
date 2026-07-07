@@ -38,7 +38,7 @@ export class SearchService {
           : {})
       },
       include: { items: true, category: true },
-      orderBy: { occurredAt: 'desc' },
+      orderBy: [{ occurredAt: 'desc' }, { createdAt: 'desc' }],
       skip: query.offset,
       take: query.limit
     });
