@@ -31,6 +31,7 @@ export class LedgerService {
       fromAccountId?: string;
       toAccountId?: string;
       description: string;
+      items?: { amount: string; categoryId?: string; memo?: string }[];
     },
   ): Promise<LedgerEntryInput[]> {
     // assertOwned returns the account, so we validate ownership and currency in one pass.
@@ -55,27 +56,25 @@ export class LedgerService {
     }
 
     if (command.type === 'INCOME') {
-      return [
-        {
-          accountId: command.toAccountId!,
-          direction: 'CREDIT',
-          amount: command.amount,
-          currency: command.currency,
-          memo: command.description,
-        },
-      ];
+      return (command.items?.length ? command.items : [{ amount: command.amount }]).map((item) => ({
+        accountId: command.toAccountId!,
+        direction: 'CREDIT',
+        amount: item.amount,
+        currency: command.currency,
+        categoryId: item.categoryId,
+        memo: item.memo ?? command.description,
+      }));
     }
 
     if (command.type === 'EXPENSE') {
-      return [
-        {
-          accountId: command.fromAccountId!,
-          direction: 'DEBIT',
-          amount: command.amount,
-          currency: command.currency,
-          memo: command.description,
-        },
-      ];
+      return (command.items?.length ? command.items : [{ amount: command.amount }]).map((item) => ({
+        accountId: command.fromAccountId!,
+        direction: 'DEBIT',
+        amount: item.amount,
+        currency: command.currency,
+        categoryId: item.categoryId,
+        memo: item.memo ?? command.description,
+      }));
     }
 
     return [
@@ -102,6 +101,7 @@ export class LedgerService {
         userId,
         transactionId,
         accountId: entry.accountId,
+        categoryId: entry.categoryId,
         direction: entry.direction,
         amount: new Prisma.Decimal(entry.amount),
         currency: entry.currency,

@@ -9,7 +9,7 @@ import {
   searchKeys,
 } from "@/lib/query-keys";
 import { STALE } from "@/lib/query-client";
-import type { Transaction, TransactionType } from "@/lib/types";
+import type { RecurringInterval, Transaction, TransactionType } from "@/lib/types";
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/form-errors";
 
@@ -22,6 +22,12 @@ export function useTransaction(id: string) {
   });
 }
 
+export interface CreateTransactionItemInput {
+  amount: string;
+  categoryId?: string;
+  memo?: string;
+}
+
 export interface CreateTransactionInput {
   type: TransactionType;
   description: string;
@@ -31,6 +37,12 @@ export interface CreateTransactionInput {
   fromAccountId?: string;
   toAccountId?: string;
   categoryId?: string;
+  /** Split the total across multiple category+amount line items. */
+  items?: CreateTransactionItemInput[];
+  /** Starts a recurring series from this transaction. Not allowed together with `items`. */
+  isRecurring?: boolean;
+  recurringInterval?: RecurringInterval;
+  recurringEndDate?: string;
 }
 
 export function useCreateTransaction() {
@@ -47,5 +59,42 @@ export function useCreateTransaction() {
       toast.success("Transaction recorded.");
     },
     onError: (err) => handleApiError(err, { fallback: "Could not record transaction." }),
+  });
+}
+
+/** Edits a recurring series' template. Only affects occurrences generated from now on. */
+export interface UpdateRecurringTransactionInput {
+  description?: string;
+  amount?: string;
+  categoryId?: string | null;
+  fromAccountId?: string;
+  toAccountId?: string;
+  recurringInterval?: RecurringInterval;
+  recurringEndDate?: string | null;
+}
+
+export function useUpdateRecurringTransaction(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: UpdateRecurringTransactionInput) =>
+      api.patch<Transaction>(`/transactions/${id}/recurring`, input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: transactionKeys.all });
+      toast.success("Recurring transaction updated.");
+    },
+    onError: (err) => handleApiError(err, { fallback: "Could not update recurring transaction." }),
+  });
+}
+
+/** Stops future generation. Already-generated occurrences are left as-is. */
+export function useCancelRecurringTransaction(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post<Transaction>(`/transactions/${id}/recurring/cancel`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: transactionKeys.all });
+      toast.success("Recurring transaction cancelled.");
+    },
+    onError: (err) => handleApiError(err, { fallback: "Could not cancel recurring transaction." }),
   });
 }

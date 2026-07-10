@@ -9,6 +9,8 @@ export type LedgerItemType = "DEBIT" | "CREDIT";
 export type GoalType = "BALANCE" | "INCOME" | "EXPENSE";
 export type GoalRecurrenceUnit = "MONTH" | "YEAR";
 export type GoalStatus = "IN_PROGRESS" | "ACHIEVED" | "FAILED";
+export type RecurringInterval = "MONTHLY" | "YEARLY";
+export type RecurringStatus = "ACTIVE" | "CANCELLED";
 
 export interface User {
   id: string;
@@ -52,6 +54,8 @@ export interface LedgerItem {
   transactionId: string;
   accountId: string;
   account?: Account;
+  categoryId?: string | null;
+  category?: Category | null;
   // Backend field name; DEBIT = out of account, CREDIT = into account.
   direction: LedgerItemType;
   amount: string;
@@ -73,6 +77,19 @@ export interface Transaction {
   items: LedgerItem[];
   createdAt: string;
   updatedAt: string;
+
+  // Recurrence — only meaningful on the root transaction that started a
+  // series (isRecurring true, parentTransactionId null). Generated
+  // occurrences carry parentTransactionId pointing back to that root.
+  isRecurring: boolean;
+  recurringInterval?: RecurringInterval | null;
+  recurringStatus?: RecurringStatus | null;
+  recurringEndDate?: string | null;
+  nextOccurrenceAt?: string | null;
+  recurringAmount?: string | null;
+  recurringFromAccountId?: string | null;
+  recurringToAccountId?: string | null;
+  parentTransactionId?: string | null;
 }
 
 // Shape the AI parser fills in and the review form edits.

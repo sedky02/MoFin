@@ -201,6 +201,19 @@
   .terminal-glow {
     text-shadow: 0 0 18px color-mix(in oklab, var(--primary) 45%, transparent);
   }
+  /* Punchy pulsing glow for a small primary CTA (e.g. "add row" pills). */
+  .acid-glow {
+    animation: mofin-acid-glow 2.2s infinite ease-in-out;
+  }
+  @keyframes mofin-acid-glow {
+    0%,
+    100% {
+      box-shadow: 0 0 12px 0 color-mix(in oklab, var(--primary) 35%, transparent);
+    }
+    50% {
+      box-shadow: 0 0 22px 4px color-mix(in oklab, var(--primary) 55%, transparent);
+    }
+  }
   /* Slow border breathing for the live "pulse" hero. */
   .pulse-ring {
     animation: mofin-pulse 4s infinite ease-in-out;

@@ -11,5 +11,6 @@ export interface LedgerEntryInput {
   direction: 'DEBIT' | 'CREDIT';
   amount: string;
   currency: string;
+  categoryId?: string;
   memo?: string;
 }

@@ -2,6 +2,12 @@ import { z } from "zod";
 import type { Account } from "@/lib/types";
 import { parseMoneyInput, validateAccountCurrency } from "@/lib/format";
 
+export const transactionItemSchema = z.object({
+  amountRaw: z.string(),
+  categoryId: z.string().optional(),
+  description: z.string().trim().max(140).optional(),
+});
+
 export const transactionFormBase = z.object({
   type: z.enum(["INCOME", "EXPENSE", "TRANSFER"]),
   description: z.string().trim().min(1, "Add a short description.").max(140),
@@ -11,6 +17,12 @@ export const transactionFormBase = z.object({
   toAccountId: z.string().optional(),
   categoryId: z.string().optional(),
   occurredAt: z.string().min(1, "Pick a date."),
+  // Present (length >= 2) when the transaction is split across multiple items;
+  // absent/single means the plain, unsplit form below still applies.
+  items: z.array(transactionItemSchema).optional(),
+  isRecurring: z.boolean().optional(),
+  recurringInterval: z.enum(["MONTHLY", "YEARLY"]).optional(),
+  recurringEndDate: z.string().optional(),
 });
 
 export type TransactionFormValues = z.infer<typeof transactionFormBase>;
@@ -96,6 +108,59 @@ export function makeTransactionSchema(accounts: Account[]) {
         code: z.ZodIssueCode.custom,
         message: `Amount must be in ${acct.currency}.`,
       });
+    }
+
+    // Split items — only meaningful for INCOME/EXPENSE, and only when there's
+    // actually more than one row (a single row is just the plain form above).
+    // The total amount is derived from these (see the page's sync effect), so
+    // there's no separate "must add up to the total" check needed here.
+    if (val.items && val.items.length > 1) {
+      if (val.type === "TRANSFER") {
+        ctx.addIssue({
+          path: ["items"],
+          code: z.ZodIssueCode.custom,
+          message: "Transfers can't be split into multiple items.",
+        });
+      } else {
+        val.items.forEach((item, i) => {
+          if (!parseMoneyInput(item.amountRaw)) {
+            ctx.addIssue({
+              path: ["items", i, "amountRaw"],
+              code: z.ZodIssueCode.custom,
+              message: "Enter an amount greater than 0.",
+            });
+          }
+        });
+      }
+    }
+
+    // Recurring transactions can't be split, and need an interval.
+    if (val.isRecurring) {
+      if (val.items && val.items.length > 1) {
+        ctx.addIssue({
+          path: ["isRecurring"],
+          code: z.ZodIssueCode.custom,
+          message: "Recurring transactions can't be split into multiple items.",
+        });
+      }
+      if (!val.recurringInterval) {
+        ctx.addIssue({
+          path: ["recurringInterval"],
+          code: z.ZodIssueCode.custom,
+          message: "Choose how often this repeats.",
+        });
+      }
+      if (
+        val.recurringEndDate &&
+        val.occurredAt &&
+        new Date(val.recurringEndDate) <= new Date(val.occurredAt)
+      ) {
+        ctx.addIssue({
+          path: ["recurringEndDate"],
+          code: z.ZodIssueCode.custom,
+          message: "End date must be after the transaction date.",
+        });
+      }
     }
   });
 }

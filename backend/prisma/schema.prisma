@@ -35,6 +35,16 @@ enum LedgerDirection {
   CREDIT
 }
 
+enum RecurringInterval {
+  MONTHLY
+  YEARLY
+}
+
+enum RecurringStatus {
+  ACTIVE
+  CANCELLED
+}
+
 enum BudgetPeriod {
   MONTHLY
   YEARLY
@@ -58,125 +68,153 @@ enum GoalStatus {
 }
 
 model User {
-  id              String             @id @default(uuid())
-  email           String             @unique
-  passwordHash    String?
-  displayName     String?
-  googleId        String?            @unique
-  settings        Json               @default("{}")
-  apiKeys         ApiKey[]
-  accounts        Account[]
-  categories      Category[]
-  transactions    Transaction[]
-  transactionItems TransactionItem[]
-  drafts          DraftTransaction[]
-  budgets         Budget[]
-  goals           Goal[]
-  analyticsCaches AnalyticsCache[]
-  oauthCodes      AuthorizationCode[]
+  id                 String              @id @default(uuid())
+  email              String              @unique
+  passwordHash       String?
+  displayName        String?
+  googleId           String?             @unique
+  settings           Json                @default("{}")
+  apiKeys            ApiKey[]
+  accounts           Account[]
+  categories         Category[]
+  transactions       Transaction[]
+  transactionItems   TransactionItem[]
+  drafts             DraftTransaction[]
+  budgets            Budget[]
+  goals              Goal[]
+  analyticsCaches    AnalyticsCache[]
+  oauthCodes         AuthorizationCode[]
   oauthRefreshTokens OAuthRefreshToken[]
-  oauthGrants     OAuthGrant[]
-  authSessions    AuthSession[]
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
+  oauthGrants        OAuthGrant[]
+  authSessions       AuthSession[]
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
 }
 
 model ApiKey {
-  id          String    @id @default(uuid())
-  userId      String
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name        String
-  keyHash     String    @unique
-  lastUsedAt  DateTime?
-  revokedAt   DateTime?
-  createdAt   DateTime  @default(now())
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  keyHash    String    @unique
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
 }
 
 model Account {
-  id              String            @id @default(uuid())
-  userId          String
-  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name            String
-  type            AccountType
-  currency        String
-  metadata        Json              @default("{}")
-  archivedAt      DateTime?
+  id               String            @id @default(uuid())
+  userId           String
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name             String
+  type             AccountType
+  currency         String
+  metadata         Json              @default("{}")
+  archivedAt       DateTime?
   transactionItems TransactionItem[]
-  goals           Goal[]
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
+  goals            Goal[]
+  recurringFrom    Transaction[]     @relation("RecurringFromAccount")
+  recurringTo      Transaction[]     @relation("RecurringToAccount")
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
 
   @@index([userId, currency])
 }
 
 model Category {
-  id            String        @id @default(uuid())
-  userId        String?
-  user          User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name          String
-  type          CategoryType
-  color         String?
-  icon          String?
-  transactions  Transaction[]
-  budgets       Budget[]
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id               String            @id @default(uuid())
+  userId           String?
+  user             User?             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name             String
+  type             CategoryType
+  color            String?
+  icon             String?
+  transactions     Transaction[]
+  transactionItems TransactionItem[]
+  budgets          Budget[]
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
 
   @@unique([userId, name, type])
 }
 
 model Transaction {
-  id             String             @id @default(uuid())
-  userId         String
-  user           User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  categoryId     String?
-  category       Category?          @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  draftId        String?            @unique
-  draft          DraftTransaction?  @relation(fields: [draftId], references: [id], onDelete: SetNull)
-  type           TransactionType
-  description    String
-  currency       String
-  occurredAt     DateTime
-  items          TransactionItem[]
-  createdAt      DateTime           @default(now())
-  updatedAt      DateTime           @updatedAt
+  id          String            @id @default(uuid())
+  userId      String
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categoryId  String?
+  category    Category?         @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  draftId     String?           @unique
+  draft       DraftTransaction? @relation(fields: [draftId], references: [id], onDelete: SetNull)
+  type        TransactionType
+  description String
+  currency    String
+  occurredAt  DateTime
+  items       TransactionItem[]
+
+  // Recurrence template fields — only populated on the root transaction that
+  // started the series (parentTransactionId == null && isRecurring == true).
+  // Kept separate from the root's own ledger-affecting fields (its existing
+  // TransactionItem rows) so editing the series never mutates a past ledger entry.
+  isRecurring            Boolean            @default(false)
+  recurringInterval      RecurringInterval?
+  recurringStatus        RecurringStatus?
+  recurringEndDate       DateTime?
+  nextOccurrenceAt       DateTime?
+  recurringAmount        Decimal?           @db.Decimal(18, 4)
+  recurringFromAccountId String?
+  recurringFromAccount   Account?           @relation("RecurringFromAccount", fields: [recurringFromAccountId], references: [id], onDelete: Restrict)
+  recurringToAccountId   String?
+  recurringToAccount     Account?           @relation("RecurringToAccount", fields: [recurringToAccountId], references: [id], onDelete: Restrict)
+
+  // Links a generated occurrence back to the root transaction of its series.
+  parentTransactionId  String?
+  parentTransaction    Transaction?  @relation("RecurringOccurrences", fields: [parentTransactionId], references: [id], onDelete: SetNull)
+  recurringOccurrences Transaction[] @relation("RecurringOccurrences")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([userId, occurredAt])
   @@index([userId, categoryId])
+  @@index([isRecurring, recurringStatus, nextOccurrenceAt])
+  @@index([parentTransactionId])
 }
 
 model TransactionItem {
-  id             String          @id @default(uuid())
-  userId         String
-  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  transactionId  String
-  transaction    Transaction     @relation(fields: [transactionId], references: [id], onDelete: Cascade)
-  accountId      String
-  account        Account         @relation(fields: [accountId], references: [id], onDelete: Restrict)
-  direction      LedgerDirection
-  amount         Decimal         @db.Decimal(18, 4)
-  currency       String
-  memo           String?
-  createdAt      DateTime        @default(now())
+  id            String          @id @default(uuid())
+  userId        String
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactionId String
+  transaction   Transaction     @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  accountId     String
+  account       Account         @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  categoryId    String?
+  category      Category?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  direction     LedgerDirection
+  amount        Decimal         @db.Decimal(18, 4)
+  currency      String
+  memo          String?
+  createdAt     DateTime        @default(now())
 
   @@index([userId, accountId, createdAt])
   @@index([transactionId])
 }
 
 model DraftTransaction {
-  id              String            @id @default(uuid())
+  id              String       @id @default(uuid())
   userId          String
-  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   transaction     Transaction?
   rawInput        String
   parsedData      Json
-  confidenceScore Decimal           @db.Decimal(5, 4)
-  status          DraftStatus       @default(PENDING)
+  confidenceScore Decimal      @db.Decimal(5, 4)
+  status          DraftStatus  @default(PENDING)
   rejectionReason String?
   approvedAt      DateTime?
   rejectedAt      DateTime?
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
 
   @@index([userId, status, createdAt])
 }

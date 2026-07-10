@@ -39,11 +39,9 @@ describe('AnalyticsService.getMonthlySummary', () => {
 
     expect(result.income).toBe('100');
     expect(result.expenses).toBe('0');
-    // Scoped to acc-a, so the Groceries item (on acc-b) contributes 0 — same
-    // pre-existing scoping behavior, just now keyed/colored by category too.
-    expect(result.categoryBreakdown).toEqual([
-      { category: 'Groceries', color: '#22c55e', amount: '0' },
-    ]);
+    // Scoped to acc-a, so the Groceries item (on acc-b) is filtered out entirely —
+    // per-item attribution means it never enters the breakdown at all.
+    expect(result.categoryBreakdown).toEqual([]);
     // Filters the transaction query itself, not just post-processing.
     expect(prisma.transaction.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: expect.objectContaining({ items: { some: { accountId: 'acc-a' } } }) }),
@@ -64,6 +62,34 @@ describe('AnalyticsService.getMonthlySummary', () => {
 
     expect(result.income).toBe('100');
     expect(result.expenses).toBe('40');
+  });
+
+  it('attributes a split expense per item, one category per split', async () => {
+    const transactions = [
+      {
+        type: TransactionType.EXPENSE,
+        categoryId: null,
+        category: null,
+        items: [
+          { accountId: 'acc-a', amount: new Prisma.Decimal('30'), categoryId: 'cat-groceries', category: { name: 'Groceries', color: '#22c55e' } },
+          { accountId: 'acc-a', amount: new Prisma.Decimal('20'), categoryId: 'cat-household', category: { name: 'Household', color: '#3b82f6' } },
+        ],
+      },
+    ];
+    const { service } = makeService(transactions);
+
+    const result = (await service.getMonthlySummary('u1', 2026, 7, false)) as {
+      expenses: string;
+      categoryBreakdown: { category: string; color: string | null; amount: string }[];
+    };
+
+    expect(result.expenses).toBe('50');
+    expect(result.categoryBreakdown).toEqual(
+      expect.arrayContaining([
+        { category: 'Groceries', color: '#22c55e', amount: '30' },
+        { category: 'Household', color: '#3b82f6', amount: '20' },
+      ]),
+    );
   });
 
   it('uses a distinct cache key per account so scoped and unscoped summaries never collide', async () => {

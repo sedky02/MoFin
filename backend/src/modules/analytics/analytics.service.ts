@@ -23,7 +23,7 @@ export class AnalyticsService {
         occurredAt: { gte: start, lt: end },
         ...(accountId ? { items: { some: { accountId } } } : {}),
       },
-      include: { items: true, category: true }
+      include: { items: { include: { category: true } }, category: true }
     });
 
     let income = new Prisma.Decimal(0);
@@ -38,11 +38,16 @@ export class AnalyticsService {
       if (transaction.type === TransactionType.INCOME) income = income.plus(total);
       if (transaction.type === TransactionType.EXPENSE) {
         expenses = expenses.plus(total);
-        const key = transaction.categoryId ?? 'uncategorized';
-        const name = transaction.category?.name ?? 'Uncategorized';
-        const color = transaction.category?.color ?? null;
-        const existing = categories.get(key);
-        categories.set(key, { name, color, amount: (existing?.amount ?? new Prisma.Decimal(0)).plus(total) });
+        // Split items carry their own category; unsplit items fall back to the
+        // transaction's category so pre-split transactions attribute the same way.
+        for (const item of items) {
+          const category = item.category ?? transaction.category;
+          const key = item.categoryId ?? transaction.categoryId ?? 'uncategorized';
+          const name = category?.name ?? 'Uncategorized';
+          const color = category?.color ?? null;
+          const existing = categories.get(key);
+          categories.set(key, { name, color, amount: (existing?.amount ?? new Prisma.Decimal(0)).plus(item.amount) });
+        }
       }
     }
 

@@ -59,6 +59,43 @@ describe('LedgerService', () => {
       expect(entries.map((e) => e.direction)).toEqual(['DEBIT', 'CREDIT']);
     });
 
+    it('creates one DEBIT per split item for EXPENSE, each carrying its own categoryId', async () => {
+      const service = makeService({ from: account('USD') });
+      const entries = await service.buildEntriesForCommand('u1', {
+        type: 'EXPENSE',
+        amount: '50',
+        currency: 'USD',
+        fromAccountId: 'acc-USD',
+        description: 'groceries run',
+        items: [
+          { amount: '30', categoryId: 'cat-groceries' },
+          { amount: '20', categoryId: 'cat-household' },
+        ],
+      });
+      expect(entries).toHaveLength(2);
+      expect(entries).toEqual([
+        expect.objectContaining({ accountId: 'acc-USD', direction: 'DEBIT', amount: '30', categoryId: 'cat-groceries' }),
+        expect.objectContaining({ accountId: 'acc-USD', direction: 'DEBIT', amount: '20', categoryId: 'cat-household' }),
+      ]);
+    });
+
+    it('creates one CREDIT per split item for INCOME', async () => {
+      const service = makeService({ to: account('USD') });
+      const entries = await service.buildEntriesForCommand('u1', {
+        type: 'INCOME',
+        amount: '100',
+        currency: 'USD',
+        toAccountId: 'acc-USD',
+        description: 'paycheck',
+        items: [
+          { amount: '80', categoryId: 'cat-salary' },
+          { amount: '20', categoryId: 'cat-bonus' },
+        ],
+      });
+      expect(entries).toHaveLength(2);
+      expect(entries.map((e) => e.direction)).toEqual(['CREDIT', 'CREDIT']);
+    });
+
     it('rejects a transaction whose currency differs from the account currency (audit A3)', async () => {
       const service = makeService({ from: account('USD') });
       await expect(

@@ -5,6 +5,9 @@ import { ArrowLeft } from "lucide-react";
 import { useTransaction } from "@/hooks/useTransactions";
 import { MoneyAmount } from "@/components/common/money-amount";
 import { TypeBadge } from "@/components/common/badges";
+import { RecurringPanel } from "@/components/transactions/recurring-panel";
+import { Badge } from "@/components/ui/badge";
+import { Repeat } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -70,7 +73,7 @@ export function TransactionDetail({ id }: { id: string }) {
           />
         </div>
 
-        {tx.category && (
+        {tx.category && tx.items.length <= 1 && (
           <div className="mt-4 flex items-center gap-2 border-t border-border pt-4 text-sm">
             <span className="text-muted-foreground">Category</span>
             <span className="flex items-center gap-1.5 font-medium">
@@ -81,6 +84,19 @@ export function TransactionDetail({ id }: { id: string }) {
               />
               {tx.category.name}
             </span>
+          </div>
+        )}
+
+        {/* Recurring series management — only on the root of a series. */}
+        {tx.isRecurring && !tx.parentTransactionId && <RecurringPanel tx={tx} />}
+
+        {/* Generated occurrences just link back to the series they belong to. */}
+        {tx.parentTransactionId && (
+          <div className="mt-4 border-t border-border pt-4">
+            <Badge variant="outline" className="gap-1">
+              <Repeat className="size-3" />
+              Generated from a recurring series
+            </Badge>
           </div>
         )}
       </Card>
@@ -96,13 +112,17 @@ export function TransactionDetail({ id }: { id: string }) {
             <TableRow className="hover:bg-transparent">
               <TableHead>Account</TableHead>
               <TableHead>Type</TableHead>
+              {tx.items.length > 1 && <TableHead>Category</TableHead>}
               <TableHead className="text-right">Amount</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {tx.items.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={3} className="py-6 text-center text-sm text-muted-foreground">
+                <TableCell
+                  colSpan={tx.items.length > 1 ? 4 : 3}
+                  className="py-6 text-center text-sm text-muted-foreground"
+                >
                   No ledger entries recorded.
                 </TableCell>
               </TableRow>
@@ -124,6 +144,27 @@ export function TransactionDetail({ id }: { id: string }) {
                       {item.direction === "DEBIT" ? "Debit" : "Credit"}
                     </span>
                   </TableCell>
+                  {tx.items.length > 1 && (
+                    <TableCell>
+                      {item.category ? (
+                        <span className="flex items-center gap-1.5 text-sm">
+                          {item.category.icon && <span>{item.category.icon}</span>}
+                          <span
+                            className="size-2 rounded-full"
+                            style={{
+                              backgroundColor: item.category.color || "var(--muted-foreground)",
+                            }}
+                          />
+                          {item.category.name}
+                        </span>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">Uncategorized</span>
+                      )}
+                      {item.memo && item.memo !== tx.description && (
+                        <p className="mt-0.5 text-xs text-muted-foreground">{item.memo}</p>
+                      )}
+                    </TableCell>
+                  )}
                   <TableCell className="text-right">
                     <MoneyAmount
                       amount={item.amount}

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Repeat } from "lucide-react";
 import type { Transaction } from "@/lib/types";
 import { MoneyAmount } from "@/components/common/money-amount";
 import { formatDate, transactionAmount } from "@/lib/format";
@@ -31,7 +31,12 @@ export function TransactionRow({ tx }: { tx: Transaction }) {
       )}
     >
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium">{tx.description}</p>
+        <p className="flex items-center gap-1.5 truncate text-sm font-medium">
+          {tx.description}
+          {(tx.isRecurring || tx.parentTransactionId) && (
+            <Repeat className="size-3 shrink-0 text-muted-foreground" aria-label="Recurring" />
+          )}
+        </p>
         <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
           {tx.category && (
             <span className="flex items-center gap-1.5">
