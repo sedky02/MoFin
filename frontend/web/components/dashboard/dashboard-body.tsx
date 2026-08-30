@@ -45,7 +45,17 @@ export function DashboardBody({
         />
       </div>
 
-      <BalanceCards accountId={accountId} accountName={selectedAccount?.name} />
+      {/* Bento grid, matching the Stitch "Refined Quanto Dark" layout: a large
+          balance hero paired with Goals, then Monthly Summary paired with
+          Recent Transactions. */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+        <div className="lg:col-span-8">
+          <BalanceCards accountId={accountId} accountName={selectedAccount?.name} />
+        </div>
+        <div className="lg:col-span-4">
+          <GoalsSummary accountId={accountId} />
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <MonthlySummaryCard
@@ -54,10 +64,8 @@ export function DashboardBody({
           currency={currency}
           accountId={accountId}
         />
-        <GoalsSummary accountId={accountId} />
+        <RecentTransactions accountId={accountId} />
       </div>
-
-      <RecentTransactions accountId={accountId} />
     </section>
   );
 }

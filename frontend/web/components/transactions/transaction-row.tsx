@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronRight, Repeat } from "lucide-react";
+import { ChevronRight, Repeat, ArrowDownLeft } from "lucide-react";
 import type { Transaction } from "@/lib/types";
 import { MoneyAmount } from "@/components/common/money-amount";
 import { formatDate, transactionAmount } from "@/lib/format";
 import { multiply } from "@/lib/decimal";
 import { cn } from "@/lib/utils";
+import { CategoryIcon } from "@/components/dashboard/category-icon";
 
 function CategoryDot({ color }: { color?: string | null }) {
   return (
@@ -22,6 +23,9 @@ export function TransactionRow({ tx }: { tx: Transaction }) {
   const base = transactionAmount(tx);
   const signedAmount = tx.type === "EXPENSE" ? multiply(base, "-1") : base;
 
+  const isIncome = tx.type === "INCOME";
+  const tint = isIncome ? "var(--success)" : tx.category?.color || "var(--muted-foreground)";
+
   return (
     <Link
       href={`/transactions/${tx.id}`}
@@ -30,6 +34,21 @@ export function TransactionRow({ tx }: { tx: Transaction }) {
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
       )}
     >
+      <div
+        className="flex size-11 shrink-0 items-center justify-center rounded-xl border"
+        style={{
+          backgroundColor: `color-mix(in oklab, ${tint} 14%, transparent)`,
+          borderColor: `color-mix(in oklab, ${tint} 24%, transparent)`,
+          color: tint,
+        }}
+      >
+        {isIncome ? (
+          <ArrowDownLeft className="size-5" />
+        ) : (
+          <CategoryIcon name={tx.category?.name ?? tx.description} className="size-5" />
+        )}
+      </div>
+
       <div className="min-w-0 flex-1">
         <p className="flex items-center gap-1.5 truncate text-sm font-medium">
           {tx.description}

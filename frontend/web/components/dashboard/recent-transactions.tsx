@@ -14,7 +14,7 @@ export function RecentTransactions({ accountId }: { accountId?: string } = {}) {
   return (
     <Card className="glass-panel overflow-hidden border-0 p-0 ring-0">
       <div className="flex items-center justify-between border-b border-border px-4 py-3.5">
-        <h2 className="label-caps text-foreground!">Activity Stream</h2>
+        <h2 className="label-caps text-foreground!">Recent Transactions</h2>
         <Button asChild variant="ghost" size="sm" className="h-7 gap-1 text-xs">
           <Link href="/search">
             View all <ArrowRight className="size-3.5" />

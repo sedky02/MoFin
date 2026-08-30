@@ -51,8 +51,13 @@ export function GoalsSummary({ accountId }: { accountId?: string } = {}) {
           />
         ) : (
           <div className="grid grid-cols-1 gap-3 ">
-            {visible.map((goal) => (
-              <GoalMiniCard key={goal.id} goal={goal} account={accountsById.get(goal.accountId)} />
+            {visible.map((goal, i) => (
+              <GoalMiniCard
+                key={goal.id}
+                goal={goal}
+                account={accountsById.get(goal.accountId)}
+                index={i}
+              />
             ))}
           </div>
         )}

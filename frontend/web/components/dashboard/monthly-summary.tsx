@@ -2,11 +2,11 @@
 
 import { useMonthlySummary } from "@/hooks/useAnalytics";
 import { MoneyAmount } from "@/components/common/money-amount";
-import { Donut, Legend, colorAt } from "./donut";
+import { colorAt } from "./donut";
+import { CategoryIcon } from "@/components/dashboard/category-icon";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState, EmptyState } from "@/components/common/states";
-import { formatMoney, percent } from "@/lib/format";
 import { tryParse } from "@/lib/decimal";
 import { PieChart } from "lucide-react";
 
@@ -23,22 +23,14 @@ export function MonthlySummaryCard({
 }) {
   const { data, isLoading, isError, refetch } = useMonthlySummary(year, month, accountId);
 
-  const monthLabel = new Intl.DateTimeFormat(undefined, {
-    month: "long",
-    year: "numeric",
-  }).format(new Date(year, month - 1, 1));
-
   if (isLoading) {
     return (
       <Card className="glass-panel border-0 p-5 ring-0">
         <Skeleton className="h-4 w-32" />
-        <div className="mt-6 flex flex-col gap-6 sm:flex-row sm:items-center">
-          <Skeleton className="size-[168px] rounded-full" />
-          <div className="flex-1 space-y-3">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-4 w-full" />
-            ))}
-          </div>
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-24 w-full rounded-2xl" />
+          ))}
         </div>
       </Card>
     );
@@ -66,34 +58,11 @@ export function MonthlySummaryCard({
     !tryParse(data.income)?.isZero() ||
     !tryParse(data.expenses)?.isZero();
 
+  const topCategories = segments.slice(0, 4);
+
   return (
     <Card className="glass-panel border-0 p-5 ring-0">
-      <div className="flex items-center justify-between">
-        <h2 className="label-caps text-foreground!">{monthLabel}</h2>
-        <span className="rounded-md bg-accent/60 px-2 py-0.5 text-xs font-medium text-accent-foreground tabular">
-          {percent(data.savingsRate)} saved
-        </span>
-      </div>
-
-      {/* Income / expenses */}
-      <div className="mt-4 grid grid-cols-2 gap-3">
-        <div className="rounded-lg bg-secondary/60 p-3">
-          <p className="text-xs text-muted-foreground">Income</p>
-          <MoneyAmount
-            amount={data.income}
-            currency={currency}
-            className="mt-1 block text-lg font-semibold text-success"
-          />
-        </div>
-        <div className="rounded-lg bg-secondary/60 p-3">
-          <p className="text-xs text-muted-foreground">Expenses</p>
-          <MoneyAmount
-            amount={data.expenses}
-            currency={currency}
-            className="mt-1 block text-lg font-semibold text-destructive"
-          />
-        </div>
-      </div>
+      <h2 className="label-caps text-foreground!">Monthly Summary</h2>
 
       {!hasData ? (
         <EmptyState
@@ -103,35 +72,30 @@ export function MonthlySummaryCard({
           className="mt-5"
         />
       ) : (
-        <div className="mt-6 flex flex-col items-center gap-6 sm:flex-row sm:items-center">
-          <Donut
-            segments={segments}
-            center={
-              <>
-                <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                  Spent
-                </span>
-                <MoneyAmount
-                  amount={data.expenses}
-                  currency={currency}
-                  compact
-                  className="text-base font-semibold"
-                />
-              </>
-            }
-          />
-          <Legend
-            className="flex-1"
-            items={
-              segments.length
-                ? segments.slice(0, 6).map((s) => ({
-                    label: s.label,
-                    color: s.color,
-                    value: formatMoney(String(s.value), currency, { compact: true }),
-                  }))
-                : [{ label: "No category spending", color: "var(--muted)", value: "" }]
-            }
-          />
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          {topCategories.map((s) => (
+            <div
+              key={s.label}
+              className="flex flex-col items-center gap-2 rounded-2xl border border-border/70 bg-card/40 p-4 text-center"
+            >
+              <div
+                className="flex size-10 items-center justify-center rounded-full"
+                style={{
+                  backgroundColor: `color-mix(in oklab, ${s.color} 16%, transparent)`,
+                  color: s.color,
+                }}
+              >
+                <CategoryIcon name={s.label} className="size-5" />
+              </div>
+              <p className="truncate text-xs text-muted-foreground">{s.label}</p>
+              <MoneyAmount
+                amount={String(s.value)}
+                currency={currency}
+                compact
+                className="text-base font-semibold text-foreground"
+              />
+            </div>
+          ))}
         </div>
       )}
     </Card>
