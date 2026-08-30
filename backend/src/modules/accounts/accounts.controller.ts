@@ -1,15 +1,17 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { ApiZodBody } from '../../common/swagger/api-zod';
+import { ApiZodBody, ApiZodQuery } from '../../common/swagger/api-zod';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import { AuthenticatedUser } from '../../common/types/authenticated-user';
 import { AccountsService } from './accounts.service';
 import {
   CreateAccountDto,
+  ListAccountsQueryDto,
   UpdateAccountDto,
   createAccountSchema,
+  listAccountsQuerySchema,
   updateAccountSchema,
 } from './dto/accounts.dto';
 
@@ -30,8 +32,12 @@ export class AccountsController {
   }
 
   @Get()
-  list(@CurrentUser() user: AuthenticatedUser) {
-    return this.accountsService.list(user.id);
+  @ApiZodQuery(listAccountsQuerySchema)
+  list(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query(new ZodValidationPipe(listAccountsQuerySchema)) query: ListAccountsQueryDto,
+  ) {
+    return this.accountsService.list(user.id, query.status);
   }
 
   @Patch(':id')
@@ -47,5 +53,10 @@ export class AccountsController {
   @Delete(':id')
   archive(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
     return this.accountsService.archive(user.id, id);
+  }
+
+  @Patch(':id/restore')
+  restore(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+    return this.accountsService.restore(user.id, id);
   }
 }

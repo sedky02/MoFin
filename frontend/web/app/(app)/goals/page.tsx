@@ -11,17 +11,8 @@ import { PageHeader } from "@/components/common/page-header";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SkeletonCard, EmptyState, ErrorState } from "@/components/common/states";
+import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import type { Goal } from "@/lib/types";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 
 export default function GoalsPage() {
   const [tab, setTab] = React.useState<"active" | "disabled">("active");
@@ -158,26 +149,14 @@ export default function GoalsPage() {
         account={historyGoal ? accountsById.get(historyGoal.accountId) : undefined}
       />
 
-      <AlertDialog open={!!toStop} onOpenChange={(o) => !o && setToStop(undefined)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Stop “{toStop?.name}”?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This stops tracking progress and moves it to Disabled. Its period history is preserved.
-              You can&apos;t undo this from the app.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmStop}
-              className="bg-destructive text-white hover:bg-destructive/90"
-            >
-              Stop
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDialog
+        open={!!toStop}
+        onOpenChange={(o) => !o && setToStop(undefined)}
+        title={`Stop "${toStop?.name}"?`}
+        description="This stops tracking progress and moves it to Disabled. Its period history is preserved. You can't undo this from the app."
+        confirmLabel="Stop"
+        onConfirm={confirmStop}
+      />
     </>
   );
 }

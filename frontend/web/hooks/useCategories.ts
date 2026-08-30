@@ -55,3 +55,26 @@ export function useUpdateCategory() {
     onError: (err) => handleApiError(err, { fallback: "Could not update category." }),
   });
 }
+
+export function useDeleteCategory() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete<void>(`/categories/${id}`),
+    // Optimistically drop the category from the cached list; rolled back if the
+    // backend rejects the delete (e.g. category is in use).
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: categoryKeys.all });
+      const previous = queryClient.getQueryData<Category[]>(categoryKeys.all);
+      queryClient.setQueryData<Category[]>(categoryKeys.all, (old) =>
+        old?.filter((c) => c.id !== id),
+      );
+      return { previous };
+    },
+    onError: (err, _id, ctx) => {
+      if (ctx?.previous) queryClient.setQueryData(categoryKeys.all, ctx.previous);
+      handleApiError(err, { fallback: "Could not delete category." });
+    },
+    onSuccess: () => toast.success("Category deleted."),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: categoryKeys.all }),
+  });
+}

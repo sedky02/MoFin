@@ -1,10 +1,11 @@
 "use client";
 
-import { MoreVertical, Pencil, Archive } from "lucide-react";
+import { MoreVertical, Pencil, Archive, ArchiveRestore } from "lucide-react";
 import type { Account } from "@/lib/types";
 import { useLedgerBalance } from "@/hooks/useLedger";
 import { MoneyAmount } from "@/components/common/money-amount";
 import { AccountTypeBadge } from "@/components/common/badges";
+import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -19,10 +20,14 @@ export function AccountCard({
   account,
   onEdit,
   onArchive,
+  onRestore,
+  readOnly = false,
 }: {
   account: Account;
-  onEdit: (account: Account) => void;
-  onArchive: (account: Account) => void;
+  onEdit?: (account: Account) => void;
+  onArchive?: (account: Account) => void;
+  onRestore?: (account: Account) => void;
+  readOnly?: boolean;
 }) {
   // Parallel per-account balance query (key = currency when accountId is passed).
   const { data, isLoading } = useLedgerBalance({ accountId: account.id });
@@ -34,35 +39,50 @@ export function AccountCard({
       <div className="flex items-start justify-between">
         <div className="min-w-0">
           <h3 className="truncate font-semibold">{account.name}</h3>
-          <div className="mt-1.5 flex items-center gap-2">
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
             <AccountTypeBadge type={account.type} />
             <span className="text-xs text-muted-foreground tabular">
               {account.currency}
             </span>
+            {readOnly && <Badge variant="secondary">Archived</Badge>}
           </div>
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
+        {readOnly ? (
+          onRestore && (
             <Button
               variant="ghost"
               size="icon"
               className="size-8 text-muted-foreground"
-              aria-label={`Actions for ${account.name}`}
+              onClick={() => onRestore(account)}
+              aria-label={`Restore ${account.name}`}
             >
-              <MoreVertical className="size-4" />
+              <ArchiveRestore className="size-4" />
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => onEdit(account)}>
-              <Pencil className="size-4" />
-              Edit
-            </DropdownMenuItem>
-            <DropdownMenuItem variant="destructive" onClick={() => onArchive(account)}>
-              <Archive className="size-4" />
-              Archive
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+          )
+        ) : (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-8 text-muted-foreground"
+                aria-label={`Actions for ${account.name}`}
+              >
+                <MoreVertical className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => onEdit?.(account)}>
+                <Pencil className="size-4" />
+                Edit
+              </DropdownMenuItem>
+              <DropdownMenuItem variant="destructive" onClick={() => onArchive?.(account)}>
+                <Archive className="size-4" />
+                Archive
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
 
       <div className="mt-5">

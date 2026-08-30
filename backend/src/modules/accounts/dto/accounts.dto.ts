@@ -16,3 +16,8 @@ export const updateAccountSchema = z.object({
   metadata: z.record(z.unknown()).optional(),
 });
 export type UpdateAccountDto = z.infer<typeof updateAccountSchema>;
+
+export const listAccountsQuerySchema = z.object({
+  status: z.enum(['active', 'archived', 'all']).default('active'),
+});
+export type ListAccountsQueryDto = z.infer<typeof listAccountsQuerySchema>;

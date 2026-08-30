@@ -1,10 +1,11 @@
 "use client";
 
 import * as React from "react";
-import { Plus, Tags, Lock, Pencil } from "lucide-react";
-import { useCategories } from "@/hooks/useCategories";
+import { Plus, Tags, Lock, Pencil, Trash2 } from "lucide-react";
+import { useCategories, useDeleteCategory } from "@/hooks/useCategories";
 import { CategoryDialog } from "@/components/categories/category-dialog";
 import { PageHeader } from "@/components/common/page-header";
+import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -20,9 +21,11 @@ import type { Category } from "@/lib/types";
 function CategoryTile({
   category,
   onEdit,
+  onDelete,
 }: {
   category: Category;
   onEdit: (c: Category) => void;
+  onDelete: (c: Category) => void;
 }) {
   return (
     <Card className="flex items-center gap-3 border-0 p-3.5 shadow-sm">
@@ -68,15 +71,26 @@ function CategoryTile({
           <TooltipContent>System category — can&apos;t be edited</TooltipContent>
         </Tooltip>
       ) : (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="size-8 text-muted-foreground"
-          onClick={() => onEdit(category)}
-          aria-label={`Edit ${category.name}`}
-        >
-          <Pencil className="size-4" />
-        </Button>
+        <>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-8 text-muted-foreground"
+            onClick={() => onEdit(category)}
+            aria-label={`Edit ${category.name}`}
+          >
+            <Pencil className="size-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-8 text-muted-foreground"
+            onClick={() => onDelete(category)}
+            aria-label={`Delete ${category.name}`}
+          >
+            <Trash2 className="size-4" />
+          </Button>
+        </>
       )}
     </Card>
   );
@@ -87,11 +101,13 @@ function Section({
   hint,
   items,
   onEdit,
+  onDelete,
 }: {
   title: string;
   hint: string;
   items: Category[];
   onEdit: (c: Category) => void;
+  onDelete: (c: Category) => void;
 }) {
   if (items.length === 0) return null;
   return (
@@ -102,7 +118,7 @@ function Section({
       </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {items.map((c) => (
-          <CategoryTile key={c.id} category={c} onEdit={onEdit} />
+          <CategoryTile key={c.id} category={c} onEdit={onEdit} onDelete={onDelete} />
         ))}
       </div>
     </section>
@@ -111,8 +127,10 @@ function Section({
 
 export default function CategoriesPage() {
   const { data, isLoading, isError, refetch } = useCategories();
+  const deleteCategory = useDeleteCategory();
   const [open, setOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<Category | undefined>();
+  const [toDelete, setToDelete] = React.useState<Category | undefined>();
 
   function openCreate() {
     setEditing(undefined);
@@ -121,6 +139,13 @@ export default function CategoriesPage() {
   function openEdit(c: Category) {
     setEditing(c);
     setOpen(true);
+  }
+
+  function confirmDelete() {
+    if (!toDelete) return;
+    const id = toDelete.id;
+    setToDelete(undefined);
+    deleteCategory.mutate(id);
   }
 
   const userCategories = (data ?? []).filter((c) => !c.isSystem);
@@ -166,17 +191,28 @@ export default function CategoriesPage() {
             hint={`${userCategories.length}`}
             items={userCategories}
             onEdit={openEdit}
+            onDelete={setToDelete}
           />
           <Section
             title="System categories"
             hint="read-only"
             items={systemCategories}
             onEdit={openEdit}
+            onDelete={setToDelete}
           />
         </div>
       )}
 
       <CategoryDialog open={open} onOpenChange={setOpen} category={editing} />
+
+      <ConfirmDialog
+        open={!!toDelete}
+        onOpenChange={(o) => !o && setToDelete(undefined)}
+        title={`Delete "${toDelete?.name}"?`}
+        description="This permanently removes the category. Categories used by transactions or budgets can't be deleted."
+        confirmLabel="Delete"
+        onConfirm={confirmDelete}
+      />
     </>
   );
 }

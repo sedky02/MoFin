@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { CreateCategoryDto, UpdateCategoryDto } from './dto/categories.dto';
 
@@ -30,5 +30,23 @@ export class CategoriesService {
     const category = await this.prisma.category.findFirst({ where: { id: categoryId, userId } });
     if (!category) throw new NotFoundException(`Category ${categoryId} not found`);
     return this.prisma.category.update({ where: { id: categoryId }, data: dto });
+  }
+
+  async remove(userId: string, categoryId: string) {
+    const category = await this.prisma.category.findFirst({ where: { id: categoryId, userId } });
+    if (!category) throw new NotFoundException(`Category ${categoryId} not found`);
+
+    const [transactionCount, transactionItemCount, budgetCount] = await Promise.all([
+      this.prisma.transaction.count({ where: { categoryId } }),
+      this.prisma.transactionItem.count({ where: { categoryId } }),
+      this.prisma.budget.count({ where: { categoryId } }),
+    ]);
+    if (transactionCount > 0 || transactionItemCount > 0 || budgetCount > 0) {
+      throw new ConflictException(
+        'This category is used by existing transactions or budgets and cannot be deleted.',
+      );
+    }
+
+    await this.prisma.category.delete({ where: { id: categoryId } });
   }
 }

@@ -8,11 +8,14 @@ import type { Account, AccountType } from "@/lib/types";
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/form-errors";
 
-export function useAccounts() {
+export type AccountListStatus = "active" | "archived" | "all";
+
+export function useAccounts(status: AccountListStatus = "active", enabled = true) {
   return useQuery({
-    queryKey: accountKeys.all,
-    queryFn: () => api.get<Account[]>("/accounts"),
+    queryKey: accountKeys.list(status),
+    queryFn: () => api.get<Account[]>("/accounts", { status }),
     staleTime: STALE.accounts,
+    enabled,
   });
 }
 
@@ -59,20 +62,43 @@ export function useArchiveAccount() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => api.delete<void>(`/accounts/${id}`),
-    // Optimistically drop the account from the cached list.
+    // Optimistically drop the account from the cached active list.
     onMutate: async (id) => {
-      await queryClient.cancelQueries({ queryKey: accountKeys.all });
-      const previous = queryClient.getQueryData<Account[]>(accountKeys.all);
-      queryClient.setQueryData<Account[]>(accountKeys.all, (old) =>
-        old?.filter((a) => a.id !== id),
-      );
+      const key = accountKeys.list("active");
+      await queryClient.cancelQueries({ queryKey: key });
+      const previous = queryClient.getQueryData<Account[]>(key);
+      queryClient.setQueryData<Account[]>(key, (old) => old?.filter((a) => a.id !== id));
       return { previous };
     },
     onError: (err, _id, ctx) => {
-      if (ctx?.previous) queryClient.setQueryData(accountKeys.all, ctx.previous);
+      if (ctx?.previous) queryClient.setQueryData(accountKeys.list("active"), ctx.previous);
       handleApiError(err, { fallback: "Could not archive account." });
     },
     onSuccess: () => toast.success("Account archived."),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: accountKeys.all });
+      queryClient.invalidateQueries({ queryKey: ledgerKeys.all });
+    },
+  });
+}
+
+export function useRestoreAccount() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.patch<Account>(`/accounts/${id}/restore`),
+    // Optimistically drop the account from the cached archived list.
+    onMutate: async (id) => {
+      const key = accountKeys.list("archived");
+      await queryClient.cancelQueries({ queryKey: key });
+      const previous = queryClient.getQueryData<Account[]>(key);
+      queryClient.setQueryData<Account[]>(key, (old) => old?.filter((a) => a.id !== id));
+      return { previous };
+    },
+    onError: (err, _id, ctx) => {
+      if (ctx?.previous) queryClient.setQueryData(accountKeys.list("archived"), ctx.previous);
+      handleApiError(err, { fallback: "Could not restore account." });
+    },
+    onSuccess: () => toast.success("Account restored."),
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: accountKeys.all });
       queryClient.invalidateQueries({ queryKey: ledgerKeys.all });
