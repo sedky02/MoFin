@@ -8,6 +8,8 @@ import { CategoriesService } from '../categories/categories.service';
 import { LedgerService } from '../ledger/ledger.service';
 import { CreateTransactionCommand, UpdateRecurringTransactionCommand } from './dto/transactions.dto';
 
+type Db = Prisma.TransactionClient;
+
 /**
  * Advances a recurring occurrence by one interval, clamping to the anchor's
  * day-of-month when the target month is shorter (e.g. Jan 31 -> Feb 28 -> Mar 31).
@@ -33,7 +35,16 @@ export class TransactionsService {
     private readonly events: EventEmitter2
   ) {}
 
-  async create(userId: string, command: CreateTransactionCommand) {
+  /**
+   * Creates a transaction and its ledger entries atomically. Pass `db` when
+   * the caller needs this create to participate in a larger transaction (e.g.
+   * the recurring cron creating an occurrence and advancing its cursor in one
+   * commit) — in that case the caller owns the transaction boundary and is
+   * responsible for emitting TransactionCreated once its own transaction
+   * commits, since emitting beforehand could let listeners react to a row a
+   * later step in that same transaction rolls back.
+   */
+  async create(userId: string, command: CreateTransactionCommand, db?: Db) {
     this.validateCommand(command);
     await this.categoriesService.assertAvailable(userId, command.categoryId);
     for (const item of command.items ?? []) {
@@ -41,7 +52,7 @@ export class TransactionsService {
     }
     const ledgerEntries = await this.ledgerService.buildEntriesForCommand(userId, command);
 
-    const transaction = await this.prisma.$transaction(async (db) => {
+    const run = async (db: Db) => {
       const created = await db.transaction.create({
         data: {
           userId,
@@ -76,13 +87,17 @@ export class TransactionsService {
         where: { id: created.id },
         include: { items: { include: { category: true } }, category: true }
       });
-    });
+    };
 
-    this.events.emit(DomainEvents.TransactionCreated, {
-      transactionId: transaction.id,
-      userId,
-      occurredAt: transaction.occurredAt
-    } satisfies TransactionCreatedEvent);
+    const transaction = db ? await run(db) : await this.prisma.$transaction(run);
+
+    if (!db) {
+      this.events.emit(DomainEvents.TransactionCreated, {
+        transactionId: transaction.id,
+        userId,
+        occurredAt: transaction.occurredAt
+      } satisfies TransactionCreatedEvent);
+    }
 
     return transaction;
   }

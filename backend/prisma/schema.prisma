@@ -179,6 +179,9 @@ model Transaction {
   @@index([userId, categoryId])
   @@index([isRecurring, recurringStatus, nextOccurrenceAt])
   @@index([parentTransactionId])
+  // Guarantees a crash between generating an occurrence and advancing the
+  // cursor cannot double-create the same occurrence on retry (SEC-XX).
+  @@unique([parentTransactionId, occurredAt])
 }
 
 model TransactionItem {
