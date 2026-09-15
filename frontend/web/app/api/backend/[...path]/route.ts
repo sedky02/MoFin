@@ -14,16 +14,20 @@ import {
 type Ctx = { params: Promise<{ path: string[] }> };
 
 // ---- Module-level refresh lock ----
-// Concurrent 401s share ONE in-flight refresh so we never stampede /auth/refresh.
-let refreshPromise: Promise<BackendTokens | null> | null = null;
+// Concurrent 401s for the SAME refresh token share one in-flight refresh so we
+// don't stampede /auth/refresh. Keyed by refresh token so different users'
+// requests (which race on a shared Node process) never share state.
+const refreshPromises = new Map<string, Promise<BackendTokens | null>>();
 
 async function refreshTokens(refreshToken: string): Promise<BackendTokens | null> {
-  if (!refreshPromise) {
-    refreshPromise = doRefresh(refreshToken).finally(() => {
-      refreshPromise = null; // release so a later 401 can refresh again
+  let promise = refreshPromises.get(refreshToken);
+  if (!promise) {
+    promise = doRefresh(refreshToken).finally(() => {
+      refreshPromises.delete(refreshToken); // release so a later 401 can refresh again
     });
+    refreshPromises.set(refreshToken, promise);
   }
-  return refreshPromise;
+  return promise;
 }
 
 async function doRefresh(refreshToken: string): Promise<BackendTokens | null> {
