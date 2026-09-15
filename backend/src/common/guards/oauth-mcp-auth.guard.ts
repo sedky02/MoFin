@@ -6,10 +6,12 @@ import { Request, Response } from 'express';
 /**
  * OAuth 2.1 authentication for production MCP clients (what claude.ai sends).
  *
- * Validates a `Bearer <jwt>` access token signed with JWT_ACCESS_SECRET that
- * MUST carry our issuer, the MCP resource audience and the `mcp` scope —
- * requiring aud+scope stops a plain web-session token from being replayed
- * against the MCP endpoint. On any failure it emits an RFC 9728 compliant
+ * Validates a `Bearer <jwt>` access token signed with JWT_MCP_SECRET (a key
+ * distinct from JWT_ACCESS_SECRET, so a first-party web token is never even a
+ * candidate signature here) that MUST carry our issuer, the MCP resource
+ * audience and the `mcp` scope — requiring aud+scope stops a plain web-session
+ * token from being replayed against the MCP endpoint. On any failure it emits
+ * an RFC 9728 compliant
  * `WWW-Authenticate` header, which is what makes claude.ai start the OAuth flow.
  */
 @Injectable()
@@ -42,7 +44,7 @@ export class OAuthMcpAuthGuard implements CanActivate {
       email: string;
       scope?: string;
     }>(token, {
-      secret: this.config.getOrThrow<string>('JWT_ACCESS_SECRET'),
+      secret: this.config.getOrThrow<string>('JWT_MCP_SECRET'),
       issuer,
       audience,
     });

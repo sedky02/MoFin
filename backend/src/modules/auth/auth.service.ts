@@ -7,6 +7,7 @@ import { PrismaService } from '../../database/prisma.service';
 import { AuthenticatedUser } from '../../common/types/authenticated-user';
 import { UsersService } from '../users/users.service';
 import { CreateApiKeyDto, LoginDto, RegisterDto } from './dto/auth.dto';
+import { WEB_AUDIENCE } from './auth.constants';
 
 interface RefreshPayload {
   sub: string;
@@ -152,10 +153,13 @@ export class AuthService {
 
   private async issueTokens(userId: string, email: string) {
     const payload = { sub: userId, email };
+    const issuer = this.config.getOrThrow<string>('OAUTH_ISSUER').replace(/\/$/, '');
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(payload, {
         secret: this.config.getOrThrow<string>('JWT_ACCESS_SECRET'),
         expiresIn: this.config.get<string>('JWT_ACCESS_TTL', '15m'),
+        issuer,
+        audience: WEB_AUDIENCE,
       }),
       this.jwtService.signAsync(payload, {
         secret: this.config.getOrThrow<string>('JWT_REFRESH_SECRET'),

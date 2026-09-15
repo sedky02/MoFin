@@ -275,7 +275,7 @@ export class OAuthService {
         client_id: params.clientId,
       },
       {
-        secret: this.config.getOrThrow<string>('JWT_ACCESS_SECRET'),
+        secret: this.config.getOrThrow<string>('JWT_MCP_SECRET'),
         expiresIn: accessTtl,
         issuer: this.issuer,
         audience: params.resource,
