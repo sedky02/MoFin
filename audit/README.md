@@ -10,6 +10,7 @@ Full repository audit of `backend/` and `frontend/web/` at commit `5fc393e`.
 | [03-SECURITY.md](03-SECURITY.md) | Security findings with attack scenarios — and what was checked and found fine |
 | [04-CROSS-CUTTING.md](04-CROSS-CUTTING.md) | Problems only visible across the whole system |
 | [05-ROADMAP.md](05-ROADMAP.md) | Debt triage and a phased fix order with rationale |
+| [06-ARCHITECTURE-AND-DATA-MODEL.md](06-ARCHITECTURE-AND-DATA-MODEL.md) | Logical architecture & DB design review — workflows and data model only, not code quality |
 
 **Method:** static analysis of every source, config, schema, migration and test file, tracing flows frontend → BFF → backend → database. The application was not executed and no tests were run; items marked *(uncertain)* were not verified at runtime.
 
