@@ -6,9 +6,11 @@ import { ApiZodBody, ApiZodQuery } from '../../common/swagger/api-zod';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import { AuthenticatedUser } from '../../common/types/authenticated-user';
 import {
+  ApproveDraftDto,
   CreateDraftTransactionDto,
   DraftListQuery,
   RejectDraftDto,
+  approveDraftSchema,
   createDraftTransactionSchema,
   draftListQuerySchema,
   rejectDraftSchema,
@@ -41,8 +43,13 @@ export class DraftTransactionsController {
   }
 
   @Patch(':id/approve')
-  approve(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
-    return this.draftsService.approve(user.id, id);
+  @ApiZodBody(approveDraftSchema)
+  approve(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(approveDraftSchema)) dto: ApproveDraftDto,
+  ) {
+    return this.draftsService.approve(user.id, id, dto?.parsedData);
   }
 
   @Patch(':id/reject')

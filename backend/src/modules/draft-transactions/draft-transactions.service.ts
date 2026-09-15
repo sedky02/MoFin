@@ -4,7 +4,12 @@ import { DraftStatus, Prisma } from '@prisma/client';
 import { DomainEvents, DraftApprovedEvent, DraftCreatedEvent } from '../../common/events/domain-events';
 import { PrismaService } from '../../database/prisma.service';
 import { TransactionsService } from '../transactions/transactions.service';
-import { CreateDraftTransactionDto, DraftListQuery, ParsedDraftTransaction } from './dto/draft-transactions.dto';
+import {
+  CreateDraftTransactionDto,
+  DraftListQuery,
+  ParsedDraftTransaction,
+  parsedDraftTransactionSchema,
+} from './dto/draft-transactions.dto';
 
 @Injectable()
 export class DraftTransactionsService {
@@ -37,12 +42,24 @@ export class DraftTransactionsService {
     });
   }
 
-  async approve(userId: string, draftId: string) {
+  async approve(userId: string, draftId: string, overrides?: Partial<ParsedDraftTransaction>) {
     const draft = await this.prisma.draftTransaction.findFirst({ where: { id: draftId, userId } });
     if (!draft) throw new NotFoundException('Draft transaction not found');
     if (draft.status !== DraftStatus.PENDING) throw new BadRequestException('Only pending drafts can be approved');
 
-    const parsed = draft.parsedData as unknown as ParsedDraftTransaction;
+    const merged = { ...(draft.parsedData as unknown as ParsedDraftTransaction), ...overrides };
+    const result = parsedDraftTransactionSchema.safeParse(merged);
+    if (!result.success) {
+      throw new BadRequestException({
+        message: 'Approved transaction data is invalid',
+        errors: result.error.issues.map((issue) => ({
+          path: issue.path.join('.'),
+          message: issue.message,
+        })),
+      });
+    }
+    const parsed = result.data;
+
     const transaction = await this.transactionsService.create(userId, {
       type: parsed.type,
       description: parsed.description,
@@ -57,7 +74,11 @@ export class DraftTransactionsService {
 
     const approved = await this.prisma.draftTransaction.update({
       where: { id: draft.id },
-      data: { status: DraftStatus.APPROVED, approvedAt: new Date() }
+      data: {
+        status: DraftStatus.APPROVED,
+        approvedAt: new Date(),
+        parsedData: parsed as unknown as Prisma.InputJsonValue
+      }
     });
 
     this.events.emit(DomainEvents.DraftApproved, {

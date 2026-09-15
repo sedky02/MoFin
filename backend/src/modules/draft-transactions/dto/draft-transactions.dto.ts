@@ -27,6 +27,14 @@ export const createDraftTransactionSchema = z.object({
 });
 export type CreateDraftTransactionDto = z.infer<typeof createDraftTransactionSchema>;
 
+export const approveDraftSchema = z.preprocess(
+  (value) => value ?? {},
+  z.object({
+    parsedData: parsedDraftTransactionSchema.partial().optional(),
+  }),
+);
+export type ApproveDraftDto = z.infer<typeof approveDraftSchema>;
+
 export const rejectDraftSchema = z.object({
   reason: z.string().optional(),
 });
