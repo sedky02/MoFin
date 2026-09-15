@@ -4,10 +4,18 @@ import { z } from 'zod';
  * Fail fast at startup if required configuration is missing or malformed,
  * rather than discovering it on the first request that needs a secret.
  */
+const secretSchema = z
+  .string()
+  .min(32, 'Secret must be at least 32 characters')
+  .refine(
+    (value) =>
+      !/replace.?me|change.?me|secret|example/i.test(value),
+    'Secret contains a placeholder/example value',
+  );
 const envSchema = z.object({
   DATABASE_URL: z.string().url(),
-  JWT_ACCESS_SECRET: z.string().min(16),
-  JWT_REFRESH_SECRET: z.string().min(16),
+  JWT_ACCESS_SECRET: secretSchema,
+  JWT_REFRESH_SECRET: secretSchema,
   JWT_ACCESS_TTL: z.string().default('15m'),
   JWT_REFRESH_TTL: z.string().default('30d'),
   PORT: z.coerce.number().int().positive().default(3000),
