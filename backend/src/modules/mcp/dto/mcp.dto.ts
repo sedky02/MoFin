@@ -9,10 +9,14 @@ import { searchTransactionsSchema } from '../../search/dto/search.dto';
  * `as never` and never validated (audit A2) — a direct violation of the
  * "MCP must never bypass validation" rule. Each tool's args are now parsed
  * with the same schema the corresponding HTTP route uses.
+ *
+ * `approve_draft_transaction` is deliberately NOT exposed here: an AI holding
+ * one mcp-scoped token must not be able to both create and approve a draft,
+ * since approval is the human-confirmation checkpoint the whole draft flow
+ * exists to enforce (SEC-XX). Approval only happens via the web UI.
  */
 export const mcpToolSchemas = {
   create_draft_transaction: createDraftTransactionSchema,
-  approve_draft_transaction: z.object({ draftId: z.string().min(1) }),
   search_transactions: searchTransactionsSchema,
   get_balance: getBalanceQuerySchema,
   get_monthly_summary: monthlySummaryQuerySchema,

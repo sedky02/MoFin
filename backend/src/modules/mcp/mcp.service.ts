@@ -29,8 +29,6 @@ export class McpService {
     switch (tool) {
       case 'create_draft_transaction':
         return this.draftsService.create(userId, args as never);
-      case 'approve_draft_transaction':
-        return this.draftsService.approve(userId, (args as { draftId: string }).draftId);
       case 'search_transactions':
         return this.searchService.searchTransactions(userId, args as never);
       case 'get_balance':

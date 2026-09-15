@@ -1,3 +1,5 @@
+import { mcpToolSchemas } from './dto/mcp.dto';
+import { MCP_TOOLS } from './mcp-tools';
 import { McpService } from './mcp.service';
 
 describe('McpService.dispatch', () => {
@@ -29,9 +31,12 @@ describe('McpService.dispatch', () => {
     expect(drafts.create).toHaveBeenCalledWith('u1', args);
   });
 
-  it('routes approve_draft_transaction using the draftId argument', () => {
-    expect(service.dispatch('u1', 'approve_draft_transaction', { draftId: 'd1' })).toBe('approved');
-    expect(drafts.approve).toHaveBeenCalledWith('u1', 'd1');
+  it('does not expose approve_draft_transaction as an MCP tool', () => {
+    // Approval must go through a human-confirmed channel (the web UI), never
+    // the same MCP connector that created the draft (SEC-XX).
+    const toolNames: string[] = MCP_TOOLS.map((t) => t.name);
+    expect(toolNames).not.toContain('approve_draft_transaction');
+    expect(Object.keys(mcpToolSchemas)).not.toContain('approve_draft_transaction');
   });
 
   it('routes search_transactions to SearchService', () => {

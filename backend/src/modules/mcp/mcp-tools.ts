@@ -12,11 +12,6 @@ export const MCP_TOOLS: ReadonlyArray<{ name: McpToolName; title: string; descri
       'Create a PENDING draft transaction from structured data. Never creates a real transaction directly — it must be approved first.',
   },
   {
-    name: 'approve_draft_transaction',
-    title: 'Approve draft transaction',
-    description: 'Approve a pending draft, creating the real transaction and its ledger entries.',
-  },
-  {
     name: 'search_transactions',
     title: 'Search transactions',
     description: "Search the user's transactions with text, category, account, amount and date filters (paginated).",
