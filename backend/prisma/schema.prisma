@@ -84,6 +84,7 @@ model User {
   goals              Goal[]
   analyticsCaches    AnalyticsCache[]
   oauthCodes         AuthorizationCode[]
+  refreshTokens      RefreshToken[]
   oauthRefreshTokens OAuthRefreshToken[]
   oauthGrants        OAuthGrant[]
   authSessions       AuthSession[]
@@ -322,6 +323,23 @@ model AuthorizationCode {
 
 // Persisted, rotating refresh token. `tokenHash` is the hash of the opaque token.
 // `familyId` groups rotations so that reuse of a rotated token revokes the whole family.
+// First-party (web) refresh tokens, mirroring OAuthRefreshToken so a leaked
+// token can be revoked instead of remaining valid statelessly until expiry.
+model RefreshToken {
+  id          String    @id @default(uuid())
+  tokenHash   String    @unique
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  familyId    String
+  rotatedToId String?
+  revokedAt   DateTime?
+  expiresAt   DateTime
+  createdAt   DateTime  @default(now())
+
+  @@index([userId])
+  @@index([familyId])
+}
+
 model OAuthRefreshToken {
   id          String    @id @default(uuid())
   tokenHash   String    @unique

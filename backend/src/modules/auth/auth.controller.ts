@@ -11,11 +11,13 @@ import {
   CreateApiKeyDto,
   GoogleLoginDto,
   LoginDto,
+  LogoutDto,
   RefreshTokenDto,
   RegisterDto,
   createApiKeySchema,
   googleLoginSchema,
   loginSchema,
+  logoutSchema,
   refreshTokenSchema,
   registerSchema,
 } from './dto/auth.dto';
@@ -43,6 +45,12 @@ export class AuthController {
   @ApiZodBody(refreshTokenSchema)
   refresh(@Body(new ZodValidationPipe(refreshTokenSchema)) dto: RefreshTokenDto) {
     return this.authService.refreshTokens(dto.refreshToken);
+  }
+
+  @Post('logout')
+  @ApiZodBody(logoutSchema)
+  logout(@Body(new ZodValidationPipe(logoutSchema)) dto: LogoutDto) {
+    return this.authService.logout(dto.refreshToken);
   }
 
   @Post('google')

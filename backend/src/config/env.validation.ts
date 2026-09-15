@@ -15,7 +15,6 @@ const secretSchema = z
 const envSchema = z.object({
   DATABASE_URL: z.string().url(),
   JWT_ACCESS_SECRET: secretSchema,
-  JWT_REFRESH_SECRET: secretSchema,
   // Separate signing key for MCP/OAuth access tokens so an MCP-scoped token is
   // never even a candidate signature for the first-party web verifier (SEC-XX).
   JWT_MCP_SECRET: secretSchema,

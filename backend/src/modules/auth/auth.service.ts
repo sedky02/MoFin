@@ -5,14 +5,11 @@ import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
 import { PrismaService } from '../../database/prisma.service';
 import { AuthenticatedUser } from '../../common/types/authenticated-user';
+import { parseDurationMs } from '../../common/utils/duration';
+import { sha256 } from '../../common/utils/hash';
 import { UsersService } from '../users/users.service';
 import { CreateApiKeyDto, LoginDto, RegisterDto } from './dto/auth.dto';
 import { WEB_AUDIENCE } from './auth.constants';
-
-interface RefreshPayload {
-  sub: string;
-  email: string;
-}
 
 @Injectable()
 export class AuthService {
@@ -30,7 +27,7 @@ export class AuthService {
       displayName: dto.displayName,
       passwordHash,
     });
-    return this.issueTokens(user.id, user.email);
+    return this.issueTokens(user.id, user.email, randomBytes(16).toString('hex'));
   }
 
   async login(dto: LoginDto) {
@@ -38,24 +35,53 @@ export class AuthService {
     if (!user?.passwordHash || !(await bcrypt.compare(dto.password, user.passwordHash))) {
       throw new UnauthorizedException('Invalid credentials');
     }
-    return this.issueTokens(user.id, user.email);
+    return this.issueTokens(user.id, user.email, randomBytes(16).toString('hex'));
   }
 
   /**
-   * Stateless refresh: the refresh token is verified against its own secret and
-   * new tokens are minted. Note this cannot revoke a leaked refresh token before
-   * expiry — persisting/rotating refresh tokens is a deliberate follow-up.
+   * Refresh tokens are opaque random strings persisted (hashed) server-side
+   * with a familyId, mirroring OAuthService.exchangeRefreshToken: rotate on
+   * every use, and if a token is presented that was already revoked/rotated
+   * (reuse — the classic signal of a stolen token), revoke the whole family
+   * so the thief's and the legitimate holder's tokens both stop working.
    */
   async refreshTokens(refreshToken: string) {
-    let payload: RefreshPayload;
-    try {
-      payload = await this.jwtService.verifyAsync<RefreshPayload>(refreshToken, {
-        secret: this.config.getOrThrow<string>('JWT_REFRESH_SECRET'),
+    const tokenHash = sha256(refreshToken);
+    const stored = await this.prisma.refreshToken.findUnique({ where: { tokenHash } });
+    if (!stored) throw new UnauthorizedException('Invalid refresh token');
+
+    if (stored.revokedAt || stored.rotatedToId) {
+      await this.prisma.refreshToken.updateMany({
+        where: { familyId: stored.familyId, revokedAt: null },
+        data: { revokedAt: new Date() },
       });
-    } catch {
-      throw new UnauthorizedException('Invalid refresh token');
+      throw new UnauthorizedException('Refresh token reuse detected');
     }
-    return this.issueTokens(payload.sub, payload.email);
+    if (stored.expiresAt < new Date()) {
+      throw new UnauthorizedException('Refresh token expired');
+    }
+
+    const user = await this.prisma.user.findUnique({ where: { id: stored.userId } });
+    if (!user) throw new UnauthorizedException('Invalid refresh token');
+
+    const next = await this.issueTokens(user.id, user.email, stored.familyId);
+
+    await this.prisma.refreshToken.update({
+      where: { id: stored.id },
+      data: { revokedAt: new Date(), rotatedToId: sha256(next.refreshToken) },
+    });
+
+    return next;
+  }
+
+  /** Revokes every refresh token in the presented token's family. */
+  async logout(refreshToken: string): Promise<void> {
+    const stored = await this.prisma.refreshToken.findUnique({ where: { tokenHash: sha256(refreshToken) } });
+    if (!stored) return;
+    await this.prisma.refreshToken.updateMany({
+      where: { familyId: stored.familyId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
   }
 
   /**
@@ -118,7 +144,7 @@ export class AuthService {
         : await this.prisma.user.create({ data: { email, googleId, displayName } });
     }
 
-    return this.issueTokens(user.id, user.email);
+    return this.issueTokens(user.id, user.email, randomBytes(16).toString('hex'));
   }
 
   /**
@@ -151,21 +177,35 @@ export class AuthService {
     return { id: key.user.id, email: key.user.email };
   }
 
-  private async issueTokens(userId: string, email: string) {
-    const payload = { sub: userId, email };
+  /**
+   * Mints a fresh access token (JWT) and refresh token (opaque, persisted
+   * hashed) for `userId`, linking the new refresh token into `familyId` —
+   * a fresh random id on login/register, or the presented token's own family
+   * when rotating during refresh, so `logout`/reuse-detection can revoke
+   * every token ever issued from a single login in one update.
+   */
+  private async issueTokens(userId: string, email: string, familyId: string) {
     const issuer = this.config.getOrThrow<string>('OAUTH_ISSUER').replace(/\/$/, '');
-    const [accessToken, refreshToken] = await Promise.all([
-      this.jwtService.signAsync(payload, {
+    const accessToken = await this.jwtService.signAsync(
+      { sub: userId, email },
+      {
         secret: this.config.getOrThrow<string>('JWT_ACCESS_SECRET'),
         expiresIn: this.config.get<string>('JWT_ACCESS_TTL', '15m'),
         issuer,
         audience: WEB_AUDIENCE,
-      }),
-      this.jwtService.signAsync(payload, {
-        secret: this.config.getOrThrow<string>('JWT_REFRESH_SECRET'),
-        expiresIn: this.config.get<string>('JWT_REFRESH_TTL', '30d'),
-      }),
-    ]);
+      },
+    );
+
+    const refreshToken = randomBytes(32).toString('base64url');
+    const refreshTtlMs = parseDurationMs(this.config.get<string>('JWT_REFRESH_TTL', '30d'));
+    await this.prisma.refreshToken.create({
+      data: {
+        tokenHash: sha256(refreshToken),
+        userId,
+        familyId,
+        expiresAt: new Date(Date.now() + refreshTtlMs),
+      },
+    });
 
     return { accessToken, refreshToken };
   }

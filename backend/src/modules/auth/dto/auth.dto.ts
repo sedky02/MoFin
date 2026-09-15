@@ -29,6 +29,11 @@ export const refreshTokenSchema = z.object({
 });
 export type RefreshTokenDto = z.infer<typeof refreshTokenSchema>;
 
+export const logoutSchema = z.object({
+  refreshToken: z.string().min(1),
+});
+export type LogoutDto = z.infer<typeof logoutSchema>;
+
 // Exchanged server-to-server by the web BFF Google callback: the one-time
 // authorization code from Google plus the exact redirect_uri used to obtain it.
 export const googleLoginSchema = z.object({

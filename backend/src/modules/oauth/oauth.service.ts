@@ -7,6 +7,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { createHash, randomBytes } from 'crypto';
 import { PrismaService } from '../../database/prisma.service';
+import { sha256 } from '../../common/utils/hash';
 import { AuthorizeQueryDto, RegisterClientDto } from './dto/oauth.dto';
 
 export interface OAuthTokenResponse {
@@ -366,10 +367,6 @@ export class OAuthService {
 }
 
 // --- crypto helpers ---
-
-function sha256(input: string): string {
-  return createHash('sha256').update(input).digest('hex');
-}
 
 function base64urlSha256(input: string): string {
   return createHash('sha256').update(input).digest('base64url');

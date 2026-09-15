@@ -27,3 +27,100 @@ describe('AuthService.validateApiKey', () => {
     await expect(service.validateApiKey('mcp_abc123.secrethex')).rejects.toBeInstanceOf(UnauthorizedException);
   });
 });
+
+describe('AuthService refresh token rotation', () => {
+  const FUTURE = new Date(Date.now() + 60_000);
+  const user = { id: 'u1', email: 'a@b.com' };
+
+  function makeService(overrides: {
+    stored?: unknown;
+    findUser?: unknown;
+  }) {
+    const refreshToken = {
+      findUnique: jest.fn(async () => overrides.stored ?? null),
+      update: jest.fn(async () => ({})),
+      updateMany: jest.fn(async () => ({ count: 0 })),
+      create: jest.fn(async () => ({})),
+    };
+    const prisma = {
+      refreshToken,
+      user: { findUnique: jest.fn(async () => (overrides.findUser === undefined ? user : overrides.findUser)) },
+    };
+    const jwtService = { signAsync: jest.fn(async () => 'access-jwt') };
+    const config = {
+      getOrThrow: (key: string) => (key === 'OAUTH_ISSUER' ? 'http://localhost:3000' : `${key}-secret`),
+      get: (key: string, fallback: string) => fallback,
+    };
+    const service = new AuthService(prisma as never, {} as never, jwtService as never, config as never);
+    return { service, prisma };
+  }
+
+  it('rejects an unknown refresh token', async () => {
+    const { service } = makeService({ stored: null });
+    await expect(service.refreshTokens('nope')).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it('rotates a valid token: revokes the old one and issues a new one in the same family', async () => {
+    const stored = { id: 'rt1', userId: 'u1', familyId: 'fam1', revokedAt: null, rotatedToId: null, expiresAt: FUTURE };
+    const { service, prisma } = makeService({ stored });
+
+    const result = await service.refreshTokens('old-token');
+
+    expect(result.accessToken).toBe('access-jwt');
+    expect(prisma.refreshToken.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 'rt1' }, data: expect.objectContaining({ revokedAt: expect.any(Date) }) }),
+    );
+    expect(prisma.refreshToken.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ userId: 'u1', familyId: 'fam1' }) }),
+    );
+  });
+
+  it('detects reuse of an already-rotated token and revokes the whole family', async () => {
+    const stored = { id: 'rt1', userId: 'u1', familyId: 'fam1', revokedAt: null, rotatedToId: 'rt2-hash', expiresAt: FUTURE };
+    const { service, prisma } = makeService({ stored });
+
+    await expect(service.refreshTokens('stolen-token')).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(prisma.refreshToken.updateMany).toHaveBeenCalledWith({
+      where: { familyId: 'fam1', revokedAt: null },
+      data: { revokedAt: expect.any(Date) },
+    });
+  });
+
+  it('detects reuse of an already-revoked token and revokes the whole family', async () => {
+    const stored = { id: 'rt1', userId: 'u1', familyId: 'fam1', revokedAt: new Date(), rotatedToId: null, expiresAt: FUTURE };
+    const { service, prisma } = makeService({ stored });
+
+    await expect(service.refreshTokens('revoked-token')).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(prisma.refreshToken.updateMany).toHaveBeenCalled();
+  });
+
+  it('rejects an expired token', async () => {
+    const stored = { id: 'rt1', userId: 'u1', familyId: 'fam1', revokedAt: null, rotatedToId: null, expiresAt: new Date(0) };
+    const { service } = makeService({ stored });
+    await expect(service.refreshTokens('expired-token')).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it('rejects when the user behind a valid token no longer exists', async () => {
+    const stored = { id: 'rt1', userId: 'deleted-user', familyId: 'fam1', revokedAt: null, rotatedToId: null, expiresAt: FUTURE };
+    const { service } = makeService({ stored, findUser: null });
+    await expect(service.refreshTokens('token-for-deleted-user')).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it('logout revokes every non-revoked token in the presented token family', async () => {
+    const stored = { id: 'rt1', userId: 'u1', familyId: 'fam1', revokedAt: null, rotatedToId: null, expiresAt: FUTURE };
+    const { service, prisma } = makeService({ stored });
+
+    await service.logout('some-token');
+
+    expect(prisma.refreshToken.updateMany).toHaveBeenCalledWith({
+      where: { familyId: 'fam1', revokedAt: null },
+      data: { revokedAt: expect.any(Date) },
+    });
+  });
+
+  it('logout is a no-op for an unknown token (already logged out / never existed)', async () => {
+    const { service, prisma } = makeService({ stored: null });
+    await service.logout('unknown-token');
+    expect(prisma.refreshToken.updateMany).not.toHaveBeenCalled();
+  });
+});
