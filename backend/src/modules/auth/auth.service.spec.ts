@@ -1,4 +1,4 @@
-import { UnauthorizedException } from '@nestjs/common';
+import { GatewayTimeoutException, ServiceUnavailableException, UnauthorizedException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 
 describe('AuthService.validateApiKey', () => {
@@ -122,5 +122,42 @@ describe('AuthService refresh token rotation', () => {
     const { service, prisma } = makeService({ stored: null });
     await service.logout('unknown-token');
     expect(prisma.refreshToken.updateMany).not.toHaveBeenCalled();
+  });
+});
+
+describe('AuthService.loginWithGoogle timeout handling', () => {
+  const config = {
+    get: (key: string) =>
+      ({ GOOGLE_CLIENT_ID: 'id', GOOGLE_CLIENT_SECRET: 'secret', GOOGLE_TOKEN_URL: 'https://google.example/token' })[
+        key
+      ],
+  };
+  let originalFetch: typeof fetch;
+
+  beforeEach(() => {
+    originalFetch = global.fetch;
+  });
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  it('surfaces a Google timeout as GatewayTimeoutException (504), not a hang or generic 500', async () => {
+    global.fetch = jest.fn(() => {
+      const err = new Error('The operation was aborted due to timeout');
+      err.name = 'TimeoutError';
+      return Promise.reject(err);
+    }) as never;
+    const service = new AuthService({} as never, {} as never, {} as never, config as never);
+    await expect(service.loginWithGoogle('code', 'https://web.example/callback')).rejects.toBeInstanceOf(
+      GatewayTimeoutException,
+    );
+  });
+
+  it('surfaces a network error as ServiceUnavailableException, distinct from a timeout', async () => {
+    global.fetch = jest.fn(() => Promise.reject(new Error('ECONNREFUSED'))) as never;
+    const service = new AuthService({} as never, {} as never, {} as never, config as never);
+    await expect(service.loginWithGoogle('code', 'https://web.example/callback')).rejects.toBeInstanceOf(
+      ServiceUnavailableException,
+    );
   });
 });

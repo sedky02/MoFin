@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { BACKEND_URL, REFRESH_COOKIE, clearAuthCookies } from "@/lib/auth-cookies";
+import { BACKEND_TIMEOUT_MS, BACKEND_URL, REFRESH_COOKIE, clearAuthCookies } from "@/lib/auth-cookies";
 
 //export const dynamic = "force-dynamic";
 
@@ -17,9 +17,11 @@ export async function POST() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ refreshToken }),
         cache: "no-store",
+        signal: AbortSignal.timeout(BACKEND_TIMEOUT_MS),
       });
     } catch {
-      // Best-effort: logout must still clear cookies even if the backend is unreachable.
+      // Best-effort: logout must still clear cookies even if the backend is
+      // unreachable or times out — never hang the user's logout on it.
     }
   }
 

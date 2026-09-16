@@ -7,6 +7,7 @@ import { ApiClientError } from "@/lib/api";
  * - 400 → map field errors into the form via setError (returns true if mapped)
  * - 429 → "Too many requests" toast
  * - 409 → conflict toast with the server message
+ * - 504 → "slow" toast, distinct from a generic/broken failure (audit PERF-XX)
  * - otherwise → generic toast (or the server message if present)
  */
 export function handleApiError<T extends FieldValues>(
@@ -34,6 +35,10 @@ export function handleApiError<T extends FieldValues>(
     }
     if (error.status === 409) {
       toast.error(error.message);
+      return;
+    }
+    if (error.status === 504) {
+      toast.error("The server is taking too long to respond. Please try again.");
       return;
     }
     toast.error(error.message || opts?.fallback || "Something went wrong.");

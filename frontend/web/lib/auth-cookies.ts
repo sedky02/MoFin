@@ -12,6 +12,11 @@ export const REFRESH_MAX_AGE = 60 * 60 * 24 * 30;
 
 export const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:3000/api/v1";
 
+// Server-to-server calls to the backend must never hang indefinitely — a hung
+// backend would otherwise cascade into every request handler waiting forever
+// (audit PERF-XX).
+export const BACKEND_TIMEOUT_MS = 3_000;
+
 /**
  * Relays the real client IP from the inbound request so the backend's rate
  * limiter (which trusts this one BFF hop) sees individual users instead of
@@ -68,6 +73,7 @@ export async function refreshTokens(
       headers: { "Content-Type": "application/json", ...(req ? forwardedForHeader(req) : {}) },
       body: JSON.stringify({ refreshToken }),
       cache: "no-store",
+      signal: AbortSignal.timeout(BACKEND_TIMEOUT_MS),
     });
     if (!res.ok) return null;
     return (await res.json()) as BackendTokens;

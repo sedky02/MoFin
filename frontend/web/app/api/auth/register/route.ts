@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { BACKEND_URL, forwardedForHeader, setAuthCookies, type BackendTokens } from "@/lib/auth-cookies";
+import { BACKEND_TIMEOUT_MS, BACKEND_URL, forwardedForHeader, setAuthCookies, type BackendTokens } from "@/lib/auth-cookies";
 
 //export const dynamic = "force-dynamic";
 
@@ -12,16 +12,26 @@ export async function POST(req: Request) {
     );
   }
 
-  const upstream = await fetch(`${BACKEND_URL}/auth/register`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...forwardedForHeader(req) },
-    body: JSON.stringify({
-      email: body.email,
-      password: body.password,
-      ...(body.displayName ? { displayName: body.displayName } : {}),
-    }),
-    cache: "no-store",
-  });
+  let upstream: Response;
+  try {
+    upstream = await fetch(`${BACKEND_URL}/auth/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...forwardedForHeader(req) },
+      body: JSON.stringify({
+        email: body.email,
+        password: body.password,
+        ...(body.displayName ? { displayName: body.displayName } : {}),
+      }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(BACKEND_TIMEOUT_MS),
+    });
+  } catch (err) {
+    const timedOut = err instanceof Error && err.name === "TimeoutError";
+    return NextResponse.json(
+      { statusCode: 504, message: timedOut ? "The server is taking too long to respond." : "Could not reach the backend." },
+      { status: 504 },
+    );
+  }
 
   const data = await upstream.json().catch(() => ({}));
   if (!upstream.ok) {

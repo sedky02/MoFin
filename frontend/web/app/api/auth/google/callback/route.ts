@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { BACKEND_URL, setAuthCookies, type BackendTokens } from "@/lib/auth-cookies";
+import { BACKEND_TIMEOUT_MS, BACKEND_URL, setAuthCookies, type BackendTokens } from "@/lib/auth-cookies";
 
 const STATE_COOKIE = "google_oauth";
 
@@ -35,12 +35,18 @@ export async function GET(req: Request) {
     return fail("google_failed");
   }
 
-  const upstream = await fetch(`${BACKEND_URL}/auth/google`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ code, redirectUri }),
-    cache: "no-store",
-  });
+  let upstream: Response;
+  try {
+    upstream = await fetch(`${BACKEND_URL}/auth/google`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code, redirectUri }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(BACKEND_TIMEOUT_MS),
+    });
+  } catch {
+    return fail("google_failed");
+  }
   if (!upstream.ok) {
     return fail("google_failed");
   }

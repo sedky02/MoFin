@@ -1,4 +1,4 @@
-import { Injectable, ServiceUnavailableException, UnauthorizedException } from '@nestjs/common';
+import { GatewayTimeoutException, Injectable, ServiceUnavailableException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
@@ -99,17 +99,29 @@ export class AuthService {
       throw new ServiceUnavailableException('Google sign-in is not configured');
     }
 
-    const tokenRes = await fetch(tokenUrl, {
-      method: 'POST',
-      headers: { 'content-type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        code,
-        client_id: clientId,
-        client_secret: clientSecret,
-        redirect_uri: redirectUri,
-        grant_type: 'authorization_code',
-      }),
-    });
+    let tokenRes: Response;
+    try {
+      tokenRes = await fetch(tokenUrl, {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          code,
+          client_id: clientId,
+          client_secret: clientSecret,
+          redirect_uri: redirectUri,
+          grant_type: 'authorization_code',
+        }),
+        // A hung Google request must not hang this request indefinitely —
+        // 10s since this is a one-off external call, not the user-facing BFF
+        // proxy path (audit PERF-XX).
+        signal: AbortSignal.timeout(10_000),
+      });
+    } catch (err) {
+      if (err instanceof Error && err.name === 'TimeoutError') {
+        throw new GatewayTimeoutException('Google sign-in timed out');
+      }
+      throw new ServiceUnavailableException('Could not reach Google');
+    }
     if (!tokenRes.ok) {
       throw new UnauthorizedException('Google code exchange failed');
     }

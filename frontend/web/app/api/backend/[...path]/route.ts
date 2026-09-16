@@ -14,6 +14,11 @@ import {
 
 type Ctx = { params: Promise<{ path: string[] }> };
 
+// This proxy sits in the user-facing request path, so a hung backend must not
+// hang every dashboard load — a short timeout turns "spinner forever" into an
+// explicit, actionable 504 (audit PERF-XX).
+const PROXY_TIMEOUT_MS = 3_000;
+
 // ---- Module-level refresh lock ----
 // Concurrent 401s for the SAME refresh token share one in-flight refresh so we
 // don't stampede /auth/refresh. Keyed by refresh token so different users'
@@ -38,10 +43,14 @@ async function doRefresh(refreshToken: string, req: Request): Promise<BackendTok
       headers: { "Content-Type": "application/json", ...forwardedForHeader(req) },
       body: JSON.stringify({ refreshToken }),
       cache: "no-store",
+      signal: AbortSignal.timeout(PROXY_TIMEOUT_MS),
     });
     if (!res.ok) return null;
     return (await res.json()) as BackendTokens;
   } catch {
+    // A timed-out/failed refresh falls back to clearedUnauthorized() (401,
+    // "session expired") below — an explicit, actionable outcome rather than
+    // a hang.
     return null;
   }
 }
@@ -67,12 +76,29 @@ async function forward(
   const hasBody = req.method !== "GET" && req.method !== "HEAD";
   const body = hasBody ? await req.arrayBuffer() : undefined;
 
-  return fetch(target, {
-    method: req.method,
-    headers,
-    body: body && body.byteLength > 0 ? body : undefined,
-    cache: "no-store",
-  });
+  try {
+    return await fetch(target, {
+      method: req.method,
+      headers,
+      body: body && body.byteLength > 0 ? body : undefined,
+      cache: "no-store",
+      signal: AbortSignal.timeout(PROXY_TIMEOUT_MS),
+    });
+  } catch (err) {
+    // Explicit 504 instead of letting the route handler throw (which Next
+    // would turn into a generic, indistinguishable 500) — this is what lets
+    // handleApiError on the client tell "slow" apart from "broken".
+    const timedOut = err instanceof Error && err.name === "TimeoutError";
+    return Response.json(
+      {
+        statusCode: 504,
+        message: timedOut
+          ? "The server is taking too long to respond."
+          : "Could not reach the backend.",
+      },
+      { status: 504 },
+    );
+  }
 }
 
 async function handle(req: Request, ctx: Ctx): Promise<Response> {

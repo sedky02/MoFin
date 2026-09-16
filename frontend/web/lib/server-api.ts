@@ -4,14 +4,22 @@
 import { cookies } from "next/headers";
 import { ACCESS_COOKIE, BACKEND_URL } from "@/lib/auth-cookies";
 
+/** Server-to-server calls must never hang indefinitely (audit PERF-XX). */
+const BACKEND_TIMEOUT_MS = 5_000;
+
 /**
  * Thrown by serverGet for a failure that is NOT a routine "access token
- * expired" (401) — a genuine backend outage, a 5xx, or a network error. The
- * dashboard route's error.tsx boundary catches this and shows a real error
- * instead of silently rendering a confident, wrong "$0.00" dashboard.
+ * expired" (401) — a genuine backend outage, a 5xx, a network error, or a
+ * timeout. The dashboard route's error.tsx boundary catches this and shows a
+ * real error instead of silently rendering a confident, wrong "$0.00"
+ * dashboard. `timedOut` lets callers show "slow" rather than "broken".
  */
 export class ServerPrefetchError extends Error {
-  constructor(message: string, readonly cause?: unknown) {
+  constructor(
+    message: string,
+    readonly timedOut = false,
+    readonly cause?: unknown,
+  ) {
     super(message);
     this.name = "ServerPrefetchError";
   }
@@ -49,9 +57,15 @@ export async function serverGet<T>(
     res = await fetch(url, {
       headers: { authorization: `Bearer ${accessToken}` },
       cache: "no-store",
+      signal: AbortSignal.timeout(BACKEND_TIMEOUT_MS),
     });
   } catch (err) {
-    throw new ServerPrefetchError(`Could not reach the backend for ${clean}`, err);
+    const timedOut = err instanceof Error && err.name === "TimeoutError";
+    throw new ServerPrefetchError(
+      timedOut ? `Backend timed out for ${clean}` : `Could not reach the backend for ${clean}`,
+      timedOut,
+      err,
+    );
   }
 
   if (res.status >= 500) {

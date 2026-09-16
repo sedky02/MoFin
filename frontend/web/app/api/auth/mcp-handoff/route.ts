@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   ACCESS_COOKIE,
   REFRESH_COOKIE,
+  BACKEND_TIMEOUT_MS,
   BACKEND_URL,
   refreshTokens,
   setAuthCookies,
@@ -80,16 +81,24 @@ export async function GET(req: NextRequest) {
       method: "POST",
       headers: { Authorization: `Bearer ${accessToken}` },
       cache: "no-store",
+      signal: AbortSignal.timeout(BACKEND_TIMEOUT_MS),
     });
 
-  let upstream = await requestHandoff();
-
-  // Access token present but expired → one refresh + retry (mirrors the API proxy).
-  if (upstream.status === 401 && refreshToken && !refreshed) {
-    refreshed = await refreshTokens(refreshToken, req);
-    if (!refreshed) return bailToLogin();
-    accessToken = refreshed.accessToken;
+  let upstream: Response;
+  try {
     upstream = await requestHandoff();
+
+    // Access token present but expired → one refresh + retry (mirrors the API proxy).
+    if (upstream.status === 401 && refreshToken && !refreshed) {
+      refreshed = await refreshTokens(refreshToken, req);
+      if (!refreshed) return bailToLogin();
+      accessToken = refreshed.accessToken;
+      upstream = await requestHandoff();
+    }
+  } catch {
+    // Backend unreachable or timed out — fail the connector flow visibly
+    // rather than hanging (audit PERF-XX).
+    return bailToLogin();
   }
 
   if (!upstream.ok) {
