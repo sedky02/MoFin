@@ -125,14 +125,31 @@ describe('GoalsService', () => {
       );
       // Same occurredAt-vs-createdAt standardization as the BALANCE case above.
       const call = aggregate.mock.calls[0][0] as {
-        where: { createdAt?: unknown; transaction?: { occurredAt?: unknown; category?: unknown } };
+        where: { createdAt?: unknown; transaction?: { occurredAt?: unknown; type?: unknown; category?: unknown } };
       };
       expect(call.where.createdAt).toBeUndefined();
       expect(call.where.transaction?.occurredAt).toEqual({
         gte: new Date('2026-01-01'),
         lte: new Date('2026-01-15'),
       });
-      expect(call.where.transaction?.category).toEqual({ type: 'INCOME' });
+      // Matches the transaction's own `type` (like AnalyticsService does), not
+      // a category's type — category never gates whether an item counts, so
+      // uncategorized income/expense transactions are no longer excluded
+      // (audit DATA-XX).
+      expect(call.where.transaction?.type).toBe('INCOME');
+      expect(call.where.transaction?.category).toBeUndefined();
+    });
+
+    it('EXPENSE filters by the transaction type EXPENSE, not by category', async () => {
+      const { service, aggregate } = makeServiceWithAggregate(new Prisma.Decimal('50'));
+      await service.computeProgressAmount(
+        { type: GoalType.EXPENSE, accountId: 'a1', userId: 'u1' },
+        new Date('2026-01-01'),
+        new Date('2026-01-31'),
+        new Date('2026-01-15'),
+      );
+      const call = aggregate.mock.calls[0][0] as { where: { transaction?: { type?: unknown } } };
+      expect(call.where.transaction?.type).toBe('EXPENSE');
     });
 
     it('INCOME/EXPENSE treats no matching rows (null sum) as zero', async () => {

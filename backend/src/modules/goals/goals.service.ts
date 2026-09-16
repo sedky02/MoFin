@@ -1,6 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { Goal, GoalInstance, GoalRecurrenceUnit, GoalStatus, GoalType, Prisma } from '@prisma/client';
+import { Goal, GoalInstance, GoalRecurrenceUnit, GoalStatus, GoalType, Prisma, TransactionType } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
 import { AccountsService } from '../accounts/accounts.service';
 import { CreateGoalDto, ListGoalsQueryDto, UpdateGoalDto } from './dto/goals.dto';
@@ -168,12 +168,21 @@ export class GoalsService {
       }, new Prisma.Decimal(0));
     }
 
-    const categoryType = goal.type === GoalType.INCOME ? 'INCOME' : 'EXPENSE';
+    // Matches transactions by their OWN type field, exactly like
+    // AnalyticsService.getMonthlySummary does (`if (transaction.type ===
+    // TransactionType.INCOME) ...`) — never by the transaction's or an item's
+    // *category* type. Category is purely a display/breakdown concern
+    // (Category.type is independent of TransactionType); gating inclusion on
+    // it excluded every uncategorized transaction from the goal entirely
+    // (audit DATA-XX), and ignored that a split item's own category has no
+    // bearing on whether the item counts as income/expense — the parent
+    // transaction's type already decides that for every one of its items.
+    const transactionType = goal.type === GoalType.INCOME ? TransactionType.INCOME : TransactionType.EXPENSE;
     const { _sum } = await this.prisma.transactionItem.aggregate({
       where: {
         userId: goal.userId,
         accountId: goal.accountId,
-        transaction: { occurredAt: { gte: periodStart, lte: boundary }, category: { type: categoryType } },
+        transaction: { occurredAt: { gte: periodStart, lte: boundary }, type: transactionType },
       },
       _sum: { amount: true },
     });
