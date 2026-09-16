@@ -2,6 +2,9 @@
 
 import * as React from "react";
 import { useAccounts } from "@/hooks/useAccounts";
+import { useLedgerBalance } from "@/hooks/useLedger";
+import { useUser } from "@/hooks/useUser";
+import { pickPrimaryCurrency } from "@/lib/format";
 import { AccountSwitcher } from "@/components/dashboard/account-switcher";
 import { BalanceCards } from "@/components/dashboard/balance-cards";
 import { MonthlySummaryCard } from "@/components/dashboard/monthly-summary";
@@ -17,17 +20,24 @@ import { GoalsSummary } from "@/components/dashboard/goals-summary";
 export function DashboardBody({
   year,
   month,
-  primaryCurrency,
+  initialPrimaryCurrency,
 }: {
   year: number;
   month: number;
-  primaryCurrency: string;
+  initialPrimaryCurrency: string;
 }) {
   const { data: accounts } = useAccounts();
+  const { data: user } = useUser();
+  const { data: balances } = useLedgerBalance();
   const [accountId, setAccountId] = React.useState<string | undefined>(
     undefined,
   );
   const selectedAccount = accounts?.find((a) => a.id === accountId);
+  // Re-derived from live query data (hydrated from the server prefetch when
+  // that succeeded, fetched fresh through the BFF's refresh-on-401 path when
+  // it didn't) so a guessed currency is never the final answer — it
+  // self-corrects the moment real data arrives.
+  const primaryCurrency = pickPrimaryCurrency(balances, user, initialPrimaryCurrency);
   const currency = selectedAccount?.currency ?? primaryCurrency;
 
   return (

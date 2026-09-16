@@ -1,7 +1,7 @@
 // Money formatting + input parsing. All display goes through here so currency is
 // never hardcoded and amounts always render with tabular figures.
 import { Decimal, add, tryParse } from "@/lib/decimal";
-import type { Transaction } from "@/lib/types";
+import type { LedgerBalance, Transaction, User } from "@/lib/types";
 
 const formatterCache = new Map<string, Intl.NumberFormat>();
 
@@ -109,6 +109,33 @@ export function parseBalanceKey(key: string): {
   const idx = key.lastIndexOf(":");
   if (idx === -1) return { currency: key };
   return { accountId: key.slice(0, idx), currency: key.slice(idx + 1) };
+}
+
+/**
+ * Best-guess "primary" currency for currency-agnostic UI (e.g. the dashboard's
+ * account-less view) when there's no single selected account to defer to.
+ * Prefers the user's explicit setting, then the most common balance currency,
+ * then `fallback` — pass the last-known/server-prefetched value there so a
+ * client caller only ever shows a guess as a placeholder until live data
+ * resolves, never as a silently "final" answer.
+ */
+export function pickPrimaryCurrency(
+  balances: LedgerBalance[] | null | undefined,
+  user: User | null | undefined,
+  fallback = "USD",
+): string {
+  const settingCurrency = user?.settings?.defaultCurrency;
+  if (typeof settingCurrency === "string" && settingCurrency) return settingCurrency;
+  if (balances && balances.length) {
+    // Most common currency among balances.
+    const counts = new Map<string, number>();
+    for (const b of balances) {
+      const { currency } = parseBalanceKey(b.key);
+      counts.set(currency, (counts.get(currency) ?? 0) + 1);
+    }
+    return [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0];
+  }
+  return fallback;
 }
 
 /** Currency-match guard used in the transaction form's Zod superRefine. */

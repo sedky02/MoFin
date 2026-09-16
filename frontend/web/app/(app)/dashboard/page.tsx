@@ -7,30 +7,13 @@ import {
   ledgerKeys,
   analyticsKeys,
   searchKeys,
+  userKeys,
 } from "@/lib/query-keys";
-import { parseBalanceKey } from "@/lib/format";
+import { pickPrimaryCurrency } from "@/lib/format";
 import type { LedgerBalance, MonthlySummary, Transaction, User } from "@/lib/types";
 import { DashboardBody } from "@/components/dashboard/dashboard-body";
 import { PageHeader } from "@/components/common/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
-
-function pickPrimaryCurrency(
-  balances: LedgerBalance[] | null,
-  user: User | null,
-): string {
-  const settingCurrency = user?.settings?.defaultCurrency;
-  if (typeof settingCurrency === "string" && settingCurrency) return settingCurrency;
-  if (balances && balances.length) {
-    // Most common currency among balances.
-    const counts = new Map<string, number>();
-    for (const b of balances) {
-      const { currency } = parseBalanceKey(b.key);
-      counts.set(currency, (counts.get(currency) ?? 0) + 1);
-    }
-    return [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0];
-  }
-  return "USD";
-}
 
 // Static shell. The dynamic, user-specific dashboard streams in via <Suspense>
 // (required under cacheComponents: runtime data access — cookies in serverGet,
@@ -66,8 +49,13 @@ async function DashboardContent() {
   if (balances) queryClient.setQueryData(ledgerKeys.balance(undefined, undefined), balances);
   if (summary) queryClient.setQueryData(analyticsKeys.monthly(year, month), summary);
   if (recent) queryClient.setQueryData(searchKeys.list({ recent: 10 }), recent);
+  if (user) queryClient.setQueryData(userKeys.me, user);
 
-  const primaryCurrency = pickPrimaryCurrency(balances, user);
+  // Best-guess only for the very first paint (and only when prefetch actually
+  // had data to guess from) — DashboardBody re-derives this from live
+  // useUser()/useLedgerBalance() query data and self-corrects once that
+  // resolves, rather than ever showing this guess as a final answer.
+  const initialPrimaryCurrency = pickPrimaryCurrency(balances, user);
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
@@ -76,7 +64,7 @@ async function DashboardContent() {
         description="Here's where your money stands today."
       />
 
-      <DashboardBody year={year} month={month} primaryCurrency={primaryCurrency} />
+      <DashboardBody year={year} month={month} initialPrimaryCurrency={initialPrimaryCurrency} />
     </HydrationBoundary>
   );
 }
@@ -102,6 +90,6 @@ function DashboardSkeleton() {
 }
 
 function greeting(name?: string | null): string {
-  // const first = name?.trim().split(/\s+/)[0];
-  return `Welcome back, ${name}`;
+  const first = name?.trim().split(/\s+/)[0];
+  return first ? `Welcome back, ${first}` : "Welcome back";
 }
