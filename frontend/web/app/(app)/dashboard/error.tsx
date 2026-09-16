@@ -1,6 +1,8 @@
 "use client";
 
+import * as React from "react";
 import { ErrorState } from "@/components/common/states";
+import { reportError } from "@/lib/error-reporting";
 
 /**
  * Catches ServerPrefetchError (and any other render-time error) from the
@@ -12,6 +14,7 @@ import { ErrorState } from "@/components/common/states";
  * in the message itself rather than read as a property.
  */
 export default function DashboardError({ error, reset }: { error: Error; reset: () => void }) {
+  React.useEffect(() => reportError(error, { boundary: "dashboard" }), [error]);
   const timedOut = error.message?.toLowerCase().includes("timed out");
   return (
     <ErrorState
