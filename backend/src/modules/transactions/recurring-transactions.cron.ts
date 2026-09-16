@@ -67,7 +67,7 @@ export class RecurringTransactionsCron {
               db
             );
 
-            const next = computeNextOccurrence(root.occurredAt.getDate(), root.nextOccurrenceAt!, root.recurringInterval!);
+            const next = computeNextOccurrence(root.occurredAt.getUTCDate(), root.nextOccurrenceAt!, root.recurringInterval!);
             const ended = root.recurringEndDate ? next > root.recurringEndDate : false;
 
             await db.transaction.update({

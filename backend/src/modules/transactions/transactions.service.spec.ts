@@ -71,23 +71,36 @@ describe('TransactionsService.validateCommand', () => {
 });
 
 describe('computeNextOccurrence', () => {
+  // UTC throughout (audit DATA-XX): a local-time constructor here would pass
+  // or fail depending on the machine's TZ, exactly the bug being fixed. Every
+  // date below is built with Date.UTC and every anchorDay comes from
+  // getUTCDate(), mirroring the real callers.
   it('advances by one month, keeping the anchor day', () => {
-    const next = computeNextOccurrence(15, new Date(2026, 0, 15), RecurringInterval.MONTHLY);
-    expect(next).toEqual(new Date(2026, 1, 15));
+    const next = computeNextOccurrence(15, new Date(Date.UTC(2026, 0, 15)), RecurringInterval.MONTHLY);
+    expect(next).toEqual(new Date(Date.UTC(2026, 1, 15)));
   });
 
   it('clamps to the last day of a shorter month', () => {
-    const next = computeNextOccurrence(31, new Date(2026, 0, 31), RecurringInterval.MONTHLY);
-    expect(next).toEqual(new Date(2026, 1, 28));
+    const next = computeNextOccurrence(31, new Date(Date.UTC(2026, 0, 31)), RecurringInterval.MONTHLY);
+    expect(next).toEqual(new Date(Date.UTC(2026, 1, 28)));
   });
 
   it('recovers the anchor day once the target month is long enough again', () => {
-    const next = computeNextOccurrence(31, new Date(2026, 1, 28), RecurringInterval.MONTHLY);
-    expect(next).toEqual(new Date(2026, 2, 31));
+    const next = computeNextOccurrence(31, new Date(Date.UTC(2026, 1, 28)), RecurringInterval.MONTHLY);
+    expect(next).toEqual(new Date(Date.UTC(2026, 2, 31)));
   });
 
   it('advances by one year for YEARLY, clamping Feb 29 in a non-leap year', () => {
-    const next = computeNextOccurrence(29, new Date(2024, 1, 29), RecurringInterval.YEARLY);
-    expect(next).toEqual(new Date(2025, 1, 28));
+    const next = computeNextOccurrence(29, new Date(Date.UTC(2024, 1, 29)), RecurringInterval.YEARLY);
+    expect(next).toEqual(new Date(Date.UTC(2025, 1, 28)));
+  });
+
+  it('is unaffected by the server TZ at a month boundary (23:30 on the 31st stays the 31st)', () => {
+    // A transaction entered at 23:30 UTC on Jan 31st must still anchor to the
+    // 31st and land on Feb 28th — not silently roll to Feb 1st because the
+    // server happens to run in a timezone ahead of UTC.
+    const lateOnThe31st = new Date(Date.UTC(2026, 0, 31, 23, 30));
+    const next = computeNextOccurrence(lateOnThe31st.getUTCDate(), lateOnThe31st, RecurringInterval.MONTHLY);
+    expect(next).toEqual(new Date(Date.UTC(2026, 1, 28, 23, 30)));
   });
 });

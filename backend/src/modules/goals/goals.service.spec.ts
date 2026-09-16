@@ -1,5 +1,5 @@
-import { GoalStatus, GoalType, Prisma } from '@prisma/client';
-import { GoalsService } from './goals.service';
+import { GoalRecurrenceUnit, GoalStatus, GoalType, Prisma } from '@prisma/client';
+import { GoalsService, resolvePeriodBounds } from './goals.service';
 
 describe('GoalsService', () => {
   function makeService() {
@@ -203,6 +203,35 @@ describe('GoalsService', () => {
 
       expect(result).toBe(goal);
       expect(prisma.goal.findFirst).toHaveBeenCalledWith({ where: { id: 'g1', userId: 'u1' } });
+    });
+  });
+
+  describe('resolvePeriodBounds', () => {
+    // UTC throughout (audit DATA-XX): a local-time constructor here would put
+    // a transaction near midnight on the last day of the month in a different
+    // period depending only on the server's TZ, silently disagreeing with
+    // AnalyticsService.getMonthlySummary (which is UTC) in production.
+    it('MONTH: resolves calendar-month bounds in UTC regardless of server TZ', () => {
+      // 23:30 UTC on Jan 31st — in a server TZ ahead of UTC (e.g. UTC+1),
+      // local-time construction would wrongly place this in February.
+      const anchor = new Date(Date.UTC(2026, 0, 31, 23, 30));
+      const [start, end] = resolvePeriodBounds(anchor, GoalRecurrenceUnit.MONTH);
+      expect(start).toEqual(new Date(Date.UTC(2026, 0, 1)));
+      expect(end).toEqual(new Date(Date.UTC(2026, 0, 31, 23, 59, 59, 999)));
+    });
+
+    it('MONTH: December rolls the period end into January of the next year, not local-time February', () => {
+      const anchor = new Date(Date.UTC(2026, 11, 15));
+      const [start, end] = resolvePeriodBounds(anchor, GoalRecurrenceUnit.MONTH);
+      expect(start).toEqual(new Date(Date.UTC(2026, 11, 1)));
+      expect(end).toEqual(new Date(Date.UTC(2026, 11, 31, 23, 59, 59, 999)));
+    });
+
+    it('YEAR: resolves calendar-year bounds in UTC', () => {
+      const anchor = new Date(Date.UTC(2026, 5, 15, 23, 30));
+      const [start, end] = resolvePeriodBounds(anchor, GoalRecurrenceUnit.YEAR);
+      expect(start).toEqual(new Date(Date.UTC(2026, 0, 1)));
+      expect(end).toEqual(new Date(Date.UTC(2026, 11, 31, 23, 59, 59, 999)));
     });
   });
 });

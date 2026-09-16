@@ -5,21 +5,26 @@ import { PrismaService } from '../../database/prisma.service';
 import { AccountsService } from '../accounts/accounts.service';
 import { CreateGoalDto, ListGoalsQueryDto, UpdateGoalDto } from './dto/goals.dto';
 
+// UTC throughout (matching AnalyticsService.getMonthlySummary) — a
+// local-server-time constructor here would put a transaction at 23:30 on the
+// 31st in a different month/year depending only on the server's TZ, silently
+// disagreeing with analytics in production (which typically runs UTC) while
+// looking fine in local dev (audit DATA-XX).
 function startOfMonth(date: Date): Date {
-  return new Date(date.getFullYear(), date.getMonth(), 1);
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
 }
 function endOfMonth(date: Date): Date {
-  return new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59, 999);
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0, 23, 59, 59, 999));
 }
 function startOfYear(date: Date): Date {
-  return new Date(date.getFullYear(), 0, 1);
+  return new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
 }
 function endOfYear(date: Date): Date {
-  return new Date(date.getFullYear(), 11, 31, 23, 59, 59, 999);
+  return new Date(Date.UTC(date.getUTCFullYear(), 11, 31, 23, 59, 59, 999));
 }
 
 /** Resolves the calendar-aligned [start, end] bounds of the period containing `anchor`. */
-function resolvePeriodBounds(anchor: Date, unit: GoalRecurrenceUnit): [Date, Date] {
+export function resolvePeriodBounds(anchor: Date, unit: GoalRecurrenceUnit): [Date, Date] {
   return unit === GoalRecurrenceUnit.MONTH
     ? [startOfMonth(anchor), endOfMonth(anchor)]
     : [startOfYear(anchor), endOfYear(anchor)];

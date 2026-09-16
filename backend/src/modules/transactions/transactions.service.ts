@@ -15,14 +15,22 @@ type Db = Prisma.TransactionClient;
  * day-of-month when the target month is shorter (e.g. Jan 31 -> Feb 28 -> Mar 31).
  * `anchor` is always the root transaction's original occurredAt, so the clamp
  * is computed against the fixed anchor day rather than compounding drift.
+ *
+ * UTC throughout (matching AnalyticsService.getMonthlySummary and
+ * GoalsService's period bounds) — `anchorDay` must come from `getUTCDate()`
+ * too, since mixing a local-time day-of-month with UTC month arithmetic here
+ * would reintroduce the same server-timezone-dependent bug at month
+ * boundaries (audit DATA-XX).
  */
 export function computeNextOccurrence(anchorDay: number, from: Date, interval: RecurringInterval): Date {
   const monthsToAdd = interval === RecurringInterval.MONTHLY ? 1 : 12;
-  const year = from.getFullYear();
-  const month = from.getMonth() + monthsToAdd;
-  const daysInTargetMonth = new Date(year, month + 1, 0).getDate();
+  const year = from.getUTCFullYear();
+  const month = from.getUTCMonth() + monthsToAdd;
+  const daysInTargetMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
   const day = Math.min(anchorDay, daysInTargetMonth);
-  return new Date(year, month, day, from.getHours(), from.getMinutes(), from.getSeconds(), from.getMilliseconds());
+  return new Date(
+    Date.UTC(year, month, day, from.getUTCHours(), from.getUTCMinutes(), from.getUTCSeconds(), from.getUTCMilliseconds())
+  );
 }
 
 @Injectable()
@@ -73,7 +81,7 @@ export class TransactionsService {
                 recurringFromAccountId: command.fromAccountId,
                 recurringToAccountId: command.toAccountId,
                 nextOccurrenceAt: computeNextOccurrence(
-                  command.occurredAt.getDate(),
+                  command.occurredAt.getUTCDate(),
                   command.occurredAt,
                   command.recurringInterval!
                 )
@@ -154,10 +162,10 @@ export class TransactionsService {
     let nextOccurrenceAt = root.nextOccurrenceAt;
     if (command.recurringInterval && command.recurringInterval !== root.recurringInterval && nextOccurrenceAt) {
       const lastOccurrenceAt = new Date(nextOccurrenceAt);
-      lastOccurrenceAt.setMonth(
-        lastOccurrenceAt.getMonth() - (root.recurringInterval === RecurringInterval.MONTHLY ? 1 : 12)
+      lastOccurrenceAt.setUTCMonth(
+        lastOccurrenceAt.getUTCMonth() - (root.recurringInterval === RecurringInterval.MONTHLY ? 1 : 12)
       );
-      nextOccurrenceAt = computeNextOccurrence(root.occurredAt.getDate(), lastOccurrenceAt, command.recurringInterval);
+      nextOccurrenceAt = computeNextOccurrence(root.occurredAt.getUTCDate(), lastOccurrenceAt, command.recurringInterval);
     }
 
     return this.prisma.transaction.update({
