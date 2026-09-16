@@ -28,8 +28,13 @@ import { UsersModule } from './modules/users/users.module';
     ConfigModule.forRoot({ isGlobal: true, validate: validateEnv }),
     EventEmitterModule.forRoot({ wildcard: false }),
     ScheduleModule.forRoot(),
-    // Global baseline rate limit; auth endpoints tighten this further (audit B5).
-    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
+    // Global baseline rate limit; auth endpoints tighten this further (audit
+    // B5) via AuthThrottlerGuard. 300/min accommodates a dashboard's normal
+    // burst of parallel fetches (accounts, transactions, goals, analytics,
+    // etc. firing on load/refetch) per real client IP — see main.ts's
+    // `trust proxy` setting, which is what makes "per real client IP" true
+    // instead of this counting the whole user base as one BFF client.
+    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 300 }]),
     AuthModule,
     UsersModule,
     AccountsModule,

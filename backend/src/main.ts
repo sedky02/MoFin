@@ -1,11 +1,18 @@
 import { RequestMethod } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  // The BFF (Next.js) is the only thing that ever calls this backend directly,
+  // so there is exactly one hop between us and the real client. Trusting it
+  // lets Express (and ThrottlerGuard's default req.ip tracker) read the real
+  // client IP from X-Forwarded-For instead of seeing the BFF's IP for every
+  // request from every user (SEC-XX).
+  app.set('trust proxy', 1);
   // OAuth discovery documents (RFC 8414 / RFC 9728) must live at the origin root,
   // so they are excluded from the `api/v1` prefix. The authorize/token/register
   // endpoints stay under the prefix — claude.ai reads their URLs from the metadata.

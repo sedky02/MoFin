@@ -6,6 +6,7 @@ import {
   BACKEND_URL,
   ACCESS_MAX_AGE,
   REFRESH_MAX_AGE,
+  forwardedForHeader,
   type BackendTokens,
 } from "@/lib/auth-cookies";
 
@@ -19,10 +20,10 @@ type Ctx = { params: Promise<{ path: string[] }> };
 // requests (which race on a shared Node process) never share state.
 const refreshPromises = new Map<string, Promise<BackendTokens | null>>();
 
-async function refreshTokens(refreshToken: string): Promise<BackendTokens | null> {
+async function refreshTokens(refreshToken: string, req: Request): Promise<BackendTokens | null> {
   let promise = refreshPromises.get(refreshToken);
   if (!promise) {
-    promise = doRefresh(refreshToken).finally(() => {
+    promise = doRefresh(refreshToken, req).finally(() => {
       refreshPromises.delete(refreshToken); // release so a later 401 can refresh again
     });
     refreshPromises.set(refreshToken, promise);
@@ -30,11 +31,11 @@ async function refreshTokens(refreshToken: string): Promise<BackendTokens | null
   return promise;
 }
 
-async function doRefresh(refreshToken: string): Promise<BackendTokens | null> {
+async function doRefresh(refreshToken: string, req: Request): Promise<BackendTokens | null> {
   try {
     const res = await fetch(`${BACKEND_URL}/auth/refresh`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...forwardedForHeader(req) },
       body: JSON.stringify({ refreshToken }),
       cache: "no-store",
     });
@@ -58,6 +59,10 @@ async function forward(
   const contentType = req.headers.get("content-type");
   if (contentType) headers.set("content-type", contentType);
   if (accessToken) headers.set("authorization", `Bearer ${accessToken}`);
+  // Relay the real client IP so the backend's rate limiter (which trusts this
+  // one BFF hop) sees individual users instead of this server's single IP.
+  const forwardedFor = req.headers.get("x-forwarded-for");
+  if (forwardedFor) headers.set("x-forwarded-for", forwardedFor);
 
   const hasBody = req.method !== "GET" && req.method !== "HEAD";
   const body = hasBody ? await req.arrayBuffer() : undefined;
@@ -91,7 +96,7 @@ async function handle(req: Request, ctx: Ctx): Promise<Response> {
     return clearedUnauthorized();
   }
 
-  const tokens = await refreshTokens(refreshToken);
+  const tokens = await refreshTokens(refreshToken, req);
   if (!tokens) {
     return clearedUnauthorized();
   }

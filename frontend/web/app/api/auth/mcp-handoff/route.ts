@@ -70,7 +70,7 @@ export async function GET(req: NextRequest) {
 
   // Access token gone but refresh alive → refresh before the handoff.
   if (!accessToken && refreshToken) {
-    refreshed = await refreshTokens(refreshToken);
+    refreshed = await refreshTokens(refreshToken, req);
     if (!refreshed) return bailToLogin();
     accessToken = refreshed.accessToken;
   }
@@ -86,7 +86,7 @@ export async function GET(req: NextRequest) {
 
   // Access token present but expired → one refresh + retry (mirrors the API proxy).
   if (upstream.status === 401 && refreshToken && !refreshed) {
-    refreshed = await refreshTokens(refreshToken);
+    refreshed = await refreshTokens(refreshToken, req);
     if (!refreshed) return bailToLogin();
     accessToken = refreshed.accessToken;
     upstream = await requestHandoff();

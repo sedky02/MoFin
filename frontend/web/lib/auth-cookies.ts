@@ -12,6 +12,17 @@ export const REFRESH_MAX_AGE = 60 * 60 * 24 * 30;
 
 export const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:3000/api/v1";
 
+/**
+ * Relays the real client IP from the inbound request so the backend's rate
+ * limiter (which trusts this one BFF hop) sees individual users instead of
+ * this server's single IP — otherwise every login/register attempt across
+ * every user looks like it came from one client.
+ */
+export function forwardedForHeader(req: Request): HeadersInit {
+  const forwardedFor = req.headers.get("x-forwarded-for");
+  return forwardedFor ? { "x-forwarded-for": forwardedFor } : {};
+}
+
 function baseCookieOptions(maxAge: number) {
   return {
     httpOnly: true,
@@ -49,11 +60,12 @@ export interface BackendTokens {
  */
 export async function refreshTokens(
   refreshToken: string,
+  req?: Request,
 ): Promise<BackendTokens | null> {
   try {
     const res = await fetch(`${BACKEND_URL}/auth/refresh`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...(req ? forwardedForHeader(req) : {}) },
       body: JSON.stringify({ refreshToken }),
       cache: "no-store",
     });
