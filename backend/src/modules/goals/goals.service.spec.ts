@@ -60,36 +60,73 @@ describe('GoalsService', () => {
   });
 
   describe('computeProgressAmount', () => {
-    function makeServiceWithItems(items: unknown[]) {
-      const prisma = { transactionItem: { findMany: jest.fn(async () => items) } };
-      return new GoalsService(prisma as never, {} as never);
+    // BALANCE nets CREDIT/DEBIT via a DB groupBy instead of loading every row.
+    function makeServiceWithGroupedRows(rows: unknown[]) {
+      const groupBy = jest.fn(async () => rows);
+      const prisma = { transactionItem: { groupBy } };
+      return { service: new GoalsService(prisma as never, {} as never), groupBy };
     }
 
-    it('BALANCE sums all items up to the boundary regardless of periodStart', async () => {
-      const items = [
-        { direction: 'CREDIT', amount: new Prisma.Decimal('100') },
-        { direction: 'DEBIT', amount: new Prisma.Decimal('30') },
+    // INCOME/EXPENSE just need a total, via a DB aggregate.
+    function makeServiceWithAggregate(sum: Prisma.Decimal | null) {
+      const aggregate = jest.fn(async () => ({ _sum: { amount: sum } }));
+      const prisma = { transactionItem: { aggregate } };
+      return { service: new GoalsService(prisma as never, {} as never), aggregate };
+    }
+
+    it('BALANCE nets CREDIT/DEBIT from grouped DB rows, up to the boundary regardless of periodStart', async () => {
+      const rows = [
+        { direction: 'CREDIT', _sum: { amount: new Prisma.Decimal('100') } },
+        { direction: 'DEBIT', _sum: { amount: new Prisma.Decimal('30') } },
       ];
-      const service = makeServiceWithItems(items);
+      const { service, groupBy } = makeServiceWithGroupedRows(rows);
       const result = await service.computeProgressAmount(
-        { type: GoalType.BALANCE, accountId: 'a1' },
+        { type: GoalType.BALANCE, accountId: 'a1', userId: 'u1' },
         new Date('2026-01-01'),
         new Date('2026-01-31'),
         new Date('2026-01-15'),
       );
       expect(result.toString()).toBe('70');
+      // userId included as defence in depth (audit PERF-XX).
+      expect(groupBy).toHaveBeenCalledWith(
+        expect.objectContaining({ where: expect.objectContaining({ userId: 'u1', accountId: 'a1' }) }),
+      );
     });
 
-    it('INCOME sums matching items within the period', async () => {
-      const items = [{ amount: new Prisma.Decimal('200') }];
-      const service = makeServiceWithItems(items);
+    it('BALANCE treats a group with no matching rows (null _sum) as zero', async () => {
+      const { service } = makeServiceWithGroupedRows([{ direction: 'CREDIT', _sum: { amount: null } }]);
       const result = await service.computeProgressAmount(
-        { type: GoalType.INCOME, accountId: 'a1' },
+        { type: GoalType.BALANCE, accountId: 'a1', userId: 'u1' },
+        new Date('2026-01-01'),
+        new Date('2026-01-31'),
+        new Date('2026-01-15'),
+      );
+      expect(result.toString()).toBe('0');
+    });
+
+    it('INCOME sums matching items within the period via a DB aggregate', async () => {
+      const { service, aggregate } = makeServiceWithAggregate(new Prisma.Decimal('200'));
+      const result = await service.computeProgressAmount(
+        { type: GoalType.INCOME, accountId: 'a1', userId: 'u1' },
         new Date('2026-01-01'),
         new Date('2026-01-31'),
         new Date('2026-01-15'),
       );
       expect(result.toString()).toBe('200');
+      expect(aggregate).toHaveBeenCalledWith(
+        expect.objectContaining({ where: expect.objectContaining({ userId: 'u1', accountId: 'a1' }) }),
+      );
+    });
+
+    it('INCOME/EXPENSE treats no matching rows (null sum) as zero', async () => {
+      const { service } = makeServiceWithAggregate(null);
+      const result = await service.computeProgressAmount(
+        { type: GoalType.EXPENSE, accountId: 'a1', userId: 'u1' },
+        new Date('2026-01-01'),
+        new Date('2026-01-31'),
+        new Date('2026-01-15'),
+      );
+      expect(result.toString()).toBe('0');
     });
   });
 

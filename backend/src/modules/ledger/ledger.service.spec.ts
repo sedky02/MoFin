@@ -5,7 +5,7 @@ import { LedgerService } from './ledger.service';
 describe('LedgerService', () => {
   const account = (currency: string) => ({ id: `acc-${currency}`, currency });
 
-  function makeService(accounts: Record<string, { id: string; currency: string }>, items: unknown[] = []) {
+  function makeService(accounts: Record<string, { id: string; currency: string }>, groupedRows: unknown[] = []) {
     const accountsService = {
       assertOwned: jest.fn(async (_userId: string, id: string) => {
         const found = Object.values(accounts).find((a) => a.id === id);
@@ -14,7 +14,7 @@ describe('LedgerService', () => {
       }),
     };
     const prisma = {
-      transactionItem: { findMany: jest.fn(async () => items) },
+      transactionItem: { groupBy: jest.fn(async () => groupedRows) },
     };
     return new LedgerService(prisma as never, accountsService as never);
   }
@@ -125,14 +125,36 @@ describe('LedgerService', () => {
   });
 
   describe('getBalance', () => {
-    it('adds CREDITs and subtracts DEBITs', async () => {
-      const items = [
-        { accountId: 'a', currency: 'USD', direction: 'CREDIT', amount: new Prisma.Decimal('100') },
-        { accountId: 'a', currency: 'USD', direction: 'DEBIT', amount: new Prisma.Decimal('30') },
+    it('adds CREDITs and subtracts DEBITs from grouped DB rows', async () => {
+      const rows = [
+        { accountId: 'a', currency: 'USD', direction: 'CREDIT', _sum: { amount: new Prisma.Decimal('100') } },
+        { accountId: 'a', currency: 'USD', direction: 'DEBIT', _sum: { amount: new Prisma.Decimal('30') } },
       ];
-      const service = makeService({ a: { id: 'a', currency: 'USD' } }, items);
+      const service = makeService({ a: { id: 'a', currency: 'USD' } }, rows);
       const result = await service.getBalance('u1', { accountId: 'a' });
       expect(result).toEqual([{ key: 'USD', balance: '70' }]);
+    });
+
+    it('keys by accountId:currency when no single account is requested', async () => {
+      const rows = [
+        { accountId: 'a', currency: 'USD', direction: 'CREDIT', _sum: { amount: new Prisma.Decimal('50') } },
+        { accountId: 'b', currency: 'EUR', direction: 'DEBIT', _sum: { amount: new Prisma.Decimal('10') } },
+      ];
+      const service = makeService({}, rows);
+      const result = await service.getBalance('u1', {});
+      expect(result).toEqual(
+        expect.arrayContaining([
+          { key: 'a:USD', balance: '50' },
+          { key: 'b:EUR', balance: '-10' },
+        ]),
+      );
+    });
+
+    it('treats a group with no matching rows (null _sum) as zero', async () => {
+      const rows = [{ accountId: 'a', currency: 'USD', direction: 'CREDIT', _sum: { amount: null } }];
+      const service = makeService({ a: { id: 'a', currency: 'USD' } }, rows);
+      const result = await service.getBalance('u1', { accountId: 'a' });
+      expect(result).toEqual([{ key: 'USD', balance: '0' }]);
     });
   });
 });

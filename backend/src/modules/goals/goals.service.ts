@@ -138,7 +138,7 @@ export class GoalsService {
   }
 
   async computeProgressAmount(
-    goal: Pick<Goal, 'type' | 'accountId'>,
+    goal: Pick<Goal, 'type' | 'accountId' | 'userId'>,
     periodStart: Date,
     periodEnd: Date,
     now: Date,
@@ -146,24 +146,33 @@ export class GoalsService {
     const boundary = now < periodEnd ? now : periodEnd;
 
     if (goal.type === GoalType.BALANCE) {
-      const items = await this.prisma.transactionItem.findMany({
-        where: { accountId: goal.accountId, createdAt: { lte: boundary } },
+      // Net CREDIT/DEBIT in the database (2-3 grouped rows) instead of pulling
+      // every TransactionItem the account has ever had into Node and summing
+      // there (audit PERF-XX). userId is included as defence in depth — this
+      // query is otherwise safe only because accountId was ownership-checked
+      // upstream.
+      const rows = await this.prisma.transactionItem.groupBy({
+        by: ['direction'],
+        where: { userId: goal.userId, accountId: goal.accountId, createdAt: { lte: boundary } },
+        _sum: { amount: true },
       });
-      return items.reduce(
-        (sum, item) => (item.direction === 'CREDIT' ? sum.plus(item.amount) : sum.minus(item.amount)),
-        new Prisma.Decimal(0),
-      );
+      return rows.reduce((sum, row) => {
+        const amount = row._sum.amount ?? new Prisma.Decimal(0);
+        return row.direction === 'CREDIT' ? sum.plus(amount) : sum.minus(amount);
+      }, new Prisma.Decimal(0));
     }
 
     const categoryType = goal.type === GoalType.INCOME ? 'INCOME' : 'EXPENSE';
-    const items = await this.prisma.transactionItem.findMany({
+    const { _sum } = await this.prisma.transactionItem.aggregate({
       where: {
+        userId: goal.userId,
         accountId: goal.accountId,
         createdAt: { gte: periodStart, lte: boundary },
         transaction: { category: { type: categoryType } },
       },
+      _sum: { amount: true },
     });
-    return items.reduce((sum, item) => sum.plus(item.amount), new Prisma.Decimal(0));
+    return _sum.amount ?? new Prisma.Decimal(0);
   }
 
   /**

@@ -119,13 +119,21 @@ export class LedgerService {
       ...(query.currency ? { currency: query.currency } : {}),
     };
 
-    const items = await this.prisma.transactionItem.findMany({ where });
-    const balances = new Map<string, Prisma.Decimal>();
+    // Net CREDIT/DEBIT per (account, currency) in the database — a handful of
+    // grouped rows, not the whole ledger's worth of TransactionItem rows
+    // pulled into Node and summed there (audit PERF-XX).
+    const rows = await this.prisma.transactionItem.groupBy({
+      by: ['accountId', 'currency', 'direction'],
+      where,
+      _sum: { amount: true },
+    });
 
-    for (const item of items) {
-      const key = query.accountId ? item.currency : `${item.accountId}:${item.currency}`;
+    const balances = new Map<string, Prisma.Decimal>();
+    for (const row of rows) {
+      const key = query.accountId ? row.currency : `${row.accountId}:${row.currency}`;
       const current = balances.get(key) ?? new Prisma.Decimal(0);
-      const signed = item.direction === LedgerDirection.CREDIT ? item.amount : item.amount.negated();
+      const sum = row._sum.amount ?? new Prisma.Decimal(0);
+      const signed = row.direction === LedgerDirection.CREDIT ? sum : sum.negated();
       balances.set(key, current.plus(signed));
     }
 
