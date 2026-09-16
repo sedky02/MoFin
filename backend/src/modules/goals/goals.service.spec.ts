@@ -62,14 +62,14 @@ describe('GoalsService', () => {
   describe('computeProgressAmount', () => {
     // BALANCE nets CREDIT/DEBIT via a DB groupBy instead of loading every row.
     function makeServiceWithGroupedRows(rows: unknown[]) {
-      const groupBy = jest.fn(async () => rows);
+      const groupBy = jest.fn((_args: unknown) => Promise.resolve(rows));
       const prisma = { transactionItem: { groupBy } };
       return { service: new GoalsService(prisma as never, {} as never), groupBy };
     }
 
     // INCOME/EXPENSE just need a total, via a DB aggregate.
     function makeServiceWithAggregate(sum: Prisma.Decimal | null) {
-      const aggregate = jest.fn(async () => ({ _sum: { amount: sum } }));
+      const aggregate = jest.fn((_args: unknown) => Promise.resolve({ _sum: { amount: sum } }));
       const prisma = { transactionItem: { aggregate } };
       return { service: new GoalsService(prisma as never, {} as never), aggregate };
     }
@@ -91,6 +91,13 @@ describe('GoalsService', () => {
       expect(groupBy).toHaveBeenCalledWith(
         expect.objectContaining({ where: expect.objectContaining({ userId: 'u1', accountId: 'a1' }) }),
       );
+      // Filtered by the transaction's occurredAt (when the money moved), not
+      // the ledger row's createdAt — must agree with AnalyticsService's
+      // monthly summary on which period a back-dated entry belongs to
+      // (audit DATA-XX).
+      const call = groupBy.mock.calls[0][0] as { where: { createdAt?: unknown; transaction?: { occurredAt?: unknown } } };
+      expect(call.where.createdAt).toBeUndefined();
+      expect(call.where.transaction?.occurredAt).toEqual({ lte: new Date('2026-01-15') });
     });
 
     it('BALANCE treats a group with no matching rows (null _sum) as zero', async () => {
@@ -116,6 +123,16 @@ describe('GoalsService', () => {
       expect(aggregate).toHaveBeenCalledWith(
         expect.objectContaining({ where: expect.objectContaining({ userId: 'u1', accountId: 'a1' }) }),
       );
+      // Same occurredAt-vs-createdAt standardization as the BALANCE case above.
+      const call = aggregate.mock.calls[0][0] as {
+        where: { createdAt?: unknown; transaction?: { occurredAt?: unknown; category?: unknown } };
+      };
+      expect(call.where.createdAt).toBeUndefined();
+      expect(call.where.transaction?.occurredAt).toEqual({
+        gte: new Date('2026-01-01'),
+        lte: new Date('2026-01-15'),
+      });
+      expect(call.where.transaction?.category).toEqual({ type: 'INCOME' });
     });
 
     it('INCOME/EXPENSE treats no matching rows (null sum) as zero', async () => {

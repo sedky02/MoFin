@@ -151,9 +151,15 @@ export class GoalsService {
       // there (audit PERF-XX). userId is included as defence in depth — this
       // query is otherwise safe only because accountId was ownership-checked
       // upstream.
+      //
+      // Filtered by the transaction's occurredAt (when the money moved), not
+      // the ledger row's createdAt (when it was entered) — AnalyticsService's
+      // monthly summary already keys off occurredAt, so a back-dated entry
+      // (catching up on a receipt from last month) must land in the same
+      // period on both surfaces instead of disagreeing (audit DATA-XX).
       const rows = await this.prisma.transactionItem.groupBy({
         by: ['direction'],
-        where: { userId: goal.userId, accountId: goal.accountId, createdAt: { lte: boundary } },
+        where: { userId: goal.userId, accountId: goal.accountId, transaction: { occurredAt: { lte: boundary } } },
         _sum: { amount: true },
       });
       return rows.reduce((sum, row) => {
@@ -167,8 +173,7 @@ export class GoalsService {
       where: {
         userId: goal.userId,
         accountId: goal.accountId,
-        createdAt: { gte: periodStart, lte: boundary },
-        transaction: { category: { type: categoryType } },
+        transaction: { occurredAt: { gte: periodStart, lte: boundary }, category: { type: categoryType } },
       },
       _sum: { amount: true },
     });
