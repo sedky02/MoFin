@@ -1,6 +1,6 @@
 // Money formatting + input parsing. All display goes through here so currency is
 // never hardcoded and amounts always render with tabular figures.
-import { Decimal, tryParse } from "@/lib/decimal";
+import { Decimal, add, tryParse } from "@/lib/decimal";
 import type { Transaction } from "@/lib/types";
 
 const formatterCache = new Map<string, Intl.NumberFormat>();
@@ -62,11 +62,14 @@ export function formatMoney(
 
 /**
  * Positive display amount for a transaction, derived from its ledger legs.
- * A Transaction has no amount column; the money lives in `items`. Both legs of
- * a TRANSFER carry the same amount, so the first item is correct for all types.
+ * A Transaction has no amount column; the money lives in `items`. A TRANSFER's
+ * two legs (from + to) both carry the full amount, so the first item is
+ * correct there — but an INCOME/EXPENSE can be split into multiple items
+ * whose amounts sum to the total, so those must be summed.
  */
 export function transactionAmount(tx: Transaction): string {
-  return tx.items[0]?.amount ?? "0";
+  if (tx.type === "TRANSFER") return tx.items[0]?.amount ?? "0";
+  return tx.items.reduce((sum, item) => add(sum, item.amount), "0");
 }
 
 /**
