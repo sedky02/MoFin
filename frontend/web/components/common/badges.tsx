@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { tryParse } from "@/lib/decimal";
 import type { TransactionType, DraftStatus, AccountType, GoalType, GoalStatus } from "@/lib/types";
 import { ArrowDownLeft, ArrowUpRight, ArrowLeftRight, PiggyBank, TrendingUp, TrendingDown } from "lucide-react";
 
@@ -44,21 +45,38 @@ export function TypeBadge({
   );
 }
 
-/** Confidence pill: green ≥0.8, yellow ≥0.5, red <0.5. */
+/**
+ * Confidence pill: green ≥0.8, yellow ≥0.5, red <0.5.
+ * `score` is a decimal string (Prisma Decimal serializes to a string, not a
+ * number), so it's parsed the same way money strings are — never coerced
+ * with native +/parseFloat.
+ */
 export function ConfidencePill({
   score,
   className,
 }: {
-  score: number;
+  score: string;
   className?: string;
 }) {
-  const pct = Math.round(score * 100);
-  const tier =
-    score >= 0.8
-      ? "bg-success/15 text-success"
-      : score >= 0.5
-        ? "bg-warning/15 text-warning"
-        : "bg-destructive/15 text-destructive";
+  const parsed = tryParse(score);
+  if (!parsed) {
+    return (
+      <span
+        className={cn(
+          "inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground tabular",
+          className,
+        )}
+      >
+        —
+      </span>
+    );
+  }
+  const pct = Math.round(parsed.toNumber() * 100);
+  const tier = parsed.greaterThanOrEqualTo("0.8")
+    ? "bg-success/15 text-success"
+    : parsed.greaterThanOrEqualTo("0.5")
+      ? "bg-warning/15 text-warning"
+      : "bg-destructive/15 text-destructive";
   return (
     <span
       className={cn(

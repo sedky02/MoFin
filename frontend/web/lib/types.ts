@@ -108,7 +108,8 @@ export interface DraftTransaction {
   id: string;
   rawInput: string;
   parsedData: ParsedTransactionData;
-  confidenceScore: number;
+  // Prisma Decimal serializes to a string over the wire, not a number.
+  confidenceScore: string;
   status: DraftStatus;
   reason?: string | null;
   createdAt: string;
@@ -164,7 +165,8 @@ export interface MonthlySummary {
   month: number;
   income: string;
   expenses: string;
-  savingsRate: number;
+  // analytics.service.ts computes this via `.toFixed(4)` — a decimal string, not a number.
+  savingsRate: string;
   categoryBreakdown: CategoryBreakdownItem[];
 }
 
