@@ -10,7 +10,7 @@ import {
   userKeys,
 } from "@/lib/query-keys";
 import { pickPrimaryCurrency } from "@/lib/format";
-import type { LedgerBalance, MonthlySummary, Transaction, User } from "@/lib/types";
+import type { LedgerBalance, MonthlySummary, Paginated, Transaction, User } from "@/lib/types";
 import { DashboardBody } from "@/components/dashboard/dashboard-body";
 import { PageHeader } from "@/components/common/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -41,14 +41,17 @@ async function DashboardContent() {
   const [balances, summary, recent, user] = await Promise.all([
     serverGet<LedgerBalance[]>("/ledger/balance"),
     serverGet<MonthlySummary>("/analytics/monthly-summary", { year, month }),
-    serverGet<Transaction[]>("/search/transactions", { limit: 10, offset: 0 }),
+    serverGet<Paginated<Transaction>>("/search/transactions", { limit: 10, offset: 0 }),
     serverGet<User>("/users/me"),
   ]);
 
   // Prime the cache only for successful fetches; the client refetches the rest.
+  // useRecentTransactions unwraps the paginated envelope to a flat array
+  // before it ever reaches components, so the primed cache must match that
+  // same shape (mirroring it here avoids `.map is not a function` on hydrate).
   if (balances) queryClient.setQueryData(ledgerKeys.balance(undefined, undefined), balances);
   if (summary) queryClient.setQueryData(analyticsKeys.monthly(year, month), summary);
-  if (recent) queryClient.setQueryData(searchKeys.list({ recent: 10 }), recent);
+  if (recent) queryClient.setQueryData(searchKeys.list({ recent: 10 }), recent.data);
   if (user) queryClient.setQueryData(userKeys.me, user);
 
   // Best-guess only for the very first paint (and only when prefetch actually
