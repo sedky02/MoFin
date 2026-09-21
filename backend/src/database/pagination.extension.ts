@@ -1,7 +1,12 @@
 import { Prisma } from '@prisma/client';
 import { PaginatedResult } from '../common/dto/pagination';
 
-interface PaginateInput {
+// Exported (not just used locally) because PrismaService.paginated's
+// inferred public type references it — declaration emit (`nest build`)
+// requires every type reachable from a public class member to be nameable
+// from outside this module, unlike plain `tsc --noEmit`, which doesn't
+// surface this (TS4029).
+export interface PaginateInput {
   limit: number;
   offset: number;
 }
