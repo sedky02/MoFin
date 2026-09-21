@@ -6,15 +6,31 @@ import { CreateCategoryDto, UpdateCategoryDto } from './dto/categories.dto';
 export class CategoriesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  create(userId: string, dto: CreateCategoryDto) {
-    return this.prisma.category.create({ data: { ...dto, userId } });
+  /**
+   * `isSystem` isn't a stored column — it's derived from `userId === null`
+   * (a global/shared category has no owner) and computed here so the
+   * frontend can tell global categories apart from the caller's own without
+   * ever seeing a raw `userId`. Previously this was never included in API
+   * responses at all, so the frontend's `isSystem` filtering always saw
+   * `undefined` and rendered every category (global ones included) with
+   * live edit/delete buttons that then 404'd against `update`/`remove`'s
+   * ownership check (audit DATA-XX).
+   */
+  private toResponse<T extends { userId: string | null }>(category: T): T & { isSystem: boolean } {
+    return { ...category, isSystem: category.userId === null };
   }
 
-  list(userId: string) {
-    return this.prisma.category.findMany({
+  async create(userId: string, dto: CreateCategoryDto) {
+    const category = await this.prisma.category.create({ data: { ...dto, userId } });
+    return this.toResponse(category);
+  }
+
+  async list(userId: string) {
+    const categories = await this.prisma.category.findMany({
       where: { OR: [{ userId }, { userId: null }] },
       orderBy: [{ type: 'asc' }, { name: 'asc' }]
     });
+    return categories.map((category) => this.toResponse(category));
   }
 
   async assertAvailable(userId: string, categoryId?: string | null) {
@@ -29,7 +45,8 @@ export class CategoriesService {
   async update(userId: string, categoryId: string, dto: UpdateCategoryDto) {
     const category = await this.prisma.category.findFirst({ where: { id: categoryId, userId } });
     if (!category) throw new NotFoundException(`Category ${categoryId} not found`);
-    return this.prisma.category.update({ where: { id: categoryId }, data: dto });
+    const updated = await this.prisma.category.update({ where: { id: categoryId }, data: dto });
+    return this.toResponse(updated);
   }
 
   async remove(userId: string, categoryId: string) {
