@@ -34,12 +34,17 @@ export class DraftTransactionsService {
   }
 
   list(userId: string, query: DraftListQuery) {
-    return this.prisma.draftTransaction.findMany({
+    return this.prisma.paginated.draftTransaction.paginate({
       where: { userId, ...(query.status ? { status: query.status } : {}) },
       orderBy: { createdAt: 'desc' },
-      skip: query.offset,
-      take: query.limit
+      limit: query.limit,
+      offset: query.offset
     });
+  }
+
+  /** Cheap count for the pending-drafts sidebar badge — no row fetch at all. */
+  countPending(userId: string) {
+    return this.prisma.draftTransaction.count({ where: { userId, status: DraftStatus.PENDING } });
   }
 
   async approve(userId: string, draftId: string, overrides?: Partial<ParsedDraftTransaction>) {

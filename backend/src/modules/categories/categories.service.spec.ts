@@ -3,34 +3,49 @@ import { CategoriesService } from './categories.service';
 
 describe('CategoriesService.isSystem', () => {
   function makeService(overrides: {
-    findMany?: unknown[];
+    paginateResult?: unknown[];
     create?: unknown;
     update?: unknown;
     findFirst?: unknown;
   }) {
+    const paginate = jest.fn(async () => ({
+      data: overrides.paginateResult ?? [],
+      total: (overrides.paginateResult ?? []).length,
+      limit: 20,
+      offset: 0,
+    }));
     const prisma = {
       category: {
-        findMany: jest.fn(async () => overrides.findMany ?? []),
         create: jest.fn(async () => overrides.create ?? {}),
         update: jest.fn(async () => overrides.update ?? {}),
         findFirst: jest.fn(async () => (overrides.findFirst === undefined ? null : overrides.findFirst)),
       },
+      paginated: { category: { paginate } },
     };
-    return { service: new CategoriesService(prisma as never), prisma };
+    return { service: new CategoriesService(prisma as never), prisma, paginate };
   }
 
   it('list() marks a userId:null row as isSystem:true and the caller\'s own row as isSystem:false', async () => {
     const { service } = makeService({
-      findMany: [
+      paginateResult: [
         { id: 'c1', userId: 'u1', name: 'Coffee' },
         { id: 'c2', userId: null, name: 'Groceries' },
       ],
     });
-    const result = await service.list('u1');
-    expect(result).toEqual([
+    const result = await service.list('u1', { limit: 20, offset: 0 });
+    expect(result.data).toEqual([
       { id: 'c1', userId: 'u1', name: 'Coffee', isSystem: false },
       { id: 'c2', userId: null, name: 'Groceries', isSystem: true },
     ]);
+    expect(result.total).toBe(2);
+  });
+
+  it('list() forwards limit/offset to the pagination extension', async () => {
+    const { service, paginate } = makeService({});
+    await service.list('u1', { limit: 5, offset: 10 });
+    expect(paginate).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { OR: [{ userId: 'u1' }, { userId: null }] }, limit: 5, offset: 10 }),
+    );
   });
 
   it('create() returns isSystem:false for the always user-owned created category', async () => {

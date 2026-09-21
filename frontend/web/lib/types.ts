@@ -182,5 +182,10 @@ export interface ApiError {
   message: string;
 }
 
-// Paginated/list responses are returned as bare arrays by this backend.
-export type Paginated<T> = T[];
+// Paginated list responses (search/transactions, draft-transactions).
+export interface Paginated<T> {
+  data: T[];
+  total: number;
+  limit: number;
+  offset: number;
+}

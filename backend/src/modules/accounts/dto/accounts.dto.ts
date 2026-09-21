@@ -1,6 +1,7 @@
 import { AccountType } from '@prisma/client';
 import { z } from 'zod';
 import { currencySchema } from '../../../common/dto/common-fields';
+import { paginationSchema } from '../../../common/dto/pagination';
 
 export const createAccountSchema = z.object({
   name: z.string().min(1),
@@ -17,7 +18,7 @@ export const updateAccountSchema = z.object({
 });
 export type UpdateAccountDto = z.infer<typeof updateAccountSchema>;
 
-export const listAccountsQuerySchema = z.object({
+export const listAccountsQuerySchema = paginationSchema.extend({
   status: z.enum(['active', 'archived', 'all']).default('active'),
 });
 export type ListAccountsQueryDto = z.infer<typeof listAccountsQuerySchema>;

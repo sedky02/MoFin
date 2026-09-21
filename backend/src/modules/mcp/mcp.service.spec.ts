@@ -54,14 +54,16 @@ describe('McpService.dispatch', () => {
     expect(analytics.getMonthlySummary).toHaveBeenCalledWith('u1', 2026, 6, true);
   });
 
-  it('routes list_accounts to AccountsService', () => {
-    service.dispatch('u1', 'list_accounts', {});
-    expect(accounts.list).toHaveBeenCalledWith('u1');
+  it('routes list_accounts to AccountsService, forwarding pagination args', () => {
+    const args = { status: 'active', limit: 20, offset: 0 };
+    service.dispatch('u1', 'list_accounts', args);
+    expect(accounts.list).toHaveBeenCalledWith('u1', args);
   });
 
-  it('routes list_goals to GoalsService', () => {
-    service.dispatch('u1', 'list_goals', {});
-    expect(goals.list).toHaveBeenCalledWith('u1');
+  it('routes list_goals to GoalsService, forwarding pagination args', () => {
+    const args = { status: 'active', limit: 20, offset: 0 };
+    service.dispatch('u1', 'list_goals', args);
+    expect(goals.list).toHaveBeenCalledWith('u1', args);
   });
 
   it('routes get_goal using the goalId argument', () => {
@@ -69,8 +71,8 @@ describe('McpService.dispatch', () => {
     expect(goals.findOne).toHaveBeenCalledWith('u1', 'g1');
   });
 
-  it('routes get_goal_history using the goalId argument', () => {
-    service.dispatch('u1', 'get_goal_history', { goalId: 'g1' });
-    expect(goals.history).toHaveBeenCalledWith('u1', 'g1');
+  it('routes get_goal_history using the goalId argument, forwarding pagination args separately', () => {
+    service.dispatch('u1', 'get_goal_history', { goalId: 'g1', limit: 20, offset: 0 });
+    expect(goals.history).toHaveBeenCalledWith('u1', 'g1', { limit: 20, offset: 0 });
   });
 });

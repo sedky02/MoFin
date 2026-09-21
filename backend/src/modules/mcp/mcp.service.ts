@@ -38,13 +38,15 @@ export class McpService {
         return this.analyticsService.getMonthlySummary(userId, year, month, refresh);
       }
       case 'list_accounts':
-        return this.accountsService.list(userId);
+        return this.accountsService.list(userId, args as never);
       case 'list_goals':
-        return this.goalsService.list(userId);
+        return this.goalsService.list(userId, args as never);
       case 'get_goal':
         return this.goalsService.findOne(userId, (args as { goalId: string }).goalId);
-      case 'get_goal_history':
-        return this.goalsService.history(userId, (args as { goalId: string }).goalId);
+      case 'get_goal_history': {
+        const { goalId, ...query } = args as { goalId: string; limit: number; offset: number };
+        return this.goalsService.history(userId, goalId, query);
+      }
     }
   }
 }

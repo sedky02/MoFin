@@ -40,7 +40,7 @@ export function DraftList({ status }: { status: DraftStatus }) {
   const reject = useRejectDraft();
 
   // React Compiler memoizes this derivation — no manual useMemo.
-  const flat = data?.pages.flat() ?? [];
+  const flat = data?.pages.flatMap((page) => page.data) ?? [];
 
   // Instant card removal on approve/reject (React 19 useOptimistic).
   const [optimistic, removeOptimistic] = React.useOptimistic(

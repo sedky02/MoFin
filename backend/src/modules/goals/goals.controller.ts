@@ -7,9 +7,11 @@ import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import { AuthenticatedUser } from '../../common/types/authenticated-user';
 import {
   CreateGoalDto,
+  GoalHistoryQueryDto,
   ListGoalsQueryDto,
   UpdateGoalDto,
   createGoalSchema,
+  goalHistoryQuerySchema,
   listGoalsQuerySchema,
   updateGoalSchema,
 } from './dto/goals.dto';
@@ -37,7 +39,7 @@ export class GoalsController {
     @CurrentUser() user: AuthenticatedUser,
     @Query(new ZodValidationPipe(listGoalsQuerySchema)) query: ListGoalsQueryDto,
   ) {
-    return this.goalsService.list(user.id, query.status);
+    return this.goalsService.list(user.id, query);
   }
 
   @Get(':id')
@@ -46,8 +48,13 @@ export class GoalsController {
   }
 
   @Get(':id/history')
-  history(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
-    return this.goalsService.history(user.id, id);
+  @ApiZodQuery(goalHistoryQuerySchema)
+  history(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Query(new ZodValidationPipe(goalHistoryQuerySchema)) query: GoalHistoryQueryDto,
+  ) {
+    return this.goalsService.history(user.id, id, query);
   }
 
   @Patch(':id')

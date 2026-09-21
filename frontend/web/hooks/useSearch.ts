@@ -4,7 +4,7 @@ import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { searchKeys } from "@/lib/query-keys";
 import { STALE } from "@/lib/query-client";
-import type { Transaction } from "@/lib/types";
+import type { Paginated, Transaction } from "@/lib/types";
 
 export interface SearchParams {
   q?: string;
@@ -24,34 +24,36 @@ function toQuery(params: SearchParams, offset: number) {
 
 /** Offset-paginated infinite search. Cursor = offset. */
 export function useSearchTransactions(params: SearchParams) {
-  const limit = params.limit ?? 25;
   return useInfiniteQuery({
     queryKey: searchKeys.list(params as Record<string, unknown>),
     queryFn: ({ pageParam }) =>
-      api.get<Transaction[]>("/search/transactions", toQuery(params, pageParam)),
+      api.get<Paginated<Transaction>>("/search/transactions", toQuery(params, pageParam)),
     initialPageParam: 0,
-    getNextPageParam: (lastPage, allPages) =>
-      lastPage.length === limit ? allPages.length * limit : undefined,
+    getNextPageParam: (lastPage) => {
+      const nextOffset = lastPage.offset + lastPage.data.length;
+      return nextOffset < lastPage.total ? nextOffset : undefined;
+    },
     staleTime: STALE.transactions,
   });
 }
 
 /**
  * Page-number paginated search (the /search page uses numbered pages rather than
- * infinite scroll). We over-fetch one extra row to know if a next page exists.
+ * infinite scroll). `total` (from the backend) tells us whether a next page exists —
+ * no more over-fetching a sentinel row, which also means `limit` can safely reach
+ * the pagination schema's max (100) without silently exceeding it (limit + 1 used to).
  */
 export function useSearchPage(params: SearchParams, page: number, limit: number) {
   const offset = (page - 1) * limit;
   return useQuery({
     queryKey: searchKeys.list({ ...params, _page: page, _limit: limit }),
     queryFn: async () => {
-      const rows = await api.get<Transaction[]>("/search/transactions", {
+      const result = await api.get<Paginated<Transaction>>("/search/transactions", {
         ...stripEmpty(params),
-        limit: limit + 1, // sentinel row to detect a next page
+        limit,
         offset,
       });
-      const hasNext = rows.length > limit;
-      return { rows: hasNext ? rows.slice(0, limit) : rows, hasNext };
+      return { rows: result.data, hasNext: offset + result.data.length < result.total, total: result.total };
     },
     staleTime: STALE.transactions,
     placeholderData: (prev) => prev, // keep prior page visible while loading the next
@@ -72,8 +74,14 @@ function stripEmpty(params: SearchParams): SearchParams {
 export function useRecentTransactions(limit = 10, accountId?: string) {
   return useQuery({
     queryKey: searchKeys.list({ recent: limit, accountId }),
-    queryFn: () =>
-      api.get<Transaction[]>("/search/transactions", { limit, offset: 0, accountId }),
+    queryFn: async () => {
+      const result = await api.get<Paginated<Transaction>>("/search/transactions", {
+        limit,
+        offset: 0,
+        accountId,
+      });
+      return result.data;
+    },
     staleTime: STALE.transactions,
   });
 }

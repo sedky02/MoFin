@@ -16,6 +16,7 @@ import {
 import type {
   DraftTransaction,
   DraftStatus,
+  Paginated,
   ParsedTransactionData,
   Transaction,
 } from "@/lib/types";
@@ -29,29 +30,31 @@ export function useDrafts(status: DraftStatus) {
   return useInfiniteQuery({
     queryKey: draftKeys.list(status),
     queryFn: ({ pageParam }) =>
-      api.get<DraftTransaction[]>("/draft-transactions", {
+      api.get<Paginated<DraftTransaction>>("/draft-transactions", {
         status,
         limit: PAGE,
         offset: pageParam,
       }),
     initialPageParam: 0,
-    getNextPageParam: (lastPage, allPages) =>
-      lastPage.length === PAGE ? allPages.length * PAGE : undefined,
+    getNextPageParam: (lastPage) => {
+      const nextOffset = lastPage.offset + lastPage.data.length;
+      return nextOffset < lastPage.total ? nextOffset : undefined;
+    },
     staleTime: 30_000,
   });
 }
 
-/** PENDING count for the sidebar nav badge. */
+/**
+ * PENDING count for the sidebar nav badge — a single COUNT(*) via a
+ * dedicated endpoint, not a fetch-up-to-100-rows-and-count-them hack (which
+ * used to silently cap the badge at 100).
+ */
 export function usePendingDraftCount() {
   return useQuery({
     queryKey: [...draftKeys.all, "pending-count"],
     queryFn: async () => {
-      const list = await api.get<DraftTransaction[]>("/draft-transactions", {
-        status: "PENDING",
-        limit: 100,
-        offset: 0,
-      });
-      return list.length;
+      const { count } = await api.get<{ count: number }>("/draft-transactions/pending-count");
+      return count;
     },
     staleTime: 30_000,
   });

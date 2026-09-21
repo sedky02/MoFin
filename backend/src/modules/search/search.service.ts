@@ -17,7 +17,7 @@ export class SearchService {
     if (query.accountId) await this.accountsService.assertOwned(userId, query.accountId);
     if (query.categoryId) await this.categoriesService.assertAvailable(userId, query.categoryId);
 
-    return this.prisma.transaction.findMany({
+    return this.prisma.paginated.transaction.paginate({
       where: {
         userId,
         description: { contains: query.q, mode: 'insensitive' },
@@ -39,8 +39,8 @@ export class SearchService {
       },
       include: { items: true, category: true },
       orderBy: [{ occurredAt: 'desc' }, { createdAt: 'desc' }],
-      skip: query.offset,
-      take: query.limit
+      limit: query.limit,
+      offset: query.offset
     });
   }
 }

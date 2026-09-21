@@ -4,16 +4,28 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { goalKeys } from "@/lib/query-keys";
 import { STALE } from "@/lib/query-client";
-import type { Goal, GoalInstance, GoalRecurrenceUnit, GoalType } from "@/lib/types";
+import type { Goal, GoalInstance, GoalRecurrenceUnit, GoalType, Paginated } from "@/lib/types";
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/form-errors";
 
 export type GoalListStatus = "active" | "archived" | "all";
 
+// No infinite-scroll UI for goals or goal history — 100 (the backend's max
+// page size) comfortably covers a real user's list while keeping the
+// endpoint itself bounded rather than truly unbounded.
+const GOALS_PAGE_SIZE = 100;
+
 export function useGoals(status: GoalListStatus = "active", enabled = true) {
   return useQuery({
     queryKey: goalKeys.list(status),
-    queryFn: () => api.get<Goal[]>("/goals", { status }),
+    queryFn: async () => {
+      const result = await api.get<Paginated<Goal>>("/goals", {
+        status,
+        limit: GOALS_PAGE_SIZE,
+        offset: 0,
+      });
+      return result.data;
+    },
     staleTime: STALE.goals,
     enabled,
   });
@@ -22,7 +34,13 @@ export function useGoals(status: GoalListStatus = "active", enabled = true) {
 export function useGoalHistory(goalId: string, enabled = true) {
   return useQuery({
     queryKey: goalKeys.history(goalId),
-    queryFn: () => api.get<GoalInstance[]>(`/goals/${goalId}/history`),
+    queryFn: async () => {
+      const result = await api.get<Paginated<GoalInstance>>(`/goals/${goalId}/history`, {
+        limit: GOALS_PAGE_SIZE,
+        offset: 0,
+      });
+      return result.data;
+    },
     staleTime: STALE.goals,
     enabled,
   });

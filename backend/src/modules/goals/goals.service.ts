@@ -3,7 +3,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { Goal, GoalInstance, GoalRecurrenceUnit, GoalStatus, GoalType, Prisma, TransactionType } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
 import { AccountsService } from '../accounts/accounts.service';
-import { CreateGoalDto, ListGoalsQueryDto, UpdateGoalDto } from './dto/goals.dto';
+import { CreateGoalDto, GoalHistoryQueryDto, ListGoalsQueryDto, UpdateGoalDto } from './dto/goals.dto';
 
 // UTC throughout (matching AnalyticsService.getMonthlySummary) — a
 // local-server-time constructor here would put a transaction at 23:30 on the
@@ -74,15 +74,28 @@ export class GoalsService {
     });
   }
 
-  async list(userId: string, status: ListGoalsQueryDto['status'] = 'active') {
+  async list(userId: string, query: ListGoalsQueryDto) {
     const archivedFilter =
-      status === 'active' ? { archivedAt: null } : status === 'archived' ? { archivedAt: { not: null } } : {};
-    const goals = await this.prisma.goal.findMany({
+      query.status === 'active'
+        ? { archivedAt: null }
+        : query.status === 'archived'
+          ? { archivedAt: { not: null } }
+          : {};
+    const page = await this.prisma.paginated.goal.paginate({
       where: { userId, ...archivedFilter },
       orderBy: { createdAt: 'desc' },
       include: { instances: { orderBy: { periodStart: 'desc' }, take: 1 } },
+      limit: query.limit,
+      offset: query.offset,
     });
-    return Promise.all(goals.map((goal) => this.withLiveProgress(goal)));
+    // Cast needed: the generic paginate() extension can't preserve an inline
+    // `include`'s literal shape through its own generic inference (a known
+    // Prisma limitation for $allModels extension methods) — the include
+    // itself is still applied at the DB level, this only restores the type.
+    const data = await Promise.all(
+      page.data.map((goal) => this.withLiveProgress(goal as Goal & { instances: GoalInstance[] }))
+    );
+    return { ...page, data };
   }
 
   // Deliberately does NOT exclude archived goals — stopping a goal should not make its
@@ -102,9 +115,14 @@ export class GoalsService {
     return this.withLiveProgress(goal);
   }
 
-  async history(userId: string, goalId: string) {
+  async history(userId: string, goalId: string, query: GoalHistoryQueryDto) {
     await this.assertOwned(userId, goalId);
-    return this.prisma.goalInstance.findMany({ where: { goalId }, orderBy: { periodStart: 'desc' } });
+    return this.prisma.paginated.goalInstance.paginate({
+      where: { goalId },
+      orderBy: { periodStart: 'desc' },
+      limit: query.limit,
+      offset: query.offset,
+    });
   }
 
   async update(userId: string, goalId: string, dto: UpdateGoalDto) {

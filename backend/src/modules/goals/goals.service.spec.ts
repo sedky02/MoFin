@@ -166,30 +166,31 @@ describe('GoalsService', () => {
 
   describe('list', () => {
     function makeServiceWithPrisma() {
-      const prisma = { goal: { findMany: jest.fn(async () => []) } };
-      return { service: new GoalsService(prisma as never, {} as never), prisma };
+      const paginate = jest.fn(async () => ({ data: [], total: 0, limit: 20, offset: 0 }));
+      const prisma = { paginated: { goal: { paginate } } };
+      return { service: new GoalsService(prisma as never, {} as never), paginate };
     }
 
     it('defaults to active goals only (archivedAt: null)', async () => {
-      const { service, prisma } = makeServiceWithPrisma();
-      await service.list('u1');
-      expect(prisma.goal.findMany).toHaveBeenCalledWith(
+      const { service, paginate } = makeServiceWithPrisma();
+      await service.list('u1', { status: 'active', limit: 20, offset: 0 });
+      expect(paginate).toHaveBeenCalledWith(
         expect.objectContaining({ where: { userId: 'u1', archivedAt: null } }),
       );
     });
 
     it('filters to archived goals only when status=archived', async () => {
-      const { service, prisma } = makeServiceWithPrisma();
-      await service.list('u1', 'archived');
-      expect(prisma.goal.findMany).toHaveBeenCalledWith(
+      const { service, paginate } = makeServiceWithPrisma();
+      await service.list('u1', { status: 'archived', limit: 20, offset: 0 });
+      expect(paginate).toHaveBeenCalledWith(
         expect.objectContaining({ where: { userId: 'u1', archivedAt: { not: null } } }),
       );
     });
 
     it('applies no archived filter when status=all', async () => {
-      const { service, prisma } = makeServiceWithPrisma();
-      await service.list('u1', 'all');
-      expect(prisma.goal.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { userId: 'u1' } }));
+      const { service, paginate } = makeServiceWithPrisma();
+      await service.list('u1', { status: 'all', limit: 20, offset: 0 });
+      expect(paginate).toHaveBeenCalledWith(expect.objectContaining({ where: { userId: 'u1' } }));
     });
   });
 
@@ -203,6 +204,28 @@ describe('GoalsService', () => {
 
       expect(result).toBe(goal);
       expect(prisma.goal.findFirst).toHaveBeenCalledWith({ where: { id: 'g1', userId: 'u1' } });
+    });
+  });
+
+  describe('history', () => {
+    it('returns the paginated shape and checks ownership first', async () => {
+      const page = { data: [{ id: 'gi1' }], total: 15, limit: 1, offset: 0 };
+      const paginate = jest.fn(async () => page);
+      const goal = { id: 'g1', userId: 'u1' };
+      const prisma = {
+        goal: { findFirst: jest.fn(async () => goal) },
+        paginated: { goalInstance: { paginate } },
+      };
+      const service = new GoalsService(prisma as never, {} as never);
+
+      const result = await service.history('u1', 'g1', { limit: 1, offset: 0 });
+
+      expect(prisma.goal.findFirst).toHaveBeenCalledWith({ where: { id: 'g1', userId: 'u1' } });
+      expect(result).toBe(page);
+      expect(result.total).toBe(15);
+      expect(paginate).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { goalId: 'g1' }, limit: 1, offset: 0 }),
+      );
     });
   });
 

@@ -1,6 +1,6 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
-import { CreateCategoryDto, UpdateCategoryDto } from './dto/categories.dto';
+import { CreateCategoryDto, ListCategoriesQueryDto, UpdateCategoryDto } from './dto/categories.dto';
 
 @Injectable()
 export class CategoriesService {
@@ -25,12 +25,14 @@ export class CategoriesService {
     return this.toResponse(category);
   }
 
-  async list(userId: string) {
-    const categories = await this.prisma.category.findMany({
+  async list(userId: string, query: ListCategoriesQueryDto) {
+    const page = await this.prisma.paginated.category.paginate({
       where: { OR: [{ userId }, { userId: null }] },
-      orderBy: [{ type: 'asc' }, { name: 'asc' }]
+      orderBy: [{ type: 'asc' }, { name: 'asc' }],
+      limit: query.limit,
+      offset: query.offset
     });
-    return categories.map((category) => this.toResponse(category));
+    return { ...page, data: page.data.map((category) => this.toResponse(category)) };
   }
 
   async assertAvailable(userId: string, categoryId?: string | null) {

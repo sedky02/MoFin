@@ -4,14 +4,25 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { categoryKeys } from "@/lib/query-keys";
 import { STALE } from "@/lib/query-client";
-import type { Category, CategoryType } from "@/lib/types";
+import type { Category, CategoryType, Paginated } from "@/lib/types";
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/form-errors";
+
+// No infinite-scroll UI for categories — 100 (the backend's max page size)
+// comfortably covers a real user's category list while keeping the endpoint
+// itself bounded rather than truly unbounded.
+const CATEGORIES_PAGE_SIZE = 100;
 
 export function useCategories() {
   return useQuery({
     queryKey: categoryKeys.all,
-    queryFn: () => api.get<Category[]>("/categories"),
+    queryFn: async () => {
+      const result = await api.get<Paginated<Category>>("/categories", {
+        limit: CATEGORIES_PAGE_SIZE,
+        offset: 0,
+      });
+      return result.data;
+    },
     staleTime: STALE.categories,
   });
 }

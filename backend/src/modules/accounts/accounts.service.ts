@@ -13,10 +13,19 @@ export class AccountsService {
     });
   }
 
-  list(userId: string, status: ListAccountsQueryDto['status'] = 'active') {
+  list(userId: string, query: ListAccountsQueryDto) {
     const archivedFilter =
-      status === 'active' ? { archivedAt: null } : status === 'archived' ? { archivedAt: { not: null } } : {};
-    return this.prisma.account.findMany({ where: { userId, ...archivedFilter }, orderBy: { createdAt: 'desc' } });
+      query.status === 'active'
+        ? { archivedAt: null }
+        : query.status === 'archived'
+          ? { archivedAt: { not: null } }
+          : {};
+    return this.prisma.paginated.account.paginate({
+      where: { userId, ...archivedFilter },
+      orderBy: { createdAt: 'desc' },
+      limit: query.limit,
+      offset: query.offset
+    });
   }
 
   async assertOwned(userId: string, accountId: string) {

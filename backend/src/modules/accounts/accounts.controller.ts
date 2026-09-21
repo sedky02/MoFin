@@ -37,7 +37,7 @@ export class AccountsController {
     @CurrentUser() user: AuthenticatedUser,
     @Query(new ZodValidationPipe(listAccountsQuerySchema)) query: ListAccountsQueryDto,
   ) {
-    return this.accountsService.list(user.id, query.status);
+    return this.accountsService.list(user.id, query);
   }
 
   @Patch(':id')

@@ -1,6 +1,7 @@
 import { GoalRecurrenceUnit, GoalType } from '@prisma/client';
 import { z } from 'zod';
 import { amountStringSchema, dateStringSchema } from '../../../common/dto/common-fields';
+import { paginationSchema } from '../../../common/dto/pagination';
 
 const baseGoalSchema = z.object({
   accountId: z.string().min(1),
@@ -47,7 +48,10 @@ export const updateGoalSchema = z.object({
 });
 export type UpdateGoalDto = z.infer<typeof updateGoalSchema>;
 
-export const listGoalsQuerySchema = z.object({
+export const listGoalsQuerySchema = paginationSchema.extend({
   status: z.enum(['active', 'archived', 'all']).default('active'),
 });
 export type ListGoalsQueryDto = z.infer<typeof listGoalsQuerySchema>;
+
+export const goalHistoryQuerySchema = paginationSchema;
+export type GoalHistoryQueryDto = z.infer<typeof goalHistoryQuerySchema>;

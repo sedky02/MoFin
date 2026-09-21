@@ -42,6 +42,13 @@ export class DraftTransactionsController {
     return this.draftsService.list(user.id, query);
   }
 
+  // For the pending-drafts sidebar badge — a single COUNT(*) instead of
+  // fetching up to `limit` full draft rows just to read `.length`.
+  @Get('pending-count')
+  async pendingCount(@CurrentUser() user: AuthenticatedUser) {
+    return { count: await this.draftsService.countPending(user.id) };
+  }
+
   @Patch(':id/approve')
   @ApiZodBody(approveDraftSchema)
   approve(

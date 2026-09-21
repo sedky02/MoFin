@@ -10,3 +10,11 @@ export const paginationSchema = z.object({
 });
 
 export type Pagination = z.infer<typeof paginationSchema>;
+
+/** Shape returned by the `paginate()` Prisma client extension. */
+export interface PaginatedResult<T> {
+  data: T[];
+  total: number;
+  limit: number;
+  offset: number;
+}

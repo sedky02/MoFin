@@ -4,16 +4,28 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { accountKeys, ledgerKeys } from "@/lib/query-keys";
 import { STALE } from "@/lib/query-client";
-import type { Account, AccountType } from "@/lib/types";
+import type { Account, AccountType, Paginated } from "@/lib/types";
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/form-errors";
 
 export type AccountListStatus = "active" | "archived" | "all";
 
+// No infinite-scroll UI for accounts — a real user's account count never
+// approaches this, so 100 (the backend's max page size) is effectively
+// "everything" while the endpoint itself is never actually unbounded.
+const ACCOUNTS_PAGE_SIZE = 100;
+
 export function useAccounts(status: AccountListStatus = "active", enabled = true) {
   return useQuery({
     queryKey: accountKeys.list(status),
-    queryFn: () => api.get<Account[]>("/accounts", { status }),
+    queryFn: async () => {
+      const result = await api.get<Paginated<Account>>("/accounts", {
+        status,
+        limit: ACCOUNTS_PAGE_SIZE,
+        offset: 0,
+      });
+      return result.data;
+    },
     staleTime: STALE.accounts,
     enabled,
   });

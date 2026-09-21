@@ -18,6 +18,8 @@ describe('DraftTransactionsService state machine', () => {
     txUpdateManyCount?: number;
     createResult?: unknown;
     createImpl?: (...args: unknown[]) => unknown;
+    paginateResult?: unknown;
+    countResult?: number;
   }) {
     const draftInDb = { id: 'd1', status: DraftStatus.PENDING, parsedData: PARSED, ...( overrides.draft as object) };
     const txDraftTransaction = {
@@ -25,22 +27,25 @@ describe('DraftTransactionsService state machine', () => {
       findUniqueOrThrow: jest.fn(async () => ({ ...draftInDb, status: DraftStatus.APPROVED }))
     };
     const db = { draftTransaction: txDraftTransaction };
+    const paginate = jest.fn(async () => overrides.paginateResult ?? { data: [], total: 0, limit: 20, offset: 0 });
     const prisma = {
       draftTransaction: {
         findFirst: jest.fn(async () => overrides.draft === null ? null : draftInDb),
         update: jest.fn(async () => ({})),
-        findUniqueOrThrow: jest.fn(async () => draftInDb)
+        findUniqueOrThrow: jest.fn(async () => draftInDb),
+        count: jest.fn(async () => overrides.countResult ?? 0)
       },
       transaction: {
         findUnique: jest.fn(async () => (overrides.findTransaction === undefined ? null : overrides.findTransaction))
       },
+      paginated: { draftTransaction: { paginate } },
       $transaction: jest.fn(async (fn: (db: unknown) => unknown) => fn(db))
     };
     const transactionsService = {
       create: overrides.createImpl ?? jest.fn(async () => overrides.createResult ?? { id: 'tx1' })
     };
     const service = new DraftTransactionsService(prisma as never, transactionsService as never, { emit: jest.fn() } as never);
-    return { service, prisma, transactionsService, db };
+    return { service, prisma, transactionsService, db, paginate };
   }
 
   it('throws NotFound when the draft does not exist', async () => {
@@ -133,5 +138,40 @@ describe('DraftTransactionsService state machine', () => {
     });
 
     await expect(service.approve('u1', 'd1')).rejects.toBeInstanceOf(Prisma.PrismaClientKnownRequestError);
+  });
+
+  describe('list', () => {
+    it('returns the paginated shape from the extension, not a bare array', async () => {
+      const page = { data: [{ id: 'd1' }, { id: 'd2' }], total: 25, limit: 2, offset: 0 };
+      const { service, paginate } = makeService({ paginateResult: page });
+
+      const result = await service.list('u1', { limit: 2, offset: 0 });
+
+      expect(result).toBe(page);
+      expect(result.total).toBe(25);
+      expect(result.data).toHaveLength(2);
+      expect(paginate).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { userId: 'u1' }, limit: 2, offset: 0 }),
+      );
+    });
+
+    it('filters by status when provided', async () => {
+      const { service, paginate } = makeService({});
+      await service.list('u1', { limit: 20, offset: 0, status: DraftStatus.PENDING });
+      expect(paginate).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { userId: 'u1', status: DraftStatus.PENDING } }),
+      );
+    });
+  });
+
+  describe('countPending', () => {
+    it('counts only this user\'s PENDING drafts — a single COUNT(*), not a row fetch', async () => {
+      const { service, prisma } = makeService({ countResult: 7 });
+      const count = await service.countPending('u1');
+      expect(count).toBe(7);
+      expect(prisma.draftTransaction.count).toHaveBeenCalledWith({
+        where: { userId: 'u1', status: DraftStatus.PENDING },
+      });
+    });
   });
 });

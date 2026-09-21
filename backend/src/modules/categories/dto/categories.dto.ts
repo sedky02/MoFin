@@ -1,5 +1,6 @@
 import { CategoryType } from '@prisma/client';
 import { z } from 'zod';
+import { paginationSchema } from '../../../common/dto/pagination';
 
 export const createCategorySchema = z.object({
   name: z.string().min(1),
@@ -15,3 +16,6 @@ export const updateCategorySchema = z.object({
   icon: z.string().optional(),
 });
 export type UpdateCategoryDto = z.infer<typeof updateCategorySchema>;
+
+export const listCategoriesQuerySchema = paginationSchema;
+export type ListCategoriesQueryDto = z.infer<typeof listCategoriesQuerySchema>;
