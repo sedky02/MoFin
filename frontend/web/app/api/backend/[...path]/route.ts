@@ -60,6 +60,7 @@ async function forward(
   req: Request,
   targetPath: string,
   accessToken: string | undefined,
+  requestId: string,
 ): Promise<Response> {
   const url = new URL(req.url);
   const target = `${BACKEND_URL}/${targetPath}${url.search}`;
@@ -72,6 +73,8 @@ async function forward(
   // one BFF hop) sees individual users instead of this server's single IP.
   const forwardedFor = req.headers.get("x-forwarded-for");
   if (forwardedFor) headers.set("x-forwarded-for", forwardedFor);
+  // Lets one request be traced across both processes' logs (audit OBS-01).
+  headers.set("x-request-id", requestId);
 
   const hasBody = req.method !== "GET" && req.method !== "HEAD";
   const body = hasBody ? await req.arrayBuffer() : undefined;
@@ -104,6 +107,9 @@ async function forward(
 async function handle(req: Request, ctx: Ctx): Promise<Response> {
   const { path } = await ctx.params; // Next.js 16: params are async
   const targetPath = path.map(encodeURIComponent).join("/");
+  // One id per client request, reused across the initial attempt and the
+  // post-refresh retry, so both backend log lines correlate to this one call.
+  const requestId = crypto.randomUUID();
 
   const cookieStore = await cookies(); // Next.js 16: cookies() is async
   const accessToken = cookieStore.get(ACCESS_COOKIE)?.value;
@@ -111,10 +117,10 @@ async function handle(req: Request, ctx: Ctx): Promise<Response> {
 
   // We can only read the body once; clone for a potential retry.
   const reqForFirst = req.clone();
-  let upstream = await forward(reqForFirst, targetPath, accessToken);
+  let upstream = await forward(reqForFirst, targetPath, accessToken, requestId);
 
   if (upstream.status !== 401) {
-    return passthrough(upstream);
+    return passthrough(upstream, requestId);
   }
 
   // 401 → try one refresh (deduped via the module lock), then retry once.
@@ -127,19 +133,22 @@ async function handle(req: Request, ctx: Ctx): Promise<Response> {
     return clearedUnauthorized();
   }
 
-  const retry = await forward(req.clone(), targetPath, tokens.accessToken);
-  const res = await passthrough(retry);
+  const retry = await forward(req.clone(), targetPath, tokens.accessToken, requestId);
+  const res = await passthrough(retry, requestId);
   // Rotate cookies onto the retried response.
   applyTokenCookies(res, tokens);
   return res;
 }
 
 // Stream the upstream response straight back to the client.
-async function passthrough(upstream: Response): Promise<NextResponse> {
+async function passthrough(upstream: Response, requestId: string): Promise<NextResponse> {
   const bodyText = await upstream.text();
   const res = new NextResponse(bodyText || null, { status: upstream.status });
   const ct = upstream.headers.get("content-type");
   if (ct) res.headers.set("content-type", ct);
+  // Lets a report from the user reference this id to find the matching
+  // backend log line without needing DB/timestamp correlation.
+  res.headers.set("x-request-id", requestId);
   return res;
 }
 

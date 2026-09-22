@@ -55,7 +55,11 @@ export async function serverGet<T>(
   let res: Response;
   try {
     res = await fetch(url, {
-      headers: { authorization: `Bearer ${accessToken}` },
+      headers: {
+        authorization: `Bearer ${accessToken}`,
+        // Lets this prefetch be traced across both processes' logs (audit OBS-01).
+        "x-request-id": crypto.randomUUID(),
+      },
       cache: "no-store",
       signal: AbortSignal.timeout(BACKEND_TIMEOUT_MS),
     });

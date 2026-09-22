@@ -43,6 +43,10 @@ const envSchema = z.object({
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
   GOOGLE_TOKEN_URL: z.string().url().optional(),
+
+  // --- Observability (OBS-01) ---
+  // Unset in dev: Sentry.init is skipped and errors just log, no client needed.
+  SENTRY_DSN: z.string().url().optional(),
 });
 
 export type AppEnv = z.infer<typeof envSchema>;

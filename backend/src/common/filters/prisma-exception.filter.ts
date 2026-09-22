@@ -1,6 +1,7 @@
 import { ArgumentsHost, Catch, ExceptionFilter, HttpStatus, Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { Request, Response } from 'express';
+import { Sentry } from '../sentry';
 
 type CaughtPrismaError =
   | Prisma.PrismaClientKnownRequestError
@@ -50,6 +51,7 @@ export class PrismaExceptionFilter implements ExceptionFilter {
       // error — none of these are caused by the request's shape, so they're
       // operational/transient, not a client error.
       this.logger.error(`Prisma ${exception.constructor.name} during ${context}: ${exception.message}`, exception.stack);
+      Sentry.captureException(exception);
       response.status(HttpStatus.SERVICE_UNAVAILABLE).json({
         statusCode: HttpStatus.SERVICE_UNAVAILABLE,
         message: 'Database is temporarily unavailable, please try again',
@@ -74,6 +76,7 @@ export class PrismaExceptionFilter implements ExceptionFilter {
         return;
       case 'P2003':
         this.logger.error(`Prisma P2003 (foreign key violation) during ${context}: ${exception.message}`, exception.stack);
+        Sentry.captureException(exception);
         response.status(HttpStatus.CONFLICT).json({
           statusCode: HttpStatus.CONFLICT,
           message: 'This action references a record that no longer exists',
@@ -81,6 +84,7 @@ export class PrismaExceptionFilter implements ExceptionFilter {
         return;
       case 'P2024':
         this.logger.error(`Prisma P2024 (connection pool timeout) during ${context}: ${exception.message}`, exception.stack);
+        Sentry.captureException(exception);
         response.status(HttpStatus.SERVICE_UNAVAILABLE).json({
           statusCode: HttpStatus.SERVICE_UNAVAILABLE,
           message: 'Database is temporarily unavailable, please try again',
@@ -88,6 +92,7 @@ export class PrismaExceptionFilter implements ExceptionFilter {
         return;
       default:
         this.logger.error(`Unhandled Prisma error ${exception.code} during ${context}: ${exception.message}`, exception.stack);
+        Sentry.captureException(exception);
         response.status(HttpStatus.BAD_REQUEST).json({
           statusCode: HttpStatus.BAD_REQUEST,
           message: 'Database request could not be processed',
