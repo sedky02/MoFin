@@ -4,11 +4,10 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
 import { PrismaService } from '../../database/prisma.service';
-import { AuthenticatedUser } from '../../common/types/authenticated-user';
 import { parseDurationMs } from '../../common/utils/duration';
 import { sha256 } from '../../common/utils/hash';
 import { UsersService } from '../users/users.service';
-import { CreateApiKeyDto, LoginDto, RegisterDto } from './dto/auth.dto';
+import { LoginDto, RegisterDto } from './dto/auth.dto';
 import { WEB_AUDIENCE } from './auth.constants';
 
 @Injectable()
@@ -157,36 +156,6 @@ export class AuthService {
     }
 
     return this.issueTokens(user.id, user.email, randomBytes(16).toString('hex'));
-  }
-
-  /**
-   * Key format: `mcp_<keyId>.<secret>`. Only the secret is hashed; the keyId is a
-   * plaintext lookup handle so validation is a single indexed read + one bcrypt
-   * compare instead of scanning every key in the system (audit A4).
-   */
-  async createApiKey(userId: string, dto: CreateApiKeyDto) {
-    const secret = randomBytes(32).toString('hex');
-    const keyHash = await bcrypt.hash(secret, 12);
-    const apiKey = await this.prisma.apiKey.create({
-      data: { userId, name: dto.name, keyHash },
-      select: { id: true, name: true, createdAt: true },
-    });
-
-    return { ...apiKey, apiKey: `mcp_${apiKey.id}.${secret}` };
-  }
-
-  async validateApiKey(rawKey: string): Promise<AuthenticatedUser> {
-    const match = /^mcp_([^.]+)\.(.+)$/.exec(rawKey);
-    if (!match) throw new UnauthorizedException('Invalid MCP API key');
-
-    const [, keyId, secret] = match;
-    const key = await this.prisma.apiKey.findUnique({ where: { id: keyId }, include: { user: true } });
-    if (!key || key.revokedAt || !(await bcrypt.compare(secret, key.keyHash))) {
-      throw new UnauthorizedException('Invalid MCP API key');
-    }
-
-    await this.prisma.apiKey.update({ where: { id: key.id }, data: { lastUsedAt: new Date() } });
-    return { id: key.user.id, email: key.user.email };
   }
 
   /**

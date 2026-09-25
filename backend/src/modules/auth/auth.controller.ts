@@ -9,13 +9,11 @@ import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import { AuthenticatedUser } from '../../common/types/authenticated-user';
 import { AuthService } from './auth.service';
 import {
-  CreateApiKeyDto,
   GoogleLoginDto,
   LoginDto,
   LogoutDto,
   RefreshTokenDto,
   RegisterDto,
-  createApiKeySchema,
   googleLoginSchema,
   loginSchema,
   logoutSchema,
@@ -66,17 +64,6 @@ export class AuthController {
   @ApiZodBody(googleLoginSchema)
   google(@Body(new ZodValidationPipe(googleLoginSchema)) dto: GoogleLoginDto) {
     return this.authService.loginWithGoogle(dto.code, dto.redirectUri);
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth('jwt')
-  @Post('api-keys')
-  @ApiZodBody(createApiKeySchema)
-  createApiKey(
-    @CurrentUser() user: AuthenticatedUser,
-    @Body(new ZodValidationPipe(createApiKeySchema)) dto: CreateApiKeyDto,
-  ) {
-    return this.authService.createApiKey(user.id, dto);
   }
 
   @UseGuards(JwtAuthGuard)

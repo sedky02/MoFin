@@ -4,7 +4,9 @@ import { JwtService } from '@nestjs/jwt';
 import { Request, Response } from 'express';
 
 /**
- * OAuth 2.1 authentication for production MCP clients (what claude.ai sends).
+ * OAuth 2.1 authentication for MCP clients (what claude.ai sends; also the
+ * only supported MCP auth path — the API-key escape hatch was removed since
+ * it had no revocation path, see OBS-02/SEC-04).
  *
  * Validates a `Bearer <jwt>` access token signed with JWT_MCP_SECRET (a key
  * distinct from JWT_ACCESS_SECRET, so a first-party web token is never even a
@@ -58,10 +60,10 @@ export class OAuthMcpAuthGuard implements CanActivate {
 
   /**
    * Sets the RFC 9728 `WWW-Authenticate` challenge pointing at the
-   * protected-resource metadata. Exposed so the composite guard can guarantee
-   * the header on any MCP auth failure, including the API-key path.
+   * protected-resource metadata, so a failed request is told how to start
+   * the OAuth flow.
    */
-  writeChallenge(context: ExecutionContext): void {
+  private writeChallenge(context: ExecutionContext): void {
     const issuer = this.config.getOrThrow<string>('OAUTH_ISSUER').replace(/\/$/, '');
     const metadataUrl = `${issuer}/.well-known/oauth-protected-resource`;
     const res = context.switchToHttp().getResponse<Response>();

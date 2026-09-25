@@ -74,7 +74,6 @@ model User {
   displayName        String?
   googleId           String?             @unique
   settings           Json                @default("{}")
-  apiKeys            ApiKey[]
   accounts           Account[]
   categories         Category[]
   transactions       Transaction[]
@@ -90,17 +89,6 @@ model User {
   authSessions       AuthSession[]
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
-}
-
-model ApiKey {
-  id         String    @id @default(uuid())
-  userId     String
-  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name       String
-  keyHash    String    @unique
-  lastUsedAt DateTime?
-  revokedAt  DateTime?
-  createdAt  DateTime  @default(now())
 }
 
 model Account {

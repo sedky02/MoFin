@@ -19,11 +19,6 @@ export const loginSchema = z.object({
 });
 export type LoginDto = z.infer<typeof loginSchema>;
 
-export const createApiKeySchema = z.object({
-  name: z.string().min(1),
-});
-export type CreateApiKeyDto = z.infer<typeof createApiKeySchema>;
-
 export const refreshTokenSchema = z.object({
   refreshToken: z.string().min(1),
 });

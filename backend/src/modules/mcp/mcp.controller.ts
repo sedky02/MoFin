@@ -1,22 +1,21 @@
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { Controller, Delete, Get, HttpStatus, Post, Req, Res, UseGuards } from '@nestjs/common';
-import { ApiBody, ApiExcludeEndpoint, ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiExcludeEndpoint, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { McpAuthGuard } from '../../common/guards/mcp-auth.guard';
+import { OAuthMcpAuthGuard } from '../../common/guards/oauth-mcp-auth.guard';
 import { AuthenticatedUser } from '../../common/types/authenticated-user';
 import { McpServerFactory } from './mcp-server.factory';
 
 /**
  * Real MCP server over the stateless Streamable HTTP transport.
  *
- * Authentication is handled by McpAuthGuard (sets req.user); a fresh
+ * Authentication is handled by OAuthMcpAuthGuard (sets req.user); a fresh
  * MCP server + transport is built per request and scoped to that user. Stateless
  * means no session map and a single JSON response per call (enableJsonResponse).
  */
 @ApiTags('mcp')
-@ApiSecurity('api-key')
-@UseGuards(McpAuthGuard)
+@UseGuards(OAuthMcpAuthGuard)
 @Controller('mcp')
 export class McpController {
   constructor(private readonly factory: McpServerFactory) {}
@@ -25,7 +24,7 @@ export class McpController {
   @ApiOperation({
     summary: 'MCP Streamable HTTP endpoint',
     description:
-      'Speaks the Model Context Protocol over JSON-RPC 2.0. Use an MCP client (e.g. MCP Inspector) rather than calling directly. Authenticate with the x-api-key header.',
+      'Speaks the Model Context Protocol over JSON-RPC 2.0. Use an MCP client (e.g. Claude) rather than calling directly. Authenticate via OAuth 2.1 (see the .well-known discovery documents).',
   })
   @ApiBody({
     schema: {
