@@ -137,7 +137,7 @@ export class AuthService {
       claims.exp * 1000 < Date.now() ||
       !claims.sub ||
       !claims.email ||
-      claims.email_verified === false
+      claims.email_verified !== true
     ) {
       throw new UnauthorizedException('Invalid Google identity token');
     }
