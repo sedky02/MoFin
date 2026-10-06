@@ -16,6 +16,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/common/password-input";
 import { SubmitButton } from "@/components/common/submit-button";
 import { GoogleButton } from "@/components/common/google-button";
 import { ApiClientError } from "@/lib/api";
@@ -145,8 +146,7 @@ export default function LoginPage() {
               <FormItem>
                 <FormLabel>Password</FormLabel>
                 <FormControl>
-                  <Input
-                    type="password"
+                  <PasswordInput
                     autoComplete="current-password"
                     placeholder="••••••••"
                     {...field}

@@ -32,6 +32,20 @@ export const CURRENCIES = [
 ] as const;
 
 // A friendly palette for user categories (no purple/violet, per brand).
+/** Spoken names for the swatches (a bare hex means nothing to a screen reader). */
+export const CATEGORY_COLOR_NAMES: Record<string, string> = {
+  "#0d9488": "Teal",
+  "#0ea5e9": "Sky blue",
+  "#f59e0b": "Amber",
+  "#f43f5e": "Rose",
+  "#14b8a6": "Aqua",
+  "#fb923c": "Orange",
+  "#22c55e": "Green",
+  "#ef4444": "Red",
+  "#eab308": "Yellow",
+  "#06b6d4": "Cyan",
+};
+
 export const CATEGORY_COLORS = [
   "#0d9488",
   "#0ea5e9",

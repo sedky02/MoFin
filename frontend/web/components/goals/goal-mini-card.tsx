@@ -3,7 +3,7 @@ import { MoneyAmount } from "@/components/common/money-amount";
 import { GoalProgressBar } from "@/components/goals/goal-progress-bar";
 import { CategoryIcon } from "@/components/dashboard/category-icon";
 import { goalProgressRatio } from "@/lib/format";
-import { isGreaterThan } from "@/lib/decimal";
+import { isGreaterThan, tryParse } from "@/lib/decimal";
 
 // Cycled per-tile accent, matching the Stitch mockup's alternating
 // secondary/tertiary/primary goal icon tints.
@@ -26,6 +26,7 @@ export function GoalMiniCard({
   const ratio = instance ? goalProgressRatio(instance.progressAmount, instance.targetAmount) : 0;
   const overTarget =
     goal.type === "EXPENSE" && !!instance && isGreaterThan(instance.progressAmount, instance.targetAmount);
+  const belowZero = !!instance && (tryParse(instance.progressAmount)?.isNegative() ?? false);
   const accent = ACCENTS[index % ACCENTS.length];
 
   return (
@@ -45,7 +46,7 @@ export function GoalMiniCard({
         </div>
         <span className="flex shrink-0 items-center gap-1.5 text-[11px] font-medium tabular">
           {overTarget && <span className="text-destructive">Over budget</span>}
-          <span className="text-muted-foreground">{Math.round(ratio)}%</span>
+          <span className="text-muted-foreground">{belowZero ? "Below zero" : `${Math.round(ratio)}%`}</span>
         </span>
       </div>
 

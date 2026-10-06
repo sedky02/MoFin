@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useUser } from "@/hooks/useUser";
 import { Button } from "@/components/ui/button";
 import { parseBalanceKey, pickPrimaryCurrency } from "@/lib/format";
-import { add } from "@/lib/decimal";
+import { add, tryParse } from "@/lib/decimal";
 import { MoneyAmount } from "@/components/common/money-amount";
 import { SkeletonCard, ErrorState, EmptyState } from "@/components/common/states";
 import { Wallet } from "lucide-react";
@@ -20,6 +20,8 @@ function totalsByCurrency(balances: { key: string; balance: string }[]) {
   }
   return [...totals.entries()].map(([currency, amount]) => ({ currency, amount }));
 }
+
+const isOverdrawn = (amount: string) => tryParse(amount)?.isNegative() ?? false;
 
 export function BalanceCards({ accountId, accountName }: { accountId?: string; accountName?: string } = {}) {
   const { data, isLoading, isError, refetch } = useLedgerBalance({ accountId });
@@ -67,7 +69,6 @@ export function BalanceCards({ accountId, accountName }: { accountId?: string; a
     <div className="space-y-6">
       {/* HERO ZONE: LIVE PORTFOLIO PULSE */}
       <div className="glass-panel pulse-ring relative overflow-hidden rounded-3xl p-8 sm:p-10">
-        <div className="scanline" aria-hidden />
         <div className="flex items-center gap-2.5">
           <span className="size-2 animate-pulse rounded-full bg-primary" aria-hidden />
           <span className="label-caps tracking-widest! text-primary-text!">
@@ -83,6 +84,7 @@ export function BalanceCards({ accountId, accountName }: { accountId?: string; a
         <p className="mt-3 text-sm text-muted-foreground">
           {accountId ? `${accountName ?? "This account"}` : `Across all ${hero.currency} accounts`} · balances
           always exact
+          {isOverdrawn(hero.amount) && <span className="font-medium text-destructive"> · Overdrawn</span>}
         </p>
       </div>
 
@@ -106,6 +108,7 @@ export function BalanceCards({ accountId, accountName }: { accountId?: string; a
               />
               <p className="mt-2 text-xs text-muted-foreground">
                 {accountId ? (accountName ?? "This account") : `Across all ${currency} accounts`}
+                {isOverdrawn(amount) && <span className="font-medium text-destructive"> · Overdrawn</span>}
               </p>
             </Card>
           ))}

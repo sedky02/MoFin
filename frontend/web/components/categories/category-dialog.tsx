@@ -24,7 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { SubmitButton } from "@/components/common/submit-button";
 import { cn } from "@/lib/utils";
-import { CATEGORY_COLORS } from "@/lib/constants";
+import { CATEGORY_COLORS, CATEGORY_COLOR_NAMES } from "@/lib/constants";
 import { useCreateCategory, useUpdateCategory } from "@/hooks/useCategories";
 import type { Category } from "@/lib/types";
 
@@ -189,7 +189,8 @@ export function CategoryDialog({
                       <button
                         key={c}
                         type="button"
-                        aria-label={`Pick color ${c}`}
+                        aria-label={CATEGORY_COLOR_NAMES[c] ?? c}
+                        title={CATEGORY_COLOR_NAMES[c] ?? c}
                         aria-pressed={selectedColor === c}
                         onClick={() => field.onChange(c)}
                         className={cn(
