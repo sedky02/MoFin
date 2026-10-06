@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import { useCreateDraftIntent } from "@/hooks/useDrafts";
 import { useAccounts } from "@/hooks/useAccounts";
+import { useActiveAccount } from "@/hooks/useActiveAccount";
 
 const EXAMPLES = [
   "Spent 42.50 on groceries at the market yesterday",
@@ -22,7 +23,10 @@ const EXAMPLES = [
 
 export function DraftComposer() {
   const [input, setInput] = React.useState("");
-  const [defaultAccountId, setDefaultAccountId] = React.useState<string | undefined>();
+  const { accountId: activeAccountId } = useActiveAccount();
+  // An explicit pick here overrides the app-wide active account for this composer only.
+  const [pickedAccountId, setDefaultAccountId] = React.useState<string | undefined>();
+  const defaultAccountId = pickedAccountId ?? activeAccountId;
   const { data: accounts } = useAccounts();
   const createIntent = useCreateDraftIntent();
 
@@ -43,10 +47,11 @@ export function DraftComposer() {
   }
 
   // Show the right shortcut hint per platform (resolved after mount: SSR can't know).
-  const [modKey, setModKey] = React.useState("Ctrl");
-  React.useEffect(() => {
-    if (/Mac|iPhone|iPad/.test(navigator.platform)) setModKey("⌘");
-  }, []);
+  const modKey = React.useSyncExternalStore(
+    () => () => {},
+    () => (/Mac|iPhone|iPad/.test(navigator.platform) ? "⌘" : "Ctrl"),
+    () => "Ctrl",
+  );
 
   function onKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     // ⌘/Ctrl + Enter submits.

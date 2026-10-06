@@ -11,6 +11,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { SidebarNav } from "./sidebar-nav";
 import { ThemeToggle } from "./theme-toggle";
 import { UserMenu } from "./user-menu";
+import { AccountSwitcher } from "@/components/dashboard/account-switcher";
+import { useActiveAccount } from "@/hooks/useActiveAccount";
 import { NAV_ITEMS } from "./nav-items";
 import { cn } from "@/lib/utils";
 import { usePendingDraftCount } from "@/hooks/useDrafts";
@@ -18,6 +20,21 @@ import { usePendingDraftCount } from "@/hooks/useDrafts";
 const BOTTOM_NAV = NAV_ITEMS.filter((i) =>
   ["/dashboard", "/accounts", "/transactions/new", "/drafts"].includes(i.href),
 );
+
+/** The account new transactions, drafts and goals default to. "All accounts" = no default. */
+function ActiveAccountPicker() {
+  const { accountId, setAccountId, accounts } = useActiveAccount();
+  if (accounts.length === 0) return null;
+  return (
+    <AccountSwitcher
+      accounts={accounts}
+      value={accountId}
+      onChange={setAccountId}
+      label="Active account (pre-fills forms)"
+      className="h-9 w-36 sm:w-52"
+    />
+  );
+}
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = React.useState(false);
@@ -58,6 +75,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </Sheet>
 
           <div className="flex-1" />
+          <ActiveAccountPicker />
           <ThemeToggle />
           <UserMenu />
         </header>

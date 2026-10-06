@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useAccounts } from "@/hooks/useAccounts";
 import { useLedgerBalance } from "@/hooks/useLedger";
+import { useActiveAccount } from "@/hooks/useActiveAccount";
 import { useUser } from "@/hooks/useUser";
 import { pickPrimaryCurrency } from "@/lib/format";
 import { AccountSwitcher } from "@/components/dashboard/account-switcher";
@@ -29,10 +30,9 @@ export function DashboardBody({
   const { data: accounts } = useAccounts();
   const { data: user } = useUser();
   const { data: balances } = useLedgerBalance();
-  const [accountId, setAccountId] = React.useState<string | undefined>(
-    undefined,
-  );
-  const selectedAccount = accounts?.find((a) => a.id === accountId);
+  // Same selection as the header's active-account picker, so the dashboard
+  // shows the account that new transactions will default to.
+  const { accountId, account: selectedAccount } = useActiveAccount();
   // Re-derived from live query data (hydrated from the server prefetch when
   // that succeeded, fetched fresh through the BFF's refresh-on-401 path when
   // it didn't) so a guessed currency is never the final answer — it
@@ -49,11 +49,6 @@ export function DashboardBody({
             ? `Showing data for ${selectedAccount?.name ?? "this account"}.`
             : "Showing data across all accounts."}
         </p>
-        <AccountSwitcher
-          accounts={accounts ?? []}
-          value={accountId}
-          onChange={setAccountId}
-        />
       </div>
 
       {/* Bento grid, matching the Stitch "Refined Quanto Dark" layout: a large

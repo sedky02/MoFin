@@ -34,6 +34,7 @@ import { SubmitButton } from "@/components/common/submit-button";
 import { MoneyInput } from "@/components/common/money-input";
 import { AccountSelect } from "@/components/transactions/account-select";
 import { useAccounts } from "@/hooks/useAccounts";
+import { useActiveAccount } from "@/hooks/useActiveAccount";
 import { useCreateGoal, useUpdateGoal } from "@/hooks/useGoals";
 import { parseMoneyInput } from "@/lib/format";
 import type { Goal } from "@/lib/types";
@@ -90,6 +91,7 @@ export function GoalDialog({
 }) {
   const isEdit = !!goal;
   const { data: accounts } = useAccounts();
+  const { accountId: activeAccountId } = useActiveAccount();
   const createMut = useCreateGoal();
   const updateMut = useUpdateGoal();
 
@@ -112,8 +114,10 @@ export function GoalDialog({
             periodStart: goal.periodStart.slice(0, 10),
             periodEnd: goal.periodEnd?.slice(0, 10) ?? "",
           }
-        : DEFAULTS,
+        : { ...DEFAULTS, accountId: activeAccountId ?? "" },
     );
+    // Re-runs only when the dialog opens/changes goal, not when the active account changes mid-edit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, goal, form]);
 
   const isRecurring = form.watch("isRecurring");

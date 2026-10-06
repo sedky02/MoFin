@@ -17,14 +17,18 @@ export function AccountSwitcher({
   accounts,
   value,
   onChange,
+  label = "Filter dashboard by account",
+  className,
 }: {
   accounts: Account[];
   value?: string;
   onChange: (accountId?: string) => void;
+  label?: string;
+  className?: string;
 }) {
   return (
     <Select value={value ?? ALL} onValueChange={(v) => onChange(v === ALL ? undefined : v)}>
-      <SelectTrigger className="w-full sm:w-56" aria-label="Filter dashboard by account">
+      <SelectTrigger className={className ?? "w-full sm:w-56"} aria-label={label}>
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
