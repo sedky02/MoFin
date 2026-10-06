@@ -43,7 +43,7 @@ export function GoalMiniCard({
           <span className="truncate text-sm font-semibold">{goal.name}</span>
         </div>
         <span className="shrink-0 text-[11px] font-medium text-muted-foreground tabular">
-          {Math.round(ratio * 100)}%
+          {Math.round(ratio)}%
         </span>
       </div>
 

@@ -100,8 +100,12 @@ export function useApproveDraft() {
         // Send corrections (if any) so the approved transaction reflects edits.
         edits && Object.keys(edits).length ? { parsedData: edits } : undefined,
       ),
-    onSuccess: () => {
-      toast.success("Draft approved — transaction recorded.");
+    onSuccess: ({ transaction }) => {
+      toast.success("Draft approved — transaction recorded.", {
+        action: transaction?.id
+          ? { label: "View", onClick: () => window.location.assign(`/transactions/${transaction.id}`) }
+          : undefined,
+      });
       invalidateAfterApproval(queryClient);
     },
     onError: (err) => handleApiError(err, { fallback: "Could not approve draft." }),

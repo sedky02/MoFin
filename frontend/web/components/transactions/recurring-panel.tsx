@@ -87,7 +87,7 @@ export function RecurringPanel({ tx }: { tx: Transaction }) {
   });
 
   async function action() {
-    const valid = await form.trigger();
+    const valid = await form.trigger(undefined, { shouldFocus: true });
     if (!valid) return;
     const values = form.getValues();
     const amount = parseMoneyInput(values.amountRaw);

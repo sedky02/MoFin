@@ -45,7 +45,7 @@ export default function LoginPage() {
   // Submitted via <form action> so useFormStatus drives the button's pending state.
   async function action() {
     setRateLimited(false);
-    const valid = await form.trigger();
+    const valid = await form.trigger(undefined, { shouldFocus: true });
     if (!valid) return;
     const values = form.getValues();
 

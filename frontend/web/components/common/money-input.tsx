@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { formatMoneyInput } from "@/lib/format";
+import { currencySymbol, formatMoneyInput, normalizeMoneyTyping } from "@/lib/format";
 
 interface MoneyInputProps {
   value: string;
@@ -31,25 +31,31 @@ export function MoneyInput({
   ...aria
 }: MoneyInputProps) {
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    // Permit digits, one dot, and intermediate states while typing.
-    const next = e.target.value.replace(/[^0-9.]/g, "");
-    if ((next.match(/\./g) || []).length > 1) return;
-    onChange(next);
+    // Locale-aware: "12,50" -> "12.50", "1.234,56" -> "1234.56".
+    onChange(normalizeMoneyTyping(e.target.value));
   }
 
   function handleBlur() {
     if (value) {
-      const tidy = formatMoneyInput(value);
+      const tidy = formatMoneyInput(value, currency);
       if (tidy) onChange(tidy);
     }
     onBlur?.();
   }
 
+  const symbol = currencySymbol(currency);
+  const currencyId = id && currency ? `${id}-currency` : undefined;
+
   return (
     <div className="relative">
-      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground tabular">
-        $
-      </span>
+      {symbol && (
+        <span
+          aria-hidden
+          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground tabular"
+        >
+          {symbol}
+        </span>
+      )}
       <Input
         id={id}
         inputMode="decimal"
@@ -59,11 +65,15 @@ export function MoneyInput({
         onChange={handleChange}
         onBlur={handleBlur}
         disabled={disabled}
-        className={cn("tabular pl-7", currency && "pr-14", className)}
+        className={cn("tabular", symbol ? "pl-7" : "pl-3", currency && "pr-14", className)}
+        aria-describedby={currencyId}
         {...aria}
       />
       {currency && (
-        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
+        <span
+          id={currencyId}
+          className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground"
+        >
           {currency}
         </span>
       )}

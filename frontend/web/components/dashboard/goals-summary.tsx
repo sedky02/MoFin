@@ -12,7 +12,7 @@ import { SkeletonCard, EmptyState, ErrorState } from "@/components/common/states
 /** Condensed goals section for the dashboard; full management lives on /goals. */
 export function GoalsSummary({ accountId }: { accountId?: string } = {}) {
   const { data: goals, isLoading, isError, refetch } = useGoals();
-  const { data: accounts } = useAccounts();
+  const { data: accounts } = useAccounts("all");
   const accountsById = new Map((accounts ?? []).map((a) => [a.id, a]));
   const visible = (goals ?? []).filter((g) => !accountId || g.accountId === accountId).slice(0, 4);
 

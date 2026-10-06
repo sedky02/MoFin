@@ -92,10 +92,57 @@ export function parseMoneyInput(raw: string): string | null {
  * Format a decimal string for an <input> (no symbol, 2 decimal places).
  * Returns "" for empty/invalid so the field can be cleared.
  */
-export function formatMoneyInput(amount: string): string {
+export function formatMoneyInput(amount: string, currency?: string): string {
   const d = tryParse(amount);
   if (!d) return "";
-  return d.toFixed(2);
+  return d.toFixed(currencyFractionDigits(currency));
+}
+
+/** Minor-unit digits for a currency (JPY 0, USD 2, KWD/TND 3); 2 if unknown. */
+export function currencyFractionDigits(currency?: string): number {
+  if (!currency) return 2;
+  try {
+    return new Intl.NumberFormat("en", { style: "currency", currency }).resolvedOptions()
+      .maximumFractionDigits ?? 2;
+  } catch {
+    return 2;
+  }
+}
+
+/** Currency symbol ("$", "€", "TND"…) or "" when unknown. */
+export function currencySymbol(currency?: string): string {
+  if (!currency) return "";
+  try {
+    return (
+      new Intl.NumberFormat("en", { style: "currency", currency, currencyDisplay: "narrowSymbol" })
+        .formatToParts(0)
+        .find((p) => p.type === "currency")?.value ?? ""
+    );
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * Normalise what a user types into a money field to a dot-decimal string, so
+ * "12,50" means 12.50 (not 1250) and "1.234,56" / "1,234.56" both mean 1234.56.
+ * Mixed separators: the last one is the decimal point. A repeated separator
+ * ("1,234,567") is thousands grouping. A lone "," followed by exactly 3 digits
+ * is thousands ("1,234"); any other lone "," is a decimal comma. A lone "."
+ * is always a decimal point (3-decimal currencies exist).
+ */
+export function normalizeMoneyTyping(raw: string): string {
+  const s = raw.replace(/[^0-9.,]/g, "");
+  const seps = s.match(/[.,]/g) ?? [];
+  if (seps.length === 0) return s;
+  const lastIdx = Math.max(s.lastIndexOf("."), s.lastIndexOf(","));
+  const sep = s[lastIdx];
+  const head = s.slice(0, lastIdx).replace(/[.,]/g, "");
+  const tail = s.slice(lastIdx + 1);
+  const mixed = s.includes(".") && s.includes(",");
+  if (!mixed && seps.length > 1) return head + tail;
+  if (!mixed && sep === "," && tail.length === 3) return head + tail;
+  return `${head}.${tail}`;
 }
 
 /**

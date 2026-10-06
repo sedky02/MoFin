@@ -45,7 +45,7 @@ export default function SettingsPage() {
   const changed = (user?.displayName ?? "") !== currentName.trim();
 
   async function action() {
-    const valid = await form.trigger();
+    const valid = await form.trigger(undefined, { shouldFocus: true });
     if (!valid) return;
     try {
       await updateMut.mutateAsync({ displayName: currentName.trim() });

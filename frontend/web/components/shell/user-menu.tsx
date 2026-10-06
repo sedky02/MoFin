@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { LogOut, Settings, User as UserIcon } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -32,12 +33,18 @@ export function UserMenu() {
   async function logout() {
     setLoggingOut(true);
     try {
-      await fetch("/api/auth/logout", { method: "POST" });
-    } finally {
-      queryClient.clear();
-      router.replace("/login");
-      router.refresh();
+      const res = await fetch("/api/auth/logout", { method: "POST" });
+      if (!res.ok) throw new Error(`logout failed: ${res.status}`);
+    } catch {
+      // Navigating to /login anyway would bounce a still-signed-in user
+      // straight back to the dashboard while they believe they signed out.
+      toast.error("Couldn't sign out — please try again.");
+      setLoggingOut(false);
+      return;
     }
+    queryClient.clear();
+    router.replace("/login");
+    router.refresh();
   }
 
   const label = user?.displayName || user?.email || "Account";

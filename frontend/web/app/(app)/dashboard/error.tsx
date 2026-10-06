@@ -13,7 +13,7 @@ import { reportError } from "@/lib/error-reporting";
  * boundary here, not custom error subclass fields, so `timedOut` is encoded
  * in the message itself rather than read as a property.
  */
-export default function DashboardError({ error, reset }: { error: Error; reset: () => void }) {
+export default function DashboardError({ error, unstable_retry }: { error: Error; unstable_retry: () => void }) {
   React.useEffect(() => reportError(error, { boundary: "dashboard" }), [error]);
   const timedOut = error.message?.toLowerCase().includes("timed out");
   return (
@@ -24,7 +24,7 @@ export default function DashboardError({ error, reset }: { error: Error; reset: 
           ? "The server is taking too long to respond. Please try again."
           : "We couldn't reach the backend just now. Please try again."
       }
-      onRetry={reset}
+      onRetry={unstable_retry}
       className="mt-12"
     />
   );

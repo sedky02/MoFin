@@ -1,5 +1,6 @@
 "use client";
 
+import { normalizeMoneyTyping } from "@/lib/format";
 import * as React from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { Search as SearchIcon, X, SlidersHorizontal } from "lucide-react";
@@ -213,7 +214,7 @@ export function SearchView({ initial }: { initial: SearchInitial }) {
               <Input
                 inputMode="decimal"
                 value={minAmount}
-                onChange={(e) => setMinAmount(e.target.value.replace(/[^0-9.]/g, ""))}
+                onChange={(e) => setMinAmount(normalizeMoneyTyping(e.target.value))}
                 placeholder="0"
                 className="tabular"
               />
@@ -222,7 +223,7 @@ export function SearchView({ initial }: { initial: SearchInitial }) {
               <Input
                 inputMode="decimal"
                 value={maxAmount}
-                onChange={(e) => setMaxAmount(e.target.value.replace(/[^0-9.]/g, ""))}
+                onChange={(e) => setMaxAmount(normalizeMoneyTyping(e.target.value))}
                 placeholder="∞"
                 className="tabular"
               />

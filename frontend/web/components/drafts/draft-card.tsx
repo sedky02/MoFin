@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { MoneyAmount } from "@/components/common/money-amount";
 import { TypeBadge, ConfidencePill, StatusBadge } from "@/components/common/badges";
 import { DraftReviewForm } from "./draft-review-form";
+import { useAccounts } from "@/hooks/useAccounts";
+import { tryParse } from "@/lib/decimal";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -30,6 +32,29 @@ export function DraftCard({
   const [reason, setReason] = React.useState("");
   const isPending = draft.status === "PENDING";
   const p = draft.parsedData;
+  const { data: accounts } = useAccounts("all");
+  const accountName = (id?: string | null) => accounts?.find((a) => a.id === id)?.name;
+
+  // Quick-approve skips the review form, so only allow it when everything the
+  // ledger entry needs is present and the AI was reasonably sure.
+  const needsAccounts =
+    p.type === "EXPENSE" ? !p.fromAccountId
+    : p.type === "INCOME" ? !p.toAccountId
+    : p.type === "TRANSFER" ? !p.fromAccountId || !p.toAccountId
+    : true;
+  const lowConfidence = (tryParse(draft.confidenceScore)?.toNumber() ?? 0) < 0.5;
+  const quickApproveBlocked = !p.amount || !p.currency || needsAccounts || lowConfidence;
+  const blockedReason = !p.amount || !p.currency
+    ? "Missing amount or currency"
+    : needsAccounts
+      ? "No account chosen"
+      : "Low AI confidence";
+  const fromName = accountName(p.fromAccountId);
+  const toName = accountName(p.toAccountId);
+  const accountSummary =
+    p.type === "TRANSFER" ? [fromName, toName].every(Boolean) ? `${fromName} → ${toName}` : null
+    : p.type === "INCOME" ? (toName ? `Into ${toName}` : null)
+    : fromName ? `From ${fromName}` : null;
 
   return (
     <Card
@@ -56,13 +81,17 @@ export function DraftCard({
         <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
           {p.type && <TypeBadge type={p.type} />}
           <span className="text-sm font-medium">{p.description}</span>
+          {accountSummary && (
+            <span className="text-xs text-muted-foreground">{accountSummary}</span>
+          )}
           <span className="ml-auto text-xs text-muted-foreground tabular">
             {p.occurredAt ? formatDate(p.occurredAt) : formatDate(draft.createdAt)}
           </span>
           {p.amount && p.currency && (
             <MoneyAmount
-              amount={p.amount}
+              amount={p.type === "EXPENSE" ? `-${p.amount.replace(/^-/, "")}` : p.amount}
               currency={p.currency}
+              colorBySign={p.type === "EXPENSE" || p.type === "INCOME"}
               className="text-base font-semibold"
             />
           )}
@@ -74,12 +103,16 @@ export function DraftCard({
             <Button
               size="sm"
               className="gap-1.5"
-              disabled={approving}
+              disabled={approving || quickApproveBlocked}
+              title={quickApproveBlocked ? `${blockedReason} — use Review & edit` : undefined}
               onClick={() => onApprove?.(draft.id, {})}
             >
               <Check className="size-4" />
               Approve
             </Button>
+            {quickApproveBlocked && (
+              <span className="text-xs text-muted-foreground">{blockedReason} — review first</span>
+            )}
             <Button
               size="sm"
               variant="outline"

@@ -144,7 +144,7 @@ export default function NewTransactionPage() {
   );
 
   async function action() {
-    const valid = await form.trigger();
+    const valid = await form.trigger(undefined, { shouldFocus: true });
     if (!valid) return;
     const v = form.getValues();
     const amount = parseMoneyInput(v.amountRaw);

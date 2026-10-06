@@ -10,7 +10,7 @@ import { reportError } from "@/lib/error-reporting";
  * deliberately dependency-free (no shared components/providers) since those
  * could be part of what crashed.
  */
-export default function GlobalError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+export default function GlobalError({ error, unstable_retry }: { error: Error & { digest?: string }; unstable_retry: () => void }) {
   React.useEffect(() => reportError(error, { boundary: "global" }), [error]);
   return (
     <html lang="en">
@@ -32,7 +32,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
           MoFin hit an unexpected error and couldn&apos;t load. Please try again.
         </p>
         <button
-          onClick={reset}
+          onClick={unstable_retry}
           style={{
             padding: "0.5rem 1.25rem",
             borderRadius: "0.5rem",

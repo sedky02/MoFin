@@ -146,7 +146,7 @@ export default function AccountsPage() {
         open={!!toArchive}
         onOpenChange={(o) => !o && setToArchive(undefined)}
         title={`Archive "${toArchive?.name}"?`}
-        description="This hides the account from your list. Its history and ledger entries are preserved. You can restore it later from the Archived tab."
+        description="This hides the account from your list. Its history and ledger entries are preserved. You can restore it later from the Archived tab. Any goals linked to this account keep running."
         confirmLabel="Archive"
         onConfirm={confirmArchive}
       />

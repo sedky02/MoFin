@@ -86,7 +86,8 @@ export function ConfidencePill({
       )}
       title={`AI confidence: ${pct}%`}
     >
-      <span className="size-1.5 rounded-full bg-current" />
+      <span className="size-1.5 rounded-full bg-current" aria-hidden />
+      <span className="sr-only">AI confidence </span>
       {pct}%
     </span>
   );

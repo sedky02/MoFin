@@ -74,7 +74,7 @@ export function CategoryDialog({
   const selectedType = form.watch("type");
 
   async function action() {
-    const valid = await form.trigger();
+    const valid = await form.trigger(undefined, { shouldFocus: true });
     if (!valid) return;
     const v = form.getValues();
     try {

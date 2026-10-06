@@ -19,7 +19,7 @@ export default function GoalsPage() {
 
   const active = useGoals("active");
   const disabled = useGoals("archived", tab === "disabled");
-  const { data: accounts } = useAccounts();
+  const { data: accounts } = useAccounts("all");
   const stopMut = useArchiveGoal();
 
   const [dialogOpen, setDialogOpen] = React.useState(false);

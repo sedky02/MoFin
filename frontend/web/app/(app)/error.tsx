@@ -11,13 +11,13 @@ import { reportError } from "@/lib/error-reporting";
  * path but a manual reload (audit OBS-01/PERF-XX). More specific boundaries
  * (e.g. dashboard/error.tsx) still take precedence for their own routes.
  */
-export default function AppError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+export default function AppError({ error, unstable_retry }: { error: Error & { digest?: string }; unstable_retry: () => void }) {
   React.useEffect(() => reportError(error, { boundary: "app" }), [error]);
   return (
     <ErrorState
       title="Something went wrong"
       description="This page hit an unexpected error. Please try again."
-      onRetry={reset}
+      onRetry={unstable_retry}
       className="mt-12"
     />
   );
