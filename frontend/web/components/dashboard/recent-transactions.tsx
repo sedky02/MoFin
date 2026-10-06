@@ -1,5 +1,6 @@
 "use client";
 
+import { useAccounts } from "@/hooks/useAccounts";
 import Link from "next/link";
 import { useRecentTransactions } from "@/hooks/useSearch";
 import { TransactionRow } from "@/components/transactions/transaction-row";
@@ -10,6 +11,7 @@ import { Receipt, ArrowRight } from "lucide-react";
 
 export function RecentTransactions({ accountId }: { accountId?: string } = {}) {
   const { data, isLoading, isError, refetch } = useRecentTransactions(10, accountId);
+  const { data: accounts } = useAccounts();
 
   return (
     <Card className="glass-panel overflow-hidden border-0 p-0 ring-0">
@@ -35,9 +37,15 @@ export function RecentTransactions({ accountId }: { accountId?: string } = {}) {
             title="No transactions yet"
             description="Record your first transaction or describe one in Drafts."
             action={
-              <Button asChild>
-                <Link href="/drafts">Try a draft</Link>
-              </Button>
+              accounts && accounts.length === 0 ? (
+                <Button asChild>
+                  <Link href="/accounts">Create an account first</Link>
+                </Button>
+              ) : (
+                <Button asChild>
+                  <Link href="/drafts">Try a draft</Link>
+                </Button>
+              )
             }
           />
         </div>

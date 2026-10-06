@@ -59,7 +59,7 @@ export function DraftComposer() {
       />
       <div className="relative">
         <div className="mb-3 flex items-center gap-2">
-          <span className="flex size-7 items-center justify-center rounded-lg bg-primary/15 text-primary">
+          <span className="flex size-7 items-center justify-center rounded-lg bg-primary/15 text-primary-text">
             <Sparkles className="size-4" />
           </span>
           <div>

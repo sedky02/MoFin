@@ -69,9 +69,14 @@ export function SearchView({ initial }: { initial: SearchInitial }) {
     !!debouncedMax;
 
   // Reset to page 1 whenever a filter changes.
+  // Skipped on mount so a ?page=3 URL (refresh, Back) isn't snapped to page 1.
+  const filterKey = [debouncedQ, categoryId, accountId, from, to, debouncedMin, debouncedMax, limit].join("|");
+  const prevFilterKey = React.useRef(filterKey);
   React.useEffect(() => {
+    if (prevFilterKey.current === filterKey) return;
+    prevFilterKey.current = filterKey;
     setPage(1);
-  }, [debouncedQ, categoryId, accountId, from, to, debouncedMin, debouncedMax, limit]);
+  }, [filterKey]);
 
   // Sync filters → URL so refresh / share / back works.
   React.useEffect(() => {
@@ -295,11 +300,12 @@ export function SearchView({ initial }: { initial: SearchInitial }) {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children }: { label: string; children: React.ReactElement<{ id?: string }> }) {
+  const id = React.useId();
   return (
     <div className="space-y-1.5">
-      <Label className="text-xs text-muted-foreground">{label}</Label>
-      {children}
+      <Label htmlFor={id} className="text-xs text-muted-foreground">{label}</Label>
+      {React.cloneElement(children, { id })}
     </div>
   );
 }

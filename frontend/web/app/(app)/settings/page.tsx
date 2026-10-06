@@ -73,8 +73,8 @@ export default function SettingsPage() {
           <Form {...form}>
             <form action={action} className="space-y-5">
               <div className="space-y-2">
-                <Label>Email</Label>
-                <Input value={user?.email ?? ""} readOnly disabled className="bg-muted/50" />
+                <Label htmlFor="settings-email">Email</Label>
+                <Input id="settings-email" value={user?.email ?? ""} readOnly disabled className="bg-muted/50" />
               </div>
 
               <FormField

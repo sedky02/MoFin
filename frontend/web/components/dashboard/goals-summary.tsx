@@ -44,9 +44,15 @@ export function GoalsSummary({ accountId }: { accountId?: string } = {}) {
               accountId ? "This account has no goals yet." : "Set a target to start tracking progress."
             }
             action={
-              <Button asChild>
-                <Link href="/goals">Create a goal</Link>
-              </Button>
+              accounts && accounts.length === 0 ? (
+                <Button asChild>
+                  <Link href="/accounts">Create an account first</Link>
+                </Button>
+              ) : (
+                <Button asChild>
+                  <Link href="/goals">Create a goal</Link>
+                </Button>
+              )
             }
           />
         ) : (

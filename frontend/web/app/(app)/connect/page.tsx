@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ExternalLink, Eye, EyeOff, Plus, ShieldCheck } from "lucide-react";
+import { ExternalLink, Plus, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CopyButton } from "@/components/common/copy-button";
@@ -46,7 +46,6 @@ type ClientKey = (typeof CLIENTS)[number]["key"] | "other";
 
 export default function ConnectPage() {
   const { data: user } = useUser();
-  const [revealed, setRevealed] = React.useState(false);
   const [active, setActive] = React.useState<ClientKey>("claude");
 
   const claudeDeepLink = MCP_URL
@@ -63,18 +62,18 @@ export default function ConnectPage() {
       <header className="mb-8 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
         <div className="max-w-2xl">
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1">
-            <span className="size-2 animate-pulse rounded-full bg-primary" aria-hidden />
-            <span className="label-caps text-primary! tracking-widest!">MCP Ready</span>
+            <span className={cn("size-2 rounded-full", MCP_URL ? "bg-primary" : "bg-muted-foreground")} aria-hidden />
+            <span className="label-caps text-primary-text! tracking-widest!">
+              {MCP_URL ? "Ready to connect" : "Not configured"}
+            </span>
           </div>
           <h1 className="font-heading text-4xl font-extrabold leading-none tracking-tight sm:text-5xl">
             AI Connector Hub
           </h1>
           <p className="mt-4 max-w-xl text-sm text-muted-foreground sm:text-base">
-            Bridging your financial data to your favorite AI assistants via the open{" "}
-            <span className="text-primary underline decoration-primary/30">
-              Model Context Protocol
-            </span>{" "}
-            (MCP).
+            Let Claude, ChatGPT or another AI assistant read your balances and suggest transactions.
+            Anything it suggests stays a draft until you approve it. Works through the open
+            Model Context Protocol (MCP).
           </p>
         </div>
 
@@ -83,18 +82,10 @@ export default function ConnectPage() {
             <span className="label-caps">Your connector</span>
           </div>
           <div className="flex items-center gap-2">
-            <code className="flex-1 truncate font-mono text-xs text-primary">
-              {revealed ? MCP_URL : "•".repeat(28)}
+            <code className="flex-1 truncate font-mono text-xs text-primary-text">
+              {MCP_URL || "Not configured"}
             </code>
-            <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setRevealed((r) => !r)}
-                    >
-                      {revealed ? <EyeOff /> : <Eye />}
-                    </Button>
-            <CopyButton value={MCP_URL} label="" className="px-2" />
+            {MCP_URL && <CopyButton value={MCP_URL} label="" ariaLabel="Copy connector URL" className="px-2" />}
           </div>
         </div>
       </header>
@@ -110,6 +101,7 @@ export default function ConnectPage() {
                 key={key}
                 type="button"
                 onClick={() => setActive(key)}
+                aria-pressed={isActive}
                 title={label}
                 className={cn(
                   "glass-panel flex-1 rounded-2xl border-l-4 p-3 text-left transition-all duration-300 lg:w-full lg:flex-none lg:p-6 lg:hover:-translate-y-0.5",
@@ -127,7 +119,7 @@ export default function ConnectPage() {
                   </div>
                   {isActive && (
                     <span className="hidden rounded-lg bg-primary/15 px-2 py-1 lg:inline-block">
-                      <span className="label-caps text-primary!">Selected</span>
+                      <span className="label-caps text-primary-text!">Selected</span>
                     </span>
                   )}
                 </div>
@@ -185,7 +177,7 @@ export default function ConnectPage() {
                     {activeClient?.label ?? "Other MCP client"} configuration
                   </h2>
                   <p className="font-mono text-xs text-muted-foreground">
-                    REMOTE_MCP_SERVER · OAUTH_2.0
+                    Signs in with your MoFin account — no keys to paste
                   </p>
                 </div>
               </div>
@@ -193,8 +185,13 @@ export default function ConnectPage() {
               <div className="space-y-7">
                 {/* Primary CTA */}
                 {active === "claude" && (
-                  <Button size="lg" className="w-full" asChild disabled={!claudeDeepLink}>
-                    <a href={claudeDeepLink} target="_blank" rel="noopener noreferrer">
+                  <Button size="lg" className="w-full" asChild>
+                    <a
+                      href={claudeDeepLink || undefined}
+                      aria-disabled={!claudeDeepLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
                       <AnthropicLogo className="size-4" />
                       Add to Claude
                     </a>
@@ -215,43 +212,38 @@ export default function ConnectPage() {
 
                 {/* Endpoint */}
                 <div>
-                  <label className="label-caps text-primary! mb-3 block">MCP endpoint</label>
+                  <label htmlFor="mcp-endpoint" className="label-caps text-primary-text! mb-3 block">
+                    Connector URL
+                  </label>
                   <div className="flex gap-2">
                     <Input
-                      value={revealed ? MCP_URL : "•".repeat(32)}
+                      id="mcp-endpoint"
+                      value={MCP_URL || "Not configured — set NEXT_PUBLIC_MCP_URL"}
                       readOnly
                       className="bg-muted/50 font-mono text-xs"
                     />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setRevealed((r) => !r)}
-                    >
-                      {revealed ? <EyeOff /> : <Eye />}
-                      {revealed ? "Hide" : "View"}
-                    </Button>
-                    <CopyButton value={MCP_URL} />
+                    {MCP_URL && <CopyButton value={MCP_URL} ariaLabel="Copy connector URL" />}
                   </div>
                 </div>
 
                 {/* Auth */}
                 <div className="flex items-start gap-3 rounded-xl border border-border bg-muted/30 p-4">
-                  <ShieldCheck className="mt-0.5 size-4 shrink-0 text-primary" />
+                  <ShieldCheck className="mt-0.5 size-4 shrink-0 text-primary-text" />
                   <p className="text-sm text-muted-foreground">
                     No manual tokens — when {activeClient?.label ?? "the client"} connects,
                     it redirects you here to sign in as{" "}
                     <span className="font-medium text-foreground">
                       {user?.email ?? "your account"}
                     </span>{" "}
-                    and approve access. Revoke it any time from the client&apos;s connector
-                    settings.
+                    and approve access. Removing the connector in {activeClient?.label ?? "the client"}{" "}
+                    stops that app using it, but access you already approved on MoFin
+                    isn&apos;t revocable from this page yet.
                   </p>
                 </div>
 
                 {/* Setup instructions, per client */}
                 <div>
-                  <label className="label-caps text-primary! mb-4 block">Setup instructions</label>
+                  <h3 className="label-caps text-primary-text! mb-4 block">Setup instructions</h3>
 
                   {active === "claude" && (
                     <div className="space-y-3">

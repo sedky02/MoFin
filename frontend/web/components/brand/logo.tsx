@@ -28,7 +28,7 @@ export function Logo({
       </span>
       {showText && (
         <span className="font-heading text-xl font-extrabold tracking-tight">
-          Mo<span className="text-primary terminal-glow">Fin</span>
+          Mo<span className="text-primary-text terminal-glow">Fin</span>
         </span>
       )}
     </span>

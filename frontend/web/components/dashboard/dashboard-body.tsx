@@ -39,6 +39,7 @@ export function DashboardBody({
   // self-corrects the moment real data arrives.
   const primaryCurrency = pickPrimaryCurrency(balances, user, initialPrimaryCurrency);
   const currency = selectedAccount?.currency ?? primaryCurrency;
+  const mixedCurrencies = new Set((accounts ?? []).map((a) => a.currency)).size > 1;
 
   return (
     <section className="space-y-8">
@@ -73,6 +74,7 @@ export function DashboardBody({
           month={month}
           currency={currency}
           accountId={accountId}
+          mixedCurrencies={mixedCurrencies}
         />
         <RecentTransactions accountId={accountId} />
       </div>

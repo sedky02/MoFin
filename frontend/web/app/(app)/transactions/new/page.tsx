@@ -431,6 +431,7 @@ export default function NewTransactionPage() {
                           name={`items.${i}.amountRaw`}
                           render={({ field: amountField }) => (
                             <FormItem className="w-28 shrink-0">
+                              <FormLabel className="sr-only">Item {i + 1} amount</FormLabel>
                               <FormControl>
                                 <MoneyInput
                                   value={amountField.value ?? ""}
@@ -481,7 +482,7 @@ export default function NewTransactionPage() {
                           className="shrink-0 text-muted-foreground hover:text-destructive"
                           disabled={itemsArray.fields.length <= 2}
                           onClick={() => itemsArray.remove(i)}
-                          aria-label="Remove item"
+                          aria-label={`Remove item ${i + 1}`}
                         >
                           <Trash2 className="size-4" />
                         </Button>

@@ -16,6 +16,8 @@ export function AccountSelect({
   placeholder = "Select account",
   disabled,
   "aria-invalid": ariaInvalid,
+  "aria-describedby": ariaDescribedBy,
+  id,
 }: {
   accounts: Account[];
   value?: string;
@@ -23,10 +25,12 @@ export function AccountSelect({
   placeholder?: string;
   disabled?: boolean;
   "aria-invalid"?: boolean;
+  "aria-describedby"?: string;
+  id?: string;
 }) {
   return (
     <Select value={value} onValueChange={onChange} disabled={disabled}>
-      <SelectTrigger className="w-full" aria-invalid={ariaInvalid}>
+      <SelectTrigger id={id} className="w-full" aria-invalid={ariaInvalid} aria-describedby={ariaDescribedBy}>
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>

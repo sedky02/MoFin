@@ -52,7 +52,7 @@ export function NavLink({
           active ? "opacity-100" : "opacity-0",
         )}
       />
-      <Icon className={cn("size-[18px] shrink-0", active && "text-primary")} />
+      <Icon className={cn("size-[18px] shrink-0", active && "text-primary-text")} />
       <span className="flex-1">{item.label}</span>
       {item.badge === "drafts" && <DraftBadge />}
     </Link>
@@ -65,6 +65,7 @@ function DraftBadge() {
   return (
     <Badge className="h-5 min-w-5 justify-center rounded-full bg-primary px-1.5 text-[11px] tabular text-primary-foreground">
       {count > 99 ? "99+" : count}
+      <span className="sr-only"> pending</span>
     </Badge>
   );
 }

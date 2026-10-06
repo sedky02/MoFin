@@ -58,7 +58,7 @@ export function UserMenu() {
           aria-label="Open account menu"
         >
           <Avatar className="size-8">
-            <AvatarFallback className="bg-primary/15 text-xs font-semibold text-primary">
+            <AvatarFallback className="bg-primary/15 text-xs font-semibold text-primary-text">
               {initials(user?.displayName, user?.email)}
             </AvatarFallback>
           </Avatar>

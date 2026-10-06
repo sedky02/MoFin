@@ -43,6 +43,10 @@ export default function GlobalError({ error, unstable_retry }: { error: Error & 
         >
           Try again
         </button>
+        {/* Plain <a>: global-error replaces the root layout, so no router here. */}
+        <a href="/dashboard" style={{ color: "#666", fontSize: "0.875rem" }}>
+          Go to dashboard
+        </a>
       </body>
     </html>
   );

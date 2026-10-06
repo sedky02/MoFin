@@ -12,7 +12,7 @@ const OPTIONS: {
 }[] = [
   { value: "EXPENSE", label: "Expense", icon: ArrowUpRight, active: "text-destructive" },
   { value: "INCOME", label: "Income", icon: ArrowDownLeft, active: "text-success" },
-  { value: "TRANSFER", label: "Transfer", icon: ArrowLeftRight, active: "text-primary" },
+  { value: "TRANSFER", label: "Transfer", icon: ArrowLeftRight, active: "text-primary-text" },
 ];
 
 export function TypeSwitcher({

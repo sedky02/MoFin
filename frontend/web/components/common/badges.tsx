@@ -27,7 +27,7 @@ export function TypeBadge({
     TRANSFER: {
       label: "Transfer",
       icon: ArrowLeftRight,
-      cls: "bg-primary/12 text-primary",
+      cls: "bg-primary/12 text-primary-text",
     },
   } as const;
   const { label, icon: Icon, cls } = map[type];
@@ -146,7 +146,7 @@ export function AccountTypeBadge({
 
 export function GoalTypeBadge({ type, className }: { type: GoalType; className?: string }) {
   const map = {
-    BALANCE: { label: "Balance", icon: PiggyBank, cls: "bg-primary/12 text-primary" },
+    BALANCE: { label: "Balance", icon: PiggyBank, cls: "bg-primary/12 text-primary-text" },
     INCOME: { label: "Income", icon: TrendingUp, cls: "bg-success/12 text-success" },
     EXPENSE: { label: "Expense", icon: TrendingDown, cls: "bg-destructive/12 text-destructive" },
   } as const;

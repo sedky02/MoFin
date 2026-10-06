@@ -1,7 +1,10 @@
 "use client";
 
 import { useLedgerBalance } from "@/hooks/useLedger";
-import { parseBalanceKey } from "@/lib/format";
+import Link from "next/link";
+import { useUser } from "@/hooks/useUser";
+import { Button } from "@/components/ui/button";
+import { parseBalanceKey, pickPrimaryCurrency } from "@/lib/format";
 import { add } from "@/lib/decimal";
 import { MoneyAmount } from "@/components/common/money-amount";
 import { SkeletonCard, ErrorState, EmptyState } from "@/components/common/states";
@@ -20,6 +23,7 @@ function totalsByCurrency(balances: { key: string; balance: string }[]) {
 
 export function BalanceCards({ accountId, accountName }: { accountId?: string; accountName?: string } = {}) {
   const { data, isLoading, isError, refetch } = useLedgerBalance({ accountId });
+  const { data: user } = useUser();
 
   if (isLoading) {
     return (
@@ -35,7 +39,12 @@ export function BalanceCards({ accountId, accountName }: { accountId?: string; a
     return <ErrorState description="Couldn't load your balances." onRetry={() => refetch()} />;
   }
 
-  const totals = totalsByCurrency(data ?? []);
+  // Lead with the user's primary currency (same rule the monthly summary uses)
+  // instead of whichever currency the API happened to list first.
+  const primary = pickPrimaryCurrency(data, user);
+  const totals = totalsByCurrency(data ?? []).sort(
+    (a, b) => Number(b.currency === primary) - Number(a.currency === primary),
+  );
 
   if (totals.length === 0) {
     return (
@@ -43,6 +52,11 @@ export function BalanceCards({ accountId, accountName }: { accountId?: string; a
         icon={Wallet}
         title="No balances yet"
         description="Add an account and record a transaction to see balances here."
+        action={
+          <Button asChild>
+            <Link href="/accounts">Create your first account</Link>
+          </Button>
+        }
       />
     );
   }
@@ -56,8 +70,8 @@ export function BalanceCards({ accountId, accountName }: { accountId?: string; a
         <div className="scanline" aria-hidden />
         <div className="flex items-center gap-2.5">
           <span className="size-2 animate-pulse rounded-full bg-primary" aria-hidden />
-          <span className="label-caps tracking-widest! text-primary!">
-            Live Portfolio Pulse
+          <span className="label-caps tracking-widest! text-primary-text!">
+            {hero.currency} balance
           </span>
         </div>
         <MoneyAmount

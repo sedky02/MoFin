@@ -163,7 +163,7 @@ export function CategoryDialog({
                           className={cn(
                             "rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
                             selectedType === t
-                              ? "border-primary bg-primary/10 text-primary"
+                              ? "border-primary bg-primary/10 text-primary-text"
                               : "border-border text-muted-foreground hover:bg-secondary",
                           )}
                         >

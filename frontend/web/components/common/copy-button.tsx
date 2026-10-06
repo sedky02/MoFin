@@ -9,10 +9,12 @@ import { cn } from "@/lib/utils";
 export function CopyButton({
   value,
   label = "Copy",
+  ariaLabel,
   className,
 }: {
   value: string;
   label?: string;
+  ariaLabel?: string;
   className?: string;
 }) {
   const [copied, setCopied] = React.useState(false);
@@ -34,6 +36,7 @@ export function CopyButton({
       variant="outline"
       size="sm"
       onClick={copy}
+      aria-label={ariaLabel}
       className={cn("shrink-0", className)}
     >
       {copied ? <Check /> : <Copy />}

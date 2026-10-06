@@ -2,6 +2,17 @@ import type { FieldValues, Path, UseFormSetError } from "react-hook-form";
 import { toast } from "sonner";
 import { ApiClientError } from "@/lib/api";
 
+// Same message -> same toast id, so a hook-level onError and a caller-level
+// handleApiError for one failure show a single toast instead of two.
+function toastOnce(message: string) {
+  toast.error(message, { id: message });
+}
+
+// Backend DTO paths -> form field names (the form keeps the raw text as `amountRaw`).
+function toFormPath(path: string): string {
+  return path.replace(/^amount$/, "amountRaw").replace(/^(items\.\d+)\.amount$/, "$1.amountRaw");
+}
+
 /**
  * Central mutation/form error handling per the tanstack-query-conventions skill:
  * - 400 → map field errors into the form via setError (returns true if mapped)
@@ -19,30 +30,30 @@ export function handleApiError<T extends FieldValues>(
       let mappedRoot = false;
       for (const { path, message } of error.validation) {
         if (path) {
-          opts.setError(path as Path<T>, { type: "server", message });
+          opts.setError(toFormPath(path) as Path<T>, { type: "server", message });
         } else {
           mappedRoot = true;
         }
       }
       if (mappedRoot || error.validation.every((e) => !e.path)) {
-        toast.error(error.message);
+        toastOnce(error.message);
       }
       return;
     }
     if (error.status === 429) {
-      toast.error("Too many requests, try again shortly.");
+      toastOnce("Too many requests, try again shortly.");
       return;
     }
     if (error.status === 409) {
-      toast.error(error.message);
+      toastOnce(error.message);
       return;
     }
     if (error.status === 504) {
-      toast.error("The server is taking too long to respond. Please try again.");
+      toastOnce("The server is taking too long to respond. Please try again.");
       return;
     }
-    toast.error(error.message || opts?.fallback || "Something went wrong.");
+    toastOnce(error.message || opts?.fallback || "Something went wrong.");
     return;
   }
-  toast.error(opts?.fallback ?? "Something went wrong. Please try again.");
+  toastOnce(opts?.fallback ?? "Something went wrong. Please try again.");
 }

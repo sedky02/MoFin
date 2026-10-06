@@ -24,6 +24,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-dvh lg:grid lg:grid-cols-[16rem_1fr]">
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-md focus:bg-primary focus:px-3 focus:py-2 focus:text-sm focus:font-medium focus:text-primary-foreground"
+      >
+        Skip to content
+      </a>
       {/* Desktop sidebar. usePathname/usePendingDraftCount inside SidebarNav read
           per-request data, so this subtree needs its own Suspense boundary to keep
           the rest of the route shell statically prerenderable. */}
@@ -52,16 +58,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </Sheet>
 
           <div className="flex-1" />
-          <span className="mr-1 hidden items-center gap-1.5 rounded-full border border-border px-2.5 py-1 sm:flex">
-            <span className="size-1.5 animate-pulse rounded-full bg-primary" aria-hidden />
-            <span className="label-caps text-[10px]! tracking-widest!">Mainnet · Live</span>
-          </span>
           <ThemeToggle />
           <UserMenu />
         </header>
 
         {/* Page content — sidebar nav wraps navigation in a View Transition (see nav-link). */}
-        <main className="flex-1 px-4 pb-24 pt-6 sm:px-6 lg:px-8 lg:pb-10">
+        <main id="main" tabIndex={-1} className="flex-1 outline-none px-4 pb-24 pt-6 sm:px-6 lg:px-8 lg:pb-10">
           <div className="mx-auto w-full max-w-6xl">{children}</div>
         </main>
       </div>
@@ -118,7 +120,7 @@ function MobileBottomNav() {
             aria-current={active ? "page" : undefined}
             className={cn(
               "relative flex flex-1 flex-col items-center justify-center gap-1 text-[11px] font-medium",
-              active ? "text-primary" : "text-muted-foreground",
+              active ? "text-primary-text" : "text-muted-foreground",
             )}
           >
             <span className="relative">
@@ -126,10 +128,11 @@ function MobileBottomNav() {
               {item.badge === "drafts" && !!count && (
                 <span className="absolute -right-2 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] tabular text-primary-foreground">
                   {count > 9 ? "9+" : count}
+                  <span className="sr-only"> pending</span>
                 </span>
               )}
             </span>
-            {item.label.replace(" Transaction", "")}
+            {item.label === "New Transaction" ? "Add" : item.label.replace(" Transaction", "")}
           </Link>
         );
       })}

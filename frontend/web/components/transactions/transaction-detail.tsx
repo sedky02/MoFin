@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { ApiClientError } from "@/lib/api";
 import { ArrowLeft } from "lucide-react";
 import { useTransaction } from "@/hooks/useTransactions";
 import { MoneyAmount } from "@/components/common/money-amount";
@@ -24,7 +26,8 @@ import { formatDateTime, transactionAmount } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 export function TransactionDetail({ id }: { id: string }) {
-  const { data: tx, isLoading, isError, refetch } = useTransaction(id);
+  const router = useRouter();
+  const { data: tx, isLoading, isError, error, refetch } = useTransaction(id);
 
   if (isLoading) {
     return (
@@ -37,19 +40,29 @@ export function TransactionDetail({ id }: { id: string }) {
   }
 
   if (isError || !tx) {
-    return (
+    const notFound = !isError || (error instanceof ApiClientError && error.status === 404);
+    return notFound ? (
       <ErrorState
         title="Transaction not found"
         description="This transaction may have been removed or never existed."
-        onRetry={() => refetch()}
       />
+    ) : (
+      <ErrorState description="Couldn't load this transaction." onRetry={() => refetch()} />
     );
   }
 
   return (
     <div className="mx-auto max-w-2xl">
       <Button asChild variant="ghost" size="sm" className="mb-4 gap-1.5 text-muted-foreground">
-        <Link href="/search">
+        <Link
+          href="/search"
+          onClick={(e) => {
+            if (window.history.length > 1) {
+              e.preventDefault();
+              router.back();
+            }
+          }}
+        >
           <ArrowLeft className="size-4" />
           Back to transactions
         </Link>

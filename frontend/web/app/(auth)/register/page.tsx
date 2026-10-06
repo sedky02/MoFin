@@ -105,13 +105,13 @@ export default function RegisterPage() {
   return (
     <div>
       <div className="mb-8">
-        <h2 className="font-heading text-3xl font-bold leading-tight tracking-tight">
-          Request
+        <h1 className="font-heading text-3xl font-bold leading-tight tracking-tight">
+          Create your
           <br />
-          <span className="text-primary terminal-glow">Node Access</span>
-        </h2>
+          <span className="text-primary-text terminal-glow">account</span>
+        </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Provision a new terminal and track your money with precision.
+          Track your money with precision.
         </p>
       </div>
 
@@ -202,9 +202,9 @@ export default function RegisterPage() {
           />
           <SubmitButton
             className="h-11 w-full font-mono text-sm font-bold uppercase tracking-widest"
-            pendingText="Provisioning…"
+            pendingText="Creating account…"
           >
-            Provision Node
+            Create account
           </SubmitButton>
           <FormDescription className="text-center text-xs">
             By continuing you agree to keep your finances honest. 🙂
@@ -223,7 +223,7 @@ export default function RegisterPage() {
         Already have an account?{" "}
         <Link
           href="/login"
-          className="font-medium text-primary underline-offset-4 hover:underline"
+          className="font-medium text-primary-text underline-offset-4 hover:underline"
         >
           Sign in
         </Link>

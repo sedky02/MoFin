@@ -88,13 +88,13 @@ export default function LoginPage() {
   return (
     <div>
       <div className="mb-8">
-        <h2 className="font-heading text-3xl font-bold leading-tight tracking-tight">
-          Secure
+        <h1 className="font-heading text-3xl font-bold leading-tight tracking-tight">
+          Sign in to
           <br />
-          <span className="text-primary terminal-glow">Authentication</span>
-        </h2>
+          <span className="text-primary-text terminal-glow">MoFin</span>
+        </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Initialize the handshake to pick up where you left off.
+          Pick up where you left off.
         </p>
       </div>
 
@@ -158,9 +158,9 @@ export default function LoginPage() {
           />
           <SubmitButton
             className="h-11 w-full font-mono text-sm font-bold uppercase tracking-widest"
-            pendingText="Synchronizing…"
+            pendingText="Signing in…"
           >
-            Initialize
+            Sign in
           </SubmitButton>
         </form>
       </Form>
@@ -176,7 +176,7 @@ export default function LoginPage() {
         New to MoFin?{" "}
         <Link
           href="/register"
-          className="font-medium text-primary underline-offset-4 hover:underline"
+          className="font-medium text-primary-text underline-offset-4 hover:underline"
         >
           Create an account
         </Link>
