@@ -4,21 +4,35 @@ import { GoalProgressBar } from "@/components/goals/goal-progress-bar";
 import { CategoryIcon } from "@/components/dashboard/category-icon";
 import { goalProgressRatio } from "@/lib/format";
 import { isGreaterThan, tryParse } from "@/lib/decimal";
+import { MoreVertical, Pencil, Ban, History } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 // Cycled per-tile accent, matching the Stitch mockup's alternating
 // secondary/tertiary/primary goal icon tints.
 // (`--secondary` is a near-black surface colour in dark mode, so it can't be an icon colour.)
 const ACCENTS = ["var(--chart-2)", "var(--success)", "var(--primary)"];
 
-/** Read-only compact goal card for the dashboard — no edit/archive actions. */
+/** Compact goal card for the dashboard. The ⋯ menu mirrors the Goals page quick actions. */
 export function GoalMiniCard({
   goal,
   account,
   index = 0,
+  onEdit,
+  onEnd,
+  onViewHistory,
 }: {
   goal: Goal;
   account?: Account;
   index?: number;
+  onEdit?: (goal: Goal) => void;
+  onEnd?: (goal: Goal) => void;
+  onViewHistory?: (goal: Goal) => void;
 }) {
   const currency = account?.currency ?? "USD";
   const instance = goal.currentInstance;
@@ -44,10 +58,46 @@ export function GoalMiniCard({
           </div>
           <span className="truncate text-sm font-semibold">{goal.name}</span>
         </div>
-        <span className="flex shrink-0 items-center gap-1.5 text-[11px] font-medium tabular">
-          {overTarget && <span className="text-destructive">Over budget</span>}
-          <span className="text-muted-foreground">{belowZero ? "Below zero" : `${Math.round(ratio)}%`}</span>
-        </span>
+        <div className="flex shrink-0 items-center gap-1">
+          <span className="flex items-center gap-1.5 text-[11px] font-medium tabular">
+            {overTarget && <span className="text-destructive">Over budget</span>}
+            <span className="text-muted-foreground">{belowZero ? "Below zero" : `${Math.round(ratio)}%`}</span>
+          </span>
+          {(onEdit || onEnd || onViewHistory) && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-7 text-muted-foreground"
+                  aria-label={`Actions for ${goal.name}`}
+                >
+                  <MoreVertical className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {onViewHistory && (
+                  <DropdownMenuItem onClick={() => onViewHistory(goal)}>
+                    <History className="size-4" />
+                    View history
+                  </DropdownMenuItem>
+                )}
+                {onEdit && (
+                  <DropdownMenuItem onClick={() => onEdit(goal)}>
+                    <Pencil className="size-4" />
+                    Edit
+                  </DropdownMenuItem>
+                )}
+                {onEnd && (
+                  <DropdownMenuItem variant="destructive" onClick={() => onEnd(goal)}>
+                    <Ban className="size-4" />
+                    End goal
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
       </div>
 
       <GoalProgressBar ratio={ratio} overTarget={overTarget} />
