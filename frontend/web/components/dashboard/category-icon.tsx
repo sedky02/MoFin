@@ -11,6 +11,7 @@ import {
   Laptop,
   Home,
   Receipt,
+  Banknote,
   type LucideIcon,
 } from "lucide-react";
 
@@ -24,6 +25,7 @@ const RULES: [RegExp, LucideIcon][] = [
   [/health|medical|pharmacy|doctor/i, HeartPulse],
   [/invest|dividend|stock|brokerage/i, TrendingUp],
   [/electronic|tech|computer|laptop/i, Laptop],
+  [/salary|wage|pay\b|paycheck|income|allowance|bonus/i, Banknote],
   [/rent|mortgage|home|deposit|house/i, Home],
 ];
 
@@ -40,9 +42,11 @@ function iconFor(name?: string | null): LucideIcon {
 export function CategoryIcon({
   name,
   className,
+  style,
 }: {
   name?: string | null;
   className?: string;
+  style?: React.CSSProperties;
 }) {
-  return createElement(iconFor(name), { className });
+  return createElement(iconFor(name), { className, style });
 }

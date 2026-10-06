@@ -15,6 +15,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { CategoryIcon } from "@/components/dashboard/category-icon";
 import { cn } from "@/lib/utils";
 import type { Category } from "@/lib/types";
 
@@ -28,7 +29,8 @@ function CategoryTile({
   onDelete: (c: Category) => void;
 }) {
   return (
-    <Card className="flex items-center gap-3 border-0 p-3.5 shadow-sm">
+    // `flex-row` is required: Card is `flex-col` by default, so `flex` alone stacks everything vertically.
+    <Card className="flex-row items-center gap-3 border-0 p-3.5 shadow-sm">
       <span
         className="flex size-9 shrink-0 items-center justify-center rounded-lg text-base"
         style={{
@@ -36,9 +38,10 @@ function CategoryTile({
         }}
       >
         {category.icon || (
-          <span
-            className="size-2.5 rounded-full"
-            style={{ backgroundColor: category.color || "var(--muted-foreground)" }}
+          <CategoryIcon
+            name={category.name}
+            className="size-4"
+            style={{ color: category.color || "var(--muted-foreground)" }}
           />
         )}
       </span>

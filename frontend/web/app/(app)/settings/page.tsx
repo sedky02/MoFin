@@ -198,7 +198,7 @@ export default function SettingsPage() {
         }}
       />
 
-      <Card className="mt-6 flex items-center justify-between border-0 p-6 shadow-sm">
+      <Card className="mt-6 flex-row items-center justify-between border-0 p-6 shadow-sm">
         <div>
           <h2 className="text-sm font-semibold">Appearance</h2>
           <p className="text-xs text-muted-foreground">Switch between light and dark mode.</p>
