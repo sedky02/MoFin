@@ -153,7 +153,7 @@ export function makeTransactionSchema(accounts: Account[]) {
       if (
         val.recurringEndDate &&
         val.occurredAt &&
-        new Date(val.recurringEndDate) <= new Date(val.occurredAt)
+        new Date(`${val.recurringEndDate}T23:59:59`) <= new Date(val.occurredAt)
       ) {
         ctx.addIssue({
           path: ["recurringEndDate"],

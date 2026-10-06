@@ -12,7 +12,15 @@ export function GoalProgressBar({
   className?: string;
 }) {
   return (
-    <div className={cn("h-2 w-full overflow-hidden rounded-full bg-secondary", className)}>
+    <div
+      role="progressbar"
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={Math.round(ratio)}
+      aria-valuetext={`${Math.round(ratio)}%${overTarget ? ", over target" : ""}`}
+      aria-label="Goal progress"
+      className={cn("h-2 w-full overflow-hidden rounded-full bg-secondary", className)}
+    >
       <div
         className={cn("h-full rounded-full transition-all", overTarget ? "bg-destructive" : "bg-primary")}
         style={{ width: `${ratio}%` }}

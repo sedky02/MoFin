@@ -55,7 +55,7 @@ export function UserMenu() {
         <Button
           variant="ghost"
           className="h-auto gap-2.5 px-2 py-1.5"
-          aria-label="Open account menu"
+          aria-label={`${label} — account menu`}
         >
           <Avatar className="size-8">
             <AvatarFallback className="bg-primary/15 text-xs font-semibold text-primary-text">

@@ -128,8 +128,9 @@ export function SearchView({ initial }: { initial: SearchInitial }) {
         />
         {q && (
           <button
+            type="button"
             onClick={() => setQ("")}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            className="absolute right-1.5 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:text-foreground"
             aria-label="Clear search text"
           >
             <X className="size-4" />

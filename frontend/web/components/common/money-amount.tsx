@@ -51,12 +51,15 @@ export function MoneyAmount({
         colorBySign && (isNeg ? "text-destructive" : "text-success"),
         className,
       )}
-      // Keep the final value accessible/copyable even during animation.
-      aria-label={formatMoney(amount, currency)}
       title={formatMoney(amount, currency)}
     >
-      {sign}
-      {formatted}
+      {/* aria-label on a plain span is ignored by many screen readers, and the
+          visible digits change while counting up — expose the final value instead. */}
+      <span aria-hidden>
+        {sign}
+        {formatted}
+      </span>
+      <span className="sr-only">{formatMoney(amount, currency)}</span>
     </span>
   );
 }

@@ -25,7 +25,7 @@ const jetbrains = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "MoFin — clarity for your money",
+  title: { default: "MoFin — clarity for your money", template: "%s · MoFin" },
   description:
     "MoFin is an AI-native personal finance app. Talk to it; it keeps a precise, ledger-first record.",
 };

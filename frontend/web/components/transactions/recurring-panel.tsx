@@ -90,6 +90,14 @@ export function RecurringPanel({ tx }: { tx: Transaction }) {
     const valid = await form.trigger(undefined, { shouldFocus: true });
     if (!valid) return;
     const values = form.getValues();
+    if (!values.description.trim()) {
+      form.setError("description", { message: "Add a short description." });
+      return;
+    }
+    if (values.recurringEndDate && new Date(`${values.recurringEndDate}T23:59:59`) <= new Date()) {
+      form.setError("recurringEndDate", { message: "End date must be in the future." });
+      return;
+    }
     const amount = parseMoneyInput(values.amountRaw);
     if (!amount) {
       form.setError("amountRaw", { message: "Enter an amount greater than 0." });
@@ -104,7 +112,7 @@ export function RecurringPanel({ tx }: { tx: Transaction }) {
         toAccountId: tx.type !== "EXPENSE" ? values.toAccountId : undefined,
         recurringInterval: values.recurringInterval,
         recurringEndDate: values.recurringEndDate
-          ? new Date(values.recurringEndDate).toISOString()
+          ? new Date(`${values.recurringEndDate}T23:59:59`).toISOString()
           : null,
       });
       setEditOpen(false);

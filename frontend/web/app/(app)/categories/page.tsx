@@ -56,16 +56,13 @@ function CategoryTile({
       {category.isSystem ? (
         <Tooltip>
           <TooltipTrigger asChild>
-            <span>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-8 text-muted-foreground"
-                disabled
-                aria-label="System category (read-only)"
-              >
-                <Lock className="size-4" />
-              </Button>
+            <span
+              tabIndex={0}
+              role="img"
+              aria-label="System category (read-only)"
+              className="flex size-8 items-center justify-center rounded-md text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring"
+            >
+              <Lock className="size-4" />
             </span>
           </TooltipTrigger>
           <TooltipContent>System category — can&apos;t be edited</TooltipContent>

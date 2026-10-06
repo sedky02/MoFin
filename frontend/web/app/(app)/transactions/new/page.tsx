@@ -174,7 +174,7 @@ export default function NewTransactionPage() {
         recurringInterval: !splitting && v.isRecurring ? v.recurringInterval : undefined,
         recurringEndDate:
           !splitting && v.isRecurring && v.recurringEndDate
-            ? new Date(v.recurringEndDate).toISOString()
+            ? new Date(`${v.recurringEndDate}T23:59:59`).toISOString()
             : undefined,
       });
       form.reset({
@@ -376,6 +376,11 @@ export default function NewTransactionPage() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
+                        {relevantCategories.length === 0 && (
+                          <p className="px-2 py-1.5 text-sm text-muted-foreground">
+                            No categories yet — add one on the Categories page.
+                          </p>
+                        )}
                         {relevantCategories.map((c) => (
                           <SelectItem key={c.id} value={c.id}>
                             <span className="flex items-center gap-2">
@@ -412,7 +417,7 @@ export default function NewTransactionPage() {
                     type="button"
                     variant="link"
                     size="sm"
-                    className="h-auto p-0 text-xs"
+                    className="h-auto min-h-6 p-1.5 text-xs"
                     onClick={cancelSplit}
                   >
                     Remove split
@@ -462,7 +467,12 @@ export default function NewTransactionPage() {
                                   </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                  {relevantCategories.map((c) => (
+                                  {relevantCategories.length === 0 && (
+                          <p className="px-2 py-1.5 text-sm text-muted-foreground">
+                            No categories yet — add one on the Categories page.
+                          </p>
+                        )}
+                        {relevantCategories.map((c) => (
                                     <SelectItem key={c.id} value={c.id}>
                                       <span className="flex items-center gap-2">
                                         {c.icon && <span>{c.icon}</span>}

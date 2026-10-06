@@ -160,6 +160,7 @@ export function CategoryDialog({
                           key={t}
                           type="button"
                           onClick={() => field.onChange(t)}
+                          aria-pressed={selectedType === t}
                           className={cn(
                             "rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
                             selectedType === t
