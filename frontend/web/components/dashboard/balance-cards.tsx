@@ -6,6 +6,7 @@ import { useUser } from "@/hooks/useUser";
 import { Button } from "@/components/ui/button";
 import { parseBalanceKey, pickPrimaryCurrency } from "@/lib/format";
 import { add, tryParse } from "@/lib/decimal";
+import { BalanceOverview } from "@/components/dashboard/balance-overview";
 import { MoneyAmount } from "@/components/common/money-amount";
 import { SkeletonCard, ErrorState, EmptyState } from "@/components/common/states";
 import { Wallet } from "lucide-react";
@@ -66,28 +67,15 @@ export function BalanceCards({ accountId, accountName }: { accountId?: string; a
   const [hero, ...rest] = totals;
 
   return (
-    // h-full + flex-1 on the hero: it stretches to the row height so it ends level with the Goals card.
+    // h-full: the hero stretches to the row height so it ends level with the Goals card.
     <div className="flex h-full flex-col gap-6">
-      {/* HERO ZONE: LIVE PORTFOLIO PULSE */}
-      <div className="glass-panel pulse-ring relative flex flex-1 flex-col justify-center overflow-hidden rounded-3xl p-8 sm:p-10">
-        <div className="flex items-center gap-2.5">
-          <span className="size-2 animate-pulse rounded-full bg-primary" aria-hidden />
-          <span className="label-caps tracking-widest! text-primary-text!">
-            {hero.currency} balance
-          </span>
-        </div>
-        <MoneyAmount
-          amount={hero.amount}
-          currency={hero.currency}
-          animate
-          className="terminal-glow mt-4 block font-heading text-5xl font-extrabold tracking-tighter text-foreground sm:text-7xl"
-        />
-        <p className="mt-3 text-sm text-muted-foreground">
-          {accountId ? `${accountName ?? "This account"}` : `Across all ${hero.currency} accounts`} · balances
-          always exact
-          {isOverdrawn(hero.amount) && <span className="font-medium text-destructive"> · Overdrawn</span>}
-        </p>
-      </div>
+      <BalanceOverview
+        amount={hero.amount}
+        currency={hero.currency}
+        caption={accountId ? (accountName ?? "This account") : `Across all ${hero.currency} accounts`}
+        overdrawn={isOverdrawn(hero.amount)}
+        accountId={accountId}
+      />
 
       {/* SECONDARY CURRENCY STAT BLOCKS */}
       {rest.length > 0 && (

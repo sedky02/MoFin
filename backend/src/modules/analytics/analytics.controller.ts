@@ -6,7 +6,12 @@ import { ApiZodQuery } from '../../common/swagger/api-zod';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import { AuthenticatedUser } from '../../common/types/authenticated-user';
 import { AnalyticsService } from './analytics.service';
-import { MonthlySummaryQueryDto, monthlySummaryQuerySchema } from './dto/analytics.dto';
+import {
+  MonthlySeriesQueryDto,
+  monthlySeriesQuerySchema,
+  MonthlySummaryQueryDto,
+  monthlySummaryQuerySchema,
+} from './dto/analytics.dto';
 
 @ApiTags('analytics')
 @ApiBearerAuth('jwt')
@@ -22,5 +27,14 @@ export class AnalyticsController {
     @Query(new ZodValidationPipe(monthlySummaryQuerySchema)) query: MonthlySummaryQueryDto,
   ) {
     return this.analyticsService.getMonthlySummary(user.id, query.year, query.month, query.refresh, query.accountId);
+  }
+
+  @Get('monthly-series')
+  @ApiZodQuery(monthlySeriesQuerySchema)
+  monthlySeries(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query(new ZodValidationPipe(monthlySeriesQuerySchema)) query: MonthlySeriesQueryDto,
+  ) {
+    return this.analyticsService.getMonthlySeries(user.id, query.months, query.currency, query.accountId);
   }
 }

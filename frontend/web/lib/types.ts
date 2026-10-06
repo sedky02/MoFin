@@ -202,3 +202,16 @@ export interface ConnectedApp {
   /** Still holds a live refresh token, i.e. can currently renew access. */
   active: boolean;
 }
+
+export interface MonthlySeriesPoint {
+  /** "YYYY-MM" (UTC) */
+  month: string;
+  income: string;
+  expenses: string;
+  /** Closing balance at the end of the month. */
+  balance: string;
+}
+export interface MonthlySeries {
+  currency: string;
+  points: MonthlySeriesPoint[];
+}

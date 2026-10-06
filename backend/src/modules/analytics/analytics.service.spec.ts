@@ -106,3 +106,42 @@ describe('AnalyticsService.getMonthlySummary', () => {
     });
   });
 });
+
+describe('AnalyticsService.getMonthlySeries', () => {
+  function setup(rows: unknown[], cached: unknown = null) {
+    const prisma = {
+      analyticsCache: { findUnique: jest.fn(async () => cached), upsert: jest.fn(async () => ({})) },
+      $queryRaw: jest.fn(async () => rows),
+    };
+    return { service: new AnalyticsService(prisma as never), prisma };
+  }
+
+  beforeEach(() => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-10-15T12:00:00Z'));
+  });
+  afterEach(() => jest.useRealTimers());
+
+  it('returns one point per month oldest-first, carrying the balance forward across empty months', async () => {
+    const { service } = setup([
+      { month: '2026-05', net: '1000', income: '1000', expenses: '0' }, // before the 3-month window: opening balance only
+      { month: '2026-08', net: '-100', income: '0', expenses: '100' },
+      { month: '2026-10', net: '250', income: '300', expenses: '50' },
+    ]);
+    const result = (await service.getMonthlySeries('u1', 3, 'USD')) as {
+      points: { month: string; income: string; expenses: string; balance: string }[];
+    };
+
+    expect(result.points).toEqual([
+      { month: '2026-08', income: '0', expenses: '100', balance: '900' },
+      { month: '2026-09', income: '0', expenses: '0', balance: '900' },
+      { month: '2026-10', income: '300', expenses: '50', balance: '1150' },
+    ]);
+  });
+
+  it('serves a fresh cached payload without querying', async () => {
+    const payload = { currency: 'USD', points: [] };
+    const { service, prisma } = setup([], { payload, expiresAt: new Date(Date.now() + 60_000) });
+    await expect(service.getMonthlySeries('u1', 6, 'USD')).resolves.toBe(payload);
+    expect(prisma.$queryRaw).not.toHaveBeenCalled();
+  });
+});

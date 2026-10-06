@@ -77,6 +77,72 @@ export class AnalyticsService {
     return payload;
   }
 
+  /**
+   * Income, expenses and closing balance for each of the last `months` calendar
+   * months (UTC, oldest first), in one currency. One grouped query over the whole
+   * history — not N month queries and not row-by-row summing in Node. Income and
+   * expenses skip voided transactions and their reversals (they cancel out); the
+   * balance includes both so it matches the ledger exactly. Cached 15 min and
+   * cleared whenever any transaction changes (a back-dated entry shifts every
+   * later month's closing balance).
+   */
+  async getMonthlySeries(userId: string, months: number, currency: string, accountId?: string) {
+    const now = new Date();
+    const first = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - (months - 1), 1));
+    const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+    const cacheKey = `monthly-series:v1:${months}:${currency}:${accountId ?? 'all'}:${now.getUTCFullYear()}-${now.getUTCMonth() + 1}`;
+
+    const cached = await this.prisma.analyticsCache.findUnique({ where: { userId_cacheKey: { userId, cacheKey } } });
+    if (cached && cached.expiresAt > new Date()) return cached.payload;
+
+    const rows = await this.prisma.$queryRaw<
+      { month: string; net: Prisma.Decimal | string; income: Prisma.Decimal | string; expenses: Prisma.Decimal | string }[]
+    >(Prisma.sql`
+      SELECT to_char(date_trunc('month', t."occurredAt"), 'YYYY-MM') AS month,
+        SUM(CASE WHEN ti.direction = 'CREDIT' THEN ti.amount ELSE -ti.amount END) AS net,
+        SUM(CASE WHEN t.type = 'INCOME' AND t."voidedAt" IS NULL AND t."reversesTransactionId" IS NULL THEN ti.amount ELSE 0 END) AS income,
+        SUM(CASE WHEN t.type = 'EXPENSE' AND t."voidedAt" IS NULL AND t."reversesTransactionId" IS NULL THEN ti.amount ELSE 0 END) AS expenses
+      FROM "TransactionItem" ti
+      JOIN "Transaction" t ON t.id = ti."transactionId"
+      WHERE ti."userId" = ${userId}
+        AND ti.currency = ${currency}
+        AND t."occurredAt" < ${end}
+        ${accountId ? Prisma.sql`AND ti."accountId" = ${accountId}` : Prisma.empty}
+      GROUP BY 1
+      ORDER BY 1
+    `);
+
+    const byMonth = new Map(rows.map((r) => [r.month, r]));
+    const key = (d: Date) => `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+    const firstKey = key(first);
+
+    // Everything before the window is just an opening balance.
+    let running = rows
+      .filter((r) => r.month < firstKey)
+      .reduce((sum, r) => sum.plus(new Prisma.Decimal(String(r.net))), new Prisma.Decimal(0));
+
+    const points = Array.from({ length: months }, (_, i) => {
+      const month = key(new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + i, 1)));
+      const row = byMonth.get(month);
+      running = running.plus(new Prisma.Decimal(String(row?.net ?? 0)));
+      return {
+        month,
+        income: new Prisma.Decimal(String(row?.income ?? 0)).toString(),
+        expenses: new Prisma.Decimal(String(row?.expenses ?? 0)).toString(),
+        balance: running.toString(),
+      };
+    });
+
+    const payload = { currency, points };
+    const expiresAt = new Date(Date.now() + 1000 * 60 * 15);
+    await this.prisma.analyticsCache.upsert({
+      where: { userId_cacheKey: { userId, cacheKey } },
+      create: { userId, cacheKey, payload, expiresAt },
+      update: { payload, computedAt: new Date(), expiresAt },
+    });
+    return payload;
+  }
+
   // v2: categoryBreakdown now carries each category's color — bump so pre-existing
   // cache rows (missing `color`) aren't served stale after this change deploys.
   private monthlySummaryCacheKey(year: number, month: number, accountId?: string): string {
@@ -93,7 +159,15 @@ export class AnalyticsService {
     // items touched without an extra query. Matching `${base}:` (not a bare startsWith(base))
     // avoids "month 1" wrongly matching "month 10/11/12".
     await this.prisma.analyticsCache.deleteMany({
-      where: { userId: event.userId, OR: [{ cacheKey: base }, { cacheKey: { startsWith: `${base}:` } }] }
+      where: {
+        userId: event.userId,
+        OR: [
+          { cacheKey: base },
+          { cacheKey: { startsWith: `${base}:` } },
+          // Any change can move every later month's closing balance, so drop all series.
+          { cacheKey: { startsWith: 'monthly-series:' } },
+        ],
+      }
     });
   }
 }
