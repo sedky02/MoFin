@@ -42,8 +42,9 @@ export function GoalMiniCard({
           </div>
           <span className="truncate text-sm font-semibold">{goal.name}</span>
         </div>
-        <span className="shrink-0 text-[11px] font-medium text-muted-foreground tabular">
-          {Math.round(ratio)}%
+        <span className="flex shrink-0 items-center gap-1.5 text-[11px] font-medium tabular">
+          {overTarget && <span className="text-destructive">Over budget</span>}
+          <span className="text-muted-foreground">{Math.round(ratio)}%</span>
         </span>
       </div>
 

@@ -52,6 +52,8 @@ export function TransactionRow({ tx }: { tx: Transaction }) {
       <div className="min-w-0 flex-1">
         <p className="flex items-center gap-1.5 truncate text-sm font-medium">
           {tx.description}
+          {tx.voidedAt && <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">Voided</span>}
+          {tx.reversesTransactionId && <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">Reversal</span>}
           {(tx.isRecurring || tx.parentTransactionId) && (
             <Repeat className="size-3 shrink-0 text-muted-foreground" aria-label="Recurring" />
           )}

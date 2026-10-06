@@ -90,6 +90,10 @@ export interface Transaction {
   recurringFromAccountId?: string | null;
   recurringToAccountId?: string | null;
   parentTransactionId?: string | null;
+
+  // Voiding appends a mirror "reversal" transaction; the original is stamped voidedAt.
+  voidedAt?: string | null;
+  reversesTransactionId?: string | null;
 }
 
 // Shape the AI parser fills in and the review form edits.
@@ -188,4 +192,13 @@ export interface Paginated<T> {
   total: number;
   limit: number;
   offset: number;
+}
+
+/** An AI app (MCP client) the user has approved via OAuth. */
+export interface ConnectedApp {
+  clientId: string;
+  clientName: string | null;
+  scope: string;
+  /** Still holds a live refresh token, i.e. can currently renew access. */
+  active: boolean;
 }

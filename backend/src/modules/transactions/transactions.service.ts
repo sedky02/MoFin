@@ -1,6 +1,6 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { Prisma, RecurringInterval, RecurringStatus, TransactionType } from '@prisma/client';
+import { LedgerDirection, Prisma, RecurringInterval, RecurringStatus, TransactionType } from '@prisma/client';
 import { DomainEvents, TransactionCreatedEvent } from '../../common/events/domain-events';
 import { PrismaService } from '../../database/prisma.service';
 import { AccountsService } from '../accounts/accounts.service';
@@ -117,6 +117,66 @@ export class TransactionsService {
     });
     if (!transaction) throw new NotFoundException('Transaction not found');
     return transaction;
+  }
+
+  /**
+   * Reverses a transaction without touching its ledger rows: stamps the original
+   * `voidedAt` and appends a mirror transaction with every DEBIT/CREDIT flipped,
+   * so balances net to zero and both entries stay in the audit trail. A
+   * reversal itself can't be voided, and a transaction can only be voided once
+   * (the conditional update below is the race guard).
+   */
+  async voidTransaction(userId: string, id: string) {
+    const original = await this.prisma.transaction.findFirst({ where: { id, userId }, include: { items: true } });
+    if (!original) throw new NotFoundException('Transaction not found');
+    if (original.reversesTransactionId) throw new BadRequestException('A reversal entry cannot be voided');
+    if (original.voidedAt) throw new ConflictException('Transaction is already voided');
+
+    const reversal = await this.prisma.$transaction(async (tx) => {
+      const claimed = await tx.transaction.updateMany({
+        where: { id, userId, voidedAt: null },
+        data: { voidedAt: new Date() },
+      });
+      if (claimed.count === 0) throw new ConflictException('Transaction is already voided');
+
+      const created = await tx.transaction.create({
+        data: {
+          userId,
+          type: original.type,
+          description: `Reversal: ${original.description}`.slice(0, 140),
+          currency: original.currency,
+          categoryId: original.categoryId,
+          occurredAt: new Date(),
+          reversesTransactionId: original.id,
+        },
+      });
+      await tx.transactionItem.createMany({
+        data: original.items.map((item) => ({
+          userId,
+          transactionId: created.id,
+          accountId: item.accountId,
+          categoryId: item.categoryId,
+          direction: item.direction === LedgerDirection.DEBIT ? LedgerDirection.CREDIT : LedgerDirection.DEBIT,
+          amount: item.amount,
+          currency: item.currency,
+          memo: item.memo,
+        })),
+      });
+      return tx.transaction.findUniqueOrThrow({
+        where: { id: created.id },
+        include: { items: { include: { category: true } }, category: true },
+      });
+    });
+
+    // Cached monthly summaries are keyed by month: the original's month and the reversal's month both changed.
+    for (const occurredAt of [original.occurredAt, reversal.occurredAt]) {
+      this.events.emit(DomainEvents.TransactionCreated, {
+        transactionId: reversal.id,
+        userId,
+        occurredAt,
+      } satisfies TransactionCreatedEvent);
+    }
+    return reversal;
   }
 
   private async getRecurringRoot(userId: string, id: string) {

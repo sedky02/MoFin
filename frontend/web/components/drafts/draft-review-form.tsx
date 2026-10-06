@@ -26,6 +26,7 @@ import { AccountSelect } from "@/components/transactions/account-select";
 import { useAccounts } from "@/hooks/useAccounts";
 import { useCategories } from "@/hooks/useCategories";
 import { makeTransactionSchema, type TransactionFormValues } from "@/lib/transaction-schema";
+import { handleApiError } from "@/lib/form-errors";
 import { parseMoneyInput, formatMoneyInput, toDatetimeLocal } from "@/lib/format";
 import type { DraftTransaction, ParsedTransactionData } from "@/lib/types";
 import { Loader2 } from "lucide-react";
@@ -38,7 +39,7 @@ export function DraftReviewForm({
 }: {
   draft: DraftTransaction;
   approving: boolean;
-  onApprove: (edits: Partial<ParsedTransactionData>) => void;
+  onApprove: (edits: Partial<ParsedTransactionData>) => void | Promise<void>;
   onCancel: () => void;
 }) {
   const { data: accounts } = useAccounts();
@@ -95,7 +96,8 @@ export function DraftReviewForm({
     const v = form.getValues();
     const amount = parseMoneyInput(v.amountRaw);
     if (!amount) return;
-    onApprove({
+    try {
+      await onApprove({
       type: v.type,
       description: v.description,
       amount,
@@ -104,7 +106,11 @@ export function DraftReviewForm({
       fromAccountId: v.type !== "INCOME" ? v.fromAccountId : undefined,
       toAccountId: v.type !== "EXPENSE" ? v.toAccountId : undefined,
       categoryId: v.type !== "TRANSFER" ? v.categoryId : undefined,
-    });
+      });
+    } catch (err) {
+      // Backend field errors (e.g. bad account/currency) land on the field the user can fix.
+      handleApiError(err, { setError: form.setError });
+    }
   }
 
   return (

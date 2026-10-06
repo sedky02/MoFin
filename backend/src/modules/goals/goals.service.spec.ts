@@ -207,6 +207,31 @@ describe('GoalsService', () => {
     });
   });
 
+  describe('restore', () => {
+    it('clears archivedAt on an archived goal owned by the user', async () => {
+      const prisma = {
+        goal: {
+          findFirst: jest.fn(async () => ({ id: 'g1', userId: 'u1', archivedAt: new Date() })),
+          update: jest.fn(async () => ({ id: 'g1', archivedAt: null })),
+        },
+      };
+      const service = new GoalsService(prisma as never, {} as never);
+
+      await service.restore('u1', 'g1');
+
+      expect(prisma.goal.findFirst).toHaveBeenCalledWith({ where: { id: 'g1', userId: 'u1', archivedAt: { not: null } } });
+      expect(prisma.goal.update).toHaveBeenCalledWith({ where: { id: 'g1' }, data: { archivedAt: null } });
+    });
+
+    it('404s for a goal that is not archived or not owned', async () => {
+      const prisma = { goal: { findFirst: jest.fn(async () => null), update: jest.fn() } };
+      const service = new GoalsService(prisma as never, {} as never);
+
+      await expect(service.restore('u1', 'g1')).rejects.toThrow('not found');
+      expect(prisma.goal.update).not.toHaveBeenCalled();
+    });
+  });
+
   describe('history', () => {
     it('returns the paginated shape and checks ownership first', async () => {
       const page = { data: [{ id: 'gi1' }], total: 15, limit: 1, offset: 0 };

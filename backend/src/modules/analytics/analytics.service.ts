@@ -20,6 +20,9 @@ export class AnalyticsService {
     const transactions = await this.prisma.transaction.findMany({
       where: {
         userId,
+        // A voided transaction and its mirror reversal cancel out — neither is income/spending.
+        voidedAt: null,
+        reversesTransactionId: null,
         occurredAt: { gte: start, lt: end },
         ...(accountId ? { items: { some: { accountId } } } : {}),
       },

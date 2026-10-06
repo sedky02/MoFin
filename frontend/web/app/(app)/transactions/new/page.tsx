@@ -32,6 +32,7 @@ import { EmptyState } from "@/components/common/states";
 import { TypeSwitcher } from "@/components/transactions/type-switcher";
 import { AccountSelect } from "@/components/transactions/account-select";
 import { AccountDialog } from "@/components/accounts/account-dialog";
+import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { useAccounts } from "@/hooks/useAccounts";
 import { useCategories } from "@/hooks/useCategories";
 import { useCreateTransaction } from "@/hooks/useTransactions";
@@ -104,6 +105,12 @@ export default function NewTransactionPage() {
   }
   function cancelSplit() {
     itemsArray.replace([]);
+  }
+  const [confirmTransfer, setConfirmTransfer] = React.useState(false);
+  function switchToTransfer() {
+    form.setValue("type", "TRANSFER");
+    form.setValue("categoryId", undefined);
+    cancelSplit();
   }
 
   const itemsTotal = (watchedItems ?? []).reduce(
@@ -257,12 +264,14 @@ export default function NewTransactionPage() {
                   <TypeSwitcher
                     value={field.value}
                     onChange={(t) => {
-                      field.onChange(t);
-                      // Transfers have no category and can't be split.
-                      if (t === "TRANSFER") {
-                        form.setValue("categoryId", undefined);
-                        cancelSplit();
+                      // Transfers have no category and can't be split — don't silently
+                      // throw away split rows the user already entered.
+                      if (t === "TRANSFER" && splitting) {
+                        setConfirmTransfer(true);
+                        return;
                       }
+                      field.onChange(t);
+                      if (t === "TRANSFER") form.setValue("categoryId", undefined);
                     }}
                   />
                 </FormItem>
@@ -648,6 +657,18 @@ export default function NewTransactionPage() {
           </form>
         </Form>
       </Card>
+
+      <ConfirmDialog
+        open={confirmTransfer}
+        onOpenChange={setConfirmTransfer}
+        title="Switch to Transfer?"
+        description="Transfers can't be split or categorised, so the split items you entered will be removed."
+        confirmLabel="Switch to Transfer"
+        onConfirm={() => {
+          setConfirmTransfer(false);
+          switchToTransfer();
+        }}
+      />
     </div>
   );
 }

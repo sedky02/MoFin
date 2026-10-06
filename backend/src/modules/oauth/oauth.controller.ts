@@ -2,13 +2,16 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   Headers,
+  Param,
   Post,
   Query,
   Req,
   Res,
   UnauthorizedException,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiExcludeController } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
@@ -18,8 +21,12 @@ import {
   authorizeQuerySchema,
   consentBodySchema,
   registerClientSchema,
+  revokeBodySchema,
   tokenBodySchema,
 } from './dto/oauth.dto';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { AuthenticatedUser } from '../../common/types/authenticated-user';
 import { OAuthService } from './oauth.service';
 
 const SESSION_COOKIE = 'mofin_as_session';
@@ -153,6 +160,31 @@ export class OAuthController {
     }
 
     throw new BadRequestException({ error: 'unsupported_grant_type' });
+  }
+
+  // --- Revocation (RFC 7009) ---
+
+  /** Public client, so the token itself is the credential. Always 200 per the RFC. */
+  @Post('revoke')
+  async revoke(@Body() body: unknown, @Res() res: Response) {
+    const dto = revokeBodySchema.parse(body);
+    await this.oauth.revokeToken(dto.token);
+    return res.status(200).json({});
+  }
+
+  // --- Connected apps (web session auth, used by the Settings page) ---
+
+  @UseGuards(JwtAuthGuard)
+  @Get('grants')
+  listGrants(@CurrentUser() user: AuthenticatedUser) {
+    return this.oauth.listGrants(user.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete('grants/:clientId')
+  async revokeGrant(@CurrentUser() user: AuthenticatedUser, @Param('clientId') clientId: string) {
+    await this.oauth.revokeGrant(user.id, clientId);
+    return { revoked: true };
   }
 
   // --- Cross-origin login bridge ---

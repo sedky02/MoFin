@@ -156,6 +156,15 @@ model Transaction {
   recurringToAccountId   String?
   recurringToAccount     Account?           @relation("RecurringToAccount", fields: [recurringToAccountId], references: [id], onDelete: Restrict)
 
+  // Voiding never edits or deletes ledger rows. It stamps the original with
+  // voidedAt and appends a mirror transaction (flipped DEBIT/CREDIT) pointing
+  // back at it via reversesTransactionId, so balances net to zero and the
+  // audit trail keeps both. Reports skip the voided original and its reversal.
+  voidedAt              DateTime?
+  reversesTransactionId String?       @unique
+  reversesTransaction   Transaction?  @relation("Reversal", fields: [reversesTransactionId], references: [id], onDelete: Restrict)
+  reversedBy            Transaction?  @relation("Reversal")
+
   // Links a generated occurrence back to the root transaction of its series.
   parentTransactionId  String?
   parentTransaction    Transaction?  @relation("RecurringOccurrences", fields: [parentTransactionId], references: [id], onDelete: SetNull)

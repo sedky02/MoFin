@@ -28,7 +28,16 @@ export function useCountUp(target: number, opts: SpringOpts = {}): number {
     window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
   const animate = enabled && !prefersReduced && Number.isFinite(target);
-  const [value, setValue] = React.useState(animate ? 0 : target);
+  // Start at the real value so server-rendered HTML (and no-JS / reduced-motion
+  // clients) never show "$0.00"; the layout effect below rewinds to 0 before
+  // the first client paint when we are actually going to animate.
+  const [value, setValue] = React.useState(target);
+  const mounted = React.useRef(false);
+  React.useLayoutEffect(() => {
+    if (mounted.current) return;
+    mounted.current = true;
+    if (animate) setValue(0);
+  }, [animate]);
 
   React.useEffect(() => {
     if (!animate) {

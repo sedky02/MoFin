@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { ExternalLink, Plus, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -235,9 +236,11 @@ export default function ConnectPage() {
                     <span className="font-medium text-foreground">
                       {user?.email ?? "your account"}
                     </span>{" "}
-                    and approve access. Removing the connector in {activeClient?.label ?? "the client"}{" "}
-                    stops that app using it, but access you already approved on MoFin
-                    isn&apos;t revocable from this page yet.
+                    and approve access. You can disconnect it any time under{" "}
+                    <Link href="/settings" className="font-medium text-primary-text underline-offset-4 hover:underline">
+                      Settings → Connected AI apps
+                    </Link>
+                    .
                   </p>
                 </div>
 

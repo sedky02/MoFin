@@ -50,3 +50,7 @@ export const goalKeys = {
   detail: (id: string) => [...goalKeys.all, "detail", id] as const,
   history: (id: string) => [...goalKeys.all, "history", id] as const,
 };
+
+export const connectedAppKeys = {
+  all: ["connected-apps"] as const,
+};

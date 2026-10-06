@@ -1,10 +1,12 @@
 "use client";
 
+import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ApiClientError } from "@/lib/api";
 import { ArrowLeft } from "lucide-react";
-import { useTransaction } from "@/hooks/useTransactions";
+import { useTransaction, useVoidTransaction } from "@/hooks/useTransactions";
+import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { MoneyAmount } from "@/components/common/money-amount";
 import { TypeBadge } from "@/components/common/badges";
 import { RecurringPanel } from "@/components/transactions/recurring-panel";
@@ -27,6 +29,8 @@ import { cn } from "@/lib/utils";
 
 export function TransactionDetail({ id }: { id: string }) {
   const router = useRouter();
+  const voidMut = useVoidTransaction();
+  const [confirmVoid, setConfirmVoid] = React.useState(false);
   const { data: tx, isLoading, isError, error, refetch } = useTransaction(id);
 
   if (isLoading) {
@@ -100,6 +104,30 @@ export function TransactionDetail({ id }: { id: string }) {
           </div>
         )}
 
+        {/* Voided / reversal state, and the void action itself. */}
+        {tx.voidedAt && (
+          <div className="mt-4 rounded-lg border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
+            Voided on {formatDateTime(tx.voidedAt)}. A reversal entry offsets it, so it no longer affects your
+            balance, monthly summary or goals.
+          </div>
+        )}
+        {tx.reversesTransactionId && (
+          <div className="mt-4 rounded-lg border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
+            This is the reversal of{" "}
+            <Link href={`/transactions/${tx.reversesTransactionId}`} className="font-medium text-primary-text underline-offset-4 hover:underline">
+              another transaction
+            </Link>
+            .
+          </div>
+        )}
+        {!tx.voidedAt && !tx.reversesTransactionId && (
+          <div className="mt-4 border-t border-border pt-4">
+            <Button variant="outline" size="sm" onClick={() => setConfirmVoid(true)} disabled={voidMut.isPending}>
+              Void transaction
+            </Button>
+          </div>
+        )}
+
         {/* Recurring series management — only on the root of a series. */}
         {tx.isRecurring && !tx.parentTransactionId && <RecurringPanel tx={tx} />}
 
@@ -113,6 +141,19 @@ export function TransactionDetail({ id }: { id: string }) {
           </div>
         )}
       </Card>
+
+      <ConfirmDialog
+        open={confirmVoid}
+        onOpenChange={setConfirmVoid}
+        title="Void this transaction?"
+        description="Nothing is deleted. A reversing entry is added so your balance returns to what it was, and this transaction stops counting toward your monthly summary and goals. This can't be undone."
+        confirmLabel="Void transaction"
+        destructive
+        onConfirm={() => {
+          setConfirmVoid(false);
+          voidMut.mutate(tx.id);
+        }}
+      />
 
       {/* Double-entry ledger items */}
       <Card className="mt-6 overflow-hidden border-0 p-0 shadow-sm">

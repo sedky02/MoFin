@@ -272,8 +272,9 @@ export function SearchView({ initial }: { initial: SearchInitial }) {
 
           {/* Page-number pagination */}
           <div className="flex items-center justify-between">
-            <p className="text-xs text-muted-foreground tabular">
+            <p role="status" className="text-xs text-muted-foreground tabular">
               Page {page}
+              {data && ` · ${data.total} ${data.total === 1 ? "result" : "results"}`}
               {isFetching && " · updating…"}
             </p>
             <div className="flex gap-2">

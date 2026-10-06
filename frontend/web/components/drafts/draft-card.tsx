@@ -24,7 +24,7 @@ export function DraftCard({
   draft: DraftTransaction;
   approving?: boolean;
   rejecting?: boolean;
-  onApprove?: (id: string, edits: Partial<ParsedTransactionData>) => void;
+  onApprove?: (id: string, edits: Partial<ParsedTransactionData>) => void | Promise<void>;
   onReject?: (id: string, reason?: string) => void;
 }) {
   const [expanded, setExpanded] = React.useState(false);
@@ -105,7 +105,7 @@ export function DraftCard({
               className="gap-1.5"
               disabled={approving || quickApproveBlocked}
               title={quickApproveBlocked ? `${blockedReason} — use Review & edit` : undefined}
-              onClick={() => onApprove?.(draft.id, {})}
+              onClick={() => void Promise.resolve(onApprove?.(draft.id, {})).catch(() => {})}
             >
               <Check className="size-4" />
               Approve

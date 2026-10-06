@@ -149,6 +149,13 @@ export class GoalsService {
     return this.prisma.goal.update({ where: { id: goal.id }, data: { archivedAt: new Date() } });
   }
 
+  /** Reverses `archive`. Recurring goals resume; the daily rollover catches missed periods up gradually. */
+  async restore(userId: string, goalId: string) {
+    const goal = await this.prisma.goal.findFirst({ where: { id: goalId, userId, archivedAt: { not: null } } });
+    if (!goal) throw new NotFoundException(`Archived goal ${goalId} not found`);
+    return this.prisma.goal.update({ where: { id: goal.id }, data: { archivedAt: null } });
+  }
+
   /** Recomputes the live progress/status of a goal's current open instance without persisting it. */
   private async withLiveProgress(goal: Goal & { instances: GoalInstance[] }) {
     const current = goal.instances[0];
@@ -205,7 +212,13 @@ export class GoalsService {
       where: {
         userId: goal.userId,
         accountId: goal.accountId,
-        transaction: { occurredAt: { gte: periodStart, lte: boundary }, type: transactionType },
+        transaction: {
+          occurredAt: { gte: periodStart, lte: boundary },
+          type: transactionType,
+          // Voided transactions and their reversals are not real income/spending.
+          voidedAt: null,
+          reversesTransactionId: null,
+        },
       },
       _sum: { amount: true },
     });

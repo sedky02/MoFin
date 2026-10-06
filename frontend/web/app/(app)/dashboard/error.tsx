@@ -9,21 +9,16 @@ import { reportError } from "@/lib/error-reporting";
  * dashboard's server prefetch. A genuine backend outage must surface as an
  * error, not as a confident, wrong "$0.00" dashboard — see serverGet.
  *
- * Next.js only forwards `message` (and `digest`) across the server/client
- * boundary here, not custom error subclass fields, so `timedOut` is encoded
- * in the message itself rather than read as a property.
+ * In production Next.js replaces a Server Component error's message with a
+ * generic one plus a digest, so a "timed out" vs "unreachable" distinction
+ * can't be read here — the copy covers both.
  */
 export default function DashboardError({ error, unstable_retry }: { error: Error; unstable_retry: () => void }) {
   React.useEffect(() => reportError(error, { boundary: "dashboard" }), [error]);
-  const timedOut = error.message?.toLowerCase().includes("timed out");
   return (
     <ErrorState
       title="Couldn't load your dashboard"
-      description={
-        timedOut
-          ? "The server is taking too long to respond. Please try again."
-          : "We couldn't reach the backend just now. Please try again."
-      }
+      description="The server is slow or couldn't be reached just now. Please try again."
       onRetry={unstable_retry}
       className="mt-12"
     />

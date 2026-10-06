@@ -46,3 +46,10 @@ export const tokenBodySchema = z.object({
   refresh_token: z.string().optional(),
 });
 export type TokenBodyDto = z.infer<typeof tokenBodySchema>;
+
+/** RFC 7009 revocation request body. */
+export const revokeBodySchema = z.object({
+  token: z.string().min(1),
+  token_type_hint: z.string().optional(),
+});
+export type RevokeBodyDto = z.infer<typeof revokeBodySchema>;

@@ -177,6 +177,7 @@ export default function RegisterPage() {
                     {...field}
                   />
                 </FormControl>
+                <FormDescription>Use at least 8 characters.</FormDescription>
                 {/* Strength indicator */}
                 <div className="mt-1.5 flex items-center gap-2">
                   <div className="flex h-1.5 flex-1 gap-1">
@@ -206,9 +207,9 @@ export default function RegisterPage() {
           >
             Create account
           </SubmitButton>
-          <FormDescription className="text-center text-xs">
+          <p className="text-center text-xs text-muted-foreground">
             By continuing you agree to keep your finances honest. 🙂
-          </FormDescription>
+          </p>
         </form>
       </Form>
 

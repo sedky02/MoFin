@@ -87,7 +87,7 @@ export function useUpdateGoal() {
   });
 }
 
-/** "Stop" a goal — archives it server-side, moving it from Active to Disabled. */
+/** "End" a goal — archives it server-side, moving it from Active to Ended. Reversible via useRestoreGoal. */
 export function useArchiveGoal() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -103,9 +103,20 @@ export function useArchiveGoal() {
     },
     onError: (err, _id, ctx) => {
       if (ctx?.previous) queryClient.setQueryData(goalKeys.list("active"), ctx.previous);
-      handleApiError(err, { fallback: "Could not stop goal." });
+      handleApiError(err, { fallback: "Could not end goal." });
     },
-    onSuccess: () => toast.success("Goal stopped."),
+    onSuccess: () => toast.success("Goal ended."),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: goalKeys.all }),
+  });
+}
+
+/** Brings an ended goal back to Active. Recurring goals resume; missed periods are caught up by the daily job. */
+export function useRestoreGoal() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.patch<Goal>(`/goals/${id}/restore`),
+    onError: (err) => handleApiError(err, { fallback: "Could not restore goal." }),
+    onSuccess: () => toast.success("Goal restored."),
     onSettled: () => queryClient.invalidateQueries({ queryKey: goalKeys.all }),
   });
 }

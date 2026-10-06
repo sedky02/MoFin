@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -46,6 +47,8 @@ export class OAuthService {
       issuer: this.issuer,
       authorization_endpoint: `${this.issuer}/api/v1/oauth/authorize`,
       token_endpoint: `${this.issuer}/api/v1/oauth/token`,
+      revocation_endpoint: `${this.issuer}/api/v1/oauth/revoke`,
+      revocation_endpoint_auth_methods_supported: ['none'],
       registration_endpoint: `${this.issuer}/api/v1/oauth/register`,
       scopes_supported: [SUPPORTED_SCOPE],
       response_types_supported: ['code'],
@@ -140,6 +143,60 @@ export class OAuthService {
       where: { userId_clientId: { userId, clientId } },
       create: { userId, clientId, scope },
       update: { scope },
+    });
+  }
+
+  /** Connected AI apps for the settings page. `active` = a live (unrevoked, unexpired) refresh token exists. */
+  async listGrants(userId: string) {
+    const [grants, liveTokens] = await Promise.all([
+      this.prisma.oAuthGrant.findMany({ where: { userId } }),
+      this.prisma.oAuthRefreshToken.findMany({
+        where: { userId, revokedAt: null, expiresAt: { gt: new Date() } },
+        select: { clientId: true },
+      }),
+    ]);
+    const clients = await this.prisma.oAuthClient.findMany({
+      where: { clientId: { in: grants.map((g) => g.clientId) } },
+    });
+    const names = new Map(clients.map((c) => [c.clientId, c.clientName]));
+    const active = new Set(liveTokens.map((t) => t.clientId));
+    return grants.map((g) => ({
+      clientId: g.clientId,
+      clientName: names.get(g.clientId) ?? null,
+      scope: g.scope,
+      active: active.has(g.clientId),
+    }));
+  }
+
+  /**
+   * Fully disconnects a client: forgets the consent (so the next connect asks
+   * again), revokes every refresh token it holds, and drops unused auth codes.
+   * Access tokens already issued are stateless JWTs and stay valid until they
+   * expire (JWT_ACCESS_TTL, 15m by default) but can no longer be renewed.
+   */
+  async revokeGrant(userId: string, clientId: string) {
+    const [grant] = await this.prisma.$transaction([
+      this.prisma.oAuthGrant.deleteMany({ where: { userId, clientId } }),
+      this.prisma.oAuthRefreshToken.updateMany({
+        where: { userId, clientId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      }),
+      this.prisma.authorizationCode.deleteMany({ where: { userId, clientId, usedAt: null } }),
+    ]);
+    if (grant.count === 0) throw new NotFoundException(`No connected app ${clientId}`);
+  }
+
+  /**
+   * RFC 7009 token revocation. Always succeeds from the caller's point of view
+   * (an unknown/expired token must not reveal anything); a refresh token takes
+   * its whole rotation family with it.
+   */
+  async revokeToken(token: string) {
+    const stored = await this.prisma.oAuthRefreshToken.findUnique({ where: { tokenHash: sha256(token) } });
+    if (!stored) return;
+    await this.prisma.oAuthRefreshToken.updateMany({
+      where: { familyId: stored.familyId, revokedAt: null },
+      data: { revokedAt: new Date() },
     });
   }
 

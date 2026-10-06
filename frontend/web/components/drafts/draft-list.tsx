@@ -64,10 +64,8 @@ export function DraftList({ status }: { status: DraftStatus }) {
   // Not optimistic: an approval can be rejected by the server (400), and
   // removing the card first would also throw away the user's review-form edits.
   function handleApprove(id: string, edits: Partial<ParsedTransactionData>) {
-    approve
-      .mutateAsync({ id, edits })
-      .then(() => refocusAfterRemoval(id))
-      .catch(() => {});
+    // Rejects on failure so the review form can show field errors inline.
+    return approve.mutateAsync({ id, edits }).then(() => refocusAfterRemoval(id));
   }
 
   function handleReject(id: string, reason?: string) {

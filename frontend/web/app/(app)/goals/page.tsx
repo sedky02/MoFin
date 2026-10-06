@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Plus, Target } from "lucide-react";
-import { useGoals, useArchiveGoal } from "@/hooks/useGoals";
+import { useGoals, useArchiveGoal, useRestoreGoal } from "@/hooks/useGoals";
 import { useAccounts } from "@/hooks/useAccounts";
 import { GoalCard } from "@/components/goals/goal-card";
 import { GoalDialog } from "@/components/goals/goal-dialog";
@@ -15,19 +15,20 @@ import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import type { Goal } from "@/lib/types";
 
 export default function GoalsPage() {
-  const [tab, setTab] = React.useState<"active" | "disabled">("active");
+  const [tab, setTab] = React.useState<"active" | "ended">("active");
 
   const active = useGoals("active");
-  const disabled = useGoals("archived", tab === "disabled");
+  const disabled = useGoals("archived", tab === "ended");
   const { data: accounts } = useAccounts("all");
   const stopMut = useArchiveGoal();
+  const restoreMut = useRestoreGoal();
 
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<Goal | undefined>();
   const [toStop, setToStop] = React.useState<Goal | undefined>();
   const [historyGoal, setHistoryGoal] = React.useState<Goal | undefined>();
 
-  // Instant list removal on stop (React 19 useOptimistic).
+  // Instant list removal on end (React 19 useOptimistic).
   const [optimisticActive, removeOptimistic] = React.useOptimistic(
     active.data ?? [],
     (state: Goal[], id: string) => state.filter((g) => g.id !== id),
@@ -70,10 +71,10 @@ export default function GoalsPage() {
         }
       />
 
-      <Tabs value={tab} onValueChange={(v) => setTab(v as "active" | "disabled")}>
+      <Tabs value={tab} onValueChange={(v) => setTab(v as "active" | "ended")}>
         <TabsList>
           <TabsTrigger value="active">Active</TabsTrigger>
-          <TabsTrigger value="disabled">Disabled</TabsTrigger>
+          <TabsTrigger value="ended">Ended</TabsTrigger>
         </TabsList>
 
         <TabsContent value="active" className="mt-6">
@@ -113,7 +114,7 @@ export default function GoalsPage() {
           )}
         </TabsContent>
 
-        <TabsContent value="disabled" className="mt-6">
+        <TabsContent value="ended" className="mt-6">
           {disabled.isLoading ? (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {Array.from({ length: 3 }).map((_, i) => (
@@ -121,9 +122,9 @@ export default function GoalsPage() {
               ))}
             </div>
           ) : disabled.isError ? (
-            <ErrorState description="Couldn't load your disabled goals." onRetry={() => disabled.refetch()} />
+            <ErrorState description="Couldn't load your ended goals." onRetry={() => disabled.refetch()} />
           ) : !disabled.data || disabled.data.length === 0 ? (
-            <EmptyState icon={Target} title="No disabled goals" description="Stopped goals will show up here." />
+            <EmptyState icon={Target} title="No ended goals" description="Goals you end will show up here, and can be restored." />
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {disabled.data.map((goal) => (
@@ -132,6 +133,7 @@ export default function GoalsPage() {
                   goal={goal}
                   account={accountsById.get(goal.accountId)}
                   onViewHistory={setHistoryGoal}
+                  onRestore={(g) => restoreMut.mutate(g.id)}
                   readOnly
                 />
               ))}
@@ -152,9 +154,9 @@ export default function GoalsPage() {
       <ConfirmDialog
         open={!!toStop}
         onOpenChange={(o) => !o && setToStop(undefined)}
-        title={`Stop "${toStop?.name}"?`}
-        description="This stops tracking progress and moves it to Disabled. Its period history is preserved. You can't undo this from the app."
-        confirmLabel="Stop"
+        title={`End "${toStop?.name}"?`}
+        description="This stops tracking progress and moves it to the Ended tab. Its period history is preserved, and you can restore it later."
+        confirmLabel="End goal"
         onConfirm={confirmStop}
       />
     </>

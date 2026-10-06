@@ -15,6 +15,7 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -161,6 +162,11 @@ export function AccountDialog({
                       ))}
                     </SelectContent>
                   </Select>
+                  {isEdit && (
+                    <FormDescription>
+                      Currency can&apos;t be changed after an account is created.
+                    </FormDescription>
+                  )}
                   <FormMessage />
                 </FormItem>
               )}
@@ -201,7 +207,7 @@ export function AccountDialog({
                       )}
                       <SelectGroup>
                         <SelectLabel>All currencies</SelectLabel>
-                        {CURRENCIES.map((c) => (
+                        {CURRENCIES.filter((c) => !usedCurrencies.includes(c)).map((c) => (
                           <SelectItem key={c} value={c} className="tabular">
                             {c}
                           </SelectItem>

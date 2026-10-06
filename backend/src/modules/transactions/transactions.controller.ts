@@ -52,6 +52,11 @@ export class TransactionsController {
     });
   }
 
+  @Post(':id/void')
+  voidTransaction(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+    return this.transactionsService.voidTransaction(user.id, id);
+  }
+
   @Post(':id/recurring/cancel')
   cancelRecurring(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
     return this.transactionsService.cancelRecurring(user.id, id);

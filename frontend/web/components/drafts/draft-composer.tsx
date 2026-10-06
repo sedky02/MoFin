@@ -42,6 +42,12 @@ export function DraftComposer() {
     }
   }
 
+  // Show the right shortcut hint per platform (resolved after mount: SSR can't know).
+  const [modKey, setModKey] = React.useState("Ctrl");
+  React.useEffect(() => {
+    if (/Mac|iPhone|iPad/.test(navigator.platform)) setModKey("⌘");
+  }, []);
+
   function onKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     // ⌘/Ctrl + Enter submits.
     if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
@@ -111,7 +117,7 @@ export function DraftComposer() {
                 <Sparkles className="size-4" />
                 Draft it
                 <kbd className="ml-1 hidden rounded bg-primary-foreground/20 px-1.5 text-[10px] sm:inline-flex">
-                  ⌘↵
+                  {modKey}↵
                 </kbd>
               </>
             )}

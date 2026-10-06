@@ -1,6 +1,6 @@
 "use client";
 
-import { MoreVertical, Pencil, Ban, Repeat, History } from "lucide-react";
+import { MoreVertical, Pencil, Ban, Repeat, History, RotateCcw } from "lucide-react";
 import type { Account, Goal } from "@/lib/types";
 import { MoneyAmount } from "@/components/common/money-amount";
 import { GoalTypeBadge, GoalStatusBadge } from "@/components/common/badges";
@@ -21,6 +21,7 @@ export function GoalCard({
   account,
   onEdit,
   onStop,
+  onRestore,
   onViewHistory,
   readOnly = false,
 }: {
@@ -28,8 +29,9 @@ export function GoalCard({
   account?: Account;
   onEdit?: (goal: Goal) => void;
   onStop?: (goal: Goal) => void;
+  onRestore?: (goal: Goal) => void;
   onViewHistory: (goal: Goal) => void;
-  /** Disabled (stopped) goals are read-only — no Edit/Stop actions, just history. */
+  /** Ended goals are read-only — no Edit/End actions, just history and Restore. */
   readOnly?: boolean;
 }) {
   const currency = account?.currency ?? "USD";
@@ -87,9 +89,15 @@ export function GoalCard({
                 </DropdownMenuItem>
                 <DropdownMenuItem variant="destructive" onClick={() => onStop?.(goal)}>
                   <Ban className="size-4" />
-                  Stop
+                  End goal
                 </DropdownMenuItem>
               </>
+            )}
+            {readOnly && onRestore && (
+              <DropdownMenuItem onClick={() => onRestore(goal)}>
+                <RotateCcw className="size-4" />
+                Restore
+              </DropdownMenuItem>
             )}
           </DropdownMenuContent>
         </DropdownMenu>
@@ -106,7 +114,7 @@ export function GoalCard({
         </div>
         <GoalProgressBar ratio={ratio} overTarget={overTarget} />
         <p className="text-xs text-muted-foreground">
-          {readOnly && goal.archivedAt ? `Stopped on ${formatDate(goal.archivedAt)}` : periodLabel}
+          {readOnly && goal.archivedAt ? `Ended on ${formatDate(goal.archivedAt)}` : periodLabel}
         </p>
       </div>
     </Card>

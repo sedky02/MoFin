@@ -67,6 +67,11 @@ export class GoalsController {
     return this.goalsService.update(user.id, id, dto);
   }
 
+  @Patch(':id/restore')
+  restore(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+    return this.goalsService.restore(user.id, id);
+  }
+
   @Delete(':id')
   archive(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
     return this.goalsService.archive(user.id, id);
