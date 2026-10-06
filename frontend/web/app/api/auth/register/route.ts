@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { BACKEND_TIMEOUT_MS, BACKEND_URL, forwardedForHeader, setAuthCookies, type BackendTokens } from "@/lib/auth-cookies";
+import { BACKEND_TIMEOUT_MS, BACKEND_URL, forwardedForHeader } from "@/lib/auth-cookies";
 
 //export const dynamic = "force-dynamic";
 
@@ -38,8 +38,9 @@ export async function POST(req: Request) {
     return NextResponse.json(data, { status: upstream.status });
   }
 
-  const tokens = data as BackendTokens;
-  const res = NextResponse.json({ ok: true });
-  setAuthCookies(res, tokens);
-  return res;
+  // No auto-login: the backend deliberately returns the same body whether or
+  // not this email was already registered (never a distinguishable 409), so
+  // there are no tokens to set here — the client logs in separately (audit
+  // SEC-XX).
+  return NextResponse.json(data);
 }

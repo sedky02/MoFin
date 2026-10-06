@@ -85,14 +85,15 @@ export default function RegisterPage() {
         }
         throw new ApiClientError(res.status, body.message ?? "Registration failed.", body);
       }
-      // Resume the MCP OAuth bridge if this registration came from it.
-      const mcpAuthorize = new URLSearchParams(window.location.search).get("mcp_authorize");
-      if (mcpAuthorize) {
-        window.location.href = `/api/auth/mcp-handoff?continue=${encodeURIComponent(mcpAuthorize)}`;
-        return;
-      }
-      router.replace("/dashboard");
-      router.refresh();
+      // No auto-login (the backend never signals whether the email was new,
+      // see SEC-XX) — send the user to log in, preserving the MCP bridge
+      // param so it resumes there instead.
+      const params = new URLSearchParams(window.location.search);
+      const mcpAuthorize = params.get("mcp_authorize");
+      const loginUrl = new URL("/login", window.location.origin);
+      loginUrl.searchParams.set("registered", "1");
+      if (mcpAuthorize) loginUrl.searchParams.set("mcp_authorize", mcpAuthorize);
+      router.replace(`${loginUrl.pathname}${loginUrl.search}`);
     } catch (err) {
       handleApiError(err, {
         setError: form.setError,

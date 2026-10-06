@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, CheckCircle2 } from "lucide-react";
 import {
   Form,
   FormControl,
@@ -30,6 +30,12 @@ type LoginValues = z.infer<typeof loginSchema>;
 export default function LoginPage() {
   const router = useRouter();
   const [rateLimited, setRateLimited] = React.useState(false);
+  // Read on mount (not during render) — this page is statically prerendered,
+  // and window/location only exist client-side after hydration.
+  const [justRegistered, setJustRegistered] = React.useState(false);
+  React.useEffect(() => {
+    setJustRegistered(new URLSearchParams(window.location.search).get("registered") === "1");
+  }, []);
 
   const form = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
@@ -91,6 +97,16 @@ export default function LoginPage() {
           Initialize the handshake to pick up where you left off.
         </p>
       </div>
+
+      {justRegistered && !rateLimited && (
+        <div
+          role="status"
+          className="mb-5 flex items-start gap-2.5 rounded-lg border border-success/30 bg-success/10 px-3.5 py-3 text-sm text-success"
+        >
+          <CheckCircle2 className="mt-0.5 size-4 shrink-0" />
+          <span>If that email can be used, your account has been created. Sign in below.</span>
+        </div>
+      )}
 
       {rateLimited && (
         <div

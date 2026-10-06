@@ -3,12 +3,20 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
 import { parseDurationMs } from '../../common/utils/duration';
 import { sha256 } from '../../common/utils/hash';
 import { UsersService } from '../users/users.service';
 import { LoginDto, RegisterDto } from './dto/auth.dto';
 import { WEB_AUDIENCE } from './auth.constants';
+
+// Precomputed once at module load (not per-request) so `login` always pays
+// the same bcrypt.compare cost whether or not the email exists — otherwise
+// short-circuit evaluation on `!user?.passwordHash` skips the ~100ms compare
+// entirely for unknown emails / Google-only accounts, a measurable timing
+// side-channel for account enumeration (audit SEC-XX).
+const DUMMY_PASSWORD_HASH = bcrypt.hashSync(randomBytes(32).toString('hex'), 12);
 
 @Injectable()
 export class AuthService {
@@ -19,19 +27,36 @@ export class AuthService {
     private readonly config: ConfigService,
   ) {}
 
-  async register(dto: RegisterDto) {
+  /**
+   * Always returns the same message regardless of whether `dto.email` was
+   * already registered — a distinguishable 409 ("already exists") or an
+   * auto-login response would otherwise let anyone probe which emails have
+   * MoFin accounts (audit SEC-XX). No auto-login on success: the client must
+   * log in separately, which is what keeps the response uniform.
+   */
+  async register(dto: RegisterDto): Promise<{ message: string }> {
     const passwordHash = await bcrypt.hash(dto.password, 12);
-    const user = await this.usersService.createUser({
-      email: dto.email,
-      displayName: dto.displayName,
-      passwordHash,
-    });
-    return this.issueTokens(user.id, user.email, randomBytes(16).toString('hex'));
+    const existing = await this.usersService.findByEmail(dto.email);
+    if (!existing) {
+      try {
+        await this.usersService.createUser({ email: dto.email, displayName: dto.displayName, passwordHash });
+      } catch (err) {
+        // A concurrent registration of the same new email lost the race and
+        // hit the unique constraint — still not a signal worth exposing.
+        const isDuplicate = err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002';
+        if (!isDuplicate) throw err;
+      }
+    }
+    return { message: 'If this email can be used, your account has been created. Please log in.' };
   }
 
   async login(dto: LoginDto) {
     const user = await this.usersService.findByEmail(dto.email);
-    if (!user?.passwordHash || !(await bcrypt.compare(dto.password, user.passwordHash))) {
+    // No `&&`/early-return short-circuit before this — bcrypt.compare must run
+    // unconditionally (against a dummy hash when there's no real one) so a
+    // nonexistent email doesn't respond measurably faster than a real one.
+    const passwordMatches = await bcrypt.compare(dto.password, user?.passwordHash ?? DUMMY_PASSWORD_HASH);
+    if (!user?.passwordHash || !passwordMatches) {
       throw new UnauthorizedException('Invalid credentials');
     }
     return this.issueTokens(user.id, user.email, randomBytes(16).toString('hex'));

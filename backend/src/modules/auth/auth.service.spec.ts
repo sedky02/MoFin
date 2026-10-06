@@ -1,4 +1,5 @@
 import { GatewayTimeoutException, ServiceUnavailableException, UnauthorizedException } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
 import { AuthService } from './auth.service';
 
 describe('AuthService refresh token rotation', () => {
@@ -132,5 +133,93 @@ describe('AuthService.loginWithGoogle timeout handling', () => {
     await expect(service.loginWithGoogle('code', 'https://web.example/callback')).rejects.toBeInstanceOf(
       ServiceUnavailableException,
     );
+  });
+});
+
+describe('AuthService.login timing-safe unknown-email handling (audit SEC-XX)', () => {
+  const config = {
+    getOrThrow: (key: string) => (key === 'OAUTH_ISSUER' ? 'http://localhost:3000' : `${key}-secret`),
+    get: (key: string, fallback: string) => fallback,
+  };
+
+  function makeService(usersService: { findByEmail: jest.Mock }) {
+    const prisma = { refreshToken: { create: jest.fn(async () => ({})) } };
+    const jwtService = { signAsync: jest.fn(async () => 'access-jwt') };
+    return new AuthService(prisma as never, usersService as never, jwtService as never, config as never);
+  }
+
+  afterEach(() => jest.restoreAllMocks());
+
+  it('still runs a bcrypt compare for an email that does not exist (no short-circuit)', async () => {
+    const compareSpy = jest.spyOn(bcrypt, 'compare');
+    const service = makeService({ findByEmail: jest.fn(async () => null) });
+
+    await expect(service.login({ email: 'nobody@example.com', password: 'whatever' })).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
+    expect(compareSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('still runs a bcrypt compare for a Google-only account with no passwordHash', async () => {
+    const compareSpy = jest.spyOn(bcrypt, 'compare');
+    const service = makeService({ findByEmail: jest.fn(async () => ({ id: 'u1', email: 'a@b.com', passwordHash: null })) });
+
+    await expect(service.login({ email: 'a@b.com', password: 'whatever' })).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(compareSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('still logs in successfully with the correct password (regression check)', async () => {
+    const passwordHash = await bcrypt.hash('correct-horse', 4);
+    const service = makeService({
+      findByEmail: jest.fn(async () => ({ id: 'u1', email: 'a@b.com', passwordHash })),
+    });
+
+    const result = await service.login({ email: 'a@b.com', password: 'correct-horse' });
+    expect(result.accessToken).toBe('access-jwt');
+  });
+});
+
+describe('AuthService.register uniform response (audit SEC-XX)', () => {
+  function makeService(overrides: { findByEmail: unknown; createUser?: jest.Mock }) {
+    const usersService = {
+      findByEmail: jest.fn(async () => overrides.findByEmail),
+      createUser: overrides.createUser ?? jest.fn(async () => ({ id: 'new-user', email: 'a@b.com' })),
+    };
+    const service = new AuthService({} as never, usersService as never, {} as never, {} as never);
+    return { service, usersService };
+  }
+
+  it('creates the user and returns the generic message for a brand-new email', async () => {
+    const { service, usersService } = makeService({ findByEmail: null });
+
+    const result = await service.register({ email: 'new@example.com', password: 'password123' });
+
+    expect(usersService.createUser).toHaveBeenCalledWith(
+      expect.objectContaining({ email: 'new@example.com' }),
+    );
+    expect(result).toEqual({ message: expect.any(String) });
+    expect(result).not.toHaveProperty('accessToken');
+  });
+
+  it('returns the exact same response shape for an already-registered email, without creating a duplicate', async () => {
+    const { service, usersService } = makeService({ findByEmail: { id: 'existing', email: 'a@b.com' } });
+
+    const result = await service.register({ email: 'a@b.com', password: 'password123' });
+
+    expect(usersService.createUser).not.toHaveBeenCalled();
+    expect(result).toEqual({ message: expect.any(String) });
+  });
+
+  it('produces byte-identical messages for the new-email and already-registered paths', async () => {
+    const fresh = await makeService({ findByEmail: null }).service.register({
+      email: 'new@example.com',
+      password: 'password123',
+    });
+    const existing = await makeService({ findByEmail: { id: 'existing', email: 'a@b.com' } }).service.register({
+      email: 'a@b.com',
+      password: 'password123',
+    });
+
+    expect(fresh).toEqual(existing);
   });
 });
