@@ -1,12 +1,10 @@
 "use client";
 
-import * as React from "react";
 import { useAccounts } from "@/hooks/useAccounts";
 import { useLedgerBalance } from "@/hooks/useLedger";
 import { useActiveAccount } from "@/hooks/useActiveAccount";
 import { useUser } from "@/hooks/useUser";
 import { pickPrimaryCurrency } from "@/lib/format";
-import { AccountSwitcher } from "@/components/dashboard/account-switcher";
 import { BalanceCards } from "@/components/dashboard/balance-cards";
 import { MonthlySummaryCard } from "@/components/dashboard/monthly-summary";
 import { RecentTransactions } from "@/components/dashboard/recent-transactions";
@@ -43,14 +41,6 @@ export function DashboardBody({
 
   return (
     <section className="space-y-8">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-muted-foreground">
-          {accountId
-            ? `Showing data for ${selectedAccount?.name ?? "this account"}.`
-            : "Showing data across all accounts."}
-        </p>
-      </div>
-
       {/* Bento grid, matching the Stitch "Refined Quanto Dark" layout: a large
           balance hero paired with Goals, then Monthly Summary paired with
           Recent Transactions. */}

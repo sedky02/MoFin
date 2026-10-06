@@ -26,7 +26,7 @@ import { SubmitButton } from "@/components/common/submit-button";
 import { cn } from "@/lib/utils";
 import { CATEGORY_COLORS, CATEGORY_COLOR_NAMES } from "@/lib/constants";
 import { useCreateCategory, useUpdateCategory } from "@/hooks/useCategories";
-import type { Category } from "@/lib/types";
+import type { Category, CategoryType } from "@/lib/types";
 
 const schema = z.object({
   name: z.string().trim().min(1, "Name is required.").max(40),
@@ -40,10 +40,16 @@ export function CategoryDialog({
   open,
   onOpenChange,
   category,
+  defaultType,
+  onCreated,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   category?: Category;
+  /** Pre-selected type for a new category (e.g. the transaction type being entered). */
+  defaultType?: CategoryType;
+  /** Called with the new category after a successful create. */
+  onCreated?: (category: Category) => void;
 }) {
   const isEdit = !!category;
   const createMut = useCreateCategory();
@@ -53,7 +59,7 @@ export function CategoryDialog({
     resolver: zodResolver(schema),
     defaultValues: {
       name: category?.name ?? "",
-      type: category?.type ?? "EXPENSE",
+      type: category?.type ?? defaultType ?? "EXPENSE",
       color: category?.color ?? CATEGORY_COLORS[0],
       icon: category?.icon ?? "",
     },
@@ -63,11 +69,12 @@ export function CategoryDialog({
     if (open) {
       form.reset({
         name: category?.name ?? "",
-        type: category?.type ?? "EXPENSE",
+        type: category?.type ?? defaultType ?? "EXPENSE",
         color: category?.color ?? CATEGORY_COLORS[0],
         icon: category?.icon ?? "",
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, category, form]);
 
   const selectedColor = form.watch("color");
@@ -86,12 +93,13 @@ export function CategoryDialog({
           icon: v.icon || undefined,
         });
       } else {
-        await createMut.mutateAsync({
+        const created = await createMut.mutateAsync({
           name: v.name,
           type: v.type,
           color: v.color,
           icon: v.icon || undefined,
         });
+        onCreated?.(created);
       }
       onOpenChange(false);
     } catch {

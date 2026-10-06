@@ -33,6 +33,7 @@ import { TypeSwitcher } from "@/components/transactions/type-switcher";
 import { AccountSelect } from "@/components/transactions/account-select";
 import { AccountDialog } from "@/components/accounts/account-dialog";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
+import { CategoryDialog } from "@/components/categories/category-dialog";
 import { useAccounts } from "@/hooks/useAccounts";
 import { useActiveAccount } from "@/hooks/useActiveAccount";
 import { useCategories } from "@/hooks/useCategories";
@@ -108,6 +109,15 @@ export default function NewTransactionPage() {
     itemsArray.replace([]);
   }
   const [confirmTransfer, setConfirmTransfer] = React.useState(false);
+  // Which category field the "New category" dialog was opened from: the main one or a split row.
+  const [newCategoryFor, setNewCategoryFor] = React.useState<"main" | number | null>(null);
+  function selectCreatedCategory(c: { id: string; type: string }) {
+    // A category of the other type wouldn't appear in this form's list, so leave the field alone.
+    if (c.type !== form.getValues("type")) return;
+    if (newCategoryFor === "main") form.setValue("categoryId", c.id, { shouldDirty: true });
+    else if (typeof newCategoryFor === "number")
+      form.setValue(`items.${newCategoryFor}.categoryId`, c.id, { shouldDirty: true });
+  }
   function switchToTransfer() {
     form.setValue("type", "TRANSFER");
     form.setValue("categoryId", undefined);
@@ -426,6 +436,15 @@ export default function NewTransactionPage() {
 
                     <button
                       type="button"
+                      onClick={() => setNewCategoryFor("main")}
+                      className="mt-2 flex items-center gap-1.5 text-xs font-medium text-primary-text underline-offset-4 hover:underline"
+                    >
+                      <Plus className="size-3.5" />
+                      New category
+                    </button>
+
+                    <button
+                      type="button"
                       onClick={startSplit}
                       className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-border py-2 text-sm font-medium text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
                     >
@@ -516,6 +535,16 @@ export default function NewTransactionPage() {
                             </FormItem>
                           )}
                         />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="shrink-0 text-muted-foreground"
+                          aria-label={`New category for item ${i + 1}`}
+                          onClick={() => setNewCategoryFor(i)}
+                        >
+                          <Plus className="size-4" />
+                        </Button>
                         <Button
                           type="button"
                           variant="ghost"
@@ -679,6 +708,14 @@ export default function NewTransactionPage() {
           </form>
         </Form>
       </Card>
+
+      {/* Outside <Form>: a portalled dialog's submit would otherwise bubble into the transaction form. */}
+      <CategoryDialog
+        open={newCategoryFor !== null}
+        onOpenChange={(o) => !o && setNewCategoryFor(null)}
+        defaultType={type === "INCOME" ? "INCOME" : "EXPENSE"}
+        onCreated={selectCreatedCategory}
+      />
 
       <ConfirmDialog
         open={confirmTransfer}

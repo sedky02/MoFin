@@ -127,7 +127,10 @@ export function BalanceOverview({
                     <div
                       className={cn(
                         "w-full rounded-t-md transition-all group-hover:brightness-125 group-focus-within:brightness-125",
-                        v < 0 ? "bg-destructive/70" : isNow ? "bg-primary" : "bg-primary/30",
+                        // Spending (and a negative balance) is red; the current month is the stronger shade.
+                        v < 0 || metric === "expenses"
+                          ? isNow ? "bg-destructive" : "bg-destructive/50"
+                          : isNow ? "bg-primary" : "bg-primary/30",
                       )}
                       style={{ height: `${pct}%` }}
                     />
