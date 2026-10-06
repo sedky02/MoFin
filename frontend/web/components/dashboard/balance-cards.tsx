@@ -88,7 +88,7 @@ export function BalanceCards({ accountId, accountName }: { accountId?: string; a
 
       {/* SECONDARY CURRENCY STAT BLOCKS */}
       {rest.length > 0 && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:[&>*:last-child:nth-child(odd)]:col-span-2">
           {rest.map(({ currency, amount }) => (
             <Card
               key={currency}
@@ -96,9 +96,6 @@ export function BalanceCards({ accountId, accountName }: { accountId?: string; a
             >
               <div className="flex items-center justify-between">
                 <span className="label-caps">{currency} balance</span>
-                <span className="rounded bg-secondary px-1.5 py-0.5 text-[11px] font-medium text-secondary-foreground tabular">
-                  {currency}
-                </span>
               </div>
               <MoneyAmount
                 amount={amount}

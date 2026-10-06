@@ -93,6 +93,7 @@ function DashboardSkeleton() {
 }
 
 function greeting(name?: string | null): string {
-  const first = name?.trim().split(/\s+/)[0];
-  return first ? `Welcome back, ${first}` : "Welcome back";
+  // Whole display name: "Mr Sedki" must not become "Welcome back, Mr".
+  const full = name?.trim();
+  return full ? `Welcome back, ${full}` : "Welcome back";
 }

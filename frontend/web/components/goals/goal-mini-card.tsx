@@ -7,7 +7,8 @@ import { isGreaterThan } from "@/lib/decimal";
 
 // Cycled per-tile accent, matching the Stitch mockup's alternating
 // secondary/tertiary/primary goal icon tints.
-const ACCENTS = ["var(--secondary)", "var(--success)", "var(--primary)"];
+// (`--secondary` is a near-black surface colour in dark mode, so it can't be an icon colour.)
+const ACCENTS = ["var(--chart-2)", "var(--success)", "var(--primary)"];
 
 /** Read-only compact goal card for the dashboard — no edit/archive actions. */
 export function GoalMiniCard({

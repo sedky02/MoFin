@@ -82,7 +82,8 @@ export function MonthlySummaryCard({
   // The grid below only lists spending, so "has data" means has expenses.
   const hasData = segments.length > 0;
 
-  const topCategories = segments.slice(0, 4);
+  const topCategories = segments.slice(0, 5);
+  const totalSpending = segments.reduce((sum, seg) => sum + seg.value, 0);
 
   return (
     <Card className="glass-panel border-0 p-5 ring-0">
@@ -97,32 +98,48 @@ export function MonthlySummaryCard({
         />
       ) : (
         <>
-        <p className="mt-4 text-xs text-muted-foreground">Top spending</p>
-        <div className="mt-2 grid grid-cols-2 gap-3">
-          {topCategories.map((s) => (
-            <div
-              key={s.label}
-              className="flex flex-col items-center gap-2 rounded-2xl border border-border/70 bg-card/40 p-4 text-center"
-            >
-              <div
-                className="flex size-10 items-center justify-center rounded-full"
-                style={{
-                  backgroundColor: `color-mix(in oklab, ${s.color} 16%, transparent)`,
-                  color: s.color,
-                }}
-              >
-                <CategoryIcon name={s.label} className="size-5" />
-              </div>
-              <p className="truncate text-xs text-muted-foreground">{s.label}</p>
-              <MoneyAmount
-                amount={s.amount}
-                currency={currency}
-                compact
-                className="text-base font-semibold text-foreground"
-              />
-            </div>
-          ))}
-        </div>
+          <p className="mt-4 text-xs text-muted-foreground">Top spending</p>
+          <ul className="mt-3 space-y-4">
+            {topCategories.map((s) => {
+              const share = totalSpending > 0 ? Math.round((s.value / totalSpending) * 100) : 0;
+              return (
+                <li key={s.label} className="flex items-center gap-3">
+                  <div
+                    className="flex size-10 shrink-0 items-center justify-center rounded-full"
+                    style={{
+                      backgroundColor: `color-mix(in oklab, ${s.color} 16%, transparent)`,
+                      color: s.color,
+                    }}
+                  >
+                    <CategoryIcon name={s.label} className="size-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-baseline justify-between gap-3">
+                      <p className="truncate text-sm font-medium">{s.label}</p>
+                      <MoneyAmount
+                        amount={s.amount}
+                        currency={currency}
+                        className="shrink-0 text-sm font-semibold text-foreground"
+                      />
+                    </div>
+                    <div className="mt-1.5 flex items-center gap-2">
+                      <div
+                        role="progressbar"
+                        aria-label={`${s.label} share of spending`}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-valuenow={share}
+                        className="h-1.5 flex-1 overflow-hidden rounded-full bg-secondary"
+                      >
+                        <div className="h-full rounded-full" style={{ width: `${share}%`, backgroundColor: s.color }} />
+                      </div>
+                      <span className="w-9 text-right text-[11px] text-muted-foreground tabular">{share}%</span>
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
         </>
       )}
     </Card>
