@@ -34,6 +34,7 @@ export function RecentTransactions({ accountId }: { accountId?: string } = {}) {
         <div className="p-4">
           <EmptyState
             icon={Receipt}
+            className="border-0 bg-transparent px-2 py-5"
             title="No transactions yet"
             description="Record your first transaction or describe one in Drafts."
             action={

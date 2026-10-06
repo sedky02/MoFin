@@ -66,9 +66,10 @@ export function BalanceCards({ accountId, accountName }: { accountId?: string; a
   const [hero, ...rest] = totals;
 
   return (
-    <div className="space-y-6">
+    // h-full + flex-1 on the hero: it stretches to the row height so it ends level with the Goals card.
+    <div className="flex h-full flex-col gap-6">
       {/* HERO ZONE: LIVE PORTFOLIO PULSE */}
-      <div className="glass-panel pulse-ring relative overflow-hidden rounded-3xl p-8 sm:p-10">
+      <div className="glass-panel pulse-ring relative flex flex-1 flex-col justify-center overflow-hidden rounded-3xl p-8 sm:p-10">
         <div className="flex items-center gap-2.5">
           <span className="size-2 animate-pulse rounded-full bg-primary" aria-hidden />
           <span className="label-caps tracking-widest! text-primary-text!">

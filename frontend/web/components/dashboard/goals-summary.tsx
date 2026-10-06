@@ -27,7 +27,7 @@ export function GoalsSummary({ accountId }: { accountId?: string } = {}) {
         </Button>
       </div>
 
-      <div className="p-4 pt-0">
+      <div className="flex flex-1 flex-col justify-center p-4 pt-0">
         {isLoading ? (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {Array.from({ length: 2 }).map((_, i) => (
@@ -39,6 +39,9 @@ export function GoalsSummary({ accountId }: { accountId?: string } = {}) {
         ) : visible.length === 0 ? (
           <EmptyState
             icon={Target}
+            // Already inside a card: drop the nested dashed box and shrink the padding
+            // so an empty Goals card isn't taller than the balance card beside it.
+            className="border-0 bg-transparent px-2 py-5"
             title="No goals yet"
             description={
               accountId ? "This account has no goals yet." : "Set a target to start tracking progress."
