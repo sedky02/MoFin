@@ -29,8 +29,8 @@ export const ledgerKeys = {
 
 export const analyticsKeys = {
   all: ["analytics"] as const,
-  monthly: (year: number, month: number, accountId?: string) =>
-    [...analyticsKeys.all, "monthly", year, month, accountId] as const,
+  monthly: (year: number, month: number, accountId?: string, currency?: string) =>
+    [...analyticsKeys.all, "monthly", year, month, accountId, currency] as const,
   series: (currency: string, months: number, accountId?: string) =>
     [...analyticsKeys.all, "series", currency, months, accountId] as const,
 };

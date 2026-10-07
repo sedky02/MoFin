@@ -23,11 +23,24 @@ function totalsByCurrency(balances: { key: string; balance: string }[]) {
 
 const isOverdrawn = (amount: string) => tryParse(amount)?.isNegative() ?? false;
 
-export function BalanceCards({ accountId, accountName }: { accountId?: string; accountName?: string } = {}) {
+export function BalanceCards({
+  accountId,
+  accountName,
+  currency,
+  onCurrencyChange,
+}: {
+  accountId?: string;
+  accountName?: string;
+  /** Controlled currency (shared with the Monthly Summary); falls back to local state when omitted. */
+  currency?: string;
+  onCurrencyChange?: (currency: string) => void;
+} = {}) {
   const { data, isLoading, isError, refetch } = useLedgerBalance({ accountId });
   const { data: user } = useUser();
   // The user's explicit pick; falls back to the primary currency until they choose.
-  const [picked, setPicked] = React.useState<string | undefined>();
+  const [localPicked, setLocalPicked] = React.useState<string | undefined>();
+  const picked = currency ?? localPicked;
+  const setPicked = onCurrencyChange ?? setLocalPicked;
 
   if (isLoading) {
     return (

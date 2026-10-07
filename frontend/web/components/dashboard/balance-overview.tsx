@@ -3,15 +3,12 @@
 import * as React from "react";
 import { useMonthlySeries } from "@/hooks/useAnalytics";
 import { MoneyAmount } from "@/components/common/money-amount";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CurrencySwitch } from "@/components/dashboard/currency-switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatMoney } from "@/lib/format";
 import { tryParse } from "@/lib/decimal";
 import { cn } from "@/lib/utils";
 import type { MonthlySeriesPoint } from "@/lib/types";
-
-// Beyond this many currencies the switch becomes a dropdown.
-const MAX_PILLS = 3;
 
 type Metric = "expenses" | "income" | "balance";
 const TABS: { value: Metric; label: string }[] = [
@@ -68,44 +65,8 @@ export function BalanceOverview({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
           <span className="size-2 animate-pulse rounded-full bg-primary" aria-hidden />
-          {currencies.length > MAX_PILLS && onCurrencyChange ? (
-            // Many currencies: pills would overflow the header, so collapse to a dropdown.
-            <Select value={currency} onValueChange={onCurrencyChange}>
-              <SelectTrigger size="sm" className="h-8 w-28 rounded-full tabular" aria-label="Currency">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {currencies.map((c) => (
-                  <SelectItem key={c.code} value={c.code} className="tabular">
-                    <span className="flex items-center gap-2">
-                      {c.code}
-                      {c.overdrawn && <span className="size-1.5 rounded-full bg-destructive" aria-label="overdrawn" />}
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : currencies.length > 1 && onCurrencyChange ? (
-            <div role="radiogroup" aria-label="Currency" className="inline-flex rounded-full border border-border p-1">
-              {currencies.map((c) => (
-                <button
-                  key={c.code}
-                  type="button"
-                  role="radio"
-                  aria-checked={c.code === currency}
-                  onClick={() => onCurrencyChange(c.code)}
-                  className={cn(
-                    "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium tabular transition-colors",
-                    c.code === currency ? "bg-primary/15 text-primary-text" : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {c.code}
-                  {c.overdrawn && (
-                    <span className="size-1.5 rounded-full bg-destructive" title="Overdrawn" aria-label="overdrawn" />
-                  )}
-                </button>
-              ))}
-            </div>
+          {currencies.length > 1 && onCurrencyChange ? (
+            <CurrencySwitch currencies={currencies} value={currency} onChange={onCurrencyChange} />
           ) : (
             <span className="label-caps tracking-widest! text-primary-text!">{currency} balance</span>
           )}

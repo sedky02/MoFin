@@ -6,11 +6,12 @@ import { analyticsKeys } from "@/lib/query-keys";
 import { STALE } from "@/lib/query-client";
 import type { MonthlySeries, MonthlySummary } from "@/lib/types";
 
-export function useMonthlySummary(year: number, month: number, accountId?: string) {
+/** `currency` narrows an all-accounts summary to one currency (amounts can't be summed across them). */
+export function useMonthlySummary(year: number, month: number, accountId?: string, currency?: string) {
   return useQuery({
-    queryKey: analyticsKeys.monthly(year, month, accountId),
+    queryKey: analyticsKeys.monthly(year, month, accountId, currency),
     queryFn: () =>
-      api.get<MonthlySummary>("/analytics/monthly-summary", { year, month, accountId }),
+      api.get<MonthlySummary>("/analytics/monthly-summary", { year, month, accountId, currency }),
     staleTime: STALE.analytics,
   });
 }

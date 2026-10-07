@@ -48,6 +48,39 @@ describe('AnalyticsService.getMonthlySummary', () => {
     );
   });
 
+  it('restricts an all-accounts summary to one currency when asked', async () => {
+    const cur = (accountId: string, amount: string, currency: string) => ({
+      accountId,
+      amount: new Prisma.Decimal(amount),
+      currency,
+    });
+    const transactions = [
+      { type: TransactionType.INCOME, category: null, items: [cur('acc-usd', '100', 'USD')] },
+      { type: TransactionType.INCOME, category: null, items: [cur('acc-tnd', '900', 'TND')] },
+      { type: TransactionType.EXPENSE, category: { name: 'Rent' }, items: [cur('acc-tnd', '300', 'TND')] },
+    ];
+    const { service, prisma } = makeService(transactions);
+
+    const result = (await service.getMonthlySummary('u1', 2026, 7, false, undefined, 'TND')) as {
+      income: string;
+      expenses: string;
+    };
+
+    expect(result.income).toBe('900');
+    expect(result.expenses).toBe('300');
+    // Currency is applied per item, so the query itself is not narrowed by it, and the
+    // other currency's activity is still reported.
+    expect(prisma.transaction.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.not.objectContaining({ items: expect.anything() }) }),
+    );
+    expect((result as unknown as { activeCurrencies: string[] }).activeCurrencies).toEqual(['TND', 'USD']);
+    expect(prisma.analyticsCache.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { userId_cacheKey: { userId: 'u1', cacheKey: 'monthly-summary:v3:2026:7:cur:TND' } },
+      }),
+    );
+  });
+
   it('aggregates across all accounts when accountId is omitted', async () => {
     const transactions = [
       { type: TransactionType.INCOME, category: null, items: [item('acc-a', '100')] },

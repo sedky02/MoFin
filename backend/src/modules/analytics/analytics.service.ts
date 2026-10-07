@@ -8,8 +8,8 @@ import { PrismaService } from '../../database/prisma.service';
 export class AnalyticsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getMonthlySummary(userId: string, year: number, month: number, refresh = false, accountId?: string) {
-    const cacheKey = this.monthlySummaryCacheKey(year, month, accountId);
+  async getMonthlySummary(userId: string, year: number, month: number, refresh = false, accountId?: string, currency?: string) {
+    const cacheKey = this.monthlySummaryCacheKey(year, month, accountId, currency);
     const cached = await this.prisma.analyticsCache.findUnique({ where: { userId_cacheKey: { userId, cacheKey } } });
     if (cached && cached.expiresAt > new Date() && !refresh) return cached.payload;
 
@@ -24,11 +24,15 @@ export class AnalyticsService {
         voidedAt: null,
         reversesTransactionId: null,
         occurredAt: { gte: start, lt: end },
+        // Currency is applied per item below, not here: the other currencies' activity is still reported.
         ...(accountId ? { items: { some: { accountId } } } : {}),
       },
       include: { items: { include: { category: true } }, category: true }
     });
 
+    // Currencies with any income/expense this month (within the account scope), so the UI can
+    // point at a currency that has activity when the selected one is empty.
+    const activeCurrencies = new Set<string>();
     let income = new Prisma.Decimal(0);
     let expenses = new Prisma.Decimal(0);
     type CategoryTotals = Map<string, { name: string; color: string | null; amount: Prisma.Decimal }>;
@@ -42,7 +46,11 @@ export class AnalyticsService {
     for (const transaction of transactions) {
       // INCOME/EXPENSE are single-sided, so filtering items down to `accountId` only matters
       // when it's set — otherwise it's every (single) item on the transaction either way.
-      const items = accountId ? transaction.items.filter((item) => item.accountId === accountId) : transaction.items;
+      const accountItems = transaction.items.filter((item) => !accountId || item.accountId === accountId);
+      if (transaction.type === TransactionType.INCOME || transaction.type === TransactionType.EXPENSE) {
+        for (const item of accountItems) if (item.currency) activeCurrencies.add(item.currency);
+      }
+      const items = accountItems.filter((item) => !currency || item.currency === currency);
       const total = items.reduce((sum, item) => sum.plus(item.amount), new Prisma.Decimal(0));
       if (transaction.type === TransactionType.INCOME) {
         income = income.plus(total);
@@ -79,6 +87,7 @@ export class AnalyticsService {
       income: income.toString(),
       expenses: expenses.toString(),
       savingsRate,
+      activeCurrencies: [...activeCurrencies].sort(),
       categoryBreakdown: toBreakdown(categories),
       incomeBreakdown: toBreakdown(incomeCategories),
     };
@@ -160,8 +169,9 @@ export class AnalyticsService {
 
   // v3: payload gained `incomeBreakdown` — bump so pre-existing cache rows
   // (missing it) aren't served stale after this change deploys.
-  private monthlySummaryCacheKey(year: number, month: number, accountId?: string): string {
-    return accountId ? `monthly-summary:v3:${year}:${month}:${accountId}` : `monthly-summary:v3:${year}:${month}`;
+  private monthlySummaryCacheKey(year: number, month: number, accountId?: string, currency?: string): string {
+    // Every variant starts with `<base>:` (except the bare base), which invalidation relies on.
+    return `monthly-summary:v3:${year}:${month}${accountId ? `:${accountId}` : ''}${currency ? `:cur:${currency}` : ''}`;
   }
 
   @OnEvent(DomainEvents.TransactionCreated)

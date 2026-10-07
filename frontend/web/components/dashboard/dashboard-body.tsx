@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import { useAccounts } from "@/hooks/useAccounts";
 import { useLedgerBalance } from "@/hooks/useLedger";
 import { useActiveAccount } from "@/hooks/useActiveAccount";
@@ -36,8 +37,21 @@ export function DashboardBody({
   // it didn't) so a guessed currency is never the final answer — it
   // self-corrects the moment real data arrives.
   const primaryCurrency = pickPrimaryCurrency(balances, user, initialPrimaryCurrency);
-  const currency = selectedAccount?.currency ?? primaryCurrency;
-  const mixedCurrencies = new Set((accounts ?? []).map((a) => a.currency)).size > 1;
+
+  // The balance hero and the monthly summary each keep their own currency choice. Amounts
+  // never mix currencies, so an all-accounts view is shown one currency at a time.
+  const [balanceCurrencyPick, setBalanceCurrencyPick] = React.useState<string | undefined>();
+  const [summaryCurrencyPick, setSummaryCurrencyPick] = React.useState<string | undefined>();
+  const accountCurrencies = [...new Set((accounts ?? []).map((a) => a.currency))].sort(
+    (a, b) => Number(b === primaryCurrency) - Number(a === primaryCurrency),
+  );
+  const resolveCurrency = (pick?: string) =>
+    selectedAccount?.currency ??
+    (pick && accountCurrencies.includes(pick) ? pick : undefined) ??
+    (accountCurrencies.includes(primaryCurrency) ? primaryCurrency : accountCurrencies[0]) ??
+    primaryCurrency;
+  const balanceCurrency = resolveCurrency(balanceCurrencyPick);
+  const summaryCurrency = resolveCurrency(summaryCurrencyPick);
 
   return (
     <section className="space-y-8">
@@ -46,7 +60,12 @@ export function DashboardBody({
           Recent Transactions. */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         <div className="lg:col-span-8">
-          <BalanceCards accountId={accountId} accountName={selectedAccount?.name} />
+          <BalanceCards
+            accountId={accountId}
+            accountName={selectedAccount?.name}
+            currency={balanceCurrency}
+            onCurrencyChange={setBalanceCurrencyPick}
+          />
         </div>
         <div className="lg:col-span-4">
           <GoalsSummary accountId={accountId} />
@@ -57,14 +76,15 @@ export function DashboardBody({
         <MonthlySummaryCard
           year={year}
           month={month}
-          currency={currency}
+          currency={summaryCurrency}
+          currencies={selectedAccount ? [] : accountCurrencies}
+          onCurrencyChange={setSummaryCurrencyPick}
           accountId={accountId}
-          mixedCurrencies={mixedCurrencies}
         />
-        {/* The Monthly Summary sets this row's height; the list is pinned to it and scrolls
-            inside. Stacked on small screens it simply gets a capped height. */}
-        <div className="relative min-h-[26rem]">
-          <RecentTransactions accountId={accountId} className="max-h-[32rem] lg:absolute lg:inset-0 lg:max-h-none" />
+        {/* The Monthly Summary alone sets this row's height; on large screens the list is pinned
+            to it and scrolls inside. No minimum or maximum height of its own. */}
+        <div className="relative">
+          <RecentTransactions accountId={accountId} className="lg:absolute lg:inset-0" />
         </div>
       </div>
     </section>

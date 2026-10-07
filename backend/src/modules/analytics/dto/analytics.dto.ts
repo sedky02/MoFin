@@ -8,6 +8,8 @@ export const monthlySummaryQuerySchema = z.object({
     .optional()
     .transform((value) => value === true || value === 'true'),
   accountId: z.string().optional(),
+  // Amounts can't be summed across currencies: restrict an all-accounts summary to one.
+  currency: z.string().length(3).optional(),
 });
 export const monthlySeriesQuerySchema = z.object({
   months: z.coerce.number().int().min(1).max(24).default(6),

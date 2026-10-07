@@ -174,6 +174,8 @@ export interface MonthlySummary {
   // analytics.service.ts computes this via `.toFixed(4)` — a decimal string, not a number.
   savingsRate: string;
   categoryBreakdown: CategoryBreakdownItem[];
+  /** Currencies with income/expense this month (any currency, within the account scope). */
+  activeCurrencies?: string[];
   /** Income by category; absent on payloads cached before it existed. */
   incomeBreakdown?: CategoryBreakdownItem[];
 }
