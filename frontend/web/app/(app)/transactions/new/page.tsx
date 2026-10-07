@@ -48,6 +48,12 @@ import { parseMoneyInput, toDatetimeLocal } from "@/lib/format";
 import { add } from "@/lib/decimal";
 import { handleApiError } from "@/lib/form-errors";
 
+const DESCRIPTION_PLACEHOLDER: Record<string, string> = {
+  EXPENSE: "Description, e.g. Coffee with Sam",
+  INCOME: "Description, e.g. March salary",
+  TRANSFER: "Description, e.g. Move to savings",
+};
+
 export default function NewTransactionPage() {
   const router = useRouter();
   const { data: accounts, isLoading: accountsLoading } = useAccounts();
@@ -139,49 +145,35 @@ export default function NewTransactionPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [splitting, itemsTotal]);
 
-  // Account pre-selection: the suggested account (active → main → only account
-  // → most used recently → first) until the user picks one by hand (dirty =
-  // hand-picked). Re-runs whenever the suggestion, the type or the list changes,
-  // so it also corrects itself once the recent-usage data arrives.
+  // Accounts. The form only stores an account the user picked; what is shown and
+  // submitted is derived, so there is no "was this hand-picked?" state to get wrong:
+  //   picked account → else the suggested one (active → main → only → most used → first).
+  // For a transfer's destination the default is another account in the same currency.
   const suggestedAccountId = useSuggestedAccountId();
   const { accountId: activeAccountId } = useActiveAccount();
-  const { dirtyFields } = form.formState;
-  const fromPicked = !!dirtyFields.fromAccountId;
-  const toPicked = !!dirtyFields.toAccountId;
-  // Switching the active account is a deliberate choice, so it overrides a
-  // hand-picked account: forget the picks and let the effect below re-apply.
+  const inList = (id?: string) => (id && accountList.some((a) => a.id === id) ? id : undefined);
+  const effectiveFromId = inList(fromAccountId) ?? suggestedAccountId;
+  const effectiveToId =
+    inList(toAccountId) ??
+    (type === "INCOME"
+      ? suggestedAccountId
+      : (() => {
+          const from = accountList.find((a) => a.id === effectiveFromId);
+          const others = accountList.filter((a) => a.id !== effectiveFromId);
+          return (others.find((a) => a.currency === from?.currency) ?? others[0] ?? accountList[0])?.id;
+        })());
+
+  // Switching the active account is a deliberate choice, so it replaces any picked account.
   const lastActiveId = React.useRef(activeAccountId);
   React.useEffect(() => {
     if (lastActiveId.current === activeAccountId) return;
     lastActiveId.current = activeAccountId;
-    form.resetField("fromAccountId", { defaultValue: undefined });
-    form.resetField("toAccountId", { defaultValue: undefined });
+    form.setValue("fromAccountId", undefined);
+    form.setValue("toAccountId", undefined);
   }, [activeAccountId, form]);
-  React.useEffect(() => {
-    if (accountList.length === 0 || !suggestedAccountId) return;
-    // Read dirtiness now (not from render) so a reset in the effect above counts.
-    const picked = (name: "fromAccountId" | "toAccountId") => form.getFieldState(name).isDirty;
-    const set = (name: "fromAccountId" | "toAccountId", id: string) => {
-      if (form.getValues(name) !== id) form.setValue(name, id);
-    };
-    if (!picked("fromAccountId")) set("fromAccountId", suggestedAccountId);
-    if (!picked("toAccountId")) {
-      const from = form.getValues("fromAccountId");
-      const current = form.getValues("toAccountId");
-      set(
-        "toAccountId",
-        type === "INCOME"
-          ? suggestedAccountId
-          : current && current !== from
-            ? current
-            : (accountList.find((a) => a.id !== from) ?? accountList[0]).id,
-      );
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [accountList, suggestedAccountId, activeAccountId, type, fromPicked, toPicked]);
 
-  // Currency auto-fills from the relevant account.
-  const sourceAccountId = type === "INCOME" ? toAccountId : fromAccountId;
+  // Currency follows the account the money moves through.
+  const sourceAccountId = type === "INCOME" ? effectiveToId : effectiveFromId;
   React.useEffect(() => {
     const acct = accountList.find((a) => a.id === sourceAccountId);
     if (acct && acct.currency !== currency) {
@@ -193,9 +185,36 @@ export default function NewTransactionPage() {
     type === "TRANSFER" ? false : c.type === type,
   );
 
+  // Back to a blank expense; the account falls back to the suggested default.
+  function resetForm() {
+    form.reset({
+      type: "EXPENSE",
+      description: "",
+      amountRaw: "",
+      currency: "",
+      fromAccountId: undefined,
+      toAccountId: undefined,
+      categoryId: undefined,
+      occurredAt: toDatetimeLocal(),
+      items: [],
+      isRecurring: false,
+      recurringInterval: undefined,
+      recurringEndDate: "",
+    });
+  }
+
   async function action() {
+    // Commit the derived accounts so validation and submit see what the user sees.
+    const picks = { from: fromAccountId, to: toAccountId };
+    form.setValue("fromAccountId", effectiveFromId);
+    form.setValue("toAccountId", effectiveToId);
     const valid = await form.trigger(undefined, { shouldFocus: true });
-    if (!valid) return;
+    if (!valid) {
+      // Don't let a failed submit turn the defaults into "picked" accounts.
+      form.setValue("fromAccountId", picks.from);
+      form.setValue("toAccountId", picks.to);
+      return;
+    }
     const v = form.getValues();
     const amount = parseMoneyInput(v.amountRaw);
     if (!amount) return;
@@ -227,20 +246,7 @@ export default function NewTransactionPage() {
             ? new Date(`${v.recurringEndDate}T23:59:59`).toISOString()
             : undefined,
       });
-      form.reset({
-        type: "EXPENSE",
-        description: "",
-        amountRaw: "",
-        currency: "",
-        fromAccountId: undefined,
-        toAccountId: undefined,
-        categoryId: undefined,
-        occurredAt: toDatetimeLocal(),
-        items: [],
-        isRecurring: false,
-        recurringInterval: undefined,
-        recurringEndDate: "",
-      });
+      resetForm();
       router.push(`/transactions/${tx.id}`);
     } catch (err) {
       handleApiError(err, { setError: form.setError });
@@ -357,7 +363,7 @@ export default function NewTransactionPage() {
                     <FormLabel className="sr-only">Description</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="Description, e.g. Coffee with Sam"
+                        placeholder={DESCRIPTION_PLACEHOLDER[type] ?? DESCRIPTION_PLACEHOLDER.EXPENSE}
                         className="h-auto border-0 bg-transparent p-0 text-base shadow-none focus-visible:ring-0 dark:bg-transparent"
                         {...field}
                       />
@@ -568,7 +574,7 @@ export default function NewTransactionPage() {
                     <FormControl>
                       <AccountSelect
                         accounts={accountList}
-                        value={field.value}
+                        value={effectiveFromId}
                         onChange={field.onChange}
                         className="data-[size=default]:h-12 rounded-xl border-0 bg-muted/50 shadow-none dark:bg-muted/50 dark:hover:bg-muted/70"
                         aria-invalid={!!form.formState.errors.fromAccountId}
@@ -591,7 +597,7 @@ export default function NewTransactionPage() {
                     <FormControl>
                       <AccountSelect
                         accounts={accountList}
-                        value={field.value}
+                        value={effectiveToId}
                         onChange={field.onChange}
                         className="data-[size=default]:h-12 rounded-xl border-0 bg-muted/50 shadow-none dark:bg-muted/50 dark:hover:bg-muted/70"
                         aria-invalid={!!form.formState.errors.toAccountId}
@@ -690,9 +696,10 @@ export default function NewTransactionPage() {
                 type="button"
                 variant="secondary"
                 className="h-12 flex-1 rounded-xl text-base"
-                onClick={() => router.back()}
+                onClick={resetForm}
+                disabled={!form.formState.isDirty}
               >
-                Cancel
+                Reset
               </Button>
               <SubmitButton pendingText="Saving…" className="h-12 flex-1 rounded-xl text-base">
                 Save transaction
