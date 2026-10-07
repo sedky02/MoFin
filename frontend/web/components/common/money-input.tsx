@@ -13,6 +13,8 @@ interface MoneyInputProps {
   disabled?: boolean;
   className?: string;
   id?: string;
+  /** Hero style: bare, centred, oversized figure with the currency code above. */
+  large?: boolean;
   "aria-invalid"?: boolean;
 }
 
@@ -28,6 +30,7 @@ export function MoneyInput({
   disabled,
   className,
   id,
+  large,
   ...aria
 }: MoneyInputProps) {
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -41,6 +44,33 @@ export function MoneyInput({
       if (tidy) onChange(tidy);
     }
     onBlur?.();
+  }
+
+  if (large) {
+    return (
+      <div className="text-center">
+        <span aria-hidden className="mb-1 block h-4 text-xs font-medium tracking-widest text-muted-foreground">
+          {currency}
+        </span>
+        <input
+          id={id}
+          inputMode="decimal"
+          autoComplete="off"
+          placeholder="0.00"
+          value={value}
+          onChange={handleChange}
+          onBlur={handleBlur}
+          disabled={disabled}
+          aria-label={currency ? `Amount in ${currency}` : "Amount"}
+          className={cn(
+            "tabular w-full bg-transparent text-center text-5xl font-semibold tracking-tight outline-none placeholder:text-muted-foreground/30 disabled:opacity-60 sm:text-6xl",
+            "aria-invalid:text-destructive",
+            className,
+          )}
+          {...aria}
+        />
+      </div>
+    );
   }
 
   const symbol = currencySymbol(currency);

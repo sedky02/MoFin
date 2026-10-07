@@ -7,6 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 import type { Account } from "@/lib/types";
 
 export function AccountSelect({
@@ -18,6 +19,7 @@ export function AccountSelect({
   "aria-invalid": ariaInvalid,
   "aria-describedby": ariaDescribedBy,
   id,
+  className,
 }: {
   accounts: Account[];
   value?: string;
@@ -27,10 +29,11 @@ export function AccountSelect({
   "aria-invalid"?: boolean;
   "aria-describedby"?: string;
   id?: string;
+  className?: string;
 }) {
   return (
     <Select value={value} onValueChange={onChange} disabled={disabled}>
-      <SelectTrigger id={id} className="w-full" aria-invalid={ariaInvalid} aria-describedby={ariaDescribedBy}>
+      <SelectTrigger id={id} className={cn("w-full", className)} aria-invalid={ariaInvalid} aria-describedby={ariaDescribedBy}>
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>

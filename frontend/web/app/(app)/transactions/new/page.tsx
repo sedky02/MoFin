@@ -4,7 +4,7 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, Repeat, Trash2, Wallet } from "lucide-react";
+import { Plus, Repeat, Split, Trash2, Wallet } from "lucide-react";
 import {
   Form,
   FormControl,
@@ -30,6 +30,7 @@ import { SubmitButton } from "@/components/common/submit-button";
 import { MoneyInput } from "@/components/common/money-input";
 import { EmptyState } from "@/components/common/states";
 import { TypeSwitcher } from "@/components/transactions/type-switcher";
+import { CategoryChips } from "@/components/transactions/category-chips";
 import { AccountSelect } from "@/components/transactions/account-select";
 import { AccountDialog } from "@/components/accounts/account-dialog";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
@@ -279,15 +280,15 @@ export default function NewTransactionPage() {
   }
 
   return (
-    <div className="mx-auto max-w-xl">
-      <PageHeader
-        title="New transaction"
-        description="Record income, an expense, or a transfer."
-      />
+    <div className="mx-auto max-w-lg pb-10">
+      <header className="mb-8 text-center">
+        <h1 className="font-heading text-3xl font-semibold tracking-tight sm:text-4xl">New transaction</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Record an expense, income or transfer.</p>
+      </header>
 
-      <Card className="border-0 p-6 shadow-sm">
+      <div className="rounded-3xl bg-card p-5 shadow-sm ring-1 ring-border/60 sm:p-8">
         <Form {...form}>
-          <form action={action} className="space-y-5">
+          <form action={action} className="space-y-6">
             <FormField
               control={form.control}
               name="type"
@@ -314,10 +315,11 @@ export default function NewTransactionPage() {
               control={form.control}
               name="amountRaw"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Amount</FormLabel>
+                <FormItem className="rounded-2xl bg-muted/50 px-4 py-6">
+                  <FormLabel className="sr-only">Amount</FormLabel>
                   <FormControl>
                     <MoneyInput
+                      large
                       value={field.value}
                       onChange={field.onChange}
                       onBlur={field.onBlur}
@@ -327,138 +329,74 @@ export default function NewTransactionPage() {
                     />
                   </FormControl>
                   {splitting ? (
-                    <p className="text-xs text-muted-foreground">
-                      Calculated from the items below.
-                    </p>
+                    <p className="text-center text-xs text-muted-foreground">Calculated from the items below.</p>
                   ) : (
-                    <FormMessage />
+                    <FormMessage className="text-center" />
                   )}
                 </FormItem>
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Coffee with Sam" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
+            {/* What was it for? Description + one-tap category in one grouped surface. */}
+            <div className="rounded-2xl bg-muted/50 p-4">
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="sr-only">Description</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Description, e.g. Coffee with Sam"
+                        className="h-auto border-0 bg-transparent p-0 text-base shadow-none focus-visible:ring-0 dark:bg-transparent"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {type !== "TRANSFER" && !splitting && (
+                <>
+                  <div className="my-3 h-px bg-border/70" />
+                  <FormField
+                    control={form.control}
+                    name="categoryId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="sr-only">Category (optional)</FormLabel>
+                        <CategoryChips
+                          categories={relevantCategories}
+                          value={field.value}
+                          onChange={(id) => field.onChange(id)}
+                          onCreate={() => setNewCategoryFor("main")}
+                        />
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </>
               )}
-            />
+            </div>
 
-            {/* Account pickers depend on type */}
-            {type !== "INCOME" && (
-              <FormField
-                control={form.control}
-                name="fromAccountId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      {type === "TRANSFER" ? "From account" : "Account"}
-                    </FormLabel>
-                    <FormControl>
-                      <AccountSelect
-                        accounts={accountList}
-                        value={field.value}
-                        onChange={field.onChange}
-                        aria-invalid={!!form.formState.errors.fromAccountId}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
-            {type !== "EXPENSE" && (
-              <FormField
-                control={form.control}
-                name="toAccountId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      {type === "TRANSFER" ? "To account" : "Account"}
-                    </FormLabel>
-                    <FormControl>
-                      <AccountSelect
-                        accounts={accountList}
-                        value={field.value}
-                        onChange={field.onChange}
-                        aria-invalid={!!form.formState.errors.toAccountId}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
-
-            {/* Category — plain, unsplit form */}
             {type !== "TRANSFER" && !splitting && (
-              <FormField
-                control={form.control}
-                name="categoryId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      Category{" "}
-                      <span className="font-normal text-muted-foreground">
-                        (optional)
-                      </span>
-                    </FormLabel>
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <FormControl>
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Uncategorized" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {relevantCategories.length === 0 && (
-                          <p className="px-2 py-1.5 text-sm text-muted-foreground">
-                            No categories yet — add one on the Categories page.
-                          </p>
-                        )}
-                        {relevantCategories.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>
-                            <span className="flex items-center gap-2">
-                              {c.icon && <span>{c.icon}</span>}
-                              {c.name}
-                            </span>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-
-                    <button
-                      type="button"
-                      onClick={() => setNewCategoryFor("main")}
-                      className="mt-2 flex items-center gap-1.5 text-xs font-medium text-primary-text underline-offset-4 hover:underline"
-                    >
-                      <Plus className="size-3.5" />
-                      New category
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={startSplit}
-                      className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-border py-2 text-sm font-medium text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
-                    >
-                      <Plus className="size-4" />
-                      Split into multiple items
-                    </button>
-                  </FormItem>
-                )}
-              />
+              <div className="-mt-3 flex justify-end">
+                <button
+                  type="button"
+                  onClick={startSplit}
+                  className="flex items-center gap-1.5 text-sm font-medium text-primary-text transition-opacity hover:opacity-70"
+                >
+                  <Split className="size-4" />
+                  Split transaction
+                </button>
+              </div>
             )}
+
 
             {/* Split items */}
             {type !== "TRANSFER" && splitting && (
-              <div className="space-y-3 rounded-lg border border-border bg-muted/20 p-3">
+              <div className="space-y-3 rounded-2xl bg-muted/50 p-4">
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-medium">
                     Split into {itemsArray.fields.length} items
@@ -607,26 +545,70 @@ export default function NewTransactionPage() {
               </div>
             )}
 
-            <FormField
-              control={form.control}
-              name="occurredAt"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Date</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="datetime-local"
-                      className="tabular"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {type !== "INCOME" && (
+              <FormField
+                control={form.control}
+                name="fromAccountId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs font-medium text-muted-foreground">
+                      {type === "TRANSFER" ? "From" : "Account"}
+                    </FormLabel>
+                    <FormControl>
+                      <AccountSelect
+                        accounts={accountList}
+                        value={field.value}
+                        onChange={field.onChange}
+                        className="data-[size=default]:h-12 rounded-xl border-0 bg-muted/50 shadow-none dark:bg-muted/50 dark:hover:bg-muted/70"
+                        aria-invalid={!!form.formState.errors.fromAccountId}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               )}
-            />
+              {type !== "EXPENSE" && (
+              <FormField
+                control={form.control}
+                name="toAccountId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs font-medium text-muted-foreground">
+                      {type === "TRANSFER" ? "To" : "Account"}
+                    </FormLabel>
+                    <FormControl>
+                      <AccountSelect
+                        accounts={accountList}
+                        value={field.value}
+                        onChange={field.onChange}
+                        className="data-[size=default]:h-12 rounded-xl border-0 bg-muted/50 shadow-none dark:bg-muted/50 dark:hover:bg-muted/70"
+                        aria-invalid={!!form.formState.errors.toAccountId}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              )}
+              <FormField
+                control={form.control}
+                name="occurredAt"
+                render={({ field }) => (
+                  <FormItem className={type === "TRANSFER" ? "sm:col-span-2" : undefined}>
+                    <FormLabel className="text-xs font-medium text-muted-foreground">Date</FormLabel>
+                    <FormControl>
+                      <Input type="datetime-local" className="tabular h-12 rounded-xl border-0 bg-muted/50 shadow-none dark:bg-muted/50" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             {!splitting && (
-              <div className="space-y-4 rounded-lg border border-border p-3">
+              <div className="space-y-4 rounded-2xl bg-muted/50 p-4">
                 <FormField
                   control={form.control}
                   name="isRecurring"
@@ -693,21 +675,22 @@ export default function NewTransactionPage() {
               </div>
             )}
 
-            <div className="flex justify-end gap-2 pt-2">
+            <div className="flex gap-3 pt-2">
               <Button
                 type="button"
-                variant="ghost"
+                variant="secondary"
+                className="h-12 flex-1 rounded-xl text-base"
                 onClick={() => router.back()}
               >
                 Cancel
               </Button>
-              <SubmitButton pendingText="Recording…">
-                Record transaction
+              <SubmitButton pendingText="Saving…" className="h-12 flex-1 rounded-xl text-base">
+                Save transaction
               </SubmitButton>
             </div>
           </form>
         </Form>
-      </Card>
+      </div>
 
       {/* Outside <Form>: a portalled dialog's submit would otherwise bubble into the transaction form. */}
       <CategoryDialog
