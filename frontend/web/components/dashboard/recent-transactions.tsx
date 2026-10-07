@@ -8,14 +8,29 @@ import { Card } from "@/components/ui/card";
 import { SkeletonRows, ErrorState, EmptyState } from "@/components/common/states";
 import { Button } from "@/components/ui/button";
 import { Receipt, ArrowRight } from "lucide-react";
+import { cn } from "@/lib/utils";
+import type { Account, Transaction } from "@/lib/types";
 
-export function RecentTransactions({ accountId }: { accountId?: string } = {}) {
-  const { data, isLoading, isError, refetch } = useRecentTransactions(10, accountId);
+/** Which account(s) a transaction touched, for lists that span every account. */
+function accountLabelFor(tx: Transaction, accounts?: Account[]): string | undefined {
+  const name = (id?: string) => accounts?.find((a) => a.id === id)?.name;
+  if (tx.type === "TRANSFER") {
+    const from = name(tx.items.find((i) => i.direction === "DEBIT")?.accountId);
+    const to = name(tx.items.find((i) => i.direction === "CREDIT")?.accountId);
+    return from && to ? `${from} → ${to}` : (from ?? to);
+  }
+  return name(tx.items[0]?.accountId);
+}
+
+const RECENT_LIMIT = 15;
+
+export function RecentTransactions({ accountId, className }: { accountId?: string; className?: string } = {}) {
+  const { data, isLoading, isError, refetch } = useRecentTransactions(RECENT_LIMIT, accountId);
   const { data: accounts } = useAccounts();
 
   return (
-    <Card className="glass-panel overflow-hidden border-0 p-0 ring-0">
-      <div className="flex items-center justify-between border-b border-border px-4 py-3.5">
+    <Card className={cn("glass-panel flex flex-col overflow-hidden border-0 p-0 ring-0", className)}>
+      <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-3.5">
         <h2 className="label-caps text-foreground!">Recent Transactions</h2>
         <Button asChild variant="ghost" size="sm" className="h-7 gap-1 text-xs">
           <Link href="/search">
@@ -51,9 +66,10 @@ export function RecentTransactions({ accountId }: { accountId?: string } = {}) {
           />
         </div>
       ) : (
-        <div className="divide-y divide-border">
+        // Scrolls inside the card so a long list never stretches the dashboard row.
+        <div className="min-h-0 flex-1 divide-y divide-border overflow-y-auto overscroll-contain">
           {data.map((tx) => (
-            <TransactionRow key={tx.id} tx={tx} />
+            <TransactionRow key={tx.id} tx={tx} accountLabel={accountId ? undefined : accountLabelFor(tx, accounts)} />
           ))}
         </div>
       )}

@@ -61,7 +61,11 @@ export function DashboardBody({
           accountId={accountId}
           mixedCurrencies={mixedCurrencies}
         />
-        <RecentTransactions accountId={accountId} />
+        {/* The Monthly Summary sets this row's height; the list is pinned to it and scrolls
+            inside. Stacked on small screens it simply gets a capped height. */}
+        <div className="relative min-h-[26rem]">
+          <RecentTransactions accountId={accountId} className="max-h-[32rem] lg:absolute lg:inset-0 lg:max-h-none" />
+        </div>
       </div>
     </section>
   );

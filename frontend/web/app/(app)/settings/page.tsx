@@ -184,7 +184,7 @@ export default function SettingsPage() {
                       </SelectContent>
                     </Select>
                     <FormDescription>
-                      The Monthly Summary on your dashboard opens on this account. You can still switch it there.
+                      The dashboard and new transactions start on this account until you pick another from the account menu at the top. Choosing “All accounts” there overrides it.
                     </FormDescription>
                     <FormMessage />
                   </FormItem>

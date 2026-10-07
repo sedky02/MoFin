@@ -18,7 +18,7 @@ function CategoryDot({ color }: { color?: string | null }) {
   );
 }
 
-export function TransactionRow({ tx }: { tx: Transaction }) {
+export function TransactionRow({ tx, accountLabel }: { tx: Transaction; /** Shown in the meta line when the list spans several accounts. */ accountLabel?: string }) {
   // Expenses display as negative + red; income positive + green; transfer neutral.
   const base = transactionAmount(tx);
   const signedAmount = tx.type === "EXPENSE" ? multiply(base, "-1") : base;
@@ -59,14 +59,20 @@ export function TransactionRow({ tx }: { tx: Transaction }) {
           )}
         </p>
         <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
-          {tx.category && (
-            <span className="flex items-center gap-1.5">
-              <CategoryDot color={tx.category.color} />
-              <span className="truncate">{tx.category.name}</span>
+          {(tx.category || tx.type !== "TRANSFER") && (
+            <span className="flex min-w-0 items-center gap-1.5">
+              <CategoryDot color={tx.category?.color} />
+              <span className="truncate">{tx.category?.name ?? "Uncategorized"}</span>
               <span aria-hidden>·</span>
             </span>
           )}
-          <span className="tabular">{formatDate(tx.occurredAt)}</span>
+          <span className="tabular shrink-0">{formatDate(tx.occurredAt)}</span>
+          {accountLabel && (
+            <>
+              <span aria-hidden>·</span>
+              <span className="truncate">{accountLabel}</span>
+            </>
+          )}
         </div>
       </div>
 

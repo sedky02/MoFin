@@ -1,19 +1,17 @@
 "use client";
 
-import { useMonthlySummary } from "@/hooks/useAnalytics";
-import { MoneyAmount } from "@/components/common/money-amount";
 import * as React from "react";
-import Link from "next/link";
 import { colorAt, Donut } from "./donut";
-import { AccountSwitcher } from "./account-switcher";
+import { useMonthlySummary } from "@/hooks/useAnalytics";
 import { useAccounts } from "@/hooks/useAccounts";
 import { useMainAccount } from "@/hooks/useMainAccount";
+import { MoneyAmount } from "@/components/common/money-amount";
 import { CategoryIcon } from "@/components/dashboard/category-icon";
 import { Card } from "@/components/ui/card";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ErrorState, EmptyState } from "@/components/common/states";
-import { tryParse } from "@/lib/decimal";
+import { subtract, tryParse } from "@/lib/decimal";
 import { PieChart } from "lucide-react";
 
 type Kind = "expense" | "income";
@@ -30,6 +28,7 @@ export function MonthlySummaryCard({
   year: number;
   month: number;
   currency: string;
+  /** The dashboard's active account (explicit pick, else main). `undefined` = all accounts. */
   accountId?: string;
   /** All-accounts view across more than one currency: totals can't be summed. */
   mixedCurrencies?: boolean;
@@ -37,14 +36,10 @@ export function MonthlySummaryCard({
   const { data: accounts = [] } = useAccounts();
   const { accountId: mainAccountId } = useMainAccount();
   const [kind, setKind] = React.useState<Kind>("expense");
-  // `undefined` = follow the default; "all" = the user explicitly chose every account here.
-  const [override, setOverride] = React.useState<string | undefined>();
+  const { data, isLoading, isError, refetch } = useMonthlySummary(year, month, accountId);
 
-  // Default scope: an account picked in the top bar, else the main account, else all accounts.
-  const scopedId = override === "all" ? undefined : (override ?? accountId ?? mainAccountId);
-  const scopedAccount = accounts.find((a) => a.id === scopedId);
+  const scopedAccount = accounts.find((a) => a.id === accountId);
   const scopedCurrency = scopedAccount?.currency ?? currency;
-  const { data, isLoading, isError, refetch } = useMonthlySummary(year, month, scopedId);
 
   const monthLabel = new Date(Date.UTC(year, month - 1, 1)).toLocaleDateString(undefined, {
     month: "long",
@@ -52,45 +47,28 @@ export function MonthlySummaryCard({
     timeZone: "UTC",
   });
 
-  const header = (
-    <div className="space-y-2">
+  // One account control lives in the top bar; this card only says what it is showing.
+  const scopeLabel = scopedAccount
+    ? `${scopedAccount.name}${scopedAccount.id === mainAccountId ? " · Main account" : ""}`
+    : "All accounts";
+
+  const title = (
+    <div className="min-w-0">
       <h2 className="label-caps text-foreground!">Monthly Summary · {monthLabel}</h2>
-      {accounts.length > 1 && (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <AccountSwitcher
-            accounts={accounts}
-            value={scopedId}
-            onChange={(id) => setOverride(id ?? "all")}
-            label="Account for this summary"
-            className="h-8 w-48"
-          />
-          <p className="text-xs text-muted-foreground">
-            {scopedId && scopedId === mainAccountId ? (
-              "Your main account"
-            ) : !mainAccountId ? (
-              <>
-                <Link href="/settings" className="underline underline-offset-2 hover:text-foreground">
-                  Set a main account
-                </Link>{" "}
-                to open here by default
-              </>
-            ) : null}
-          </p>
-        </div>
-      )}
+      <p className="mt-1 truncate text-xs text-muted-foreground">{scopeLabel}</p>
     </div>
   );
 
   // The backend sums amounts without regard to currency when no account is
   // selected, so showing that total under one currency symbol would be wrong.
-  if (mixedCurrencies && !scopedId) {
+  if (mixedCurrencies && !accountId) {
     return (
       <Card className="glass-panel border-0 p-5 ring-0">
-        {header}
+        {title}
         <EmptyState
           icon={PieChart}
           title="Select an account"
-          description="Your accounts use different currencies, so this summary is shown one account at a time."
+          description="Your accounts use different currencies, so this summary is shown one account at a time. Pick one from the account menu at the top."
           className="mt-5"
         />
       </Card>
@@ -100,12 +78,13 @@ export function MonthlySummaryCard({
   if (isLoading) {
     return (
       <Card className="glass-panel border-0 p-5 ring-0">
-        {header}
-        <div className="mt-5 flex flex-col items-center gap-6 sm:flex-row">
-          <Skeleton className="size-40 shrink-0 rounded-full" />
+        {title}
+        <Skeleton className="mt-5 h-18 w-full rounded-2xl" />
+        <div className="mt-6 flex flex-col items-center gap-6 sm:flex-row">
+          <Skeleton className="size-44 shrink-0 rounded-full" />
           <div className="w-full space-y-3">
             {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-8 w-full" />
+              <Skeleton key={i} className="h-9 w-full" />
             ))}
           </div>
         </div>
@@ -148,17 +127,44 @@ export function MonthlySummaryCard({
   const hasData = segments.length > 0;
   const noun = isExpense ? "spending" : "income";
 
+  const net = subtract(data.income, data.expenses);
+  const hasIncome = (tryParse(data.income)?.toNumber() ?? 0) > 0;
+  const savedPct = Math.round((tryParse(data.savingsRate)?.toNumber() ?? 0) * 100);
+
   return (
     <Card className="glass-panel border-0 p-5 ring-0">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        {header}
-        <Tabs value={kind} onValueChange={(v) => setKind(v as Kind)}>
+      <div className="flex items-start justify-between gap-3">
+        {title}
+        <Tabs value={kind} onValueChange={(v) => setKind(v as Kind)} className="shrink-0">
           <TabsList aria-label="Breakdown type">
             <TabsTrigger value="expense">Expenses</TabsTrigger>
             <TabsTrigger value="income">Income</TabsTrigger>
           </TabsList>
         </Tabs>
       </div>
+
+      {/* Always visible, whichever breakdown is selected. */}
+      <dl className="mt-5 grid grid-cols-3 gap-3 rounded-2xl bg-muted/50 p-4">
+        <div className="min-w-0">
+          <dt className="text-xs text-muted-foreground">Income</dt>
+          <dd className="mt-1">
+            <MoneyAmount amount={data.income} currency={scopedCurrency} className="text-sm font-semibold text-success" />
+          </dd>
+        </div>
+        <div className="min-w-0">
+          <dt className="text-xs text-muted-foreground">Expenses</dt>
+          <dd className="mt-1">
+            <MoneyAmount amount={data.expenses} currency={scopedCurrency} className="text-sm font-semibold text-destructive" />
+          </dd>
+        </div>
+        <div className="min-w-0">
+          <dt className="text-xs text-muted-foreground">Net</dt>
+          <dd className="mt-1">
+            <MoneyAmount amount={net} currency={scopedCurrency} colorBySign className="text-sm font-semibold" />
+            {hasIncome && <p className="mt-0.5 text-xs text-muted-foreground tabular">{savedPct}% saved</p>}
+          </dd>
+        </div>
+      </dl>
 
       {!hasData ? (
         <EmptyState
@@ -172,7 +178,7 @@ export function MonthlySummaryCard({
           className="mt-5"
         />
       ) : (
-        <div className="mt-5 flex flex-col items-center gap-6 sm:flex-row sm:items-center">
+        <div className="mt-6 flex flex-col items-center gap-6 sm:flex-row sm:items-center">
           <Donut
             segments={segments}
             size={176}
@@ -180,12 +186,13 @@ export function MonthlySummaryCard({
             ariaLabel={`${isExpense ? "Spending" : "Income"} by category`}
             center={
               <>
-                <span className="text-[11px] text-muted-foreground">Total {noun}</span>
+                <span className="text-xs text-muted-foreground">Total {noun}</span>
+                {/* Full precision like the rows beside it; compact only when it would not fit the ring. */}
                 <MoneyAmount
                   amount={total}
                   currency={scopedCurrency}
-                  compact
-                  className="mt-0.5 text-lg font-semibold text-foreground"
+                  compact={total.length > 9}
+                  className="mt-0.5 text-base font-semibold text-foreground"
                 />
               </>
             }
@@ -207,7 +214,7 @@ export function MonthlySummaryCard({
                   <p className="min-w-0 flex-1 truncate text-sm font-medium">{s.label}</p>
                   <div className="shrink-0 text-right">
                     <MoneyAmount amount={s.amount} currency={scopedCurrency} className="text-sm font-semibold text-foreground" />
-                    <p className="text-[11px] text-muted-foreground tabular">{share}%</p>
+                    <p className="text-xs text-muted-foreground tabular">{share}%</p>
                   </div>
                 </li>
               );
