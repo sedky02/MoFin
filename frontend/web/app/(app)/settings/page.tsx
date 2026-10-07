@@ -23,6 +23,7 @@ import { PageHeader } from "@/components/common/page-header";
 import { SubmitButton } from "@/components/common/submit-button";
 import { ThemeToggle } from "@/components/shell/theme-toggle";
 import { useUser, useUpdateUser } from "@/hooks/useUser";
+import { useAccounts } from "@/hooks/useAccounts";
 import { useConnectedApps, useDisconnectApp } from "@/hooks/useConnectedApps";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { Button } from "@/components/ui/button";
@@ -33,43 +34,60 @@ const schema = z.object({
   displayName: z.string().trim().max(80, "Keep it under 80 characters.").optional(),
   // "auto" = no explicit preference (most common balance currency is used).
   defaultCurrency: z.string(),
+  // "none" = no main account (summary covers all accounts).
+  mainAccountId: z.string(),
 });
 type Values = z.infer<typeof schema>;
 
 export default function SettingsPage() {
   const { data: user, isLoading } = useUser();
   const updateMut = useUpdateUser();
+  const { data: accounts } = useAccounts();
   const apps = useConnectedApps();
   const disconnect = useDisconnectApp();
   const [toDisconnect, setToDisconnect] = React.useState<ConnectedApp | undefined>();
 
   const form = useForm<Values>({
     resolver: zodResolver(schema),
-    defaultValues: { displayName: "", defaultCurrency: "auto" },
+    defaultValues: { displayName: "", defaultCurrency: "auto", mainAccountId: "none" },
   });
 
+  // A saved id whose account was archived/deleted reads as "none" so Save isn't offered for a no-op.
+  const savedMainId = accounts?.some((a) => a.id === user?.settings?.mainAccountId)
+    ? (user?.settings?.mainAccountId as string)
+    : "none";
+
   React.useEffect(() => {
-    if (user) form.reset({ displayName: user.displayName ?? "", defaultCurrency: user.settings?.defaultCurrency || "auto" });
-  }, [user, form]);
+    if (user)
+      form.reset({
+        displayName: user.displayName ?? "",
+        defaultCurrency: user.settings?.defaultCurrency || "auto",
+        mainAccountId: savedMainId,
+      });
+  }, [user, form, savedMainId]);
 
   const currentName = form.watch("displayName") ?? "";
   const currentCurrency = form.watch("defaultCurrency");
+  const currentMain = form.watch("mainAccountId");
   const changed =
     (user?.displayName ?? "") !== currentName.trim() ||
-    (user?.settings?.defaultCurrency || "auto") !== currentCurrency;
+    (user?.settings?.defaultCurrency || "auto") !== currentCurrency ||
+    savedMainId !== currentMain;
 
   async function action() {
     const valid = await form.trigger(undefined, { shouldFocus: true });
     if (!valid) return;
     try {
       // The API replaces `settings` wholesale, so merge into the existing object.
-      const { defaultCurrency: _old, ...otherSettings } = user?.settings ?? {};
+      const { defaultCurrency: _old, mainAccountId: _oldMain, ...otherSettings } = user?.settings ?? {};
       void _old;
+      void _oldMain;
       await updateMut.mutateAsync({
         displayName: currentName.trim(),
         settings: {
           ...otherSettings,
           ...(currentCurrency !== "auto" ? { defaultCurrency: currentCurrency } : {}),
+          ...(currentMain !== "none" ? { mainAccountId: currentMain } : {}),
         },
       });
     } catch (err) {
@@ -138,6 +156,35 @@ export default function SettingsPage() {
                     </Select>
                     <FormDescription>
                       Leads the dashboard balance and monthly summary when you have accounts in several currencies.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="mainAccountId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Main account</FormLabel>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <FormControl>
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="none">None (all accounts)</SelectItem>
+                        {(accounts ?? []).map((a) => (
+                          <SelectItem key={a.id} value={a.id}>
+                            {a.name} <span className="text-xs text-muted-foreground tabular">{a.currency}</span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>
+                      The Monthly Summary on your dashboard opens on this account. You can still switch it there.
                     </FormDescription>
                     <FormMessage />
                   </FormItem>

@@ -97,12 +97,12 @@ describe('AnalyticsService.getMonthlySummary', () => {
 
     await service.getMonthlySummary('u1', 2026, 7, false, 'acc-a');
     expect(prisma.analyticsCache.findUnique).toHaveBeenCalledWith({
-      where: { userId_cacheKey: { userId: 'u1', cacheKey: 'monthly-summary:v2:2026:7:acc-a' } },
+      where: { userId_cacheKey: { userId: 'u1', cacheKey: 'monthly-summary:v3:2026:7:acc-a' } },
     });
 
     await service.getMonthlySummary('u1', 2026, 7, false);
     expect(prisma.analyticsCache.findUnique).toHaveBeenCalledWith({
-      where: { userId_cacheKey: { userId: 'u1', cacheKey: 'monthly-summary:v2:2026:7' } },
+      where: { userId_cacheKey: { userId: 'u1', cacheKey: 'monthly-summary:v3:2026:7' } },
     });
   });
 });

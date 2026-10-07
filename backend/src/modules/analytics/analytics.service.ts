@@ -31,14 +31,27 @@ export class AnalyticsService {
 
     let income = new Prisma.Decimal(0);
     let expenses = new Prisma.Decimal(0);
-    const categories = new Map<string, { name: string; color: string | null; amount: Prisma.Decimal }>();
+    type CategoryTotals = Map<string, { name: string; color: string | null; amount: Prisma.Decimal }>;
+    const categories: CategoryTotals = new Map();
+    const incomeCategories: CategoryTotals = new Map();
+    const addToCategory = (target: CategoryTotals, key: string, name: string, color: string | null, amount: Prisma.Decimal) => {
+      const existing = target.get(key);
+      target.set(key, { name, color, amount: (existing?.amount ?? new Prisma.Decimal(0)).plus(amount) });
+    };
 
     for (const transaction of transactions) {
       // INCOME/EXPENSE are single-sided, so filtering items down to `accountId` only matters
       // when it's set — otherwise it's every (single) item on the transaction either way.
       const items = accountId ? transaction.items.filter((item) => item.accountId === accountId) : transaction.items;
       const total = items.reduce((sum, item) => sum.plus(item.amount), new Prisma.Decimal(0));
-      if (transaction.type === TransactionType.INCOME) income = income.plus(total);
+      if (transaction.type === TransactionType.INCOME) {
+        income = income.plus(total);
+        for (const item of items) {
+          const category = item.category ?? transaction.category;
+          const key = item.categoryId ?? transaction.categoryId ?? 'uncategorized';
+          addToCategory(incomeCategories, key, category?.name ?? 'Uncategorized', category?.color ?? null, item.amount);
+        }
+      }
       if (transaction.type === TransactionType.EXPENSE) {
         expenses = expenses.plus(total);
         // Split items carry their own category; unsplit items fall back to the
@@ -48,12 +61,17 @@ export class AnalyticsService {
           const key = item.categoryId ?? transaction.categoryId ?? 'uncategorized';
           const name = category?.name ?? 'Uncategorized';
           const color = category?.color ?? null;
-          const existing = categories.get(key);
-          categories.set(key, { name, color, amount: (existing?.amount ?? new Prisma.Decimal(0)).plus(item.amount) });
+          addToCategory(categories, key, name, color, item.amount);
         }
       }
     }
 
+    const toBreakdown = (source: CategoryTotals) =>
+      Array.from(source.values()).map(({ name, color, amount }) => ({
+        category: name,
+        color,
+        amount: amount.toString()
+      }));
     const savingsRate = income.greaterThan(0) ? income.minus(expenses).div(income).toFixed(4) : '0';
     const payload = {
       year,
@@ -61,11 +79,8 @@ export class AnalyticsService {
       income: income.toString(),
       expenses: expenses.toString(),
       savingsRate,
-      categoryBreakdown: Array.from(categories.values()).map(({ name, color, amount }) => ({
-        category: name,
-        color,
-        amount: amount.toString()
-      }))
+      categoryBreakdown: toBreakdown(categories),
+      incomeBreakdown: toBreakdown(incomeCategories),
     };
 
     await this.prisma.analyticsCache.upsert({
@@ -143,10 +158,10 @@ export class AnalyticsService {
     return payload;
   }
 
-  // v2: categoryBreakdown now carries each category's color — bump so pre-existing
-  // cache rows (missing `color`) aren't served stale after this change deploys.
+  // v3: payload gained `incomeBreakdown` — bump so pre-existing cache rows
+  // (missing it) aren't served stale after this change deploys.
   private monthlySummaryCacheKey(year: number, month: number, accountId?: string): string {
-    return accountId ? `monthly-summary:v2:${year}:${month}:${accountId}` : `monthly-summary:v2:${year}:${month}`;
+    return accountId ? `monthly-summary:v3:${year}:${month}:${accountId}` : `monthly-summary:v3:${year}:${month}`;
   }
 
   @OnEvent(DomainEvents.TransactionCreated)

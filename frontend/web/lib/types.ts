@@ -23,6 +23,8 @@ export interface User {
 
 export interface UserSettings {
   defaultCurrency?: string;
+  /** Account the dashboard summary defaults to; absent = all accounts. */
+  mainAccountId?: string;
   // open-ended; backend stores arbitrary JSON settings
   [key: string]: unknown;
 }
@@ -172,6 +174,8 @@ export interface MonthlySummary {
   // analytics.service.ts computes this via `.toFixed(4)` — a decimal string, not a number.
   savingsRate: string;
   categoryBreakdown: CategoryBreakdownItem[];
+  /** Income by category; absent on payloads cached before it existed. */
+  incomeBreakdown?: CategoryBreakdownItem[];
 }
 
 // ---- Error shapes ----

@@ -18,11 +18,13 @@ export function Donut({
   size = 168,
   thickness = 18,
   center,
+  ariaLabel = "Spending by category",
 }: {
   segments: DonutSegment[];
   size?: number;
   thickness?: number;
   center?: React.ReactNode;
+  ariaLabel?: string;
 }) {
   const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => setMounted(true), []);
@@ -41,7 +43,7 @@ export function Donut({
         viewBox={`0 0 ${size} ${size}`}
         className="-rotate-90"
         role="img"
-        aria-label="Spending by category"
+        aria-label={ariaLabel}
       >
         {/* track */}
         <circle
