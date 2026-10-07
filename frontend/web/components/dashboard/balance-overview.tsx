@@ -3,11 +3,15 @@
 import * as React from "react";
 import { useMonthlySeries } from "@/hooks/useAnalytics";
 import { MoneyAmount } from "@/components/common/money-amount";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatMoney } from "@/lib/format";
 import { tryParse } from "@/lib/decimal";
 import { cn } from "@/lib/utils";
 import type { MonthlySeriesPoint } from "@/lib/types";
+
+// Beyond this many currencies the switch becomes a dropdown.
+const MAX_PILLS = 3;
 
 type Metric = "expenses" | "income" | "balance";
 const TABS: { value: Metric; label: string }[] = [
@@ -64,7 +68,24 @@ export function BalanceOverview({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
           <span className="size-2 animate-pulse rounded-full bg-primary" aria-hidden />
-          {currencies.length > 1 && onCurrencyChange ? (
+          {currencies.length > MAX_PILLS && onCurrencyChange ? (
+            // Many currencies: pills would overflow the header, so collapse to a dropdown.
+            <Select value={currency} onValueChange={onCurrencyChange}>
+              <SelectTrigger size="sm" className="h-8 w-28 rounded-full tabular" aria-label="Currency">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {currencies.map((c) => (
+                  <SelectItem key={c.code} value={c.code} className="tabular">
+                    <span className="flex items-center gap-2">
+                      {c.code}
+                      {c.overdrawn && <span className="size-1.5 rounded-full bg-destructive" aria-label="overdrawn" />}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : currencies.length > 1 && onCurrencyChange ? (
             <div role="radiogroup" aria-label="Currency" className="inline-flex rounded-full border border-border p-1">
               {currencies.map((c) => (
                 <button
