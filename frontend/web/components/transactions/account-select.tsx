@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import {
   Select,
   SelectContent,
@@ -31,9 +32,29 @@ export function AccountSelect({
   id?: string;
   className?: string;
 }) {
+  const [open, setOpen] = React.useState(false);
+  const triggerRef = React.useRef<HTMLButtonElement>(null);
+
+  // Radix mirrors a programmatically-set value into a hidden native <select> and
+  // fires a change event; that event can arrive empty (or stale) when the native
+  // option isn't registered yet, which would blank the account and mark it as
+  // hand-picked. Only trust a change while the user is actually interacting with
+  // the control (menu open, or the trigger focused for keyboard selection).
+  function handleValueChange(id: string) {
+    if (!id) return;
+    if (!open && document.activeElement !== triggerRef.current) return;
+    onChange(id);
+  }
+
   return (
-    <Select value={value} onValueChange={onChange} disabled={disabled}>
-      <SelectTrigger id={id} className={cn("w-full", className)} aria-invalid={ariaInvalid} aria-describedby={ariaDescribedBy}>
+    <Select value={value} onValueChange={handleValueChange} open={open} onOpenChange={setOpen} disabled={disabled}>
+      <SelectTrigger
+        ref={triggerRef}
+        id={id}
+        className={cn("w-full", className)}
+        aria-invalid={ariaInvalid}
+        aria-describedby={ariaDescribedBy}
+      >
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>

@@ -37,6 +37,7 @@ import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { CategoryDialog } from "@/components/categories/category-dialog";
 import { useAccounts } from "@/hooks/useAccounts";
 import { useActiveAccount } from "@/hooks/useActiveAccount";
+import { useSuggestedAccountId } from "@/hooks/useSuggestedAccount";
 import { useCategories } from "@/hooks/useCategories";
 import { useCreateTransaction } from "@/hooks/useTransactions";
 import {
@@ -138,37 +139,46 @@ export default function NewTransactionPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [splitting, itemsTotal]);
 
-  // Account pre-selection. The active account always wins until the user picks
-  // an account by hand (dirty = hand-picked). This re-runs whenever the active
-  // account, the transaction type or the account list changes, so it also
-  // applies when the active account only becomes known after the first pass
-  // (hard refresh / navigation) — a fill-once-if-empty guard missed that case.
+  // Account pre-selection: the suggested account (active → main → only account
+  // → most used recently → first) until the user picks one by hand (dirty =
+  // hand-picked). Re-runs whenever the suggestion, the type or the list changes,
+  // so it also corrects itself once the recent-usage data arrives.
+  const suggestedAccountId = useSuggestedAccountId();
   const { accountId: activeAccountId } = useActiveAccount();
   const { dirtyFields } = form.formState;
   const fromPicked = !!dirtyFields.fromAccountId;
   const toPicked = !!dirtyFields.toAccountId;
+  // Switching the active account is a deliberate choice, so it overrides a
+  // hand-picked account: forget the picks and let the effect below re-apply.
+  const lastActiveId = React.useRef(activeAccountId);
   React.useEffect(() => {
-    if (accountList.length === 0) return;
+    if (lastActiveId.current === activeAccountId) return;
+    lastActiveId.current = activeAccountId;
+    form.resetField("fromAccountId", { defaultValue: undefined });
+    form.resetField("toAccountId", { defaultValue: undefined });
+  }, [activeAccountId, form]);
+  React.useEffect(() => {
+    if (accountList.length === 0 || !suggestedAccountId) return;
+    // Read dirtiness now (not from render) so a reset in the effect above counts.
+    const picked = (name: "fromAccountId" | "toAccountId") => form.getFieldState(name).isDirty;
     const set = (name: "fromAccountId" | "toAccountId", id: string) => {
       if (form.getValues(name) !== id) form.setValue(name, id);
     };
-    if (!fromPicked) {
-      set("fromAccountId", activeAccountId ?? form.getValues("fromAccountId") ?? accountList[0].id);
-    }
-    if (!toPicked) {
+    if (!picked("fromAccountId")) set("fromAccountId", suggestedAccountId);
+    if (!picked("toAccountId")) {
       const from = form.getValues("fromAccountId");
       const current = form.getValues("toAccountId");
       set(
         "toAccountId",
         type === "INCOME"
-          ? (activeAccountId ?? current ?? accountList[0].id)
+          ? suggestedAccountId
           : current && current !== from
             ? current
             : (accountList.find((a) => a.id !== from) ?? accountList[0]).id,
       );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [accountList, activeAccountId, type, fromPicked, toPicked]);
+  }, [accountList, suggestedAccountId, activeAccountId, type, fromPicked, toPicked]);
 
   // Currency auto-fills from the relevant account.
   const sourceAccountId = type === "INCOME" ? toAccountId : fromAccountId;
