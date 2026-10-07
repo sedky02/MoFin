@@ -94,6 +94,8 @@ export default function RegisterPage() {
       const loginUrl = new URL("/login", window.location.origin);
       loginUrl.searchParams.set("registered", "1");
       if (mcpAuthorize) loginUrl.searchParams.set("mcp_authorize", mcpAuthorize);
+      const next = params.get("next");
+      if (next) loginUrl.searchParams.set("next", next);
       router.replace(`${loginUrl.pathname}${loginUrl.search}`);
     } catch (err) {
       handleApiError(err, {

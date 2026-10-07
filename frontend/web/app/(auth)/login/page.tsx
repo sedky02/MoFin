@@ -21,6 +21,7 @@ import { SubmitButton } from "@/components/common/submit-button";
 import { GoogleButton } from "@/components/common/google-button";
 import { ApiClientError } from "@/lib/api";
 import { handleApiError } from "@/lib/form-errors";
+import { safeNextPath } from "@/lib/safe-next";
 
 const loginSchema = z.object({
   email: z.string().email("Enter a valid email address."),
@@ -72,7 +73,7 @@ export default function LoginPage() {
         window.location.href = `/api/auth/mcp-handoff?continue=${encodeURIComponent(mcpAuthorize)}`;
         return;
       }
-      router.replace("/dashboard");
+      router.replace(safeNextPath(new URLSearchParams(window.location.search).get("next")));
       router.refresh();
     } catch (err) {
       if (err instanceof ApiClientError && err.status === 401) {

@@ -7,11 +7,14 @@
  */
 export function GoogleButton({ label = "Continue with Google" }: { label?: string }) {
   function start() {
-    const mcpAuthorize = new URLSearchParams(window.location.search).get("mcp_authorize");
-    const href = mcpAuthorize
-      ? `/api/auth/google?mcp_authorize=${encodeURIComponent(mcpAuthorize)}`
-      : "/api/auth/google";
-    window.location.href = href;
+    const search = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams();
+    const mcpAuthorize = search.get("mcp_authorize");
+    const next = search.get("next");
+    if (mcpAuthorize) params.set("mcp_authorize", mcpAuthorize);
+    if (next) params.set("next", next);
+    const qs = params.toString();
+    window.location.href = qs ? `/api/auth/google?${qs}` : "/api/auth/google";
   }
 
   return (

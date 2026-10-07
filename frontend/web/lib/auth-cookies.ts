@@ -14,8 +14,8 @@ export const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:3000/api
 
 // Server-to-server calls to the backend must never hang indefinitely — a hung
 // backend would otherwise cascade into every request handler waiting forever
-// (audit PERF-XX).
-export const BACKEND_TIMEOUT_MS = 3_000;
+// (audit PERF-XX). Generous enough for a cold-starting backend after a long idle.
+export const BACKEND_TIMEOUT_MS = 8_000;
 
 /**
  * Relays the real client IP from the inbound request so the backend's rate

@@ -5,7 +5,7 @@ import { cookies } from "next/headers";
 import { ACCESS_COOKIE, BACKEND_URL } from "@/lib/auth-cookies";
 
 /** Server-to-server calls must never hang indefinitely (audit PERF-XX). */
-const BACKEND_TIMEOUT_MS = 5_000;
+const BACKEND_TIMEOUT_MS = 8_000;
 
 /**
  * Thrown by serverGet for a failure that is NOT a routine "access token

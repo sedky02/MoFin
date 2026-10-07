@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { safeNextPath } from "@/lib/safe-next";
 import { BACKEND_TIMEOUT_MS, BACKEND_URL, setAuthCookies, type BackendTokens } from "@/lib/auth-cookies";
 
 const STATE_COOKIE = "google_oauth";
@@ -18,7 +19,7 @@ export async function GET(req: Request) {
 
   const jar = await cookies();
   const raw = jar.get(STATE_COOKIE)?.value;
-  let saved: { state: string; mcpAuthorize: string } | null = null;
+  let saved: { state: string; mcpAuthorize: string; next?: string } | null = null;
   try {
     saved = raw ? JSON.parse(raw) : null;
   } catch {
@@ -56,7 +57,7 @@ export async function GET(req: Request) {
   // Resume the MCP OAuth bridge if this sign-in was initiated by it.
   const target = saved.mcpAuthorize
     ? `/api/auth/mcp-handoff?continue=${encodeURIComponent(saved.mcpAuthorize)}`
-    : "/dashboard";
+    : safeNextPath(saved.next);
   const res = NextResponse.redirect(new URL(target, req.url));
   setAuthCookies(res, tokens);
   res.cookies.set(STATE_COOKIE, "", { path: "/api/auth/google", maxAge: 0 });

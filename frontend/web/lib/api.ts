@@ -1,6 +1,7 @@
 // Client-side fetch wrapper. The browser ONLY ever talks to /api/backend/* (the BFF proxy).
 // Tokens live in httpOnly cookies and are attached server-side by the proxy.
 import type { ApiError, ApiError400 } from "@/lib/types";
+import { loginUrlWithNext } from "@/lib/safe-next";
 
 export class ApiClientError extends Error {
   status: number;
@@ -60,6 +61,12 @@ async function request<T>(path: string, opts: RequestOpts = {}): Promise<T> {
   const data = text ? safeJson(text) : undefined;
 
   if (!res.ok) {
+    // The proxy only answers 401 once a token refresh was rejected (and it has
+    // cleared the cookies), so the session is over: go to login instead of
+    // leaving every card on the page showing an error.
+    if (res.status === 401 && typeof window !== "undefined") {
+      redirectToLogin();
+    }
     const message =
       (data && typeof data === "object" && "message" in data
         ? String((data as ApiError).message)
@@ -68,6 +75,13 @@ async function request<T>(path: string, opts: RequestOpts = {}): Promise<T> {
   }
 
   return data as T;
+}
+
+let redirecting = false;
+function redirectToLogin() {
+  if (redirecting || window.location.pathname.startsWith("/login")) return;
+  redirecting = true;
+  window.location.assign(loginUrlWithNext(window.location.pathname + window.location.search));
 }
 
 function safeJson(text: string): unknown {

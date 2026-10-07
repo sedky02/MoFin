@@ -17,15 +17,18 @@ type Ctx = { params: Promise<{ path: string[] }> };
 // This proxy sits in the user-facing request path, so a hung backend must not
 // hang every dashboard load — a short timeout turns "spinner forever" into an
 // explicit, actionable 504 (audit PERF-XX).
-const PROXY_TIMEOUT_MS = 3_000;
+const PROXY_TIMEOUT_MS = 8_000;
 
 // ---- Module-level refresh lock ----
 // Concurrent 401s for the SAME refresh token share one in-flight refresh so we
 // don't stampede /auth/refresh. Keyed by refresh token so different users'
 // requests (which race on a shared Node process) never share state.
-const refreshPromises = new Map<string, Promise<BackendTokens | null>>();
+// "rejected" = the backend said the refresh token is invalid/expired (session is dead).
+// "unavailable" = timeout / network / 5xx — we don't know, so the session must be kept.
+type RefreshResult = BackendTokens | "rejected" | "unavailable";
+const refreshPromises = new Map<string, Promise<RefreshResult>>();
 
-async function refreshTokens(refreshToken: string, req: Request): Promise<BackendTokens | null> {
+async function refreshTokens(refreshToken: string, req: Request): Promise<RefreshResult> {
   let promise = refreshPromises.get(refreshToken);
   if (!promise) {
     promise = doRefresh(refreshToken, req).finally(() => {
@@ -36,7 +39,7 @@ async function refreshTokens(refreshToken: string, req: Request): Promise<Backen
   return promise;
 }
 
-async function doRefresh(refreshToken: string, req: Request): Promise<BackendTokens | null> {
+async function doRefresh(refreshToken: string, req: Request): Promise<RefreshResult> {
   try {
     const res = await fetch(`${BACKEND_URL}/auth/refresh`, {
       method: "POST",
@@ -45,13 +48,13 @@ async function doRefresh(refreshToken: string, req: Request): Promise<BackendTok
       cache: "no-store",
       signal: AbortSignal.timeout(PROXY_TIMEOUT_MS),
     });
-    if (!res.ok) return null;
+    if (res.status >= 500) return "unavailable";
+    if (!res.ok) return "rejected";
     return (await res.json()) as BackendTokens;
   } catch {
-    // A timed-out/failed refresh falls back to clearedUnauthorized() (401,
-    // "session expired") below — an explicit, actionable outcome rather than
-    // a hang.
-    return null;
+    // Timed out / unreachable (e.g. a cold-starting backend). That says nothing
+    // about the refresh token, so don't treat it as an expired session.
+    return "unavailable";
   }
 }
 
@@ -129,8 +132,16 @@ async function handle(req: Request, ctx: Ctx): Promise<Response> {
   }
 
   const tokens = await refreshTokens(refreshToken, req);
-  if (!tokens) {
+  if (tokens === "rejected") {
     return clearedUnauthorized();
+  }
+  if (tokens === "unavailable") {
+    // Keep the cookies: the session may be perfectly valid, the backend just
+    // didn't answer in time. The client can retry instead of being logged out.
+    return NextResponse.json(
+      { statusCode: 503, message: "The server is waking up. Please try again." },
+      { status: 503 },
+    );
   }
 
   const retry = await forward(req.clone(), targetPath, tokens.accessToken, requestId);

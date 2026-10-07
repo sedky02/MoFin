@@ -1,5 +1,6 @@
 import { randomBytes } from "crypto";
 import { NextResponse } from "next/server";
+import { safeNextPath } from "@/lib/safe-next";
 
 const STATE_COOKIE = "google_oauth";
 
@@ -20,7 +21,9 @@ export async function GET(req: Request) {
   }
 
   const state = randomBytes(16).toString("hex");
-  const mcpAuthorize = new URL(req.url).searchParams.get("mcp_authorize") ?? "";
+  const params = new URL(req.url).searchParams;
+  const mcpAuthorize = params.get("mcp_authorize") ?? "";
+  const next = safeNextPath(params.get("next"));
 
   const authUrl = new URL(authUrlBase);
   authUrl.searchParams.set("client_id", clientId);
@@ -31,7 +34,7 @@ export async function GET(req: Request) {
   authUrl.searchParams.set("prompt", "select_account");
 
   const res = NextResponse.redirect(authUrl);
-  res.cookies.set(STATE_COOKIE, JSON.stringify({ state, mcpAuthorize }), {
+  res.cookies.set(STATE_COOKIE, JSON.stringify({ state, mcpAuthorize, next }), {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",

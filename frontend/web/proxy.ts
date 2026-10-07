@@ -2,6 +2,7 @@
 // NextRequest.cookies here is SYNCHRONOUS (not the async cookies() from next/headers).
 import { NextRequest, NextResponse } from "next/server";
 import { REFRESH_COOKIE } from "@/lib/auth-cookies";
+import { loginUrlWithNext } from "@/lib/safe-next";
 
 export default function proxy(request: NextRequest) {
   const refresh = request.cookies.get(REFRESH_COOKIE)?.value;
@@ -11,7 +12,8 @@ export default function proxy(request: NextRequest) {
 
   // Not logged in and trying to reach an app route → bounce to /login.
   if (!refresh && !isAuthRoute) {
-    return NextResponse.redirect(new URL("/login", request.url));
+    const login = new URL(loginUrlWithNext(pathname + request.nextUrl.search), request.url);
+    return NextResponse.redirect(login);
   }
 
   // Already logged in but arriving on /login?mcp_authorize=… from the MCP OAuth
