@@ -32,12 +32,17 @@ export function BalanceOverview({
   caption,
   overdrawn,
   accountId,
+  currencies = [],
+  onCurrencyChange,
 }: {
   amount: string;
   currency: string;
   caption: string;
   overdrawn: boolean;
   accountId?: string;
+  /** Every currency the user holds; a switch is shown when there is more than one. */
+  currencies?: { code: string; overdrawn: boolean }[];
+  onCurrencyChange?: (currency: string) => void;
 }) {
   const [metric, setMetric] = React.useState<Metric>("balance");
   const { data, isLoading } = useMonthlySeries(currency, accountId);
@@ -59,7 +64,30 @@ export function BalanceOverview({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
           <span className="size-2 animate-pulse rounded-full bg-primary" aria-hidden />
-          <span className="label-caps tracking-widest! text-primary-text!">{currency} balance</span>
+          {currencies.length > 1 && onCurrencyChange ? (
+            <div role="radiogroup" aria-label="Currency" className="inline-flex rounded-full border border-border p-1">
+              {currencies.map((c) => (
+                <button
+                  key={c.code}
+                  type="button"
+                  role="radio"
+                  aria-checked={c.code === currency}
+                  onClick={() => onCurrencyChange(c.code)}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium tabular transition-colors",
+                    c.code === currency ? "bg-primary/15 text-primary-text" : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {c.code}
+                  {c.overdrawn && (
+                    <span className="size-1.5 rounded-full bg-destructive" title="Overdrawn" aria-label="overdrawn" />
+                  )}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <span className="label-caps tracking-widest! text-primary-text!">{currency} balance</span>
+          )}
         </div>
         <div role="radiogroup" aria-label="Chart metric" className="inline-flex rounded-full border border-border p-1">
           {TABS.map((t) => (

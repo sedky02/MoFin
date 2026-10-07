@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import { useLedgerBalance } from "@/hooks/useLedger";
 import Link from "next/link";
 import { useUser } from "@/hooks/useUser";
@@ -7,10 +8,8 @@ import { Button } from "@/components/ui/button";
 import { parseBalanceKey, pickPrimaryCurrency } from "@/lib/format";
 import { add, tryParse } from "@/lib/decimal";
 import { BalanceOverview } from "@/components/dashboard/balance-overview";
-import { MoneyAmount } from "@/components/common/money-amount";
 import { SkeletonCard, ErrorState, EmptyState } from "@/components/common/states";
 import { Wallet } from "lucide-react";
-import { Card } from "@/components/ui/card";
 
 // Sum balances by currency (never across currencies). key = "<accountId>:<currency>".
 function totalsByCurrency(balances: { key: string; balance: string }[]) {
@@ -27,6 +26,8 @@ const isOverdrawn = (amount: string) => tryParse(amount)?.isNegative() ?? false;
 export function BalanceCards({ accountId, accountName }: { accountId?: string; accountName?: string } = {}) {
   const { data, isLoading, isError, refetch } = useLedgerBalance({ accountId });
   const { data: user } = useUser();
+  // The user's explicit pick; falls back to the primary currency until they choose.
+  const [picked, setPicked] = React.useState<string | undefined>();
 
   if (isLoading) {
     return (
@@ -64,45 +65,20 @@ export function BalanceCards({ accountId, accountName }: { accountId?: string; a
     );
   }
 
-  const [hero, ...rest] = totals;
+  const hero = totals.find((t) => t.currency === picked) ?? totals[0];
 
   return (
     // h-full: the hero stretches to the row height so it ends level with the Goals card.
-    <div className="flex h-full flex-col gap-6">
+    <div className="flex h-full flex-col">
       <BalanceOverview
         amount={hero.amount}
         currency={hero.currency}
         caption={accountId ? (accountName ?? "This account") : `Across all ${hero.currency} accounts`}
         overdrawn={isOverdrawn(hero.amount)}
         accountId={accountId}
+        currencies={totals.map((t) => ({ code: t.currency, overdrawn: isOverdrawn(t.amount) }))}
+        onCurrencyChange={setPicked}
       />
-
-      {/* SECONDARY CURRENCY STAT BLOCKS */}
-      {rest.length > 0 && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:[&>*:last-child:nth-child(odd)]:col-span-2">
-          {rest.map(({ currency, amount }) => (
-            <Card
-              key={currency}
-              className="glass-panel relative overflow-hidden border-0 border-l-2 border-l-primary p-5 ring-0"
-            >
-              <div className="flex items-center justify-between">
-                <span className="label-caps">{currency} balance</span>
-              </div>
-              <MoneyAmount
-                amount={amount}
-                currency={currency}
-                animate
-                colorBySign
-                className="mt-3 block text-3xl font-semibold"
-              />
-              <p className="mt-2 text-xs text-muted-foreground">
-                {accountId ? (accountName ?? "This account") : `Across all ${currency} accounts`}
-                {isOverdrawn(amount) && <span className="font-medium text-destructive"> · Overdrawn</span>}
-              </p>
-            </Card>
-          ))}
-        </div>
-      )}
     </div>
   );
 }
