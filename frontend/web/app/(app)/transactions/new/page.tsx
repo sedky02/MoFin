@@ -548,7 +548,7 @@ export default function NewTransactionPage() {
                     onClick={() =>
                       itemsArray.append({ amountRaw: "", categoryId: undefined, description: "" })
                     }
-                    className="acid-glow flex items-center gap-1.5 rounded-full bg-primary px-5 py-2 text-xs font-semibold text-primary-foreground transition-transform active:scale-95"
+                    className="flex items-center gap-1.5 rounded-full bg-primary px-5 py-2 text-xs font-semibold text-primary-foreground transition-transform active:scale-95"
                   >
                     <Plus className="size-4" />
                     Add item

@@ -18,29 +18,43 @@ function CategoryDot({ color }: { color?: string | null }) {
   );
 }
 
-export function TransactionRow({ tx, accountLabel }: { tx: Transaction; /** Shown in the meta line when the list spans several accounts. */ accountLabel?: string }) {
+export function TransactionRow({
+  tx,
+  accountLabel,
+  variant = "default",
+}: {
+  tx: Transaction;
+  /** Shown in the meta line when the list spans several accounts. */
+  accountLabel?: string;
+  /** "glance": for lists already grouped by day: no per-row date, inset separator instead of full-width dividers. */
+  variant?: "default" | "glance";
+}) {
+  const glance = variant === "glance";
   // Expenses display as negative + red; income positive + green; transfer neutral.
   const base = transactionAmount(tx);
   const signedAmount = tx.type === "EXPENSE" ? multiply(base, "-1") : base;
 
   const isIncome = tx.type === "INCOME";
-  const tint = isIncome ? "var(--success)" : tx.category?.color || "var(--muted-foreground)";
+  // Only income is tinted. Spending stays neutral; the category's colour already appears
+  // once, as the dot in the meta line, so it isn't encoded twice.
+  const tint = isIncome ? "var(--success)" : undefined;
 
   return (
     <Link
       href={`/transactions/${tx.id}`}
       className={cn(
-        "group flex items-center gap-4 bg-card px-4 py-3.5 transition-colors hover:bg-secondary/50",
+        "group relative flex items-center gap-4 bg-card px-4 py-3.5 transition-colors hover:bg-secondary/60 active:bg-secondary",
+        glance && "after:absolute after:bottom-0 after:left-[4.75rem] after:right-4 after:h-px after:bg-border last:after:hidden",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
       )}
     >
       <div
-        className="flex size-11 shrink-0 items-center justify-center rounded-xl border"
-        style={{
-          backgroundColor: `color-mix(in oklab, ${tint} 14%, transparent)`,
-          borderColor: `color-mix(in oklab, ${tint} 24%, transparent)`,
-          color: tint,
-        }}
+        className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-muted text-foreground/70"
+        style={
+          tint
+            ? { backgroundColor: `color-mix(in oklab, ${tint} 14%, transparent)`, color: tint }
+            : undefined
+        }
       >
         {isIncome ? (
           <ArrowDownLeft className="size-5" />
@@ -52,8 +66,8 @@ export function TransactionRow({ tx, accountLabel }: { tx: Transaction; /** Show
       <div className="min-w-0 flex-1">
         <p className="flex items-center gap-1.5 truncate text-sm font-medium">
           {tx.description}
-          {tx.voidedAt && <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">Voided</span>}
-          {tx.reversesTransactionId && <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">Reversal</span>}
+          {tx.voidedAt && <span className="rounded bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">Voided</span>}
+          {tx.reversesTransactionId && <span className="rounded bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">Reversal</span>}
           {(tx.isRecurring || tx.parentTransactionId) && (
             <Repeat className="size-3 shrink-0 text-muted-foreground" aria-label="Recurring" />
           )}
@@ -63,13 +77,13 @@ export function TransactionRow({ tx, accountLabel }: { tx: Transaction; /** Show
             <span className="flex min-w-0 items-center gap-1.5">
               <CategoryDot color={tx.category?.color} />
               <span className="truncate">{tx.category?.name ?? "Uncategorized"}</span>
-              <span aria-hidden>·</span>
+              {(!glance || accountLabel) && <span aria-hidden>·</span>}
             </span>
           )}
-          <span className="tabular shrink-0">{formatDate(tx.occurredAt)}</span>
+          {!glance && <span className="tabular shrink-0">{formatDate(tx.occurredAt)}</span>}
           {accountLabel && (
             <>
-              <span aria-hidden>·</span>
+              {!glance && <span aria-hidden>·</span>}
               <span className="truncate">{accountLabel}</span>
             </>
           )}

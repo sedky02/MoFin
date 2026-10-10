@@ -1,18 +1,35 @@
 import { Suspense } from "react";
+import { cookies } from "next/headers";
 import { connection } from "next/server";
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
 import { getQueryClient } from "@/lib/query-client";
 import { serverGet } from "@/lib/server-api";
 import {
+  accountKeys,
   ledgerKeys,
   analyticsKeys,
   searchKeys,
   userKeys,
 } from "@/lib/query-keys";
-import { pickPrimaryCurrency } from "@/lib/format";
-import type { LedgerBalance, MonthlySummary, Paginated, Transaction, User } from "@/lib/types";
+import { parseBalanceKey, pickPrimaryCurrency } from "@/lib/format";
+import {
+  ACTIVE_ACCOUNT_COOKIE,
+  DASHBOARD_RECENT_LIMIT,
+  orderCurrencies,
+  resolveActiveAccount,
+  resolveCurrency,
+  summaryApiCurrency,
+} from "@/lib/dashboard-scope";
+import type {
+  Account,
+  LedgerBalance,
+  MonthlySeries,
+  MonthlySummary,
+  Paginated,
+  Transaction,
+  User,
+} from "@/lib/types";
 import { DashboardBody } from "@/components/dashboard/dashboard-body";
-import { PageHeader } from "@/components/common/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 
 // Static shell. The dynamic, user-specific dashboard streams in via <Suspense>
@@ -37,55 +54,121 @@ async function DashboardContent() {
   const year = now.getFullYear();
   const month = now.getMonth() + 1;
 
-  // Prefetch all datasets in parallel on the server (cookies awaited inside serverGet).
-  const [balances, summary, recent, user] = await Promise.all([
-    serverGet<LedgerBalance[]>("/ledger/balance"),
-    serverGet<MonthlySummary>("/analytics/monthly-summary", { year, month }),
-    serverGet<Paginated<Transaction>>("/search/transactions", { limit: 10, offset: 0 }),
-    serverGet<User>("/users/me"),
-  ]);
+  // The account the user last picked in the header lives in a cookie (mirrored from
+  // localStorage by useActiveAccount), so the server can prefetch for the account the
+  // client will actually render instead of priming keys nobody reads.
+  const cookieStore = await cookies();
+  const rawStored = cookieStore.get(ACTIVE_ACCOUNT_COOKIE)?.value;
+  const stored = rawStored ? decodeURIComponent(rawStored) : undefined;
 
-  // Prime the cache only for successful fetches; the client refetches the rest.
-  // useRecentTransactions unwraps the paginated envelope to a flat array
-  // before it ever reaches components, so the primed cache must match that
-  // same shape (mirroring it here avoids `.map is not a function` on hydrate).
-  if (balances) queryClient.setQueryData(ledgerKeys.balance(undefined, undefined), balances);
-  if (summary) queryClient.setQueryData(analyticsKeys.monthly(year, month), summary);
-  if (recent) queryClient.setQueryData(searchKeys.list({ recent: 10 }), recent.data);
-  if (user) queryClient.setQueryData(userKeys.me, user);
+  // First round: who the user is and which accounts they have decide the scope.
+  const [user, accountsPage] = await Promise.all([
+    serverGet<User>("/users/me"),
+    serverGet<Paginated<Account>>("/accounts", { status: "active", limit: 100, offset: 0 }),
+  ]);
+  const accounts = accountsPage?.data ?? [];
+  const activeAccount = resolveActiveAccount(stored, accounts, user?.settings?.mainAccountId);
+  const accountId = activeAccount?.id;
+
+  // Second round, in parallel. The all-accounts balances are always needed (they decide the
+  // primary currency); the scoped ones are the same request when "All accounts" is active.
+  const [allBalances, scopedBalances, recent] = await Promise.all([
+    serverGet<LedgerBalance[]>("/ledger/balance"),
+    accountId ? serverGet<LedgerBalance[]>("/ledger/balance", { accountId }) : undefined,
+    serverGet<Paginated<Transaction>>("/search/transactions", {
+      limit: DASHBOARD_RECENT_LIMIT,
+      offset: 0,
+      accountId,
+    }),
+  ]);
+  const balances = accountId ? scopedBalances : allBalances;
 
   // Best-guess only for the very first paint (and only when prefetch actually
   // had data to guess from) — DashboardBody re-derives this from live
   // useUser()/useLedgerBalance() query data and self-corrects once that
   // resolves, rather than ever showing this guess as a final answer.
-  const initialPrimaryCurrency = pickPrimaryCurrency(balances, user);
+  const initialPrimaryCurrency = pickPrimaryCurrency(allBalances, user);
+
+  // Mirror the client's currency resolution (DashboardBody / BalanceCards) so the summary
+  // and the chart series are requested with the same parameters the client will use.
+  const currencies = orderCurrencies(accounts, initialPrimaryCurrency);
+  const currency = resolveCurrency({
+    account: activeAccount,
+    currencies,
+    primaryCurrency: initialPrimaryCurrency,
+  });
+  const heroCurrencies = orderCurrencies(
+    (balances ?? []).map((b) => ({ currency: parseBalanceKey(b.key).currency })),
+    initialPrimaryCurrency,
+  );
+  const heroCurrency = heroCurrencies.includes(currency) ? currency : (heroCurrencies[0] ?? currency);
+
+  const [summary, series] = await Promise.all([
+    serverGet<MonthlySummary>("/analytics/monthly-summary", {
+      year,
+      month,
+      accountId,
+      currency: summaryApiCurrency(accountId, activeAccount ? [] : currencies, currency),
+    }),
+    heroCurrencies.length
+      ? serverGet<MonthlySeries>("/analytics/monthly-series", { currency: heroCurrency, months: 6, accountId })
+      : null,
+  ]);
+
+  // Prime the cache only for successful fetches; the client refetches the rest.
+  // The hooks unwrap paginated envelopes to flat arrays before they reach components, so
+  // the primed cache must have that same shape (mirroring it avoids `.map is not a
+  // function` on hydrate).
+  if (user) queryClient.setQueryData(userKeys.me, user);
+  if (accountsPage) queryClient.setQueryData(accountKeys.list("active"), accountsPage.data);
+  if (allBalances) queryClient.setQueryData(ledgerKeys.balance(undefined, undefined), allBalances);
+  if (accountId && scopedBalances) queryClient.setQueryData(ledgerKeys.balance(accountId, undefined), scopedBalances);
+  if (summary) {
+    queryClient.setQueryData(
+      analyticsKeys.monthly(year, month, accountId, summaryApiCurrency(accountId, activeAccount ? [] : currencies, currency)),
+      summary,
+    );
+  }
+  if (series) queryClient.setQueryData(analyticsKeys.series(heroCurrency, 6, accountId), series);
+  if (recent) {
+    queryClient.setQueryData(searchKeys.list({ recent: DASHBOARD_RECENT_LIMIT, accountId }), recent.data);
+  }
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
-      <PageHeader
+      {/* <PageHeader
         title={greeting(user?.displayName)}
         description="Here's where your money stands today."
-      />
+      /> */}
 
-      <DashboardBody year={year} month={month} initialPrimaryCurrency={initialPrimaryCurrency} />
+      <DashboardBody
+        year={year}
+        month={month}
+        initialPrimaryCurrency={initialPrimaryCurrency}
+        initialActiveAccount={stored}
+      />
     </HydrationBoundary>
   );
 }
 
+// Mirrors the real layout (hero + goals, then summary + transactions) so nothing jumps
+// when the streamed content arrives: same grid, same radii, comparable heights.
 function DashboardSkeleton() {
   return (
     <>
-      <div className="mb-6 space-y-2">
-        <Skeleton className="h-9 w-64" />
-        <Skeleton className="h-4 w-80" />
+      <div className="mb-8 space-y-2">
+        <Skeleton className="h-8 w-64" />
+        <Skeleton className="h-4 w-72" />
       </div>
 
       <section className="space-y-8">
-        <Skeleton className="h-48 w-full rounded-3xl" />
-
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+          <Skeleton className="h-104 w-full rounded-hero lg:col-span-8" />
+          <Skeleton className="h-104 w-full rounded-card lg:col-span-4" />
+        </div>
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <Skeleton className="h-72 w-full rounded-2xl" />
-          <Skeleton className="h-72 w-full rounded-2xl" />
+          <Skeleton className="h-136 w-full rounded-card" />
+          <Skeleton className="h-136 w-full rounded-card" />
         </div>
       </section>
     </>

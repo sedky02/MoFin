@@ -5,6 +5,7 @@ import { useMonthlySeries } from "@/hooks/useAnalytics";
 import { MoneyAmount } from "@/components/common/money-amount";
 import { CurrencySwitch } from "@/components/dashboard/currency-switch";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatMoney } from "@/lib/format";
 import { tryParse } from "@/lib/decimal";
 import { cn } from "@/lib/utils";
@@ -12,7 +13,7 @@ import type { MonthlySeriesPoint } from "@/lib/types";
 
 type Metric = "expenses" | "income" | "balance";
 const TABS: { value: Metric; label: string }[] = [
-  { value: "expenses", label: "Expense" },
+  { value: "expenses", label: "Expenses" },
   { value: "income", label: "Income" },
   { value: "balance", label: "Balance" },
 ];
@@ -61,43 +62,35 @@ export function BalanceOverview({
   const last = points.length - 1;
 
   return (
-    <div className="glass-panel pulse-ring relative flex h-full flex-1 flex-col overflow-hidden rounded-3xl p-6 sm:p-8">
+    <div className="relative flex h-full flex-1 flex-col overflow-hidden rounded-hero bg-card p-6 shadow-hero sm:p-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
-          <span className="size-2 animate-pulse rounded-full bg-primary" aria-hidden />
           {currencies.length > 1 && onCurrencyChange ? (
             <CurrencySwitch currencies={currencies} value={currency} onChange={onCurrencyChange} />
           ) : (
-            <span className="label-caps tracking-widest! text-primary-text!">{currency} balance</span>
+            <span className="label-sm text-primary-text!">{currency} balance</span>
           )}
         </div>
-        <div role="radiogroup" aria-label="Chart metric" className="inline-flex rounded-full border border-border p-1">
-          {TABS.map((t) => (
-            <button
-              key={t.value}
-              type="button"
-              role="radio"
-              aria-checked={metric === t.value}
-              onClick={() => setMetric(t.value)}
-              className={cn(
-                "rounded-full px-3.5 py-1 text-xs font-medium transition-colors",
-                metric === t.value ? "bg-secondary text-foreground" : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
+        {/* The shared Tabs control: one tab stop, arrow keys move between metrics. */}
+        <Tabs value={metric} onValueChange={(v) => setMetric(v as Metric)}>
+          <TabsList aria-label="Chart metric">
+            {TABS.map((t) => (
+              <TabsTrigger key={t.value} value={t.value} className="px-3">
+                {t.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
       </div>
 
       <MoneyAmount
         amount={amount}
         currency={currency}
         animate
-        className="terminal-glow mt-4 block font-heading text-5xl font-extrabold tracking-tighter text-foreground sm:text-7xl"
+        className="mt-6 block text-5xl font-light leading-none tracking-[-0.035em] text-foreground sm:text-7xl"
       />
-      <p className="mt-3 text-sm text-muted-foreground">
-        {caption} · balances always exact
+      <p className="mt-4 text-sm text-muted-foreground">
+        {caption}
         {overdrawn && <span className="font-medium text-destructive"> · Overdrawn</span>}
       </p>
       {change && (
@@ -130,17 +123,16 @@ export function BalanceOverview({
                     className="relative flex w-full flex-1 items-end rounded-t-md outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     {isNow && (
-                      <span className="absolute -top-1 left-1/2 -translate-x-1/2 -translate-y-full rounded border border-primary/40 px-1.5 py-0.5 text-[10px] text-primary-text group-hover:opacity-0">
+                      <span className="absolute -top-1 left-1/2 -translate-x-1/2 -translate-y-full rounded-full bg-accent px-2 py-0.5 text-[11px] font-medium text-primary-text group-hover:opacity-0">
                         Now
                       </span>
                     )}
                     <div
                       className={cn(
-                        "w-full rounded-t-md transition-all group-hover:brightness-125 group-focus-within:brightness-125",
-                        // Spending (and a negative balance) is red; the current month is the stronger shade.
-                        v < 0 || metric === "expenses"
-                          ? isNow ? "bg-destructive" : "bg-destructive/50"
-                          : isNow ? "bg-primary" : "bg-primary/30",
+                        "w-full rounded-t-md transition-[height,filter] duration-300 group-hover:brightness-110 group-focus-within:brightness-110",
+                        // The current month carries the colour (red for spending or a negative balance, the
+                        // accent otherwise); history is a neutral that still clears 3:1 against the card.
+                        isNow ? (v < 0 || metric === "expenses" ? "bg-destructive" : "bg-primary") : "bg-bar",
                       )}
                       style={{ height: `${pct}%` }}
                     />
@@ -148,7 +140,7 @@ export function BalanceOverview({
                     <div
                       role="tooltip"
                       className={cn(
-                        "pointer-events-none absolute bottom-full z-20 mb-2 hidden w-52 rounded-xl border border-border bg-popover p-3 text-xs shadow-lg group-hover:block group-focus-within:block",
+                        "pointer-events-none invisible absolute bottom-full z-20 mb-2 w-52 origin-bottom scale-95 rounded-xl bg-popover p-3 text-xs opacity-0 shadow-surface transition-[opacity,transform,visibility] duration-150 group-hover:visible group-hover:scale-100 group-hover:opacity-100 group-focus-within:visible group-focus-within:scale-100 group-focus-within:opacity-100",
                         align,
                       )}
                     >
@@ -167,7 +159,7 @@ export function BalanceOverview({
                       ))}
                     </div>
                   </div>
-                  <span className={cn("text-[11px]", isNow ? "font-semibold text-primary-text" : "text-muted-foreground")}>
+                  <span className={cn("text-xs", isNow ? "font-semibold text-primary-text" : "text-muted-foreground")}>
                     {short(p.month)}
                   </span>
                 </div>
@@ -177,7 +169,7 @@ export function BalanceOverview({
 
           <div
             aria-hidden
-            className="flex flex-col justify-between border-l border-dashed border-border pb-5 pl-3 text-[11px] text-muted-foreground tabular"
+            className="flex flex-col justify-between border-l border-dashed border-border pb-5 pl-3 text-xs text-muted-foreground tabular"
           >
             {[max, max / 2, 0].map((n, i) => (
               <MoneyAmount key={i} amount={String(n)} currency={currency} compact />

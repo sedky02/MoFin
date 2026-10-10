@@ -2,26 +2,29 @@
 
 import * as React from "react";
 
-interface SpringOpts {
-  // Spring physics — tuned for a confident, slightly-overshooting settle.
-  stiffness?: number;
-  damping?: number;
-  mass?: number;
+interface CountUpOpts {
   // Skip the animation (e.g. respects prefers-reduced-motion).
   enabled?: boolean;
 }
 
+// Natural frequency (rad/s) of the critically damped spring: ~95% of the way in 0.3s,
+// visually done in about a second. Critically damped means it never overshoots, so a
+// balance never shows a number larger than the real one.
+const OMEGA = 16;
+// Stop once the remaining gap is below a cent, or after this long, whichever comes first.
+const EPSILON = 0.005;
+const MAX_MS = 1600;
+
 /**
- * Spring-eased count-up from 0 → target on first mount. Returns the live value.
- * Used for balance numbers — the one place we spend visual boldness.
+ * Spring-eased count-up. Counts 0 → target on first mount, and afterwards glides from
+ * the value currently on screen (carrying its velocity) to each new target — account or
+ * currency switch, optimistic update — instead of restarting from 0. Returns the live value.
+ *
+ * Uses the closed-form solution of a critically damped spring rather than stepping a
+ * simulation, so it is exact at any frame rate and lands precisely on the target.
  */
-export function useCountUp(target: number, opts: SpringOpts = {}): number {
-  const {
-    stiffness = 120,
-    damping = 18,
-    mass = 1,
-    enabled = true,
-  } = opts;
+export function useCountUp(target: number, opts: CountUpOpts = {}): number {
+  const { enabled = true } = opts;
 
   const prefersReduced =
     typeof window !== "undefined" &&
@@ -32,53 +35,53 @@ export function useCountUp(target: number, opts: SpringOpts = {}): number {
   // clients) never show "$0.00"; the layout effect below rewinds to 0 before
   // the first client paint when we are actually going to animate.
   const [value, setValue] = React.useState(target);
+  // The on-screen value and its velocity survive re-targets, so an interrupted
+  // animation continues from where it is rather than jumping back to 0.
+  const position = React.useRef(target);
+  const velocity = React.useRef(0);
   const mounted = React.useRef(false);
   React.useLayoutEffect(() => {
     if (mounted.current) return;
     mounted.current = true;
-    if (animate) setValue(0);
+    if (animate) {
+      position.current = 0;
+      setValue(0);
+    }
   }, [animate]);
 
   React.useEffect(() => {
     if (!animate) {
+      position.current = target;
+      velocity.current = 0;
       setValue(target);
       return;
     }
 
+    const a = position.current - target; // distance still to cover
+    const b = velocity.current + OMEGA * a;
     let raf = 0;
-    let position = 0;
-    let velocity = 0;
-    let last: number | null = null;
     const start = performance.now();
 
     const tick = (now: number) => {
-      if (last === null) last = now;
-      // Clamp dt for stability if the tab was backgrounded.
-      const dt = Math.min((now - last) / 1000, 1 / 30);
-      last = now;
+      const t = (now - start) / 1000;
+      const decay = Math.exp(-OMEGA * t);
+      const offset = (a + b * t) * decay; // position - target
+      position.current = target + offset;
+      velocity.current = (b - OMEGA * (a + b * t)) * decay;
 
-      const force = -stiffness * (position - target);
-      const damp = -damping * velocity;
-      const acceleration = (force + damp) / mass;
-      velocity += acceleration * dt;
-      position += velocity * dt;
-
-      const settled =
-        Math.abs(target - position) < 0.5 && Math.abs(velocity) < 0.5;
-      const elapsed = now - start;
-
-      if (settled || elapsed > 2000) {
+      if (Math.abs(offset) < EPSILON || now - start > MAX_MS) {
+        position.current = target;
+        velocity.current = 0;
         setValue(target);
         return;
       }
-      setValue(position);
+      setValue(position.current);
       raf = requestAnimationFrame(tick);
     };
 
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-    // Re-run when the target changes (e.g. after an optimistic balance update).
-  }, [target, animate, stiffness, damping, mass]);
+  }, [target, animate]);
 
   return value;
 }

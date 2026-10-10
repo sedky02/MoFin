@@ -6,6 +6,7 @@ import { useLedgerBalance } from "@/hooks/useLedger";
 import { useActiveAccount } from "@/hooks/useActiveAccount";
 import { useUser } from "@/hooks/useUser";
 import { pickPrimaryCurrency } from "@/lib/format";
+import { orderCurrencies, resolveCurrency } from "@/lib/dashboard-scope";
 import { BalanceCards } from "@/components/dashboard/balance-cards";
 import { MonthlySummaryCard } from "@/components/dashboard/monthly-summary";
 import { RecentTransactions } from "@/components/dashboard/recent-transactions";
@@ -21,17 +22,20 @@ export function DashboardBody({
   year,
   month,
   initialPrimaryCurrency,
+  initialActiveAccount,
 }: {
   year: number;
   month: number;
   initialPrimaryCurrency: string;
+  /** The active-account cookie as the server read it, so the first render matches the prefetch. */
+  initialActiveAccount?: string;
 }) {
   const { data: accounts } = useAccounts();
   const { data: user } = useUser();
   const { data: balances } = useLedgerBalance();
   // Same selection as the header's active-account picker, so the dashboard
   // shows the account that new transactions will default to.
-  const { accountId, account: selectedAccount } = useActiveAccount();
+  const { accountId, account: selectedAccount } = useActiveAccount(initialActiveAccount);
   // Re-derived from live query data (hydrated from the server prefetch when
   // that succeeded, fetched fresh through the BFF's refresh-on-401 path when
   // it didn't) so a guessed currency is never the final answer — it
@@ -42,16 +46,11 @@ export function DashboardBody({
   // never mix currencies, so an all-accounts view is shown one currency at a time.
   const [balanceCurrencyPick, setBalanceCurrencyPick] = React.useState<string | undefined>();
   const [summaryCurrencyPick, setSummaryCurrencyPick] = React.useState<string | undefined>();
-  const accountCurrencies = [...new Set((accounts ?? []).map((a) => a.currency))].sort(
-    (a, b) => Number(b === primaryCurrency) - Number(a === primaryCurrency),
-  );
-  const resolveCurrency = (pick?: string) =>
-    selectedAccount?.currency ??
-    (pick && accountCurrencies.includes(pick) ? pick : undefined) ??
-    (accountCurrencies.includes(primaryCurrency) ? primaryCurrency : accountCurrencies[0]) ??
-    primaryCurrency;
-  const balanceCurrency = resolveCurrency(balanceCurrencyPick);
-  const summaryCurrency = resolveCurrency(summaryCurrencyPick);
+  const accountCurrencies = orderCurrencies(accounts ?? [], primaryCurrency);
+  const resolve = (pick?: string) =>
+    resolveCurrency({ pick, account: selectedAccount, currencies: accountCurrencies, primaryCurrency });
+  const balanceCurrency = resolve(balanceCurrencyPick);
+  const summaryCurrency = resolve(summaryCurrencyPick);
 
   return (
     <section className="space-y-8">

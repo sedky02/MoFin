@@ -93,7 +93,7 @@ export default function LoginPage() {
         <h1 className="font-heading text-3xl font-bold leading-tight tracking-tight">
           Sign in to
           <br />
-          <span className="text-primary-text terminal-glow">MoFin</span>
+          <span className="text-primary-text">MoFin</span>
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Pick up where you left off.
@@ -158,7 +158,7 @@ export default function LoginPage() {
             )}
           />
           <SubmitButton
-            className="h-11 w-full font-mono text-sm font-bold uppercase tracking-widest"
+            className="h-11 w-full text-sm font-semibold"
             pendingText="Signing in…"
           >
             Sign in

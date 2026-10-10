@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-/** MoFin wordmark. An acid-lime terminal node + ledger stroke. */
+/** MoFin wordmark: a champagne mark with a ledger stroke. */
 export function Logo({
   className,
   showText = true,
@@ -10,7 +10,7 @@ export function Logo({
 }) {
   return (
     <span className={cn("inline-flex items-center gap-2.5", className)}>
-      <span className="relative flex size-8 items-center justify-center rounded bg-primary text-primary-foreground">
+      <span className="relative flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
         <svg
           viewBox="0 0 24 24"
           fill="none"
@@ -27,8 +27,8 @@ export function Logo({
         </svg>
       </span>
       {showText && (
-        <span className="font-heading text-xl font-extrabold tracking-tight">
-          Mo<span className="text-primary-text terminal-glow">Fin</span>
+        <span className="text-xl font-semibold tracking-[-0.02em]">
+          Mo<span className="text-primary-text">Fin</span>
         </span>
       )}
     </span>

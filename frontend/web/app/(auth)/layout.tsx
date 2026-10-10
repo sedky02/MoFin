@@ -11,7 +11,7 @@ export default function AuthLayout({
     <div className="relative grid min-h-dvh overflow-hidden bg-background lg:grid-cols-2">
       {/* Atmospheric glows */}
       <div aria-hidden className="pointer-events-none fixed inset-0 z-0">
-        <div className="absolute left-1/4 top-1/4 size-96 rounded-full bg-chart-5/10 blur-[120px]" />
+        <div className="absolute left-1/4 top-1/4 size-96 rounded-full bg-primary/10 blur-[120px]" />
         <div className="absolute bottom-1/4 right-1/4 size-96 rounded-full bg-primary/5 blur-[120px]" />
       </div>
 
@@ -26,17 +26,17 @@ export default function AuthLayout({
             />
             {/* rotating rings */}
             <div className="absolute inset-2 animate-[spin_10s_linear_infinite] rounded-full border-t border-primary/30" />
-            <div className="absolute inset-6 animate-[spin_15s_linear_infinite_reverse] rounded-full border-b border-chart-5/20" />
+            <div className="absolute inset-6 animate-[spin_15s_linear_infinite_reverse] rounded-full border-b border-primary/15" />
           </div>
           <div className="glass-panel absolute -right-4 -top-4 rounded-full px-3 py-1">
-            <span className="label-caps text-primary-text!">Encrypted in transit</span>
+            <span className="label-sm text-primary-text!">Encrypted in transit</span>
           </div>
           <div className="glass-panel absolute -bottom-2 -left-4 rounded-full px-3 py-1">
-            <span className="label-caps">Ledger-first</span>
+            <span className="label-sm">Ledger-first</span>
           </div>
         </div>
         <div className="space-y-2 text-center">
-          <p className="label-caps tracking-widest! text-chart-5!">MoFin</p>
+          <p className="label-sm tracking-widest! text-primary-text!">MoFin</p>
           <p className="max-w-xs text-pretty text-sm leading-relaxed text-muted-foreground">
             Track your money by hand or by talking to MoFin. It keeps a precise,
             ledger-first record — every balance exact.

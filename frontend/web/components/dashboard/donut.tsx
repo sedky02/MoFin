@@ -57,7 +57,9 @@ export function Donut({
         {total > 0 &&
           segments.map((seg, i) => {
             const fraction = Math.max(seg.value, 0) / total;
-            const dash = fraction * circumference;
+            // A small gap between arcs keeps neighbours distinct even when two colours are close.
+            const gap = segments.length > 1 ? 3 : 0;
+            const dash = Math.max(fraction * circumference - gap, 0);
             const dashArray = `${dash} ${circumference - dash}`;
             const dashOffset = -offsetAccum * circumference;
             offsetAccum += fraction;
@@ -74,7 +76,8 @@ export function Donut({
                 strokeDasharray={mounted ? dashArray : `0 ${circumference}`}
                 strokeDashoffset={dashOffset}
                 style={{
-                  transition: "stroke-dasharray 0.8s cubic-bezier(0.22, 1, 0.36, 1)",
+                  transition:
+                    "stroke-dasharray 0.8s cubic-bezier(0.22, 1, 0.36, 1), stroke-dashoffset 0.8s cubic-bezier(0.22, 1, 0.36, 1)",
                   transitionDelay: `${i * 80}ms`,
                 }}
               />

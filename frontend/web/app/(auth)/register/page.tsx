@@ -111,7 +111,7 @@ export default function RegisterPage() {
         <h1 className="font-heading text-3xl font-bold leading-tight tracking-tight">
           Create your
           <br />
-          <span className="text-primary-text terminal-glow">account</span>
+          <span className="text-primary-text">account</span>
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Track your money with precision.
@@ -204,7 +204,7 @@ export default function RegisterPage() {
             )}
           />
           <SubmitButton
-            className="h-11 w-full font-mono text-sm font-bold uppercase tracking-widest"
+            className="h-11 w-full text-sm font-semibold"
             pendingText="Creating account…"
           >
             Create account

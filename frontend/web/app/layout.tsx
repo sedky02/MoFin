@@ -1,26 +1,16 @@
 import type { Metadata } from "next";
-import { Bricolage_Grotesque, Hanken_Grotesk, JetBrains_Mono } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { ThemeProvider, themeInitScript } from "@/components/providers/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 
-// "Humanized Quant": editorial display face, grotesque body, tabular mono for data.
-const bricolage = Bricolage_Grotesque({
-  variable: "--font-bricolage",
+// One family for everything, including figures (tabular numerals via `.tabular`). Inter's
+// optical-size axis lets large headings tighten and small text open up on their own.
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
-  display: "swap",
-});
-
-const hanken = Hanken_Grotesk({
-  variable: "--font-hanken",
-  subsets: ["latin"],
-  display: "swap",
-});
-
-const jetbrains = JetBrains_Mono({
-  variable: "--font-jetbrains",
-  subsets: ["latin"],
+  axes: ["opsz"],
   display: "swap",
 });
 
@@ -36,7 +26,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${bricolage.variable} ${hanken.variable} ${jetbrains.variable} h-full antialiased`}
+      className={`${inter.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <head>

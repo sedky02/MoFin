@@ -64,7 +64,7 @@ export default function ConnectPage() {
         <div className="max-w-2xl">
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1">
             <span className={cn("size-2 rounded-full", MCP_URL ? "bg-primary" : "bg-muted-foreground")} aria-hidden />
-            <span className="label-caps text-primary-text! tracking-widest!">
+            <span className="label-sm text-primary-text! tracking-widest!">
               {MCP_URL ? "Ready to connect" : "Not configured"}
             </span>
           </div>
@@ -80,7 +80,7 @@ export default function ConnectPage() {
 
         <div className="glass-panel w-full rounded-xl p-4 md:w-72">
           <div className="mb-3 flex items-center justify-between">
-            <span className="label-caps">Your connector</span>
+            <span className="label-sm">Your connector</span>
           </div>
           <div className="flex items-center gap-2">
             <code className="flex-1 truncate font-mono text-xs text-primary-text">
@@ -120,7 +120,7 @@ export default function ConnectPage() {
                   </div>
                   {isActive && (
                     <span className="hidden rounded-lg bg-primary/15 px-2 py-1 lg:inline-block">
-                      <span className="label-caps text-primary-text!">Selected</span>
+                      <span className="label-sm text-primary-text!">Selected</span>
                     </span>
                   )}
                 </div>
@@ -213,7 +213,7 @@ export default function ConnectPage() {
 
                 {/* Endpoint */}
                 <div>
-                  <label htmlFor="mcp-endpoint" className="label-caps text-primary-text! mb-3 block">
+                  <label htmlFor="mcp-endpoint" className="label-sm text-primary-text! mb-3 block">
                     Connector URL
                   </label>
                   <div className="flex gap-2">
@@ -246,7 +246,7 @@ export default function ConnectPage() {
 
                 {/* Setup instructions, per client */}
                 <div>
-                  <h3 className="label-caps text-primary-text! mb-4 block">Setup instructions</h3>
+                  <h3 className="label-sm text-primary-text! mb-4 block">Setup instructions</h3>
 
                   {active === "claude" && (
                     <div className="space-y-3">
