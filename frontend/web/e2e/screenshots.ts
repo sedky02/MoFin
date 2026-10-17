@@ -71,6 +71,8 @@ async function main() {
       await page.goto(route);
       await page.waitForLoadState("networkidle");
       await page.waitForTimeout(1500);
+      // Keep the Next dev-mode indicator out of PR screenshots.
+      await page.addStyleTag({ content: "nextjs-portal { display: none !important; }" });
       const file = resolve(shotsDir, `${slug}-${vp.name}-${theme}.png`);
       await page.screenshot({ path: file, fullPage: true });
       console.log(file);
