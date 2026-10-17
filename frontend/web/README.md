@@ -34,3 +34,11 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## End-to-end checks
+
+Playwright runs against servers you start yourself: backend on :3000 and `npm run dev` on :3001. Install the browser once with `npx playwright install chromium`.
+
+- `npm run e2e:seed` creates (or tops up) the fixture user and data through the backend API. It is safe to run repeatedly. Credentials are written to `e2e/.auth/credentials.json` (gitignored).
+- `npm run e2e` logs in, opens every route and runs axe on desktop and mobile viewports. Findings are reported per route in the output and the HTML report.
+- `npm run e2e:shots -- /dashboard` writes four PNGs (desktop and mobile, light and dark) to `e2e/.shots/` (gitignored).
