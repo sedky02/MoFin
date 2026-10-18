@@ -7,7 +7,7 @@ export function safeNextPath(raw: string | null | undefined): string {
   if (!raw || !raw.startsWith("/") || raw.startsWith("//") || raw.startsWith("/\\")) {
     return DEFAULT_AFTER_LOGIN;
   }
-  if (/^\/(login|register|api)(\/|\?|$)/.test(raw)) return DEFAULT_AFTER_LOGIN;
+  if (/^\/(login|register|forgot-password|reset-password|api)(\/|\?|#|$)/.test(raw)) return DEFAULT_AFTER_LOGIN;
   return raw;
 }
 
