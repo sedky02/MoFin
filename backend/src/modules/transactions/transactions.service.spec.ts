@@ -186,3 +186,26 @@ describe('TransactionsService.voidTransaction', () => {
     expect(raced.tx.transaction.create).not.toHaveBeenCalled();
   });
 });
+
+describe('TransactionsService.getById', () => {
+  function setup(found: unknown) {
+    const prisma = { transaction: { findFirst: jest.fn(async () => found) } };
+    const service = new TransactionsService(prisma as never, {} as never, {} as never, {} as never, {} as never);
+    return { service, prisma };
+  }
+
+  it('loads each ledger leg with its account and category, scoped to the owner', async () => {
+    const { service, prisma } = setup({ id: 't1', items: [] });
+    await service.getById('u1', 't1');
+
+    expect(prisma.transaction.findFirst).toHaveBeenCalledWith({
+      where: { id: 't1', userId: 'u1' },
+      include: { items: { include: { category: true, account: true } }, category: true },
+    });
+  });
+
+  it('404s for an unknown or foreign transaction', async () => {
+    const { service } = setup(null);
+    await expect(service.getById('u1', 'nope')).rejects.toThrow('not found');
+  });
+});
