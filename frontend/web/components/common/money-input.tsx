@@ -3,7 +3,13 @@
 import * as React from "react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { currencySymbol, formatMoneyInput, normalizeMoneyTyping } from "@/lib/format";
+import {
+  currencySymbol,
+  formatMoneyInput,
+  moneyInputHint,
+  normalizeMoneyTyping,
+  pasteMoneyText,
+} from "@/lib/format";
 
 interface MoneyInputProps {
   value: string;
@@ -16,11 +22,21 @@ interface MoneyInputProps {
   /** Hero style: bare, centred, oversized figure with the currency code above. */
   large?: boolean;
   "aria-invalid"?: boolean;
+  "aria-describedby"?: string;
+}
+
+/** Space-joined element ids, skipping empty ones. */
+function ids(...parts: (string | undefined)[]): string | undefined {
+  const joined = parts.filter(Boolean).join(" ");
+  return joined || undefined;
 }
 
 /**
- * Money text field. Stores the raw decimal string in form state (validated by Zod
- * via parseMoneyInput); tidies to 2dp on blur. Currency code shown as a suffix.
+ * Money text field. Form state holds exactly what was typed (validated by Zod
+ * via parseMoneyInput, which reads any separators); it's normalised and tidied
+ * to the currency's decimals on blur, and on paste when the reading is clear.
+ * While the text could be read more than one way ("1,234") or will be rounded,
+ * the interpreted value is shown under the field ("= 1,234.00").
  */
 export function MoneyInput({
   value,
@@ -31,20 +47,51 @@ export function MoneyInput({
   className,
   id,
   large,
+  "aria-describedby": describedBy,
   ...aria
 }: MoneyInputProps) {
+  const autoId = React.useId();
+  const baseId = id ?? autoId;
+  const hintId = `${baseId}-hint`;
+  const hint = moneyInputHint(value, currency);
+
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    // Locale-aware: "12,50" -> "12.50", "1.234,56" -> "1234.56".
-    onChange(normalizeMoneyTyping(e.target.value));
+    // Keep the raw text. Normalising per keystroke turned "1," into "1." and
+    // so "1,234" into 1.234.
+    onChange(e.target.value);
+  }
+
+  function handlePaste(e: React.ClipboardEvent<HTMLInputElement>) {
+    const pasted = e.clipboardData.getData("text");
+    if (!pasted) return;
+    e.preventDefault();
+    const el = e.currentTarget;
+    const start = el.selectionStart ?? el.value.length;
+    const end = el.selectionEnd ?? start;
+    onChange(pasteMoneyText(el.value, start, end, pasted));
   }
 
   function handleBlur() {
-    if (value) {
-      const tidy = formatMoneyInput(value, currency);
-      if (tidy) onChange(tidy);
+    const normalized = value ? normalizeMoneyTyping(value) : null;
+    if (normalized !== null) {
+      const tidy = formatMoneyInput(normalized, currency);
+      if (tidy && tidy !== value) onChange(tidy);
     }
     onBlur?.();
   }
+
+  const hintRegion = (
+    <div id={hintId} aria-live="polite">
+      {hint && (
+        <p
+          data-slot="money-input-hint"
+          className={cn("tabular mt-1 text-xs text-muted-foreground", large && "text-center text-sm")}
+        >
+          {hint}
+        </p>
+      )}
+    </div>
+  );
 
   if (large) {
     return (
@@ -59,9 +106,11 @@ export function MoneyInput({
           placeholder="0.00"
           value={value}
           onChange={handleChange}
+          onPaste={handlePaste}
           onBlur={handleBlur}
           disabled={disabled}
           aria-label={currency ? `Amount in ${currency}` : "Amount"}
+          aria-describedby={ids(describedBy, hintId)}
           className={cn(
             "tabular w-full bg-transparent text-center text-5xl font-semibold tracking-tight outline-none placeholder:text-muted-foreground/30 disabled:opacity-60 sm:text-6xl",
             "aria-invalid:text-destructive",
@@ -69,44 +118,49 @@ export function MoneyInput({
           )}
           {...aria}
         />
+        {hintRegion}
       </div>
     );
   }
 
   const symbol = currencySymbol(currency);
-  const currencyId = id && currency ? `${id}-currency` : undefined;
+  const currencyId = currency ? `${baseId}-currency` : undefined;
 
   return (
-    <div className="relative">
-      {symbol && (
-        <span
-          aria-hidden
-          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground tabular"
-        >
-          {symbol}
-        </span>
-      )}
-      <Input
-        id={id}
-        inputMode="decimal"
-        autoComplete="off"
-        placeholder="0.00"
-        value={value}
-        onChange={handleChange}
-        onBlur={handleBlur}
-        disabled={disabled}
-        className={cn("tabular", symbol ? "pl-7" : "pl-3", currency && "pr-14", className)}
-        aria-describedby={currencyId}
-        {...aria}
-      />
-      {currency && (
-        <span
-          id={currencyId}
-          className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground"
-        >
-          {currency}
-        </span>
-      )}
+    <div>
+      <div className="relative">
+        {symbol && (
+          <span
+            aria-hidden
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground tabular"
+          >
+            {symbol}
+          </span>
+        )}
+        <Input
+          id={id}
+          inputMode="decimal"
+          autoComplete="off"
+          placeholder="0.00"
+          value={value}
+          onChange={handleChange}
+          onPaste={handlePaste}
+          onBlur={handleBlur}
+          disabled={disabled}
+          className={cn("tabular", symbol ? "pl-7" : "pl-3", currency && "pr-14", className)}
+          aria-describedby={ids(describedBy, currencyId, hintId)}
+          {...aria}
+        />
+        {currency && (
+          <span
+            id={currencyId}
+            className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground"
+          >
+            {currency}
+          </span>
+        )}
+      </div>
+      {hintRegion}
     </div>
   );
 }

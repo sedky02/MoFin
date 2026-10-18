@@ -73,18 +73,16 @@ export function transactionAmount(tx: Transaction): string {
 }
 
 /**
- * Parse raw user input into a clean positive decimal string, or null if invalid.
- * Strips everything except digits, "." and "-".
+ * Parse raw user input (as typed, any separators) into a clean positive decimal
+ * string, or null if invalid, negative or zero. Separators are read with
+ * `interpretMoneyText`, so "12,50" is 12.5 and "1,234" is 1234 even when the
+ * field was submitted before it was blurred and tidied.
  */
 export function parseMoneyInput(raw: string): string | null {
-  if (raw == null) return null;
-  const cleaned = raw.replace(/[^0-9.-]/g, "");
-  if (cleaned === "" || cleaned === "." || cleaned === "-") return null;
-  // reject multiple dots
-  if ((cleaned.match(/\./g) || []).length > 1) return null;
-  const d = tryParse(cleaned);
-  if (!d) return null;
-  if (d.isNegative() || d.isZero()) return null; // amounts must be > 0
+  const value = normalizeMoneyTyping(raw);
+  if (value === null) return null;
+  const d = tryParse(value);
+  if (!d || d.isZero()) return null; // amounts must be > 0
   return d.toString();
 }
 
@@ -123,26 +121,123 @@ export function currencySymbol(currency?: string): string {
   }
 }
 
+/** How `interpretMoneyText` read a piece of money text. */
+export interface MoneyText {
+  /** Plain dot-decimal string: no grouping, no sign, no exponent ("1234", "12.5"). */
+  value: string;
+  /**
+   * True when a lone "," followed by exactly 3 digits ("1,234") was read as a
+   * thousands separator. It could also have been meant as a decimal comma, so
+   * the UI should show the reading back ("= 1,234.00") instead of guessing silently.
+   */
+  ambiguous: boolean;
+}
+
 /**
- * Normalise what a user types into a money field to a dot-decimal string, so
- * "12,50" means 12.50 (not 1250) and "1.234,56" / "1,234.56" both mean 1234.56.
- * Mixed separators: the last one is the decimal point. A repeated separator
- * ("1,234,567") is thousands grouping. A lone "," followed by exactly 3 digits
- * is thousands ("1,234"); any other lone "," is a decimal comma. A lone "."
- * is always a decimal point (3-decimal currencies exist).
+ * True for an integer part grouped by `sep`: "1,234", "12,345,678", and Indian
+ * "1,23,45,678". The first group is 1-3 digits without a leading zero, the last
+ * is exactly 3, and any in between are 2 or 3.
  */
-export function normalizeMoneyTyping(raw: string): string {
+function isGrouped(intPart: string, sep: "." | ","): boolean {
+  const groups = intPart.split(sep);
+  if (groups.length < 2) return false;
+  const first = groups[0];
+  const rest = groups.slice(1);
+  return (
+    /^[1-9]\d{0,2}$/.test(first) &&
+    rest.every((g, i) => (i === rest.length - 1 ? /^\d{3}$/ : /^\d{2,3}$/).test(g))
+  );
+}
+
+/**
+ * Read money text as a person would type or paste it, in any common locale.
+ * Pure and string-only (no floats), so it is safe for any amount and any currency.
+ *
+ * - Anything but digits, "." and "," is dropped ("$ 1 234,50" -> 1234.5).
+ * - A minus sign makes it invalid: money fields here take positive amounts.
+ * - Both separators present: the last one is the decimal point and the other
+ *   must group the integer part ("1.234,56" and "1,234.56" -> 1234.56).
+ * - The same separator repeated is grouping ("1,234,567" -> 1234567).
+ * - A lone "," followed by exactly 3 digits, after 1-3 digits, is grouping
+ *   ("1,234" -> 1234) and flagged `ambiguous`. Any other lone "," is a decimal
+ *   comma ("12,5" -> 12.5, "0,500" -> 0.5).
+ * - A lone "." is always a decimal point (3-decimal currencies exist).
+ *
+ * Returns null when there are no digits or the grouping is malformed ("1,2,3").
+ */
+export function interpretMoneyText(raw: string): MoneyText | null {
+  if (raw == null || /[-−]/.test(raw)) return null;
   const s = raw.replace(/[^0-9.,]/g, "");
-  const seps = s.match(/[.,]/g) ?? [];
-  if (seps.length === 0) return s;
+  if (!/\d/.test(s)) return null;
+
   const lastIdx = Math.max(s.lastIndexOf("."), s.lastIndexOf(","));
-  const sep = s[lastIdx];
-  const head = s.slice(0, lastIdx).replace(/[.,]/g, "");
+  if (lastIdx === -1) return { value: plain(s), ambiguous: false };
+
+  const sep = s[lastIdx] as "." | ",";
+  const other = sep === "." ? "," : ".";
+  const head = s.slice(0, lastIdx);
   const tail = s.slice(lastIdx + 1);
-  const mixed = s.includes(".") && s.includes(",");
-  if (!mixed && seps.length > 1) return head + tail;
-  if (!mixed && sep === "," && tail.length === 3) return head + tail;
-  return `${head}.${tail}`;
+
+  if (head.includes(other)) {
+    // Mixed: `sep` is the decimal point, `other` groups the integer part.
+    if (head.includes(sep) || !isGrouped(head, other)) return null;
+    return { value: plain(`${head.split(other).join("")}.${tail}`), ambiguous: false };
+  }
+  if (head.includes(sep)) {
+    // Repeated separator: grouping only, no decimals.
+    if (!isGrouped(s, sep)) return null;
+    return { value: plain(s.split(sep).join("")), ambiguous: false };
+  }
+  if (sep === "," && isGrouped(s, ",")) {
+    return { value: plain(head + tail), ambiguous: true };
+  }
+  return { value: plain(`${head || "0"}.${tail}`), ambiguous: false };
+}
+
+/** "007" -> "7", "12." -> "12", "12.50" -> "12.5". Input is digits with at most one ".". */
+function plain(digits: string): string {
+  return new Decimal(digits).toFixed();
+}
+
+/**
+ * Dot-decimal value of what was typed into a money field ("12,50" -> "12.5"),
+ * or null when it can't be read. See `interpretMoneyText` for the rules. Money
+ * fields keep the raw text while typing and call this on blur / paste.
+ */
+export function normalizeMoneyTyping(raw: string): string | null {
+  return interpretMoneyText(raw)?.value ?? null;
+}
+
+/**
+ * Inline reading of a money field's raw text, e.g. "= 1,234.00", shown before
+ * the field is tidied on blur. Only returned when the reading isn't obvious:
+ * the text was `ambiguous`, or it has more decimals than the currency allows
+ * and will be rounded ("1.234" in USD -> "= 1.23"). Otherwise null.
+ */
+export function moneyInputHint(raw: string, currency?: string, locale?: string): string | null {
+  const parsed = interpretMoneyText(raw);
+  if (!parsed) return null;
+  const digits = currencyFractionDigits(currency);
+  const d = new Decimal(parsed.value);
+  if (!parsed.ambiguous && d.decimalPlaces() <= digits) return null;
+  const fmt = new Intl.NumberFormat(locale, {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  });
+  // Intl formats decimal strings exactly; no float conversion.
+  return `= ${fmt.format(d.toFixed(digits) as Intl.StringNumericLiteral)}`;
+}
+
+/**
+ * Field text after pasting `pasted` over the `start`..`end` selection of
+ * `current`. Clear pastes are normalised straight away ("1.234,56" -> "1234.56");
+ * ambiguous or unreadable ones are kept as pasted so the hint / validation can
+ * speak to them.
+ */
+export function pasteMoneyText(current: string, start: number, end: number, pasted: string): string {
+  const next = current.slice(0, start) + pasted + current.slice(end);
+  const parsed = interpretMoneyText(next);
+  return parsed && !parsed.ambiguous ? parsed.value : next;
 }
 
 /**
