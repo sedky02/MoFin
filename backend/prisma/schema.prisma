@@ -87,6 +87,7 @@ model User {
   oauthRefreshTokens OAuthRefreshToken[]
   oauthGrants        OAuthGrant[]
   authSessions       AuthSession[]
+  passwordResets     PasswordResetToken[]
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
 }
@@ -375,4 +376,20 @@ model AuthSession {
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   expiresAt    DateTime
   createdAt    DateTime @default(now())
+}
+
+// Single-use password reset token sent by email. Only the SHA-256 of the
+// random token is stored, so a database read never yields a usable link.
+// `usedAt` is set when the token is redeemed, or when a newer request or a
+// completed reset supersedes it; rows are kept rather than deleted for audit.
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  tokenHash String    @unique
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
 }
