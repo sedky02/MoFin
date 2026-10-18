@@ -29,15 +29,23 @@ const loginSchema = z.object({
 });
 type LoginValues = z.infer<typeof loginSchema>;
 
+function noopSubscribe() {
+  return () => {};
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const [rateLimited, setRateLimited] = React.useState(false);
-  // Read on mount (not during render) — this page is statically prerendered,
-  // and window/location only exist client-side after hydration.
-  const [justRegistered, setJustRegistered] = React.useState(false);
-  React.useEffect(() => {
-    setJustRegistered(new URLSearchParams(window.location.search).get("registered") === "1");
-  }, []);
+  // This page is statically prerendered, so the query string only exists
+  // client-side: "" on the server and during hydration, the real one after.
+  const search = React.useSyncExternalStore(
+    noopSubscribe,
+    () => window.location.search,
+    () => "",
+  );
+  const params = new URLSearchParams(search);
+  const justRegistered = params.get("registered") === "1";
+  const justReset = params.get("reset") === "1";
 
   const form = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
@@ -110,6 +118,16 @@ export default function LoginPage() {
         </div>
       )}
 
+      {justReset && !rateLimited && (
+        <div
+          role="status"
+          className="mb-5 flex items-start gap-2.5 rounded-lg border border-success/30 bg-success/10 px-3.5 py-3 text-sm text-success"
+        >
+          <CheckCircle2 className="mt-0.5 size-4 shrink-0" />
+          <span>Your password has been reset. Sign in with your new password.</span>
+        </div>
+      )}
+
       {rateLimited && (
         <div
           role="alert"
@@ -157,6 +175,16 @@ export default function LoginPage() {
               </FormItem>
             )}
           />
+          {/* After the field (not beside its label) so tabbing from email goes
+              straight to the password input. */}
+          <div className="-mt-1 flex justify-end">
+            <Link
+              href="/forgot-password"
+              className="inline-flex min-h-6 items-center text-sm font-medium text-primary-text underline-offset-4 hover:underline"
+            >
+              Forgot password?
+            </Link>
+          </div>
           <SubmitButton
             className="h-11 w-full text-sm font-semibold"
             pendingText="Signing in…"
