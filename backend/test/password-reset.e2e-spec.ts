@@ -14,7 +14,7 @@
 import { INestApplication } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { Test } from '@nestjs/testing';
-import request from 'supertest';
+import * as request from 'supertest';
 import { App } from 'supertest/types';
 import { sha256 } from '../src/common/utils/hash';
 import { PrismaService } from '../src/database/prisma.service';
