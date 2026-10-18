@@ -50,7 +50,8 @@ test.describe("password recovery", () => {
     await expect(page).toHaveURL(/\/forgot-password$/);
 
     const requestedAt = Date.now() - 1000;
-    await page.getByLabel("Email").fill(email);
+    // Role, not label: after a client-side navigation the previous page's form stays in the DOM, hidden.
+    await page.getByRole("textbox", { name: "Email" }).fill(email);
     await page.getByRole("button", { name: "Send reset link" }).click();
     await expect(page.getByRole("heading", { name: "Check your email" })).toBeVisible();
 
@@ -68,7 +69,7 @@ test.describe("password recovery", () => {
 
     // (Old password and old sessions failing is covered by the backend e2e
     // suite; login is rate-limited per IP, so this spec signs in only once.)
-    await page.getByLabel("Email").fill(email);
+    await page.getByRole("textbox", { name: "Email" }).fill(email);
     await page.getByLabel("Password", { exact: true }).fill(newPassword);
     await page.getByRole("button", { name: "Sign in" }).click();
     await expect(page).toHaveURL(/\/dashboard/);
