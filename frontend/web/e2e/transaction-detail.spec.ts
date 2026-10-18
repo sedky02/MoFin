@@ -84,8 +84,11 @@ test.describe("transaction detail accounts", () => {
     await expect(page.getByText("Main checking → Emergency fund", { exact: true })).toBeVisible();
 
     const rows = page.locator("table tbody tr");
-    await expect(rows.filter({ hasText: "Main checking" })).toContainText("Out");
-    await expect(rows.filter({ hasText: "Emergency fund" })).toContainText("In");
+    // Match on the Account cell: the other leg's description also names the account.
+    const legRow = (account: string) =>
+      rows.filter({ has: page.getByRole("cell", { name: account, exact: true }) });
+    await expect(legRow("Main checking")).toContainText("Out");
+    await expect(legRow("Emergency fund")).toContainText("In");
 
     await expectNoIds(page);
     await expectNeutralLegBadges(page);
