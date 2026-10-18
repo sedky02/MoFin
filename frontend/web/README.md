@@ -35,6 +35,10 @@ The easiest way to deploy your Next.js app is to use the [Vercel Platform](https
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
 
+## Unit tests
+
+`npm test` runs Vitest once (no servers needed). Unit tests live next to the code as `*.test.ts(x)`; component tests opt into jsdom with a `// @vitest-environment jsdom` line. `*.spec.ts` under `e2e/` belongs to Playwright.
+
 ## End-to-end checks
 
 Playwright runs against servers you start yourself: backend on :3000 and `npm run dev` on :3001. Install the browser once with `npx playwright install chromium`.
