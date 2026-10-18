@@ -42,6 +42,9 @@ lerna-debug.log*
 .env.production.local
 .env.local
 
+# Captured development emails (MAIL_CAPTURE_DIR)
+/.mail-outbox
+
 # temp directory
 .temp
 .tmp
