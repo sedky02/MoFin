@@ -55,9 +55,14 @@ async function expectNoAxeViolations(page: Page, label: string) {
   expect(violations, `axe violations on ${label}\n${report}`).toEqual([]);
 }
 
-/** The "Account" / "From → To" line in the summary card. */
-function accountLine(page: Page, label: "Account" | "From → To") {
+/** The "Account" line in the summary card (income and expense). */
+function accountLine(page: Page, label: "Account") {
   return page.locator("dl > div").filter({ has: page.locator("dt", { hasText: label }) }).locator("dd");
+}
+
+/** One end of a transfer in the summary card: the "From" or "To" tile. */
+function transferEnd(page: Page, label: "From" | "To") {
+  return page.locator("main div.rounded-lg").filter({ has: page.getByText(label, { exact: true }) });
 }
 
 test.describe("transaction detail accounts", () => {
@@ -78,10 +83,10 @@ test.describe("transaction detail accounts", () => {
     await expectNoAxeViolations(page, "income detail");
   });
 
-  test("transfer header reads from → to, legs are Out and In", async ({ page }) => {
+  test("transfer shows From and To accounts, legs are Out and In", async ({ page }) => {
     await openDetail(page, "Emergency fund transfer");
-    await expect(accountLine(page, "From → To")).toHaveText("Main checking → Emergency fund");
-    await expect(page.getByText("Main checking → Emergency fund", { exact: true })).toBeVisible();
+    await expect(transferEnd(page, "From")).toContainText("Main checking");
+    await expect(transferEnd(page, "To")).toContainText("Emergency fund");
 
     const rows = page.locator("table tbody tr");
     // Match on the Account cell: the other leg's description also names the account.

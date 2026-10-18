@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ApiClientError } from "@/lib/api";
-import { ArrowDownLeft, ArrowLeft, ArrowUpRight } from "lucide-react";
+import { ArrowDown, ArrowDownLeft, ArrowLeft, ArrowRight, ArrowUpRight } from "lucide-react";
 import { useAccounts } from "@/hooks/useAccounts";
 import { useTransaction, useVoidTransaction } from "@/hooks/useTransactions";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
@@ -107,36 +107,39 @@ export function TransactionDetail({ id }: { id: string }) {
           />
         </div>
 
-        <dl className="mt-4 space-y-2 border-t border-border pt-4 text-sm">
-          {tx.type === "TRANSFER" ? (
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <dt className="text-muted-foreground">From → To</dt>
-              <dd className="font-medium">
-                {nameOf(legs.from)} → {nameOf(legs.to)}
-              </dd>
-            </div>
-          ) : (
-            singleAccountLeg && (
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                <dt className="text-muted-foreground">Account</dt>
-                <dd className="font-medium">{nameOf(singleAccountLeg)}</dd>
-              </div>
-            )
-          )}
-          {tx.category && tx.items.length <= 1 && (
-            <div className="flex items-center gap-2">
-              <dt className="text-muted-foreground">Category</dt>
-              <dd className="flex items-center gap-1.5 font-medium">
-                {tx.category.icon && <span>{tx.category.icon}</span>}
-                <span
-                  className="size-2 rounded-full"
-                  style={{ backgroundColor: tx.category.color || "var(--muted-foreground)" }}
-                />
-                {tx.category.name}
-              </dd>
+        <div className="mt-4 space-y-3 border-t border-border pt-4 text-sm">
+          {tx.type === "TRANSFER" && (
+            <div className="grid items-center gap-2 sm:grid-cols-[1fr_auto_1fr] sm:gap-3">
+              <AccountTile label="From" name={nameOf(legs.from)} />
+              <ArrowRight className="hidden size-4 text-muted-foreground sm:block" aria-hidden="true" />
+              <ArrowDown className="mx-auto size-4 text-muted-foreground sm:hidden" aria-hidden="true" />
+              <AccountTile label="To" name={nameOf(legs.to)} />
             </div>
           )}
-        </dl>
+          {(tx.type !== "TRANSFER" && singleAccountLeg) || (tx.category && tx.items.length <= 1) ? (
+            <dl className="space-y-2">
+              {tx.type !== "TRANSFER" && singleAccountLeg && (
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <dt className="text-muted-foreground">Account</dt>
+                  <dd className="font-medium">{nameOf(singleAccountLeg)}</dd>
+                </div>
+              )}
+              {tx.category && tx.items.length <= 1 && (
+                <div className="flex items-center gap-2">
+                  <dt className="text-muted-foreground">Category</dt>
+                  <dd className="flex items-center gap-1.5 font-medium">
+                    {tx.category.icon && <span>{tx.category.icon}</span>}
+                    <span
+                      className="size-2 rounded-full"
+                      style={{ backgroundColor: tx.category.color || "var(--muted-foreground)" }}
+                    />
+                    {tx.category.name}
+                  </dd>
+                </div>
+              )}
+            </dl>
+          ) : null}
+        </div>
 
         {/* Voided / reversal state, and the void action itself. */}
         {tx.voidedAt && (
@@ -283,5 +286,15 @@ function AccountNamePlaceholder() {
       <Skeleton className="inline-block h-4 w-24 align-middle" aria-hidden="true" />
       <span className="sr-only">Loading account</span>
     </>
+  );
+}
+
+/** One end of a transfer: a small label over the account name. */
+function AccountTile({ label, name }: { label: string; name: React.ReactNode }) {
+  return (
+    <div className="min-w-0 rounded-lg bg-muted/50 px-3 py-2.5">
+      <p className="text-xs font-medium text-muted-foreground">{label}</p>
+      <p className="mt-0.5 font-medium break-words">{name}</p>
+    </div>
   );
 }
