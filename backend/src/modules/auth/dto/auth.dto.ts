@@ -29,6 +29,20 @@ export const logoutSchema = z.object({
 });
 export type LogoutDto = z.infer<typeof logoutSchema>;
 
+export const forgotPasswordSchema = z.object({
+  email: emailField,
+});
+export type ForgotPasswordDto = z.infer<typeof forgotPasswordSchema>;
+
+// Same password rule as registration. The token is the base64url value from
+// the emailed link (43 chars for 32 bytes); the upper bound just stops an
+// arbitrarily large string from being hashed.
+export const resetPasswordSchema = z.object({
+  token: z.string().min(1).max(256),
+  password: z.string().min(8),
+});
+export type ResetPasswordDto = z.infer<typeof resetPasswordSchema>;
+
 // Exchanged server-to-server by the web BFF Google callback: the one-time
 // authorization code from Google plus the exact redirect_uri used to obtain it.
 export const googleLoginSchema = z.object({
