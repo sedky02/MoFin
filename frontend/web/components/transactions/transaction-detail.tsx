@@ -4,7 +4,8 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ApiClientError } from "@/lib/api";
-import { ArrowLeft } from "lucide-react";
+import { ArrowDownLeft, ArrowLeft, ArrowUpRight } from "lucide-react";
+import { useAccounts } from "@/hooks/useAccounts";
 import { useTransaction, useVoidTransaction } from "@/hooks/useTransactions";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { MoneyAmount } from "@/components/common/money-amount";
@@ -25,13 +26,24 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatDateTime, transactionAmount } from "@/lib/format";
-import { cn } from "@/lib/utils";
+import { ledgerAccountName, transactionAccountLegs } from "@/lib/transaction-accounts";
+import type { Account } from "@/lib/types";
 
 export function TransactionDetail({ id }: { id: string }) {
   const router = useRouter();
   const voidMut = useVoidTransaction();
   const [confirmVoid, setConfirmVoid] = React.useState(false);
   const { data: tx, isLoading, isError, error, refetch } = useTransaction(id);
+
+  // Older responses carried legs without their account. Only then fall back
+  // to the account list, with archived accounts included so they resolve too.
+  const needsAccountLookup = !!tx?.items.some((item) => !item.account);
+  const accountsQuery = useAccounts("all", needsAccountLookup);
+  const accountsById = React.useMemo<ReadonlyMap<string, Account> | undefined>(() => {
+    if (accountsQuery.data) return new Map(accountsQuery.data.map((a) => [a.id, a]));
+    // A failed lookup resolves to "Deleted account" rather than a spinner forever.
+    return accountsQuery.isError ? new Map() : undefined;
+  }, [accountsQuery.data, accountsQuery.isError]);
 
   if (isLoading) {
     return (
@@ -54,6 +66,11 @@ export function TransactionDetail({ id }: { id: string }) {
       <ErrorState description="Couldn't load this transaction." onRetry={() => refetch()} />
     );
   }
+
+  const legs = transactionAccountLegs(tx);
+  const nameOf = (item: (typeof tx.items)[number] | undefined) =>
+    item ? (ledgerAccountName(item, accountsById) ?? <AccountNamePlaceholder />) : null;
+  const singleAccountLeg = legs.from ?? legs.to;
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -90,19 +107,36 @@ export function TransactionDetail({ id }: { id: string }) {
           />
         </div>
 
-        {tx.category && tx.items.length <= 1 && (
-          <div className="mt-4 flex items-center gap-2 border-t border-border pt-4 text-sm">
-            <span className="text-muted-foreground">Category</span>
-            <span className="flex items-center gap-1.5 font-medium">
-              {tx.category.icon && <span>{tx.category.icon}</span>}
-              <span
-                className="size-2 rounded-full"
-                style={{ backgroundColor: tx.category.color || "var(--muted-foreground)" }}
-              />
-              {tx.category.name}
-            </span>
-          </div>
-        )}
+        <dl className="mt-4 space-y-2 border-t border-border pt-4 text-sm">
+          {tx.type === "TRANSFER" ? (
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <dt className="text-muted-foreground">From → To</dt>
+              <dd className="font-medium">
+                {nameOf(legs.from)} → {nameOf(legs.to)}
+              </dd>
+            </div>
+          ) : (
+            singleAccountLeg && (
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <dt className="text-muted-foreground">Account</dt>
+                <dd className="font-medium">{nameOf(singleAccountLeg)}</dd>
+              </div>
+            )
+          )}
+          {tx.category && tx.items.length <= 1 && (
+            <div className="flex items-center gap-2">
+              <dt className="text-muted-foreground">Category</dt>
+              <dd className="flex items-center gap-1.5 font-medium">
+                {tx.category.icon && <span>{tx.category.icon}</span>}
+                <span
+                  className="size-2 rounded-full"
+                  style={{ backgroundColor: tx.category.color || "var(--muted-foreground)" }}
+                />
+                {tx.category.name}
+              </dd>
+            </div>
+          )}
+        </dl>
 
         {/* Voided / reversal state, and the void action itself. */}
         {tx.voidedAt && (
@@ -155,17 +189,21 @@ export function TransactionDetail({ id }: { id: string }) {
         }}
       />
 
-      {/* Double-entry ledger items */}
+      {/* Ledger legs: one per account the money moved out of or into */}
       <Card className="mt-6 overflow-hidden border-0 p-0 shadow-sm">
         <div className="border-b border-border px-5 py-3.5">
           <h2 className="text-sm font-semibold">Ledger entries</h2>
-          <p className="text-xs text-muted-foreground">Double-entry record for this transaction.</p>
+          <p className="text-xs text-muted-foreground">
+            {tx.type === "TRANSFER"
+              ? "Money out of one account and into the other."
+              : "How this transaction changed your account balance."}
+          </p>
         </div>
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
               <TableHead>Account</TableHead>
-              <TableHead>Type</TableHead>
+              <TableHead>Direction</TableHead>
               {tx.items.length > 1 && <TableHead>Category</TableHead>}
               <TableHead className="text-right">Amount</TableHead>
             </TableRow>
@@ -183,19 +221,22 @@ export function TransactionDetail({ id }: { id: string }) {
             ) : (
               tx.items.map((item) => (
                 <TableRow key={item.id}>
-                  <TableCell className="font-medium">
-                    {item.account?.name ?? item.accountId}
-                  </TableCell>
+                  <TableCell className="font-medium">{nameOf(item)}</TableCell>
                   <TableCell>
-                    <span
-                      className={cn(
-                        "inline-flex rounded-md px-2 py-0.5 text-xs font-medium",
-                        item.direction === "DEBIT"
-                          ? "bg-success/12 text-success"
-                          : "bg-destructive/12 text-destructive",
+                    {/* DEBIT = out of the account, CREDIT = into it. Neutral on purpose:
+                        a transfer's "out" leg is not a loss. */}
+                    <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-foreground">
+                      {item.direction === "DEBIT" ? (
+                        <>
+                          <ArrowUpRight className="size-3" aria-hidden="true" />
+                          Out
+                        </>
+                      ) : (
+                        <>
+                          <ArrowDownLeft className="size-3" aria-hidden="true" />
+                          In
+                        </>
                       )}
-                    >
-                      {item.direction === "DEBIT" ? "Debit" : "Credit"}
                     </span>
                   </TableCell>
                   {tx.items.length > 1 && (
@@ -233,5 +274,14 @@ export function TransactionDetail({ id }: { id: string }) {
         </Table>
       </Card>
     </div>
+  );
+}
+
+function AccountNamePlaceholder() {
+  return (
+    <>
+      <Skeleton className="inline-block h-4 w-24 align-middle" aria-hidden="true" />
+      <span className="sr-only">Loading account</span>
+    </>
   );
 }
