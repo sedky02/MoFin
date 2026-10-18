@@ -221,7 +221,7 @@ export function TransactionDetail({ id }: { id: string }) {
             ) : (
               tx.items.map((item) => (
                 <TableRow key={item.id}>
-                  <TableCell className="font-medium">{nameOf(item)}</TableCell>
+                  <TableCell className="font-medium whitespace-normal">{nameOf(item)}</TableCell>
                   <TableCell>
                     {/* DEBIT = out of the account, CREDIT = into it. Neutral on purpose:
                         a transfer's "out" leg is not a loss. */}
@@ -240,7 +240,7 @@ export function TransactionDetail({ id }: { id: string }) {
                     </span>
                   </TableCell>
                   {tx.items.length > 1 && (
-                    <TableCell>
+                    <TableCell className="whitespace-normal">
                       {item.category ? (
                         <span className="flex items-center gap-1.5 text-sm">
                           {item.category.icon && <span>{item.category.icon}</span>}
