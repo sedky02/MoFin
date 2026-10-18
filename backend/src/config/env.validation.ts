@@ -47,6 +47,30 @@ const envSchema = z.object({
   // --- Observability (OBS-01) ---
   // Unset in dev: Sentry.init is skipped and errors just log, no client needed.
   SENTRY_DSN: z.string().url().optional(),
+
+  NODE_ENV: z.string().optional(),
+
+  // --- Outgoing email (password reset) ---
+  // With SMTP_HOST unset, mail goes to a log-only sender instead (see MailModule).
+  SMTP_HOST: z.string().min(1).optional(),
+  SMTP_PORT: z.coerce.number().int().positive().default(587),
+  // "true" for implicit TLS (usually port 465); otherwise STARTTLS is used when offered.
+  SMTP_SECURE: z.enum(['true', 'false']).default('false'),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
+  MAIL_FROM: z.string().min(1).default('MoFin <no-reply@mofin.local>'),
+  // Development/test only: write every outgoing email as a JSON file in this
+  // directory so local end-to-end tests can read the reset link.
+  MAIL_CAPTURE_DIR: z.string().min(1).optional(),
+  PASSWORD_RESET_TTL: z.string().regex(/^\d+(s|m|h|d)$/, 'Use a duration such as 30m').default('30m'),
+}).superRefine((env, ctx) => {
+  if (env.NODE_ENV === 'production' && env.MAIL_CAPTURE_DIR) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['MAIL_CAPTURE_DIR'],
+      message: 'MAIL_CAPTURE_DIR must not be set in production',
+    });
+  }
 });
 
 export type AppEnv = z.infer<typeof envSchema>;

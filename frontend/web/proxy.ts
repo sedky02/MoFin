@@ -10,6 +10,12 @@ export default function proxy(request: NextRequest) {
   const isAuthRoute =
     pathname.startsWith("/login") || pathname.startsWith("/register");
 
+  // Password recovery is reachable signed in or not: a reset link can be
+  // opened in a browser that still holds an (about to be revoked) session.
+  if (pathname.startsWith("/forgot-password") || pathname.startsWith("/reset-password")) {
+    return NextResponse.next();
+  }
+
   // Not logged in and trying to reach an app route → bounce to /login.
   if (!refresh && !isAuthRoute) {
     const login = new URL(loginUrlWithNext(pathname + request.nextUrl.search), request.url);
