@@ -40,4 +40,16 @@ describe('SearchService.searchTransactions', () => {
     expect(accountsService.assertOwned).toHaveBeenCalledWith('u1', 'a1');
     expect(categoriesService.assertAvailable).toHaveBeenCalledWith('u1', 'c1');
   });
+
+  it('includes each ledger leg with its account so results can name accounts', async () => {
+    const { service, paginate } = makeService({ data: [], total: 0, limit: 20, offset: 0 });
+
+    await service.searchTransactions('u1', { limit: 20, offset: 0 } as never);
+
+    expect(paginate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        include: { items: { include: { category: true, account: true } }, category: true },
+      }),
+    );
+  });
 });

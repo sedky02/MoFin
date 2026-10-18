@@ -7,6 +7,7 @@ import { AccountsService } from '../accounts/accounts.service';
 import { CategoriesService } from '../categories/categories.service';
 import { LedgerService } from '../ledger/ledger.service';
 import { CreateTransactionCommand, UpdateRecurringTransactionCommand } from './dto/transactions.dto';
+import { TRANSACTION_INCLUDE } from './transaction-include';
 
 type Db = Prisma.TransactionClient;
 
@@ -93,7 +94,7 @@ export class TransactionsService {
       await this.ledgerService.createEntries(db, userId, created.id, ledgerEntries);
       return db.transaction.findUniqueOrThrow({
         where: { id: created.id },
-        include: { items: { include: { category: true } }, category: true }
+        include: TRANSACTION_INCLUDE
       });
     };
 
@@ -113,7 +114,7 @@ export class TransactionsService {
   async getById(userId: string, id: string) {
     const transaction = await this.prisma.transaction.findFirst({
       where: { id, userId },
-      include: { items: { include: { category: true } }, category: true }
+      include: TRANSACTION_INCLUDE
     });
     if (!transaction) throw new NotFoundException('Transaction not found');
     return transaction;
@@ -164,7 +165,7 @@ export class TransactionsService {
       });
       return tx.transaction.findUniqueOrThrow({
         where: { id: created.id },
-        include: { items: { include: { category: true } }, category: true },
+        include: TRANSACTION_INCLUDE,
       });
     });
 
@@ -241,7 +242,7 @@ export class TransactionsService {
           command.recurringEndDate === null ? null : (command.recurringEndDate ?? undefined),
         nextOccurrenceAt
       },
-      include: { items: { include: { category: true } }, category: true }
+      include: TRANSACTION_INCLUDE
     });
   }
 
@@ -251,7 +252,7 @@ export class TransactionsService {
     return this.prisma.transaction.update({
       where: { id: root.id },
       data: { recurringStatus: RecurringStatus.CANCELLED },
-      include: { items: { include: { category: true } }, category: true }
+      include: TRANSACTION_INCLUDE
     });
   }
 

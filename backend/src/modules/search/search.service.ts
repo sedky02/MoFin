@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
 import { AccountsService } from '../accounts/accounts.service';
 import { CategoriesService } from '../categories/categories.service';
+import { TRANSACTION_INCLUDE } from '../transactions/transaction-include';
 import { SearchTransactionsDto } from './dto/search.dto';
 
 @Injectable()
@@ -37,7 +38,7 @@ export class SearchService {
             }
           : {})
       },
-      include: { items: true, category: true },
+      include: TRANSACTION_INCLUDE,
       orderBy: [{ occurredAt: 'desc' }, { createdAt: 'desc' }],
       limit: query.limit,
       offset: query.offset

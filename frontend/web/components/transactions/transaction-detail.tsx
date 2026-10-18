@@ -4,7 +4,8 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ApiClientError } from "@/lib/api";
-import { ArrowLeft } from "lucide-react";
+import { ArrowDown, ArrowDownLeft, ArrowLeft, ArrowRight, ArrowUpRight } from "lucide-react";
+import { useAccounts } from "@/hooks/useAccounts";
 import { useTransaction, useVoidTransaction } from "@/hooks/useTransactions";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { MoneyAmount } from "@/components/common/money-amount";
@@ -25,13 +26,24 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatDateTime, transactionAmount } from "@/lib/format";
-import { cn } from "@/lib/utils";
+import { ledgerAccountName, transactionAccountLegs } from "@/lib/transaction-accounts";
+import type { Account } from "@/lib/types";
 
 export function TransactionDetail({ id }: { id: string }) {
   const router = useRouter();
   const voidMut = useVoidTransaction();
   const [confirmVoid, setConfirmVoid] = React.useState(false);
   const { data: tx, isLoading, isError, error, refetch } = useTransaction(id);
+
+  // Older responses carried legs without their account. Only then fall back
+  // to the account list, with archived accounts included so they resolve too.
+  const needsAccountLookup = !!tx?.items.some((item) => !item.account);
+  const accountsQuery = useAccounts("all", needsAccountLookup);
+  const accountsById = React.useMemo<ReadonlyMap<string, Account> | undefined>(() => {
+    if (accountsQuery.data) return new Map(accountsQuery.data.map((a) => [a.id, a]));
+    // A failed lookup resolves to "Deleted account" rather than a spinner forever.
+    return accountsQuery.isError ? new Map() : undefined;
+  }, [accountsQuery.data, accountsQuery.isError]);
 
   if (isLoading) {
     return (
@@ -54,6 +66,11 @@ export function TransactionDetail({ id }: { id: string }) {
       <ErrorState description="Couldn't load this transaction." onRetry={() => refetch()} />
     );
   }
+
+  const legs = transactionAccountLegs(tx);
+  const nameOf = (item: (typeof tx.items)[number] | undefined) =>
+    item ? (ledgerAccountName(item, accountsById) ?? <AccountNamePlaceholder />) : null;
+  const singleAccountLeg = legs.from ?? legs.to;
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -90,19 +107,39 @@ export function TransactionDetail({ id }: { id: string }) {
           />
         </div>
 
-        {tx.category && tx.items.length <= 1 && (
-          <div className="mt-4 flex items-center gap-2 border-t border-border pt-4 text-sm">
-            <span className="text-muted-foreground">Category</span>
-            <span className="flex items-center gap-1.5 font-medium">
-              {tx.category.icon && <span>{tx.category.icon}</span>}
-              <span
-                className="size-2 rounded-full"
-                style={{ backgroundColor: tx.category.color || "var(--muted-foreground)" }}
-              />
-              {tx.category.name}
-            </span>
-          </div>
-        )}
+        <div className="mt-4 space-y-3 border-t border-border pt-4 text-sm">
+          {tx.type === "TRANSFER" && (
+            <div className="grid items-center gap-2 sm:grid-cols-[1fr_auto_1fr] sm:gap-3">
+              <AccountTile label="From" name={nameOf(legs.from)} />
+              <ArrowRight className="hidden size-4 text-muted-foreground sm:block" aria-hidden="true" />
+              <ArrowDown className="mx-auto size-4 text-muted-foreground sm:hidden" aria-hidden="true" />
+              <AccountTile label="To" name={nameOf(legs.to)} />
+            </div>
+          )}
+          {(tx.type !== "TRANSFER" && singleAccountLeg) || (tx.category && tx.items.length <= 1) ? (
+            <dl className="space-y-2">
+              {tx.type !== "TRANSFER" && singleAccountLeg && (
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <dt className="text-muted-foreground">Account</dt>
+                  <dd className="font-medium">{nameOf(singleAccountLeg)}</dd>
+                </div>
+              )}
+              {tx.category && tx.items.length <= 1 && (
+                <div className="flex items-center gap-2">
+                  <dt className="text-muted-foreground">Category</dt>
+                  <dd className="flex items-center gap-1.5 font-medium">
+                    {tx.category.icon && <span>{tx.category.icon}</span>}
+                    <span
+                      className="size-2 rounded-full"
+                      style={{ backgroundColor: tx.category.color || "var(--muted-foreground)" }}
+                    />
+                    {tx.category.name}
+                  </dd>
+                </div>
+              )}
+            </dl>
+          ) : null}
+        </div>
 
         {/* Voided / reversal state, and the void action itself. */}
         {tx.voidedAt && (
@@ -155,17 +192,21 @@ export function TransactionDetail({ id }: { id: string }) {
         }}
       />
 
-      {/* Double-entry ledger items */}
+      {/* Ledger legs: one per account the money moved out of or into */}
       <Card className="mt-6 overflow-hidden border-0 p-0 shadow-sm">
         <div className="border-b border-border px-5 py-3.5">
           <h2 className="text-sm font-semibold">Ledger entries</h2>
-          <p className="text-xs text-muted-foreground">Double-entry record for this transaction.</p>
+          <p className="text-xs text-muted-foreground">
+            {tx.type === "TRANSFER"
+              ? "Money out of one account and into the other."
+              : "How this transaction changed your account balance."}
+          </p>
         </div>
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
               <TableHead>Account</TableHead>
-              <TableHead>Type</TableHead>
+              <TableHead>Direction</TableHead>
               {tx.items.length > 1 && <TableHead>Category</TableHead>}
               <TableHead className="text-right">Amount</TableHead>
             </TableRow>
@@ -183,23 +224,26 @@ export function TransactionDetail({ id }: { id: string }) {
             ) : (
               tx.items.map((item) => (
                 <TableRow key={item.id}>
-                  <TableCell className="font-medium">
-                    {item.account?.name ?? item.accountId}
-                  </TableCell>
+                  <TableCell className="font-medium whitespace-normal">{nameOf(item)}</TableCell>
                   <TableCell>
-                    <span
-                      className={cn(
-                        "inline-flex rounded-md px-2 py-0.5 text-xs font-medium",
-                        item.direction === "DEBIT"
-                          ? "bg-success/12 text-success"
-                          : "bg-destructive/12 text-destructive",
+                    {/* DEBIT = out of the account, CREDIT = into it. Neutral on purpose:
+                        a transfer's "out" leg is not a loss. */}
+                    <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-foreground">
+                      {item.direction === "DEBIT" ? (
+                        <>
+                          <ArrowUpRight className="size-3" aria-hidden="true" />
+                          Out
+                        </>
+                      ) : (
+                        <>
+                          <ArrowDownLeft className="size-3" aria-hidden="true" />
+                          In
+                        </>
                       )}
-                    >
-                      {item.direction === "DEBIT" ? "Debit" : "Credit"}
                     </span>
                   </TableCell>
                   {tx.items.length > 1 && (
-                    <TableCell>
+                    <TableCell className="whitespace-normal">
                       {item.category ? (
                         <span className="flex items-center gap-1.5 text-sm">
                           {item.category.icon && <span>{item.category.icon}</span>}
@@ -232,6 +276,25 @@ export function TransactionDetail({ id }: { id: string }) {
           </TableBody>
         </Table>
       </Card>
+    </div>
+  );
+}
+
+function AccountNamePlaceholder() {
+  return (
+    <>
+      <Skeleton className="inline-block h-4 w-24 align-middle" aria-hidden="true" />
+      <span className="sr-only">Loading account</span>
+    </>
+  );
+}
+
+/** One end of a transfer: a small label over the account name. */
+function AccountTile({ label, name }: { label: string; name: React.ReactNode }) {
+  return (
+    <div className="min-w-0 rounded-lg bg-muted/50 px-3 py-2.5">
+      <p className="text-xs font-medium text-muted-foreground">{label}</p>
+      <p className="mt-0.5 font-medium break-words">{name}</p>
     </div>
   );
 }
