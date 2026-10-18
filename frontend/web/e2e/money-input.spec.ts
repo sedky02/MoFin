@@ -10,11 +10,10 @@ test("typing 1,234 in New transaction saves 1234.00", async ({ page }) => {
   await page.goto("/transactions/new");
   await expect(page.getByRole("heading", { level: 1, name: "New transaction" })).toBeVisible();
 
-  // Pin the account so the currency (and so the decimals) is known.
-  await page.getByRole("combobox", { name: "Account" }).click();
-  await page.getByRole("option", { name: /Main checking/ }).click();
-
+  // The form defaults to the fixture's main account, "Main checking" (USD), so the
+  // currency (and so the decimals) is known without opening the account select.
   const amount = page.getByLabel("Amount in USD");
+  await expect(amount).toBeVisible();
   await amount.click();
   await amount.pressSequentially("1,234", { delay: 30 });
 
