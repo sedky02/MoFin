@@ -14,7 +14,7 @@ const APP_ROUTES = [
   "/settings",
   "/transactions/new",
 ];
-const AUTH_ROUTES = ["/login", "/register"];
+const AUTH_ROUTES = ["/login", "/register", "/forgot-password", "/reset-password"];
 
 function sampleTransactionId(): string | undefined {
   const file = "e2e/.auth/fixture.json";

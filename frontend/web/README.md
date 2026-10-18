@@ -41,4 +41,5 @@ Playwright runs against servers you start yourself: backend on :3000 and `npm ru
 
 - `npm run e2e:seed` creates (or tops up) the fixture user and data through the backend API. It is safe to run repeatedly. Credentials are written to `e2e/.auth/credentials.json` (gitignored).
 - `npm run e2e` logs in, opens every route and runs axe on desktop and mobile viewports. Findings are reported per route in the output and the HTML report.
+- `e2e/password-reset.spec.ts` reads the reset email from disk: start the backend with `MAIL_CAPTURE_DIR=.mail-outbox` (development only). Set `E2E_MAIL_DIR` if that directory is somewhere other than `../../backend/.mail-outbox`.
 - `npm run e2e:shots -- /dashboard` writes four PNGs (desktop and mobile, light and dark) to `e2e/.shots/` (gitignored).
