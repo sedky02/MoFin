@@ -45,8 +45,10 @@ export function SearchView({ initial }: { initial: SearchInitial }) {
   const [page, setPage] = React.useState(initial.page ?? 1);
 
   const debouncedQ = useDebouncedValue(q, 350);
-  const debouncedMin = useDebouncedValue(minAmount, 350);
-  const debouncedMax = useDebouncedValue(maxAmount, 350);
+  // The fields keep what was typed; the query gets the dot-decimal reading
+  // ("1,234" -> 1234, "12,5" -> 12.5), or nothing while it can't be read.
+  const debouncedMin = useDebouncedValue(normalizeMoneyTyping(minAmount) ?? "", 350);
+  const debouncedMax = useDebouncedValue(normalizeMoneyTyping(maxAmount) ?? "", 350);
 
   const filters: SearchParams = {
     q: debouncedQ || undefined,
@@ -220,7 +222,7 @@ export function SearchView({ initial }: { initial: SearchInitial }) {
               <Input
                 inputMode="decimal"
                 value={minAmount}
-                onChange={(e) => setMinAmount(normalizeMoneyTyping(e.target.value))}
+                onChange={(e) => setMinAmount(e.target.value)}
                 placeholder="0"
                 className="tabular"
               />
@@ -229,7 +231,7 @@ export function SearchView({ initial }: { initial: SearchInitial }) {
               <Input
                 inputMode="decimal"
                 value={maxAmount}
-                onChange={(e) => setMaxAmount(normalizeMoneyTyping(e.target.value))}
+                onChange={(e) => setMaxAmount(e.target.value)}
                 placeholder="∞"
                 className="tabular"
               />
