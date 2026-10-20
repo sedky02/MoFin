@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
-export const monthlySummaryQuerySchema = z.object({
+// Plain object (no refinement) so MCP can expose its raw shape as a tool inputSchema.
+export const monthlySummaryQueryObject = z.object({
   year: z.coerce.number().int().min(2000),
   month: z.coerce.number().int().min(1).max(12),
   refresh: z
@@ -8,8 +9,17 @@ export const monthlySummaryQuerySchema = z.object({
     .optional()
     .transform((value) => value === true || value === 'true'),
   accountId: z.string().optional(),
-  // Amounts can't be summed across currencies: restrict an all-accounts summary to one.
+  // Amounts can't be summed across currencies: an all-accounts summary is always one currency.
   currency: z.string().length(3).optional(),
+});
+export const monthlySummaryQuerySchema = monthlySummaryQueryObject.superRefine((value, ctx) => {
+  if (!value.accountId && !value.currency) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['currency'],
+      message: 'currency is required when accountId is not given',
+    });
+  }
 });
 export const monthlySeriesQuerySchema = z.object({
   months: z.coerce.number().int().min(1).max(24).default(6),

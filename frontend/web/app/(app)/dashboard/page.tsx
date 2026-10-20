@@ -102,14 +102,10 @@ async function DashboardContent() {
     initialPrimaryCurrency,
   );
   const heroCurrency = heroCurrencies.includes(currency) ? currency : (heroCurrencies[0] ?? currency);
+  const summaryCurrency = summaryApiCurrency(accountId, currency);
 
   const [summary, series] = await Promise.all([
-    serverGet<MonthlySummary>("/analytics/monthly-summary", {
-      year,
-      month,
-      accountId,
-      currency: summaryApiCurrency(accountId, activeAccount ? [] : currencies, currency),
-    }),
+    serverGet<MonthlySummary>("/analytics/monthly-summary", { year, month, accountId, currency: summaryCurrency }),
     heroCurrencies.length
       ? serverGet<MonthlySeries>("/analytics/monthly-series", { currency: heroCurrency, months: 6, accountId })
       : null,
@@ -123,12 +119,7 @@ async function DashboardContent() {
   if (accountsPage) queryClient.setQueryData(accountKeys.list("active"), accountsPage.data);
   if (allBalances) queryClient.setQueryData(ledgerKeys.balance(undefined, undefined), allBalances);
   if (accountId && scopedBalances) queryClient.setQueryData(ledgerKeys.balance(accountId, undefined), scopedBalances);
-  if (summary) {
-    queryClient.setQueryData(
-      analyticsKeys.monthly(year, month, accountId, summaryApiCurrency(accountId, activeAccount ? [] : currencies, currency)),
-      summary,
-    );
-  }
+  if (summary) queryClient.setQueryData(analyticsKeys.monthly(year, month, accountId, summaryCurrency), summary);
   if (series) queryClient.setQueryData(analyticsKeys.series(heroCurrency, 6, accountId), series);
   if (recent) {
     queryClient.setQueryData(searchKeys.list({ recent: DASHBOARD_RECENT_LIMIT, accountId }), recent.data);

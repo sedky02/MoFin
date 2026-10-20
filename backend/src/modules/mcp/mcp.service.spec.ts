@@ -49,9 +49,12 @@ describe('McpService.dispatch', () => {
     expect(ledger.getBalance).toHaveBeenCalledWith('u1', { currency: 'USD' });
   });
 
-  it('routes get_monthly_summary with year, month and refresh', () => {
-    service.dispatch('u1', 'get_monthly_summary', { year: 2026, month: 6, refresh: true });
-    expect(analytics.getMonthlySummary).toHaveBeenCalledWith('u1', 2026, 6, true);
+  it('routes get_monthly_summary with year, month, refresh, account and currency', () => {
+    service.dispatch('u1', 'get_monthly_summary', { year: 2026, month: 6, refresh: true, currency: 'TND' });
+    expect(analytics.getMonthlySummary).toHaveBeenCalledWith('u1', 2026, 6, true, undefined, 'TND');
+
+    service.dispatch('u1', 'get_monthly_summary', { year: 2026, month: 6, refresh: false, accountId: 'acc-1' });
+    expect(analytics.getMonthlySummary).toHaveBeenCalledWith('u1', 2026, 6, false, 'acc-1', undefined);
   });
 
   it('routes list_accounts to AccountsService, forwarding pagination args', () => {

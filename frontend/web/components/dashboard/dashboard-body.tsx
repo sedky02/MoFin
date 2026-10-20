@@ -50,7 +50,9 @@ export function DashboardBody({
   const resolve = (pick?: string) =>
     resolveCurrency({ pick, account: selectedAccount, currencies: accountCurrencies, primaryCurrency });
   const balanceCurrency = resolve(balanceCurrencyPick);
-  const summaryCurrency = resolve(summaryCurrencyPick);
+  // The summary's switch also offers currencies that only have activity this month (an
+  // archived account's, say), so its pick stands even when no active account holds it.
+  const summaryCurrency = selectedAccount?.currency ?? summaryCurrencyPick ?? resolve();
 
   return (
     <section className="space-y-8">

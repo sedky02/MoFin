@@ -14,7 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ErrorState, EmptyState } from "@/components/common/states";
 import { subtract, tryParse } from "@/lib/decimal";
-import { summaryApiCurrency } from "@/lib/dashboard-scope";
+import { summaryApiCurrency, summaryCurrencyOptions } from "@/lib/dashboard-scope";
 import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight, PieChart, RotateCcw } from "lucide-react";
 import { CurrencyMenu } from "./currency-switch";
@@ -44,7 +44,10 @@ export function MonthlySummaryCard({
   month: number;
   /** Currency shown for an all-accounts view (shared with the balance hero). */
   currency: string;
-  /** Currencies held across all accounts; a switch is shown when there is more than one. */
+  /**
+   * Currencies of the active accounts. The switch adds any other currency with activity in
+   * the viewed month, and is shown when that makes more than one.
+   */
   currencies?: string[];
   onCurrencyChange?: (currency: string) => void;
   /** The dashboard's active account (explicit pick, else main). `undefined` = all accounts. */
@@ -57,9 +60,8 @@ export function MonthlySummaryCard({
   const [offset, setOffset] = React.useState(0);
   const viewed = shiftMonth(year, month, offset);
 
-  // Amounts can't be summed across currencies, so an all-accounts view is asked for one
-  // currency. With a single currency the plain request is used (it matches the server prefetch).
-  const apiCurrency = summaryApiCurrency(accountId, currencies, currency);
+  // Amounts can't be summed across currencies, so an all-accounts view is always asked for one.
+  const apiCurrency = summaryApiCurrency(accountId, currency);
   const { data, isLoading, isError, refetch } = useMonthlySummary(viewed.year, viewed.month, accountId, apiCurrency);
 
   const scopedAccount = accounts.find((a) => a.id === accountId);
@@ -115,10 +117,11 @@ export function MonthlySummaryCard({
   );
 
   // "All accounts · TND ⌄": the currency reads as part of the subtitle, not another control.
+  // It also offers currencies that only have activity this month (e.g. an archived account's).
   const currencyMenu =
     !accountId && onCurrencyChange ? (
       <CurrencyMenu
-        currencies={currencies.map((code) => ({
+        currencies={summaryCurrencyOptions(currencies, data?.activeCurrencies ?? [], currency).map((code) => ({
           code,
           activity: code !== currency && (data?.activeCurrencies ?? []).includes(code),
         }))}

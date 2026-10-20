@@ -24,7 +24,10 @@ export const MCP_TOOLS: ReadonlyArray<{ name: McpToolName; title: string; descri
   {
     name: 'get_monthly_summary',
     title: 'Get monthly summary',
-    description: 'Income, expense, savings rate and category breakdown for a given year and month.',
+    description:
+      'Income, expense, savings rate and category breakdown for a given year and month, in one currency. ' +
+      'Pass `accountId` for a single account; otherwise `currency` (ISO code) is required. ' +
+      '`activeCurrencies` lists every currency with activity that month.',
   },
   {
     name: 'list_accounts',

@@ -51,13 +51,23 @@ export function resolveCurrency(opts: {
 
 /**
  * Currency parameter the monthly-summary request carries. Amounts can't be summed across
- * currencies, so an all-accounts view with several currencies is asked for one of them;
- * otherwise the plain request is used.
+ * currencies, so an all-accounts view always asks for one (the API requires it: even with a
+ * single active account, an archived one in another currency can still have activity). A
+ * single account's summary is already in that account's currency.
  */
-export function summaryApiCurrency(
-  accountId: string | undefined,
-  currencies: string[],
-  currency: string,
-): string | undefined {
-  return !accountId && currencies.length > 1 ? currency : undefined;
+export function summaryApiCurrency(accountId: string | undefined, currency: string): string | undefined {
+  return accountId ? undefined : currency;
+}
+
+/**
+ * Currencies the monthly summary's switch offers: those of the active accounts, plus every
+ * currency with activity in the viewed month (`activeCurrencies`, which includes archived
+ * accounts), plus the one shown. Account currencies keep their order (primary first).
+ */
+export function summaryCurrencyOptions(
+  accountCurrencies: string[],
+  activeCurrencies: string[],
+  selected: string,
+): string[] {
+  return [...new Set([...accountCurrencies, ...activeCurrencies, selected])];
 }
