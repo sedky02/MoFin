@@ -124,8 +124,10 @@ export function DraftReviewForm({
               <TypeSwitcher
                 value={field.value}
                 onChange={(t) => {
+                  if (t === field.value) return;
                   field.onChange(t);
-                  if (t === "TRANSFER") form.setValue("categoryId", undefined);
+                  // Categories are per type; a kept id would be hidden but still sent.
+                  form.setValue("categoryId", undefined);
                 }}
               />
             </FormItem>
@@ -233,7 +235,7 @@ export function DraftReviewForm({
                 <FormLabel>
                   Category <span className="font-normal text-muted-foreground">(optional)</span>
                 </FormLabel>
-                <Select value={field.value} onValueChange={field.onChange}>
+                <Select value={field.value ?? ""} onValueChange={(v) => field.onChange(v || undefined)}>
                   <FormControl>
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Uncategorized" />
