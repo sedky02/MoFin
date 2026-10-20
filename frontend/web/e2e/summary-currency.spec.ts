@@ -93,9 +93,13 @@ function monthLabel(offset: number) {
 async function switchOptions(page: Page, card: Locator): Promise<string[]> {
   const trigger = card.getByRole("combobox", { name: "Currency" });
   if ((await trigger.count()) === 0) return [];
-  await trigger.click();
   const options = page.getByRole("option");
-  await expect(options.first()).toBeVisible();
+  // The option list is rebuilt when the month's `activeCurrencies` arrive, which can close an
+  // open select, so retry the open until it stays up.
+  await expect(async () => {
+    await trigger.click();
+    await expect(options.first()).toBeVisible({ timeout: 1500 });
+  }).toPass({ timeout: 15_000 });
   const codes = (await options.allInnerTexts()).map((text) => text.trim().slice(0, 3));
   await page.keyboard.press("Escape");
   await expect(options).toHaveCount(0);
