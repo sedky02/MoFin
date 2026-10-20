@@ -102,7 +102,7 @@ test.describe("category on type switch", () => {
     await page.getByRole("button", { name: "Split transaction" }).click();
     await expect(splitRow(page, 1).getByRole("combobox")).toContainText("Groceries");
 
-    const row2Amount = splitRow(page, 2).getByLabel("Amount in USD");
+    const row2Amount = page.getByLabel("Item 2 amount");
     await row2Amount.click();
     await row2Amount.pressSequentially("10", { delay: 30 });
     await splitRow(page, 2).getByRole("combobox").click();
