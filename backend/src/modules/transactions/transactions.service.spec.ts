@@ -172,7 +172,7 @@ describe('TransactionsService category type', () => {
       prisma as never,
       {} as never,
       new CategoriesService(prisma as never),
-      { assertOwned: jest.fn(async () => ({})) } as never,
+      { assertOwned: jest.fn(async () => ({})), assertActive: jest.fn(async () => ({})) } as never,
       {} as never,
     );
     await expect(service.updateRecurring('u1', 'r1', { categoryId: 'groceries' })).rejects.toBeInstanceOf(

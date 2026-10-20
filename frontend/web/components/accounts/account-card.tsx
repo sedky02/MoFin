@@ -1,6 +1,6 @@
 "use client";
 
-import { MoreVertical, Pencil, Archive, ArchiveRestore } from "lucide-react";
+import { MoreVertical, Pencil, Archive, ArchiveRestore, AlertTriangle } from "lucide-react";
 import type { Account } from "@/lib/types";
 import { useLedgerBalance } from "@/hooks/useLedger";
 import { MoneyAmount } from "@/components/common/money-amount";
@@ -30,7 +30,10 @@ export function AccountCard({
   readOnly?: boolean;
 }) {
   // Parallel per-account balance query (key = currency when accountId is passed).
-  const { data, isLoading } = useLedgerBalance({ accountId: account.id });
+  // Archived accounts are readable too, so a failed request is a real error and is
+  // shown as one, never as a balance of 0. An empty result is an account with no
+  // ledger entries yet, which really is 0.
+  const { data, isLoading, isError, refetch } = useLedgerBalance({ accountId: account.id });
   const balance =
     data?.find((b) => b.key === account.currency)?.balance ?? data?.[0]?.balance ?? "0";
 
@@ -89,6 +92,20 @@ export function AccountCard({
         <p className="text-xs text-muted-foreground">Current balance</p>
         {isLoading ? (
           <Skeleton className="mt-1.5 h-7 w-28" />
+        ) : isError ? (
+          <div role="alert" className="mt-1 flex h-8 items-center gap-2 text-sm text-destructive">
+            <AlertTriangle className="size-4 shrink-0" aria-hidden />
+            <span>Couldn&apos;t load balance</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-foreground"
+              onClick={() => refetch()}
+              aria-label={`Retry loading the balance of ${account.name}`}
+            >
+              Retry
+            </Button>
+          </div>
         ) : (
           <MoneyAmount
             amount={balance}

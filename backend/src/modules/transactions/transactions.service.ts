@@ -216,8 +216,8 @@ export class TransactionsService {
     if (root.type === TransactionType.TRANSFER && (!fromAccountId || !toAccountId)) {
       throw new BadRequestException('Transfer requires fromAccountId and toAccountId');
     }
-    if (fromAccountId) await this.accountsService.assertOwned(userId, fromAccountId);
-    if (toAccountId) await this.accountsService.assertOwned(userId, toAccountId);
+    if (fromAccountId) await this.accountsService.assertActive(userId, fromAccountId);
+    if (toAccountId) await this.accountsService.assertActive(userId, toAccountId);
     if (command.categoryId) await this.categoriesService.assertAssignable(userId, root.type, command.categoryId);
 
     let nextOccurrenceAt = root.nextOccurrenceAt;

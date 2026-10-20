@@ -40,7 +40,7 @@ export class GoalsService {
   ) {}
 
   async create(userId: string, dto: CreateGoalDto) {
-    const account = await this.accountsService.assertOwned(userId, dto.accountId);
+    const account = await this.accountsService.assertActive(userId, dto.accountId);
 
     let periodStart: Date;
     let periodEnd: Date;
