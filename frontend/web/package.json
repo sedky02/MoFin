@@ -10,6 +10,7 @@
     "e2e": "playwright test",
     "e2e:seed": "node scripts/seed-ux-fixture.ts",
     "e2e:shots": "node e2e/screenshots.ts",
+    "e2e:upload": "node e2e/upload-pr-images.ts",
     "test": "vitest run"
   },
   "dependencies": {
