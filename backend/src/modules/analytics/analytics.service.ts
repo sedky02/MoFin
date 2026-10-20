@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { LedgerDirection, Prisma, TransactionType } from '@prisma/client';
 import { DomainEvents, TransactionCreatedEvent } from '../../common/events/domain-events';
@@ -9,6 +9,12 @@ export class AnalyticsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getMonthlySummary(userId: string, year: number, month: number, refresh = false, accountId?: string, currency?: string) {
+    // Without an account to pin the currency, the totals would add different currencies
+    // together (an archived account's activity still counts). The DTO checks this too;
+    // repeated here so MCP, which validates only the raw shape, can't skip it.
+    if (!accountId && !currency) {
+      throw new BadRequestException('currency is required when accountId is not given');
+    }
     const cacheKey = this.monthlySummaryCacheKey(year, month, accountId, currency);
     const cached = await this.prisma.analyticsCache.findUnique({ where: { userId_cacheKey: { userId, cacheKey } } });
     if (cached && cached.expiresAt > new Date() && !refresh) return cached.payload;

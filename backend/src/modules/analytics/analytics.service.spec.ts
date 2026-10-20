@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common';
 import { Prisma, TransactionType } from '@prisma/client';
 import { AnalyticsService } from './analytics.service';
 
@@ -13,7 +14,11 @@ describe('AnalyticsService.getMonthlySummary', () => {
     return { service: new AnalyticsService(prisma as never), prisma };
   }
 
-  const item = (accountId: string, amount: string) => ({ accountId, amount: new Prisma.Decimal(amount) });
+  const item = (accountId: string, amount: string, currency = 'TND') => ({
+    accountId,
+    amount: new Prisma.Decimal(amount),
+    currency,
+  });
 
   it('scopes income/expense totals to accountId when provided', async () => {
     const transactions = [
@@ -48,16 +53,11 @@ describe('AnalyticsService.getMonthlySummary', () => {
     );
   });
 
-  it('restricts an all-accounts summary to one currency when asked', async () => {
-    const cur = (accountId: string, amount: string, currency: string) => ({
-      accountId,
-      amount: new Prisma.Decimal(amount),
-      currency,
-    });
+  it('restricts an all-accounts summary to one currency', async () => {
     const transactions = [
-      { type: TransactionType.INCOME, category: null, items: [cur('acc-usd', '100', 'USD')] },
-      { type: TransactionType.INCOME, category: null, items: [cur('acc-tnd', '900', 'TND')] },
-      { type: TransactionType.EXPENSE, category: { name: 'Rent' }, items: [cur('acc-tnd', '300', 'TND')] },
+      { type: TransactionType.INCOME, category: null, items: [item('acc-usd', '100', 'USD')] },
+      { type: TransactionType.INCOME, category: null, items: [item('acc-tnd', '900', 'TND')] },
+      { type: TransactionType.EXPENSE, category: { name: 'Rent' }, items: [item('acc-tnd', '300', 'TND')] },
     ];
     const { service, prisma } = makeService(transactions);
 
@@ -88,7 +88,7 @@ describe('AnalyticsService.getMonthlySummary', () => {
     ];
     const { service } = makeService(transactions);
 
-    const result = (await service.getMonthlySummary('u1', 2026, 7, false)) as {
+    const result = (await service.getMonthlySummary('u1', 2026, 7, false, undefined, 'TND')) as {
       income: string;
       expenses: string;
     };
@@ -104,14 +104,14 @@ describe('AnalyticsService.getMonthlySummary', () => {
         categoryId: null,
         category: null,
         items: [
-          { accountId: 'acc-a', amount: new Prisma.Decimal('30'), categoryId: 'cat-groceries', category: { name: 'Groceries', color: '#22c55e' } },
-          { accountId: 'acc-a', amount: new Prisma.Decimal('20'), categoryId: 'cat-household', category: { name: 'Household', color: '#3b82f6' } },
+          { accountId: 'acc-a', amount: new Prisma.Decimal('30'), currency: 'TND', categoryId: 'cat-groceries', category: { name: 'Groceries', color: '#22c55e' } },
+          { accountId: 'acc-a', amount: new Prisma.Decimal('20'), currency: 'TND', categoryId: 'cat-household', category: { name: 'Household', color: '#3b82f6' } },
         ],
       },
     ];
     const { service } = makeService(transactions);
 
-    const result = (await service.getMonthlySummary('u1', 2026, 7, false)) as {
+    const result = (await service.getMonthlySummary('u1', 2026, 7, false, undefined, 'TND')) as {
       expenses: string;
       categoryBreakdown: { category: string; color: string | null; amount: string }[];
     };
@@ -133,10 +133,47 @@ describe('AnalyticsService.getMonthlySummary', () => {
       where: { userId_cacheKey: { userId: 'u1', cacheKey: 'monthly-summary:v3:2026:7:acc-a' } },
     });
 
-    await service.getMonthlySummary('u1', 2026, 7, false);
+    await service.getMonthlySummary('u1', 2026, 7, false, undefined, 'TND');
     expect(prisma.analyticsCache.findUnique).toHaveBeenCalledWith({
-      where: { userId_cacheKey: { userId: 'u1', cacheKey: 'monthly-summary:v3:2026:7' } },
+      where: { userId_cacheKey: { userId: 'u1', cacheKey: 'monthly-summary:v3:2026:7:cur:TND' } },
     });
+  });
+
+  it('refuses an all-accounts summary without a currency instead of adding currencies together', async () => {
+    const { service, prisma } = makeService([]);
+
+    await expect(service.getMonthlySummary('u1', 2026, 7, false)).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.analyticsCache.findUnique).not.toHaveBeenCalled();
+    expect(prisma.transaction.findMany).not.toHaveBeenCalled();
+  });
+
+  it("keeps an archived account's other-currency activity out of the totals but lists its currency", async () => {
+    // One active TND account, plus an archived EUR account that still had activity this month.
+    const transactions = [
+      { type: TransactionType.INCOME, category: null, items: [item('acc-tnd', '1200', 'TND')] },
+      { type: TransactionType.EXPENSE, category: { name: 'Rent' }, items: [item('acc-tnd', '400', 'TND')] },
+      { type: TransactionType.INCOME, category: null, items: [item('acc-eur-archived', '50', 'EUR')] },
+      { type: TransactionType.EXPENSE, category: { name: 'Travel' }, items: [item('acc-eur-archived', '30', 'EUR')] },
+    ];
+    const { service } = makeService(transactions);
+
+    const tnd = (await service.getMonthlySummary('u1', 2026, 7, false, undefined, 'TND')) as {
+      income: string;
+      expenses: string;
+      activeCurrencies: string[];
+      categoryBreakdown: { category: string; amount: string }[];
+    };
+    expect(tnd.income).toBe('1200');
+    expect(tnd.expenses).toBe('400');
+    expect(tnd.categoryBreakdown.map((c) => c.category)).toEqual(['Rent']);
+    expect(tnd.activeCurrencies).toEqual(['EUR', 'TND']);
+
+    const eur = (await service.getMonthlySummary('u1', 2026, 7, false, undefined, 'EUR')) as {
+      income: string;
+      expenses: string;
+    };
+    expect(eur.income).toBe('50');
+    expect(eur.expenses).toBe('30');
   });
 });
 

@@ -34,8 +34,14 @@ export class McpService {
       case 'get_balance':
         return this.ledgerService.getBalance(userId, args as never);
       case 'get_monthly_summary': {
-        const { year, month, refresh } = args as { year: number; month: number; refresh: boolean };
-        return this.analyticsService.getMonthlySummary(userId, year, month, refresh);
+        const { year, month, refresh, accountId, currency } = args as {
+          year: number;
+          month: number;
+          refresh: boolean;
+          accountId?: string;
+          currency?: string;
+        };
+        return this.analyticsService.getMonthlySummary(userId, year, month, refresh, accountId, currency);
       }
       case 'list_accounts':
         return this.accountsService.list(userId, args as never);

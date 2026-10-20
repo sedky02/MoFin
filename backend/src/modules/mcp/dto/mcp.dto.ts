@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { monthlySummaryQuerySchema } from '../../analytics/dto/analytics.dto';
+import { monthlySummaryQueryObject } from '../../analytics/dto/analytics.dto';
 import { listAccountsQuerySchema } from '../../accounts/dto/accounts.dto';
 import { createDraftTransactionSchema } from '../../draft-transactions/dto/draft-transactions.dto';
 import { goalHistoryQuerySchema, listGoalsQuerySchema } from '../../goals/dto/goals.dto';
@@ -21,7 +21,9 @@ export const mcpToolSchemas = {
   create_draft_transaction: createDraftTransactionSchema,
   search_transactions: searchTransactionsSchema,
   get_balance: getBalanceQuerySchema,
-  get_monthly_summary: monthlySummaryQuerySchema,
+  // The plain object, since MCP needs a raw shape. The "currency unless accountId"
+  // rule is enforced again by AnalyticsService.getMonthlySummary.
+  get_monthly_summary: monthlySummaryQueryObject,
   list_accounts: listAccountsQuerySchema,
   list_goals: listGoalsQuerySchema,
   get_goal: z.object({ goalId: z.string().min(1) }),
