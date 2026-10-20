@@ -55,9 +55,9 @@ export class TransactionsService {
    */
   async create(userId: string, command: CreateTransactionCommand, db?: Db) {
     this.validateCommand(command);
-    await this.categoriesService.assertAvailable(userId, command.categoryId);
+    await this.categoriesService.assertAssignable(userId, command.type, command.categoryId);
     for (const item of command.items ?? []) {
-      await this.categoriesService.assertAvailable(userId, item.categoryId);
+      await this.categoriesService.assertAssignable(userId, command.type, item.categoryId);
     }
     const ledgerEntries = await this.ledgerService.buildEntriesForCommand(userId, command);
 
@@ -218,7 +218,7 @@ export class TransactionsService {
     }
     if (fromAccountId) await this.accountsService.assertOwned(userId, fromAccountId);
     if (toAccountId) await this.accountsService.assertOwned(userId, toAccountId);
-    if (command.categoryId) await this.categoriesService.assertAvailable(userId, command.categoryId);
+    if (command.categoryId) await this.categoriesService.assertAssignable(userId, root.type, command.categoryId);
 
     let nextOccurrenceAt = root.nextOccurrenceAt;
     if (command.recurringInterval && command.recurringInterval !== root.recurringInterval && nextOccurrenceAt) {

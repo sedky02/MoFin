@@ -1,4 +1,5 @@
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { TransactionType } from '@prisma/client';
 import { CategoriesService } from './categories.service';
 
 describe('CategoriesService.isSystem', () => {
@@ -66,6 +67,60 @@ describe('CategoriesService.isSystem', () => {
   it('update() still rejects a category it does not own (e.g. a global/userId:null one) — that 404 stays as defence in depth', async () => {
     const { service } = makeService({ findFirst: null });
     await expect(service.update('u1', 'global-cat', { name: 'Nope' } as never)).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+  });
+});
+
+describe('CategoriesService.assertAssignable', () => {
+  function makeService(found: unknown) {
+    const findFirst = jest.fn(async () => found);
+    const service = new CategoriesService({ category: { findFirst } } as never);
+    return { service, findFirst };
+  }
+
+  const groceries = { id: 'c-groceries', userId: null, name: 'Groceries', type: 'EXPENSE' };
+  const salary = { id: 'c-salary', userId: 'u1', name: 'Salary', type: 'INCOME' };
+
+  it('returns null without a lookup when no category is given', async () => {
+    const { service, findFirst } = makeService(groceries);
+    await expect(service.assertAssignable('u1', TransactionType.INCOME, undefined)).resolves.toBeNull();
+    await expect(service.assertAssignable('u1', TransactionType.TRANSFER, null)).resolves.toBeNull();
+    expect(findFirst).not.toHaveBeenCalled();
+  });
+
+  it('accepts a category whose type matches the transaction', async () => {
+    const { service } = makeService(salary);
+    await expect(service.assertAssignable('u1', TransactionType.INCOME, 'c-salary')).resolves.toEqual(salary);
+  });
+
+  it('rejects an expense category on an income transaction with a domain message', async () => {
+    const { service } = makeService(groceries);
+    const result = service.assertAssignable('u1', TransactionType.INCOME, 'c-groceries');
+    await expect(result).rejects.toBeInstanceOf(BadRequestException);
+    await expect(result).rejects.toThrow(
+      '"Groceries" is an expense category and cannot be used on an income transaction',
+    );
+  });
+
+  it('rejects an income category on an expense transaction', async () => {
+    const { service } = makeService(salary);
+    await expect(service.assertAssignable('u1', TransactionType.EXPENSE, 'c-salary')).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+  });
+
+  it('rejects any category on a transfer, before looking it up', async () => {
+    const { service, findFirst } = makeService(groceries);
+    const result = service.assertAssignable('u1', TransactionType.TRANSFER, 'c-groceries');
+    await expect(result).rejects.toBeInstanceOf(BadRequestException);
+    await expect(result).rejects.toThrow('Transfers cannot have a category');
+    expect(findFirst).not.toHaveBeenCalled();
+  });
+
+  it('still 404s a category the user cannot see', async () => {
+    const { service } = makeService(null);
+    await expect(service.assertAssignable('u1', TransactionType.EXPENSE, 'someone-elses')).rejects.toBeInstanceOf(
       NotFoundException,
     );
   });
