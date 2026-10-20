@@ -1,22 +1,28 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { AccountsService } from '../accounts/accounts.service';
 import { LedgerService } from './ledger.service';
+
+type TestAccount = { id: string; currency: string; archivedAt?: Date | null };
 
 describe('LedgerService', () => {
   const account = (currency: string) => ({ id: `acc-${currency}`, currency });
 
-  function makeService(accounts: Record<string, { id: string; currency: string }>, groupedRows: unknown[] = []) {
-    const accountsService = {
-      assertOwned: jest.fn(async (_userId: string, id: string) => {
-        const found = Object.values(accounts).find((a) => a.id === id);
-        if (!found) throw new Error('not owned');
-        return found;
-      }),
-    };
+  // The real AccountsService over an in-memory account table, so the
+  // archived/active rules are the ones the app actually runs. Every test
+  // account belongs to user u1.
+  function makeService(accounts: Record<string, TestAccount>, groupedRows: unknown[] = []) {
+    const findFirst = jest.fn(async ({ where }: { where: { id: string; userId: string; archivedAt?: null } }) => {
+      const found = Object.values(accounts).find((a) => a.id === where.id && where.userId === 'u1');
+      if (!found) return null;
+      if ('archivedAt' in where && found.archivedAt) return null;
+      return found;
+    });
     const prisma = {
+      account: { findFirst },
       transactionItem: { groupBy: jest.fn(async () => groupedRows) },
     };
-    return new LedgerService(prisma as never, accountsService as never);
+    return new LedgerService(prisma as never, new AccountsService(prisma as never));
   }
 
   describe('buildEntriesForCommand', () => {
@@ -109,6 +115,36 @@ describe('LedgerService', () => {
       ).rejects.toBeInstanceOf(BadRequestException);
     });
 
+    it('rejects an expense from an archived account', async () => {
+      const service = makeService({ old: { id: 'acc-old', currency: 'EUR', archivedAt: new Date('2026-09-01') } });
+      await expect(
+        service.buildEntriesForCommand('u1', {
+          type: 'EXPENSE',
+          amount: '20',
+          currency: 'EUR',
+          fromAccountId: 'acc-old',
+          description: 'coffee',
+        }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('rejects a transfer into an archived account', async () => {
+      const service = makeService({
+        from: account('EUR'),
+        old: { id: 'acc-old', currency: 'EUR', archivedAt: new Date('2026-09-01') },
+      });
+      await expect(
+        service.buildEntriesForCommand('u1', {
+          type: 'TRANSFER',
+          amount: '50',
+          currency: 'EUR',
+          fromAccountId: 'acc-EUR',
+          toAccountId: 'acc-old',
+          description: 'move',
+        }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
     it('rejects a cross-currency transfer (audit A3)', async () => {
       const service = makeService({ from: account('USD'), to: { id: 'acc-EUR', currency: 'EUR' } });
       await expect(
@@ -148,6 +184,20 @@ describe('LedgerService', () => {
           { key: 'b:EUR', balance: '-10' },
         ]),
       );
+    });
+
+    it('returns the real balance of an archived account', async () => {
+      const rows = [
+        { accountId: 'acc-old', currency: 'EUR', direction: 'CREDIT', _sum: { amount: new Prisma.Decimal('800.00') } },
+      ];
+      const service = makeService({ old: { id: 'acc-old', currency: 'EUR', archivedAt: new Date('2026-09-01') } }, rows);
+      const result = await service.getBalance('u1', { accountId: 'acc-old' });
+      expect(result).toEqual([{ key: 'EUR', balance: '800' }]);
+    });
+
+    it("404s for an account that isn't the user's", async () => {
+      const service = makeService({ a: { id: 'a', currency: 'USD' } });
+      await expect(service.getBalance('someone-else', { accountId: 'a' })).rejects.toBeInstanceOf(NotFoundException);
     });
 
     it('treats a group with no matching rows (null _sum) as zero', async () => {

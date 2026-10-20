@@ -28,14 +28,29 @@ export class AccountsService {
     });
   }
 
+  /**
+   * Ownership check for reads (balance, search, history). Archived accounts
+   * pass: their ledger entries are kept and their balance is still real money.
+   */
   async assertOwned(userId: string, accountId: string) {
+    const account = await this.prisma.account.findFirst({ where: { id: accountId, userId } });
+    if (!account) throw new NotFoundException(`Account ${accountId} not found`);
+    return account;
+  }
+
+  /**
+   * Ownership check for writes (new transactions, goals, edits, archiving).
+   * An archived account is read-only until it is restored, so it 404s here
+   * the same way an account the user doesn't own does.
+   */
+  async assertActive(userId: string, accountId: string) {
     const account = await this.prisma.account.findFirst({ where: { id: accountId, userId, archivedAt: null } });
     if (!account) throw new NotFoundException(`Account ${accountId} not found`);
     return account;
   }
 
   async update(userId: string, accountId: string, dto: UpdateAccountDto) {
-    await this.assertOwned(userId, accountId);
+    await this.assertActive(userId, accountId);
     return this.prisma.account.update({
       where: { id: accountId },
       data: { ...dto, metadata: dto.metadata as Prisma.InputJsonValue | undefined }
@@ -43,7 +58,7 @@ export class AccountsService {
   }
 
   async archive(userId: string, accountId: string) {
-    await this.assertOwned(userId, accountId);
+    await this.assertActive(userId, accountId);
     return this.prisma.account.update({ where: { id: accountId }, data: { archivedAt: new Date() } });
   }
 

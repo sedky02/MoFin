@@ -34,12 +34,13 @@ export class LedgerService {
       items?: { amount: string; categoryId?: string; memo?: string }[];
     },
   ): Promise<LedgerEntryInput[]> {
-    // assertOwned returns the account, so we validate ownership and currency in one pass.
+    // assertActive returns the account, so we validate ownership and currency in one pass.
+    // Archived accounts are read-only: nothing new can be posted to them.
     const fromAccount = command.fromAccountId
-      ? await this.accountsService.assertOwned(userId, command.fromAccountId)
+      ? await this.accountsService.assertActive(userId, command.fromAccountId)
       : null;
     const toAccount = command.toAccountId
-      ? await this.accountsService.assertOwned(userId, command.toAccountId)
+      ? await this.accountsService.assertActive(userId, command.toAccountId)
       : null;
 
     // Currency consistency (audit A3): every leg must be in the account's own
