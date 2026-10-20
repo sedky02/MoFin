@@ -1,4 +1,5 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { TransactionType } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
 import { CreateCategoryDto, ListCategoriesQueryDto, UpdateCategoryDto } from './dto/categories.dto';
 
@@ -41,6 +42,27 @@ export class CategoriesService {
       where: { id: categoryId, OR: [{ userId }, { userId: null }] }
     });
     if (!category) throw new NotFoundException(`Category ${categoryId} not found`);
+    return category;
+  }
+
+  /**
+   * `assertAvailable` plus a type check for filing a transaction (or one of its
+   * split items) under the category. Ownership alone let an income be filed
+   * under an expense category whenever the client kept a stale categoryId
+   * after a type switch, which then skewed the per-category breakdowns.
+   * Transfers move money between the user's own accounts and take no category.
+   */
+  async assertAssignable(userId: string, transactionType: TransactionType, categoryId?: string | null) {
+    if (!categoryId) return null;
+    if (transactionType === TransactionType.TRANSFER) {
+      throw new BadRequestException('Transfers cannot have a category');
+    }
+    const category = await this.assertAvailable(userId, categoryId);
+    if (category && category.type !== transactionType) {
+      throw new BadRequestException(
+        `"${category.name}" is an ${category.type.toLowerCase()} category and cannot be used on an ${transactionType.toLowerCase()} transaction`,
+      );
+    }
     return category;
   }
 

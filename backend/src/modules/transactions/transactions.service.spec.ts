@@ -2,6 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 import { RecurringInterval, TransactionType } from '@prisma/client';
 import { computeNextOccurrence, TransactionsService } from './transactions.service';
 import { CreateTransactionCommand } from './dto/transactions.dto';
+import { CategoriesService } from '../categories/categories.service';
 
 describe('TransactionsService.validateCommand', () => {
   // The cross-field rules run synchronously before any dependency is touched,
@@ -68,6 +69,117 @@ describe('TransactionsService.validateCommand', () => {
       occurredAt: new Date('2026-01-01'),
       recurringEndDate: new Date('2026-01-01'),
     }));
+});
+
+describe('TransactionsService category type', () => {
+  const categories: Record<string, { id: string; userId: string | null; name: string; type: string }> = {
+    groceries: { id: 'groceries', userId: null, name: 'Groceries', type: 'EXPENSE' },
+    salary: { id: 'salary', userId: 'u1', name: 'Salary', type: 'INCOME' },
+  };
+
+  // The real CategoriesService over a stubbed lookup; the ledger stub fails the
+  // test if a rejected command ever got as far as building entries.
+  function makeService() {
+    const prisma = {
+      category: {
+        findFirst: jest.fn(async ({ where }: { where: { id: string } }) => categories[where.id] ?? null),
+      },
+    };
+    const ledgerService = { buildEntriesForCommand: jest.fn(async () => []) };
+    const service = new TransactionsService(
+      prisma as never,
+      ledgerService as never,
+      new CategoriesService(prisma as never),
+      {} as never,
+      {} as never,
+    );
+    return { service, ledgerService };
+  }
+
+  const income: CreateTransactionCommand = {
+    type: TransactionType.INCOME,
+    description: 'Refund',
+    amount: '30',
+    currency: 'USD',
+    occurredAt: new Date(),
+    toAccountId: 'a',
+  };
+
+  it('rejects INCOME filed under an EXPENSE category with a 400', async () => {
+    const { service, ledgerService } = makeService();
+    const result = service.create('u1', { ...income, categoryId: 'groceries' });
+    await expect(result).rejects.toBeInstanceOf(BadRequestException);
+    await expect(result).rejects.toThrow('"Groceries" is an expense category and cannot be used on an income transaction');
+    expect(ledgerService.buildEntriesForCommand).not.toHaveBeenCalled();
+  });
+
+  it('rejects an INCOME split whose item keeps an EXPENSE category', async () => {
+    const { service, ledgerService } = makeService();
+    await expect(
+      service.create('u1', {
+        ...income,
+        items: [
+          { amount: '10', categoryId: 'salary' },
+          { amount: '20', categoryId: 'groceries' },
+        ],
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(ledgerService.buildEntriesForCommand).not.toHaveBeenCalled();
+  });
+
+  it('rejects a TRANSFER with any category', async () => {
+    const { service, ledgerService } = makeService();
+    const result = service.create('u1', {
+      ...income,
+      type: TransactionType.TRANSFER,
+      fromAccountId: 'a',
+      toAccountId: 'b',
+      categoryId: 'groceries',
+    });
+    await expect(result).rejects.toBeInstanceOf(BadRequestException);
+    await expect(result).rejects.toThrow('Transfers cannot have a category');
+    expect(ledgerService.buildEntriesForCommand).not.toHaveBeenCalled();
+  });
+
+  it('lets INCOME through with an INCOME category', async () => {
+    const { service, ledgerService } = makeService();
+    // Past the category checks the stubbed prisma has no $transaction, so this
+    // fails afterwards; reaching the ledger is what proves the category passed.
+    await service.create('u1', { ...income, categoryId: 'salary' }).catch(() => undefined);
+    expect(ledgerService.buildEntriesForCommand).toHaveBeenCalled();
+  });
+
+  it('rejects re-filing a recurring INCOME series under an EXPENSE category', async () => {
+    const root = {
+      id: 'r1',
+      userId: 'u1',
+      type: TransactionType.INCOME,
+      isRecurring: true,
+      parentTransactionId: null,
+      recurringStatus: 'ACTIVE',
+      recurringAmount: '30',
+      recurringToAccountId: 'a',
+      recurringFromAccountId: null,
+    };
+    const update = jest.fn();
+    const prisma = {
+      category: {
+        findFirst: jest.fn(async ({ where }: { where: { id: string } }) => categories[where.id] ?? null),
+      },
+      transaction: { findFirst: jest.fn(async () => root), update },
+    };
+    const service = new TransactionsService(
+      prisma as never,
+      {} as never,
+      new CategoriesService(prisma as never),
+      { assertOwned: jest.fn(async () => ({})), assertActive: jest.fn(async () => ({})) } as never,
+      {} as never,
+    );
+    await expect(service.updateRecurring('u1', 'r1', { categoryId: 'groceries' })).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+    expect(update).not.toHaveBeenCalled();
+  });
 });
 
 describe('computeNextOccurrence', () => {

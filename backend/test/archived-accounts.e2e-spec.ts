@@ -99,7 +99,7 @@ describe('Archived accounts (e2e)', () => {
         AccountsService,
         TransactionsService,
         { provide: PrismaService, useValue: prismaStub },
-        { provide: CategoriesService, useValue: { assertAvailable: async () => ({}) } },
+        { provide: CategoriesService, useValue: { assertAvailable: async () => ({}), assertAssignable: async () => null } },
         { provide: EventEmitter2, useValue: { emit: () => true } },
       ],
     })
