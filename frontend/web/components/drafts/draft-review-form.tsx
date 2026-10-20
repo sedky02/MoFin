@@ -235,7 +235,10 @@ export function DraftReviewForm({
                 <FormLabel>
                   Category <span className="font-normal text-muted-foreground">(optional)</span>
                 </FormLabel>
-                <Select value={field.value ?? ""} onValueChange={(v) => field.onChange(v || undefined)}>
+                <Select
+                  value={field.value ?? ""}
+                  onValueChange={(v) => field.onChange(v || undefined)}
+                >
                   <FormControl>
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Uncategorized" />

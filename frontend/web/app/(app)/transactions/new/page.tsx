@@ -130,9 +130,8 @@ export default function NewTransactionPage() {
   // split rows only list the new type's categories, and a stale id would still be sent.
   function clearCategories() {
     form.setValue("categoryId", undefined);
-    (form.getValues("items") ?? []).forEach((_, i) =>
-      form.setValue(`items.${i}.categoryId`, undefined),
-    );
+    // "" not undefined: react-hook-form falls back to a row's default (the pre-split pick) for undefined.
+    (form.getValues("items") ?? []).forEach((_, i) => form.setValue(`items.${i}.categoryId`, ""));
   }
   function switchToTransfer() {
     form.setValue("type", "TRANSFER");
@@ -231,7 +230,7 @@ export default function NewTransactionPage() {
       splitting && v.items && v.items.length > 1
         ? v.items.map((item) => ({
             amount: parseMoneyInput(item.amountRaw)!,
-            categoryId: item.categoryId,
+            categoryId: item.categoryId || undefined,
             memo: item.description?.trim() || undefined,
           }))
         : undefined;
