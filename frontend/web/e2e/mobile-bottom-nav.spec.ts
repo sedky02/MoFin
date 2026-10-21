@@ -4,11 +4,23 @@ import { expect, test, type Page } from "@playwright/test";
 // and More opens the same nav sheet as the topbar hamburger. Needs the UX
 // fixture (`npm run e2e:seed`) for the transaction detail check.
 
-test.beforeEach(({}, testInfo) => {
+test.beforeEach(async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "mobile", "the bottom bar only exists below the lg breakpoint");
+  // The dev-only Next indicator and query devtools sit bottom-left, over the
+  // Dashboard slot, and would swallow the tap.
+  await page.addInitScript(() => {
+    document.addEventListener("DOMContentLoaded", () => {
+      const style = document.createElement("style");
+      style.textContent = "nextjs-portal, .tsqd-parent-container { display: none !important; }";
+      document.head.append(style);
+    });
+  });
 });
 
 const bar = (page: Page) => page.getByRole("navigation", { name: "Primary mobile" });
+// The open sheet is modal, so the bar leaves the accessibility tree and
+// getByRole can't see More while it's open.
+const moreButton = (page: Page) => page.locator('nav[aria-label="Primary mobile"] button[aria-haspopup="dialog"]');
 
 const SLOTS = [
   { name: "Dashboard", path: "/dashboard" },
@@ -27,7 +39,8 @@ test("each slot is one tap away and marks its page as current", async ({ page })
   await page.goto("/settings");
   for (const slot of SLOTS) {
     await bar(page).getByRole("link", { name: slot.name, exact: true }).click();
-    await expect(page).toHaveURL(new RegExp(`${slot.path}(\\?.*)?$`));
+    // Generous timeout: `next dev` compiles a route on its first visit.
+    await expect(page).toHaveURL(new RegExp(`${slot.path}(\\?.*)?$`), { timeout: 15_000 });
     await expect(bar(page).locator('[aria-current="page"]')).toHaveText(slot.name);
   }
 });
@@ -54,7 +67,7 @@ test("More opens the nav sheet with the remaining items", async ({ page }) => {
 
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
-  await expect(more).toHaveAttribute("aria-expanded", "true");
+  await expect(moreButton(page)).toHaveAttribute("aria-expanded", "true");
   for (const name of ["Accounts", "Drafts", "Categories", "AI Connector", "Settings"]) {
     await expect(dialog.getByRole("link", { name })).toBeVisible();
   }
