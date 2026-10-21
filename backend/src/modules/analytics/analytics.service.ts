@@ -49,6 +49,18 @@ export class AnalyticsService {
       target.set(key, { name, color, amount: (existing?.amount ?? new Prisma.Decimal(0)).plus(amount) });
     };
 
+    // Split lines carry their own category, and a line left blank is "Uncategorized". Only an
+    // unsplit (single-item) transaction falls back to its top-level category, which is where
+    // that shape keeps it. Splits saved before the top-level category was rejected may still
+    // carry a stale one; it must not soak up their uncategorized lines.
+    type SummaryTransaction = (typeof transactions)[number];
+    const addLine = (target: CategoryTotals, transaction: SummaryTransaction, item: SummaryTransaction['items'][number]) => {
+      const unsplit = transaction.items.length <= 1;
+      const category = item.category ?? (unsplit ? transaction.category : null);
+      const key = item.categoryId ?? (unsplit ? transaction.categoryId : null) ?? 'uncategorized';
+      addToCategory(target, key, category?.name ?? 'Uncategorized', category?.color ?? null, item.amount);
+    };
+
     for (const transaction of transactions) {
       // INCOME/EXPENSE are single-sided, so filtering items down to `accountId` only matters
       // when it's set — otherwise it's every (single) item on the transaction either way.
@@ -60,23 +72,11 @@ export class AnalyticsService {
       const total = items.reduce((sum, item) => sum.plus(item.amount), new Prisma.Decimal(0));
       if (transaction.type === TransactionType.INCOME) {
         income = income.plus(total);
-        for (const item of items) {
-          const category = item.category ?? transaction.category;
-          const key = item.categoryId ?? transaction.categoryId ?? 'uncategorized';
-          addToCategory(incomeCategories, key, category?.name ?? 'Uncategorized', category?.color ?? null, item.amount);
-        }
+        for (const item of items) addLine(incomeCategories, transaction, item);
       }
       if (transaction.type === TransactionType.EXPENSE) {
         expenses = expenses.plus(total);
-        // Split items carry their own category; unsplit items fall back to the
-        // transaction's category so pre-split transactions attribute the same way.
-        for (const item of items) {
-          const category = item.category ?? transaction.category;
-          const key = item.categoryId ?? transaction.categoryId ?? 'uncategorized';
-          const name = category?.name ?? 'Uncategorized';
-          const color = category?.color ?? null;
-          addToCategory(categories, key, name, color, item.amount);
-        }
+        for (const item of items) addLine(categories, transaction, item);
       }
     }
 
