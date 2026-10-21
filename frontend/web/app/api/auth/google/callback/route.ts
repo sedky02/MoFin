@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { safeNextPath } from "@/lib/safe-next";
+import { loginErrorUrl, type LoginErrorCode } from "@/lib/auth-feedback";
 import { BACKEND_TIMEOUT_MS, BACKEND_URL, setAuthCookies, type BackendTokens } from "@/lib/auth-cookies";
 
 const STATE_COOKIE = "google_oauth";
@@ -26,8 +27,10 @@ export async function GET(req: Request) {
     saved = null;
   }
 
-  const fail = (reason: string) => {
-    const res = NextResponse.redirect(new URL(`/login?error=${reason}`, req.url));
+  // Back to /login with a code it can explain (and the return path, so a retry
+  // still lands where the user was going).
+  const fail = (code: LoginErrorCode) => {
+    const res = NextResponse.redirect(new URL(loginErrorUrl(code, saved?.next), req.url));
     res.cookies.set(STATE_COOKIE, "", { path: "/api/auth/google", maxAge: 0 });
     return res;
   };
