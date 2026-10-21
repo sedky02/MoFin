@@ -102,6 +102,8 @@ export default function NewTransactionPage() {
   const itemsArray = useFieldArray({ control: form.control, name: "items" });
   const splitting = itemsArray.fields.length > 1;
 
+  // A split's categories live on its lines, so the pre-split pick moves to the first line
+  // instead of staying on the transaction too (the API rejects a split with both).
   function startSplit() {
     form.setValue("isRecurring", false);
     itemsArray.replace([
@@ -112,9 +114,13 @@ export default function NewTransactionPage() {
       },
       { amountRaw: "", categoryId: undefined, description: "" },
     ]);
+    form.setValue("categoryId", undefined);
   }
+  // Undoing the split hands the first line's category back to the transaction.
   function cancelSplit() {
+    const firstLineCategory = form.getValues("items")?.[0]?.categoryId;
     itemsArray.replace([]);
+    if (firstLineCategory) form.setValue("categoryId", firstLineCategory);
   }
   const [confirmTransfer, setConfirmTransfer] = React.useState(false);
   // Which category field the "New category" dialog was opened from: the main one or a split row.
@@ -244,7 +250,7 @@ export default function NewTransactionPage() {
         occurredAt: new Date(v.occurredAt).toISOString(),
         fromAccountId: v.type !== "INCOME" ? v.fromAccountId : undefined,
         toAccountId: v.type !== "EXPENSE" ? v.toAccountId : undefined,
-        categoryId: v.type !== "TRANSFER" ? v.categoryId : undefined,
+        categoryId: v.type !== "TRANSFER" && !splitItems ? v.categoryId : undefined,
         items: splitItems,
         isRecurring: !splitting && v.isRecurring ? true : undefined,
         recurringInterval: !splitting && v.isRecurring ? v.recurringInterval : undefined,
