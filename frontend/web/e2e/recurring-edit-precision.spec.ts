@@ -1,8 +1,9 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 
 // B-16: editing a recurring series keeps the currency's decimals. The 12.345
 // TND rent opens as 12.345, and a save that only touches the description
-// doesn't send the amount, so future occurrences stay at 12.345.
+// doesn't send the amount, so future occurrences stay at 12.345. The field shows "TND"
+// once, after the amount, never drawn over the digits.
 // Needs the UX fixture: `npm run e2e:seed` ("Rent (monthly)" is a monthly
 // 12.345 TND expense on "Dinar").
 test.use({ locale: "en-US" });
@@ -48,6 +49,19 @@ async function openEditSeries(page: Page, id: string, heading: string) {
   return dialog;
 }
 
+/**
+ * How far a money field's prefix symbol reaches into the typed amount, in px
+ * (<= 0 means no overlap). No prefix at all counts as 0.
+ */
+async function prefixOverlap(amount: Locator): Promise<number> {
+  return amount.evaluate((input) => {
+    const prefix = input.parentElement?.querySelector<HTMLElement>("span[aria-hidden]");
+    if (!prefix) return 0;
+    const textLeft = input.getBoundingClientRect().left + parseFloat(getComputedStyle(input).paddingLeft);
+    return prefix.getBoundingClientRect().right - textLeft;
+  });
+}
+
 test.describe("edit recurring series precision", () => {
   test("TND rent keeps 3 decimals, and a description-only save leaves the amount alone", async ({ page }) => {
     const root = await findRentRoot(page);
@@ -58,6 +72,10 @@ test.describe("edit recurring series precision", () => {
     try {
       const dialog = await openEditSeries(page, root.id, RENT);
       await expect(dialog.getByLabel("Amount")).toHaveValue("12.345");
+      // The code is shown once, after the amount, and nothing is drawn over the digits.
+      const amountField = dialog.getByLabel("Amount").locator("xpath=..");
+      await expect(amountField.getByText("TND", { exact: true })).toHaveCount(1);
+      expect(await prefixOverlap(dialog.getByLabel("Amount"))).toBeLessThanOrEqual(0);
 
       await dialog.getByLabel("Description").fill(renamed);
       const patch = page.waitForRequest(
