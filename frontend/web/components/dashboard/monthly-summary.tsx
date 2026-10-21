@@ -243,7 +243,7 @@ export function MonthlySummaryCard({
                 tone(netValue, netValue < 0 ? "text-destructive" : "text-success"),
               )}
             />
-            <span className="block text-[11px] leading-tight text-muted-foreground">income − expenses, excl. transfers</span>
+            <span className="block text-xs leading-tight text-muted-foreground">income − expenses, excl. transfers</span>
           </dd>
         </div>
         <div className="grid grid-cols-2 gap-3 border-t border-border pt-3">
