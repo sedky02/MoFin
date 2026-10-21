@@ -33,6 +33,22 @@ async function title(locator: Locator): Promise<string | null> {
   return locator.getAttribute("title", { timeout: 1000 }).catch(() => null);
 }
 
+/**
+ * The hero and the summary each have their own currency switch. Put both on USD, where the
+ * fixture has activity this month (EUR has none, so its chip is hidden and every figure is 0).
+ */
+async function showUsd(page: Page) {
+  // A click that lands before hydration is lost, so retry until the radio takes it.
+  const usd = hero(page).getByRole("radio", { name: "USD", exact: true });
+  await expect(async () => {
+    await usd.click();
+    await expect(usd).toBeChecked({ timeout: 1000 });
+  }).toPass();
+  await summaryCard(page).getByRole("combobox", { name: "Currency" }).click();
+  await page.getByRole("option", { name: /USD/ }).click();
+  await expect(summaryCard(page).getByRole("combobox", { name: "Currency" })).toContainText("USD");
+}
+
 async function showAllAccounts(page: Page, baseURL: string | undefined) {
   await page.context().addCookies([{ name: ACTIVE_ACCOUNT_COOKIE, value: "all", url: baseURL ?? "http://localhost:3001" }]);
   await page.addInitScript((key) => localStorage.setItem(key, "all"), ACTIVE_ACCOUNT_COOKIE);
@@ -47,7 +63,7 @@ test.describe("hero metric (UX fixture)", () => {
     await expect(card).toContainText("All accounts");
     await expect(stripAmount(card, "Income")).toBeVisible();
     await expect(headline(page)).toBeVisible();
-    // The currency switch is shared by both cards, so they show the same currency (checked below).
+    await showUsd(page);
 
     // The summary opens on the current month (no stepping back), which is the series' last point.
     for (const [tab, label, caption] of [
@@ -55,7 +71,7 @@ test.describe("hero metric (UX fixture)", () => {
       ["Income", "Income", /^Earned in /],
     ] as const) {
       await hero(page).getByRole("tab", { name: tab }).click();
-      await expect(hero(page)).toContainText(caption);
+      await expect(hero(page).getByText(caption)).toBeVisible();
       const summary = stripAmount(card, label);
       await expect
         .poll(async () => {
@@ -76,6 +92,7 @@ test.describe("hero metric (UX fixture)", () => {
     const card = summaryCard(page);
     await expect(stripAmount(card, "Income")).toBeVisible();
     await expect(card).toContainText("income − expenses, excl. transfers");
+    await showUsd(page);
 
     await hero(page).getByRole("tab", { name: "Balance" }).click();
     await expect(hero(page)).toContainText("Balance change");
