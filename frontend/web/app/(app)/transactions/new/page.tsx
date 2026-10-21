@@ -40,8 +40,10 @@ import { useActiveAccount } from "@/hooks/useActiveAccount";
 import { useSuggestedAccountId } from "@/hooks/useSuggestedAccount";
 import { useCategories } from "@/hooks/useCategories";
 import { useCreateTransaction } from "@/hooks/useTransactions";
+import { useFormStash } from "@/hooks/use-form-stash";
 import {
   makeTransactionSchema,
+  transactionFormBase,
   type TransactionFormValues,
 } from "@/lib/transaction-schema";
 import { parseMoneyInput, toDatetimeLocal } from "@/lib/format";
@@ -53,6 +55,8 @@ const DESCRIPTION_PLACEHOLDER: Record<string, string> = {
   INCOME: "Description, e.g. March salary",
   TRANSFER: "Description, e.g. Move to savings",
 };
+
+const UNSAVED_STASH_KEY = "mofin-unsaved-transaction";
 
 export default function NewTransactionPage() {
   const router = useRouter();
@@ -178,6 +182,17 @@ export default function NewTransactionPage() {
     form.setValue("fromAccountId", undefined);
     form.setValue("toAccountId", undefined);
   }, [activeAccountId, form]);
+
+  // If the session expires mid-save, the input waits in sessionStorage while the
+  // user signs in again and comes back here. After the effect above, so the
+  // active account settling on load doesn't clear restored accounts; a stash
+  // naming accounts this user doesn't have isn't theirs, so it's dropped.
+  const restored = useFormStash(form, UNSAVED_STASH_KEY, {
+    ready: !accountsLoading,
+    accept: (v) =>
+      transactionFormBase.partial().safeParse(v).success &&
+      [v.fromAccountId, v.toAccountId].every((id) => !id || accountList.some((a) => a.id === id)),
+  });
 
   // Currency follows the account the money moves through.
   const sourceAccountId = type === "INCOME" ? effectiveToId : effectiveFromId;
@@ -308,6 +323,12 @@ export default function NewTransactionPage() {
         <h1 className="font-heading text-3xl font-semibold tracking-tight sm:text-4xl">New transaction</h1>
         <p className="mt-2 text-sm text-muted-foreground">Record an expense, income or transfer.</p>
       </header>
+
+      {restored && (
+        <p role="status" className="mb-4 rounded-xl bg-muted px-4 py-3 text-center text-sm">
+          Restored your unsaved transaction.
+        </p>
+      )}
 
       <div className="rounded-3xl bg-card p-5 shadow-sm ring-1 ring-border/60 sm:p-8">
         <Form {...form}>
