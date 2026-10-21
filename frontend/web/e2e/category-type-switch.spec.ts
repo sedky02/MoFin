@@ -34,9 +34,15 @@ function splitRow(page: Page, n: number) {
 }
 
 async function openNewTransaction(page: Page) {
+  // Pin the active account to "Main checking" (USD). Left on "All accounts", the form
+  // suggests the most used recent account, which drifts as earlier runs void their rows.
+  const accounts = await firstPage(page.request, "/accounts");
+  const main = accounts.find((a) => a.name === "Main checking");
+  expect(main, "fixture account \"Main checking\" not found: run `npm run e2e:seed`").toBeTruthy();
+  await page.addInitScript((id) => localStorage.setItem("mofin-active-account", id), String(main!.id));
+
   await page.goto("/transactions/new");
   await expect(page.getByRole("heading", { level: 1, name: "New transaction" })).toBeVisible();
-  // The form defaults to "Main checking" (USD), so this label is stable.
   await expect(page.getByLabel("Amount in USD").first()).toBeVisible();
 }
 
