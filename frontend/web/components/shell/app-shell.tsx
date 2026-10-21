@@ -4,7 +4,7 @@ import * as React from "react";
 import { Suspense } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { Menu } from "lucide-react";
+import { Menu, Ellipsis } from "lucide-react";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -13,13 +13,8 @@ import { ThemeToggle } from "./theme-toggle";
 import { UserMenu } from "./user-menu";
 import { AccountSwitcher } from "@/components/dashboard/account-switcher";
 import { useActiveAccount } from "@/hooks/useActiveAccount";
-import { NAV_ITEMS } from "./nav-items";
+import { BOTTOM_NAV_ITEMS, isBottomNavActive } from "./nav-items";
 import { cn } from "@/lib/utils";
-import { usePendingDraftCount } from "@/hooks/useDrafts";
-
-const BOTTOM_NAV = NAV_ITEMS.filter((i) =>
-  ["/dashboard", "/accounts", "/transactions/new", "/drafts"].includes(i.href),
-);
 
 /** The account new transactions, drafts and goals default to. "All accounts" = no default. */
 function ActiveAccountPicker() {
@@ -88,7 +83,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Mobile bottom nav */}
       <Suspense fallback={<MobileBottomNavSkeleton />}>
-        <MobileBottomNav />
+        <MobileBottomNav menuOpen={open} onOpenMenu={() => setOpen(true)} />
       </Suspense>
     </div>
   );
@@ -117,43 +112,42 @@ function MobileBottomNavSkeleton() {
   );
 }
 
-function MobileBottomNav() {
+const BAR_ITEM =
+  "relative flex min-h-11 min-w-11 flex-1 flex-col items-center justify-center gap-1 text-[11px] font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring";
+
+function MobileBottomNav({ menuOpen, onOpenMenu }: { menuOpen: boolean; onOpenMenu: () => void }) {
   const pathname = usePathname();
-  const { data: count } = usePendingDraftCount();
   return (
     <nav
       className="fixed inset-x-0 bottom-0 z-30 flex h-16 items-stretch border-t border-border bg-background/90 backdrop-blur-md lg:hidden"
       aria-label="Primary mobile"
     >
-      {BOTTOM_NAV.map((item) => {
+      {BOTTOM_NAV_ITEMS.map((item) => {
         const Icon = item.icon;
-        const active =
-          item.href === "/dashboard"
-            ? pathname === "/dashboard"
-            : pathname.startsWith(item.href);
+        const active = isBottomNavActive(pathname, item.href);
         return (
           <Link
             key={item.href}
             href={item.href}
             aria-current={active ? "page" : undefined}
-            className={cn(
-              "relative flex flex-1 flex-col items-center justify-center gap-1 text-[11px] font-medium",
-              active ? "text-primary-text" : "text-muted-foreground",
-            )}
+            className={cn(BAR_ITEM, active ? "text-primary-text" : "text-muted-foreground")}
           >
-            <span className="relative">
-              <Icon className="size-5" />
-              {item.badge === "drafts" && !!count && (
-                <span className="absolute -right-2 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] tabular text-primary-foreground">
-                  {count > 9 ? "9+" : count}
-                  <span className="sr-only"> pending</span>
-                </span>
-              )}
-            </span>
-            {item.label === "New Transaction" ? "Add" : item.label.replace(" Transaction", "")}
+            <Icon className="size-5" />
+            {item.barLabel ?? (item.label === "New Transaction" ? "Add" : item.label)}
           </Link>
         );
       })}
+      {/* Opens the same sheet as the topbar hamburger. */}
+      <button
+        type="button"
+        aria-haspopup="dialog"
+        aria-expanded={menuOpen}
+        onClick={onOpenMenu}
+        className={cn(BAR_ITEM, "text-muted-foreground")}
+      >
+        <Ellipsis className="size-5" />
+        More
+      </button>
     </nav>
   );
 }
