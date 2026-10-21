@@ -121,6 +121,16 @@ export function currencySymbol(currency?: string): string {
   }
 }
 
+/**
+ * The symbol a money field shows before the amount, or "" when the symbol is
+ * just the currency code ("TND", "CHF"): the field already shows the code after
+ * the amount, and a 3-letter prefix doesn't fit in front of it.
+ */
+export function moneyInputPrefix(currency?: string): string {
+  const symbol = currencySymbol(currency);
+  return symbol && symbol !== currency ? symbol : "";
+}
+
 /** How `interpretMoneyText` read a piece of money text. */
 export interface MoneyText {
   /** Plain dot-decimal string: no grouping, no sign, no exponent ("1234", "12.5"). */

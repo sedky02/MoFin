@@ -4,9 +4,9 @@ import * as React from "react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import {
-  currencySymbol,
   formatMoneyInput,
   moneyInputHint,
+  moneyInputPrefix,
   normalizeMoneyTyping,
   pasteMoneyText,
 } from "@/lib/format";
@@ -123,7 +123,7 @@ export function MoneyInput({
     );
   }
 
-  const symbol = currencySymbol(currency);
+  const symbol = moneyInputPrefix(currency);
   const currencyId = currency ? `${baseId}-currency` : undefined;
 
   return (
@@ -147,7 +147,8 @@ export function MoneyInput({
           onPaste={handlePaste}
           onBlur={handleBlur}
           disabled={disabled}
-          className={cn("tabular", symbol ? "pl-7" : "pl-3", currency && "pr-14", className)}
+          // Room for the prefix: one character ("$") or two ("zł").
+          className={cn("tabular", !symbol ? "pl-3" : symbol.length > 1 ? "pl-9" : "pl-7", currency && "pr-14", className)}
           aria-describedby={ids(describedBy, currencyId, hintId)}
           {...aria}
         />

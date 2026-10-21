@@ -49,6 +49,20 @@ describe("MoneyInput", () => {
     expect(input.value).toBe("1234.00");
   });
 
+  it("shows a TND amount without the code drawn over it", () => {
+    const { input } = setup({ currency: "TND" });
+    // "TND" appears once, after the amount, and the field isn't padded for a prefix.
+    expect(screen.getAllByText("TND")).toHaveLength(1);
+    expect(input.className).toContain("pl-3");
+    expect(input.className).not.toContain("pl-7");
+  });
+
+  it("keeps the symbol prefix for USD", () => {
+    const { input } = setup({ currency: "USD" });
+    expect(screen.getByText("$")).toBeTruthy();
+    expect(input.className).toContain("pl-7");
+  });
+
   it("tidies to the currency's decimals on blur (TND has 3)", async () => {
     const { input, user } = setup({ currency: "TND" });
     await user.type(input, "1,234");
