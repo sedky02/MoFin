@@ -77,11 +77,32 @@ async function request<T>(path: string, opts: RequestOpts = {}): Promise<T> {
   return data as T;
 }
 
+// Pages holding unsaved input register here to put it aside before the
+// session-expired redirect unloads them (see useFormStash).
+const beforeLoginRedirect = new Set<() => void>();
+
+/** Run `fn` just before the session-expired redirect. Returns the unsubscribe. */
+export function onBeforeLoginRedirect(fn: () => void): () => void {
+  beforeLoginRedirect.add(fn);
+  return () => {
+    beforeLoginRedirect.delete(fn);
+  };
+}
+
 let redirecting = false;
 function redirectToLogin() {
   if (redirecting || window.location.pathname.startsWith("/login")) return;
   redirecting = true;
-  window.location.assign(loginUrlWithNext(window.location.pathname + window.location.search));
+  for (const fn of beforeLoginRedirect) {
+    try {
+      fn();
+    } catch {
+      /* saving a draft must never block the redirect */
+    }
+  }
+  window.location.assign(
+    loginUrlWithNext(window.location.pathname + window.location.search, "expired"),
+  );
 }
 
 function safeJson(text: string): unknown {
