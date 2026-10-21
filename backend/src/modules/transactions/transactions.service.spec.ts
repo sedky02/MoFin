@@ -50,6 +50,25 @@ describe('TransactionsService.validateCommand', () => {
   it("rejects split items that don't add up to the transaction total", () =>
     expectReject({ ...base, amount: '10', items: [{ amount: '4' }, { amount: '5' }] }));
 
+  it('rejects a split that also carries a top-level category', async () => {
+    const result = service.create('u1', {
+      ...base,
+      categoryId: 'groceries',
+      items: [
+        { amount: '4', categoryId: 'groceries' },
+        { amount: '6' },
+      ],
+    });
+    await expect(result).rejects.toBeInstanceOf(BadRequestException);
+    await expect(result).rejects.toThrow('A split transaction cannot have its own category');
+  });
+
+  it('still accepts a top-level category on a single-item transaction', async () => {
+    // Gets past validation and fails later, on the bare categories stub, not with the split error.
+    const result = service.create('u1', { ...base, categoryId: 'groceries', items: [{ amount: '10' }] });
+    await expect(result).rejects.not.toThrow('A split transaction cannot have its own category');
+  });
+
   it('rejects recurring transactions with split items', () =>
     expectReject({
       ...base,
