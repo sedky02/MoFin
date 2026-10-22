@@ -53,3 +53,45 @@ describe('SearchService.searchTransactions', () => {
     );
   });
 });
+
+describe('SearchService category filter', () => {
+  function makeService() {
+    const paginate = jest.fn(async (_args: { where: Record<string, unknown> }) => ({ data: [], total: 0, limit: 20, offset: 0 }));
+    const prisma = { paginated: { transaction: { paginate } } };
+    const accountsService = { assertOwned: jest.fn(async () => ({})) };
+    const categoriesService = { assertAvailable: jest.fn(async () => ({})) };
+    const service = new SearchService(prisma as never, accountsService as never, categoriesService as never);
+    return { service, paginate };
+  }
+
+  it("matches a split by one of its lines' categories as well as the transaction's own", async () => {
+    const { service, paginate } = makeService();
+
+    await service.searchTransactions('u1', { limit: 20, offset: 0, categoryId: 'dining' } as never);
+
+    const { where } = paginate.mock.calls[0][0];
+    expect(where.OR).toEqual([{ categoryId: 'dining' }, { items: { some: { categoryId: 'dining' } } }]);
+    // Not a top-level equality, which would miss every split (they carry no category of their own).
+    expect(where).not.toHaveProperty('categoryId');
+  });
+
+  it('keeps the account filter alongside the line-category match', async () => {
+    const { service, paginate } = makeService();
+
+    await service.searchTransactions('u1', { limit: 20, offset: 0, categoryId: 'dining', accountId: 'a1' } as never);
+
+    const { where } = paginate.mock.calls[0][0];
+    expect(where.OR).toEqual([{ categoryId: 'dining' }, { items: { some: { categoryId: 'dining' } } }]);
+    expect(where.items).toEqual({ some: expect.objectContaining({ accountId: 'a1' }) });
+  });
+
+  it('adds no category condition when no category is asked for', async () => {
+    const { service, paginate } = makeService();
+
+    await service.searchTransactions('u1', { limit: 20, offset: 0 } as never);
+
+    const { where } = paginate.mock.calls[0][0];
+    expect(where).not.toHaveProperty('OR');
+    expect(where).not.toHaveProperty('categoryId');
+  });
+});

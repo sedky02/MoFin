@@ -22,7 +22,11 @@ export class SearchService {
       where: {
         userId,
         description: { contains: query.q, mode: 'insensitive' },
-        ...(query.categoryId ? { categoryId: query.categoryId } : {}),
+        // A split files its categories on its lines, an unsplit transaction on itself; match either.
+        // OR (not a second `items` key) so it composes with the account/amount filter below.
+        ...(query.categoryId
+          ? { OR: [{ categoryId: query.categoryId }, { items: { some: { categoryId: query.categoryId } } }] }
+          : {}),
         ...(query.from || query.to ? { occurredAt: { gte: query.from ? new Date(query.from) : undefined, lte: query.to ? new Date(query.to) : undefined } } : {}),
         ...(query.accountId || query.minAmount || query.maxAmount
           ? {

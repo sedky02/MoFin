@@ -125,6 +125,82 @@ describe('AnalyticsService.getMonthlySummary', () => {
     );
   });
 
+  it("files a split's uncategorized line under Uncategorized, not under a stale top-level category", async () => {
+    // A split saved before top-level categories were rejected on splits: the pre-split pick
+    // (Groceries) is still on the transaction and was also copied to the first line.
+    const groceries = { name: 'Groceries', color: '#22c55e' };
+    const transactions = [
+      {
+        type: TransactionType.EXPENSE,
+        categoryId: 'cat-groceries',
+        category: groceries,
+        items: [
+          { accountId: 'acc-a', amount: new Prisma.Decimal('30'), currency: 'TND', categoryId: 'cat-groceries', category: groceries },
+          { accountId: 'acc-a', amount: new Prisma.Decimal('15'), currency: 'TND', categoryId: 'cat-dining', category: { name: 'Dining', color: '#f97316' } },
+          { accountId: 'acc-a', amount: new Prisma.Decimal('5'), currency: 'TND', categoryId: null, category: null },
+        ],
+      },
+    ];
+    const { service } = makeService(transactions);
+
+    const result = (await service.getMonthlySummary('u1', 2026, 7, false, undefined, 'TND')) as {
+      categoryBreakdown: { category: string; color: string | null; amount: string }[];
+    };
+
+    expect(result.categoryBreakdown).toHaveLength(3);
+    expect(result.categoryBreakdown).toEqual(
+      expect.arrayContaining([
+        { category: 'Groceries', color: '#22c55e', amount: '30' },
+        { category: 'Dining', color: '#f97316', amount: '15' },
+        { category: 'Uncategorized', color: null, amount: '5' },
+      ]),
+    );
+  });
+
+  it("attributes an income split's lines the same way", async () => {
+    const transactions = [
+      {
+        type: TransactionType.INCOME,
+        categoryId: null,
+        category: null,
+        items: [
+          { accountId: 'acc-a', amount: new Prisma.Decimal('900'), currency: 'TND', categoryId: 'cat-salary', category: { name: 'Salary', color: null } },
+          { accountId: 'acc-a', amount: new Prisma.Decimal('100'), currency: 'TND', categoryId: null, category: null },
+        ],
+      },
+    ];
+    const { service } = makeService(transactions);
+
+    const result = (await service.getMonthlySummary('u1', 2026, 7, false, undefined, 'TND')) as {
+      incomeBreakdown: { category: string; color: string | null; amount: string }[];
+    };
+
+    expect(result.incomeBreakdown).toEqual(
+      expect.arrayContaining([
+        { category: 'Salary', color: null, amount: '900' },
+        { category: 'Uncategorized', color: null, amount: '100' },
+      ]),
+    );
+  });
+
+  it("still files an unsplit transaction's single line under the transaction's own category", async () => {
+    const transactions = [
+      {
+        type: TransactionType.EXPENSE,
+        categoryId: 'cat-rent',
+        category: { name: 'Rent', color: '#ef4444' },
+        items: [{ accountId: 'acc-a', amount: new Prisma.Decimal('400'), currency: 'TND', categoryId: null, category: null }],
+      },
+    ];
+    const { service } = makeService(transactions);
+
+    const result = (await service.getMonthlySummary('u1', 2026, 7, false, undefined, 'TND')) as {
+      categoryBreakdown: { category: string; color: string | null; amount: string }[];
+    };
+
+    expect(result.categoryBreakdown).toEqual([{ category: 'Rent', color: '#ef4444', amount: '400' }]);
+  });
+
   it('uses a distinct cache key per account so scoped and unscoped summaries never collide', async () => {
     const { service, prisma } = makeService([]);
 

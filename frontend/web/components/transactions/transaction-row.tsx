@@ -8,6 +8,7 @@ import { formatDate, transactionAmount } from "@/lib/format";
 import { multiply } from "@/lib/decimal";
 import { cn } from "@/lib/utils";
 import { CategoryIcon } from "@/components/dashboard/category-icon";
+import { transactionCategorySummary } from "@/lib/transaction-category";
 
 function CategoryDot({ color }: { color?: string | null }) {
   return (
@@ -38,6 +39,7 @@ export function TransactionRow({
   // Only income is tinted. Spending stays neutral; the category's colour already appears
   // once, as the dot in the meta line, so it isn't encoded twice.
   const tint = isIncome ? "var(--success)" : undefined;
+  const filedUnder = transactionCategorySummary(tx);
 
   return (
     <Link
@@ -59,7 +61,7 @@ export function TransactionRow({
         {isIncome ? (
           <ArrowDownLeft className="size-5" />
         ) : (
-          <CategoryIcon name={tx.category?.name ?? tx.description} className="size-5" />
+          <CategoryIcon name={filedUnder.category?.name ?? tx.description} className="size-5" />
         )}
       </div>
 
@@ -75,8 +77,15 @@ export function TransactionRow({
         <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
           {(tx.category || tx.type !== "TRANSFER") && (
             <span className="flex min-w-0 items-center gap-1.5">
-              <CategoryDot color={tx.category?.color} />
-              <span className="truncate">{tx.category?.name ?? "Uncategorized"}</span>
+              <CategoryDot color={filedUnder.category?.color} />
+              <span className="truncate">
+                {filedUnder.split && (
+                  <>
+                    Split <span aria-hidden>·</span>{" "}
+                  </>
+                )}
+                {filedUnder.label}
+              </span>
               {(!glance || accountLabel) && <span aria-hidden>·</span>}
             </span>
           )}

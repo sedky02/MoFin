@@ -287,6 +287,14 @@ export class TransactionsService {
       if (command.type === TransactionType.TRANSFER) {
         throw new BadRequestException('Transfers cannot be split into multiple items');
       }
+      // A split's categories live on its lines. A top-level one as well would be a second,
+      // conflicting answer, and analytics/search/the list would each pick a different one.
+      // A single item is still the plain unsplit shape, so the top-level category is fine there.
+      if (command.items.length > 1 && command.categoryId) {
+        throw new BadRequestException(
+          'A split transaction cannot have its own category; set a category on each split line instead',
+        );
+      }
       for (const item of command.items) {
         if (new Prisma.Decimal(item.amount).lessThanOrEqualTo(0)) {
           throw new BadRequestException('Each split item amount must be greater than zero');
