@@ -1,10 +1,11 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, Repeat, Split, Trash2, Wallet } from "lucide-react";
+import { Archive, ArrowLeft, Plus, Repeat, Split, Trash2, Wallet } from "lucide-react";
 import {
   Form,
   FormControl,
@@ -39,7 +40,7 @@ import { useAccounts } from "@/hooks/useAccounts";
 import { useActiveAccount } from "@/hooks/useActiveAccount";
 import { useSuggestedAccountId } from "@/hooks/useSuggestedAccount";
 import { useCategories } from "@/hooks/useCategories";
-import { useCreateTransaction } from "@/hooks/useTransactions";
+import { useCreateTransaction, useUpdateTransaction } from "@/hooks/useTransactions";
 import { useFormStash } from "@/hooks/use-form-stash";
 import {
   makeTransactionSchema,
@@ -48,6 +49,8 @@ import {
 } from "@/lib/transaction-schema";
 import { parseMoneyInput, toDatetimeLocal } from "@/lib/format";
 import { add } from "@/lib/decimal";
+import { editBlockedByArchivedAccount, transactionFormValues } from "@/lib/transaction-edit";
+import type { Transaction } from "@/lib/types";
 import { handleApiError } from "@/lib/form-errors";
 
 const DESCRIPTION_PLACEHOLDER: Record<string, string> = {
@@ -58,33 +61,53 @@ const DESCRIPTION_PLACEHOLDER: Record<string, string> = {
 
 const UNSAVED_STASH_KEY = "mofin-unsaved-transaction";
 
-export default function NewTransactionPage() {
+const BLANK: TransactionFormValues = {
+  type: "EXPENSE",
+  description: "",
+  amountRaw: "",
+  currency: "",
+  fromAccountId: undefined,
+  toAccountId: undefined,
+  categoryId: undefined,
+  occurredAt: "",
+  isRecurring: false,
+  recurringInterval: undefined,
+  recurringEndDate: "",
+};
+
+/**
+ * The transaction form: records a new transaction, or, given `transaction`,
+ * edits that one. Editing changes every field (the ledger lines are rewritten);
+ * the recurrence of a series is edited from its page instead, so the Repeat
+ * section is create-only. A recurring root keeps its type and currency, since
+ * its series is generated from them.
+ */
+export function TransactionForm({ transaction }: { transaction?: Transaction }) {
   const router = useRouter();
+  const editing = !!transaction;
+  const recurringRoot = !!transaction?.isRecurring && !transaction.parentTransactionId;
   const { data: accounts, isLoading: accountsLoading } = useAccounts();
   const { data: categories } = useCategories();
   const createMut = useCreateTransaction();
+  const updateMut = useUpdateTransaction(transaction?.id ?? "");
 
   const accountList = accounts ?? [];
+  const selectableAccounts = recurringRoot
+    ? accountList.filter((a) => a.currency === transaction.currency)
+    : accountList;
   const schema = makeTransactionSchema(accountList);
 
   const noAccounts = !accountsLoading && accountList.length === 0;
   const [accountDialogOpen, setAccountDialogOpen] = React.useState(false);
 
+  // The saved values an edit starts from (and Reset goes back to).
+  const initialValues = React.useMemo(
+    () => (transaction ? transactionFormValues(transaction) : BLANK),
+    [transaction],
+  );
   const form = useForm<TransactionFormValues>({
     resolver: zodResolver(schema),
-    defaultValues: {
-      type: "EXPENSE",
-      description: "",
-      amountRaw: "",
-      currency: "",
-      fromAccountId: undefined,
-      toAccountId: undefined,
-      categoryId: undefined,
-      occurredAt: "",
-      isRecurring: false,
-      recurringInterval: undefined,
-      recurringEndDate: "",
-    },
+    defaultValues: initialValues,
   });
 
   // `new Date()` must not run during the initial (possibly prerendered) render,
@@ -181,19 +204,20 @@ export default function NewTransactionPage() {
         })());
 
   // Switching the active account is a deliberate choice, so it replaces any picked account.
+  // Not while editing: the transaction's own accounts are what's being edited.
   const lastActiveId = React.useRef(activeAccountId);
   React.useEffect(() => {
-    if (lastActiveId.current === activeAccountId) return;
+    if (editing || lastActiveId.current === activeAccountId) return;
     lastActiveId.current = activeAccountId;
     form.setValue("fromAccountId", undefined);
     form.setValue("toAccountId", undefined);
-  }, [activeAccountId, form]);
+  }, [activeAccountId, editing, form]);
 
   // If the session expires mid-save, the input waits in sessionStorage while the
   // user signs in again and comes back here. After the effect above, so the
   // active account settling on load doesn't clear restored accounts; a stash
   // naming accounts this user doesn't have isn't theirs, so it's dropped.
-  const restored = useFormStash(form, UNSAVED_STASH_KEY, {
+  const restored = useFormStash(form, editing ? `${UNSAVED_STASH_KEY}:${transaction.id}` : UNSAVED_STASH_KEY, {
     ready: !accountsLoading,
     accept: (v) =>
       transactionFormBase.partial().safeParse(v).success &&
@@ -213,22 +237,10 @@ export default function NewTransactionPage() {
     type === "TRANSFER" ? false : c.type === type,
   );
 
-  // Back to a blank expense; the account falls back to the suggested default.
+  // Back to a blank expense (the account falls back to the suggested default), or,
+  // when editing, back to the transaction as saved.
   function resetForm() {
-    form.reset({
-      type: "EXPENSE",
-      description: "",
-      amountRaw: "",
-      currency: "",
-      fromAccountId: undefined,
-      toAccountId: undefined,
-      categoryId: undefined,
-      occurredAt: toDatetimeLocal(),
-      items: [],
-      isRecurring: false,
-      recurringInterval: undefined,
-      recurringEndDate: "",
-    });
+    form.reset(editing ? initialValues : { ...BLANK, occurredAt: toDatetimeLocal(), items: [] });
   }
 
   async function action() {
@@ -256,17 +268,26 @@ export default function NewTransactionPage() {
           }))
         : undefined;
 
+    const fields = {
+      type: v.type,
+      description: v.description,
+      amount,
+      currency: v.currency,
+      occurredAt: new Date(v.occurredAt).toISOString(),
+      fromAccountId: v.type !== "INCOME" ? v.fromAccountId : undefined,
+      toAccountId: v.type !== "EXPENSE" ? v.toAccountId : undefined,
+      categoryId: v.type !== "TRANSFER" && !splitItems ? v.categoryId : undefined,
+      items: splitItems,
+    };
+
     try {
+      if (editing) {
+        await updateMut.mutateAsync(fields);
+        router.push(`/transactions/${transaction.id}`);
+        return;
+      }
       const tx = await createMut.mutateAsync({
-        type: v.type,
-        description: v.description,
-        amount,
-        currency: v.currency,
-        occurredAt: new Date(v.occurredAt).toISOString(),
-        fromAccountId: v.type !== "INCOME" ? v.fromAccountId : undefined,
-        toAccountId: v.type !== "EXPENSE" ? v.toAccountId : undefined,
-        categoryId: v.type !== "TRANSFER" && !splitItems ? v.categoryId : undefined,
-        items: splitItems,
+        ...fields,
         isRecurring: !splitting && v.isRecurring ? true : undefined,
         recurringInterval: !splitting && v.isRecurring ? v.recurringInterval : undefined,
         recurringEndDate:
@@ -281,13 +302,37 @@ export default function NewTransactionPage() {
     }
   }
 
+  const heading = editing
+    ? { title: "Edit transaction", description: "Change any detail. Balances, summaries and goals follow." }
+    : { title: "New transaction", description: "Record an expense, income or transfer." };
+  const backToTransaction = editing && (
+    <Button asChild variant="ghost" size="sm" className="mb-4 gap-1.5 text-muted-foreground">
+      <Link href={`/transactions/${transaction.id}`}>
+        <ArrowLeft className="size-4" />
+        Back to transaction
+      </Link>
+    </Button>
+  );
+
+  // Nothing can be posted to an archived account, so a transaction on one can't be edited.
+  if (editing && editBlockedByArchivedAccount(transaction)) {
+    return (
+      <div className="mx-auto max-w-xl">
+        {backToTransaction}
+        <PageHeader title={heading.title} />
+        <EmptyState
+          icon={Archive}
+          title="This transaction is on an archived account"
+          description="Archived accounts are read-only. Restore the account to edit this transaction, or delete the transaction instead."
+        />
+      </div>
+    );
+  }
+
   if (accountsLoading) {
     return (
       <div className="mx-auto max-w-xl">
-        <PageHeader
-          title="New transaction"
-          description="Record income, an expense, or a transfer."
-        />
+        <PageHeader title={heading.title} description={heading.description} />
         <Card className="space-y-4 border-0 p-6 shadow-sm">
           <Skeleton className="h-10 w-full" />
           <Skeleton className="h-10 w-full" />
@@ -301,10 +346,7 @@ export default function NewTransactionPage() {
   if (noAccounts) {
     return (
       <div className="mx-auto max-w-xl">
-        <PageHeader
-          title="New transaction"
-          description="Record income, an expense, or a transfer."
-        />
+        <PageHeader title={heading.title} description={heading.description} />
         <EmptyState
           icon={Wallet}
           title="Add an account first"
@@ -325,9 +367,10 @@ export default function NewTransactionPage() {
 
   return (
     <div className="mx-auto max-w-lg pb-10">
+      {backToTransaction}
       <header className="mb-8 text-center">
-        <h1 className="font-heading text-3xl font-semibold tracking-tight sm:text-4xl">New transaction</h1>
-        <p className="mt-2 text-sm text-muted-foreground">Record an expense, income or transfer.</p>
+        <h1 className="font-heading text-3xl font-semibold tracking-tight sm:text-4xl">{heading.title}</h1>
+        <p className="mt-2 text-sm text-muted-foreground">{heading.description}</p>
       </header>
 
       {restored && (
@@ -345,6 +388,7 @@ export default function NewTransactionPage() {
               render={({ field }) => (
                 <FormItem>
                   <TypeSwitcher
+                    disabled={recurringRoot}
                     value={field.value}
                     onChange={(t) => {
                       // Transfers have no category and can't be split — don't silently
@@ -358,6 +402,11 @@ export default function NewTransactionPage() {
                       clearCategories();
                     }}
                   />
+                  {recurringRoot && (
+                    <p className="text-center text-xs text-muted-foreground">
+                      A recurring series keeps its type and currency.
+                    </p>
+                  )}
                 </FormItem>
               )}
             />
@@ -609,7 +658,7 @@ export default function NewTransactionPage() {
                     </FormLabel>
                     <FormControl>
                       <AccountSelect
-                        accounts={accountList}
+                        accounts={selectableAccounts}
                         value={effectiveFromId}
                         onChange={field.onChange}
                         className="data-[size=default]:h-12 rounded-xl border-0 bg-muted/50 shadow-none dark:bg-muted/50 dark:hover:bg-muted/70"
@@ -632,7 +681,7 @@ export default function NewTransactionPage() {
                     </FormLabel>
                     <FormControl>
                       <AccountSelect
-                        accounts={accountList}
+                        accounts={selectableAccounts}
                         value={effectiveToId}
                         onChange={field.onChange}
                         className="data-[size=default]:h-12 rounded-xl border-0 bg-muted/50 shadow-none dark:bg-muted/50 dark:hover:bg-muted/70"
@@ -659,7 +708,7 @@ export default function NewTransactionPage() {
               />
             </div>
 
-            {!splitting && (
+            {!splitting && !editing && (
               <div className="space-y-4 rounded-2xl bg-muted/50 p-4">
                 <FormField
                   control={form.control}
@@ -738,7 +787,7 @@ export default function NewTransactionPage() {
                 Reset
               </Button>
               <SubmitButton pendingText="Saving…" className="h-12 flex-1 rounded-xl text-base">
-                Save transaction
+                {editing ? "Save changes" : "Save transaction"}
               </SubmitButton>
             </div>
           </form>
