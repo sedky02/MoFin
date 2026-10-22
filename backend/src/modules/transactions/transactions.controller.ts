@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -9,7 +9,9 @@ import {
   CreateTransactionDto,
   createTransactionSchema,
   UpdateRecurringTransactionDto,
-  updateRecurringTransactionSchema
+  updateRecurringTransactionSchema,
+  UpdateTransactionDto,
+  updateTransactionSchema
 } from './dto/transactions.dto';
 import { TransactionsService } from './transactions.service';
 
@@ -38,6 +40,27 @@ export class TransactionsController {
     return this.transactionsService.getById(user.id, id);
   }
 
+  @Patch(':id')
+  @ApiZodBody(updateTransactionSchema)
+  update(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(updateTransactionSchema)) dto: UpdateTransactionDto,
+  ) {
+    return this.transactionsService.update(user.id, id, { ...dto, occurredAt: new Date(dto.occurredAt) });
+  }
+
+  @Delete(':id')
+  @HttpCode(204)
+  async remove(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string): Promise<void> {
+    await this.transactionsService.remove(user.id, id);
+  }
+
+  @Post(':id/restore')
+  restore(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+    return this.transactionsService.restore(user.id, id);
+  }
+
   @Patch(':id/recurring')
   @ApiZodBody(updateRecurringTransactionSchema)
   updateRecurring(
@@ -50,11 +73,6 @@ export class TransactionsController {
       recurringEndDate:
         dto.recurringEndDate === null ? null : dto.recurringEndDate ? new Date(dto.recurringEndDate) : undefined,
     });
-  }
-
-  @Post(':id/void')
-  voidTransaction(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
-    return this.transactionsService.voidTransaction(user.id, id);
   }
 
   @Post(':id/recurring/cancel')

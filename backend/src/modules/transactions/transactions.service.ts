@@ -1,12 +1,16 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { LedgerDirection, Prisma, RecurringInterval, RecurringStatus, TransactionType } from '@prisma/client';
-import { DomainEvents, TransactionCreatedEvent } from '../../common/events/domain-events';
+import { Prisma, RecurringInterval, RecurringStatus, TransactionType } from '@prisma/client';
+import { DomainEvents, TransactionChangedEvent, TransactionCreatedEvent } from '../../common/events/domain-events';
 import { PrismaService } from '../../database/prisma.service';
 import { AccountsService } from '../accounts/accounts.service';
 import { CategoriesService } from '../categories/categories.service';
 import { LedgerService } from '../ledger/ledger.service';
-import { CreateTransactionCommand, UpdateRecurringTransactionCommand } from './dto/transactions.dto';
+import {
+  CreateTransactionCommand,
+  UpdateRecurringTransactionCommand,
+  UpdateTransactionCommand
+} from './dto/transactions.dto';
 import { TRANSACTION_INCLUDE } from './transaction-include';
 
 type Db = Prisma.TransactionClient;
@@ -113,7 +117,7 @@ export class TransactionsService {
 
   async getById(userId: string, id: string) {
     const transaction = await this.prisma.transaction.findFirst({
-      where: { id, userId },
+      where: { id, userId, deletedAt: null },
       include: TRANSACTION_INCLUDE
     });
     if (!transaction) throw new NotFoundException('Transaction not found');
@@ -121,68 +125,105 @@ export class TransactionsService {
   }
 
   /**
-   * Reverses a transaction without touching its ledger rows: stamps the original
-   * `voidedAt` and appends a mirror transaction with every DEBIT/CREDIT flipped,
-   * so balances net to zero and both entries stay in the audit trail. A
-   * reversal itself can't be voided, and a transaction can only be voided once
-   * (the conditional update below is the race guard).
+   * Replaces a transaction's fields and ledger lines. Transactions are the
+   * user's own records, so an edit rewrites them in place: the same validation
+   * as create runs on the new values, then the old lines are swapped for the
+   * new ones in one database transaction, so balances move by exactly the
+   * difference. A recurring root keeps its type and currency, because its
+   * series template generates future occurrences from them.
    */
-  async voidTransaction(userId: string, id: string) {
-    const original = await this.prisma.transaction.findFirst({ where: { id, userId }, include: { items: true } });
-    if (!original) throw new NotFoundException('Transaction not found');
-    if (original.reversesTransactionId) throw new BadRequestException('A reversal entry cannot be voided');
-    if (original.voidedAt) throw new ConflictException('Transaction is already voided');
+  async update(userId: string, id: string, command: UpdateTransactionCommand) {
+    const existing = await this.findLive(userId, id);
+    if (existing.isRecurring && !existing.parentTransactionId) {
+      if (command.type !== existing.type) {
+        throw new BadRequestException("A recurring series can't change type; delete it and create a new one");
+      }
+      if (command.currency !== existing.currency) {
+        throw new BadRequestException("A recurring series can't change currency; delete it and create a new one");
+      }
+    }
 
-    const reversal = await this.prisma.$transaction(async (tx) => {
-      const claimed = await tx.transaction.updateMany({
-        where: { id, userId, voidedAt: null },
-        data: { voidedAt: new Date() },
-      });
-      if (claimed.count === 0) throw new ConflictException('Transaction is already voided');
+    this.validateCommand(command);
+    await this.categoriesService.assertAssignable(userId, command.type, command.categoryId);
+    for (const item of command.items ?? []) {
+      await this.categoriesService.assertAssignable(userId, command.type, item.categoryId);
+    }
+    const ledgerEntries = await this.ledgerService.buildEntriesForCommand(userId, command);
 
-      const created = await tx.transaction.create({
+    const updated = await this.prisma.$transaction(async (db) => {
+      // Conditional on deletedAt so a delete racing this edit wins cleanly instead of being undone.
+      const claimed = await db.transaction.updateMany({
+        where: { id, userId, deletedAt: null },
         data: {
-          userId,
-          type: original.type,
-          description: `Reversal: ${original.description}`.slice(0, 140),
-          currency: original.currency,
-          categoryId: original.categoryId,
-          occurredAt: new Date(),
-          reversesTransactionId: original.id,
+          type: command.type,
+          description: command.description,
+          currency: command.currency,
+          categoryId: command.categoryId ?? null,
+          occurredAt: command.occurredAt,
         },
       });
-      await tx.transactionItem.createMany({
-        data: original.items.map((item) => ({
-          userId,
-          transactionId: created.id,
-          accountId: item.accountId,
-          categoryId: item.categoryId,
-          direction: item.direction === LedgerDirection.DEBIT ? LedgerDirection.CREDIT : LedgerDirection.DEBIT,
-          amount: item.amount,
-          currency: item.currency,
-          memo: item.memo,
-        })),
-      });
-      return tx.transaction.findUniqueOrThrow({
-        where: { id: created.id },
-        include: TRANSACTION_INCLUDE,
-      });
+      if (claimed.count === 0) throw new NotFoundException('Transaction not found');
+      await db.transactionItem.deleteMany({ where: { transactionId: id, userId } });
+      await this.ledgerService.createEntries(db, userId, id, ledgerEntries);
+      return db.transaction.findUniqueOrThrow({ where: { id }, include: TRANSACTION_INCLUDE });
     });
 
-    // Cached monthly summaries are keyed by month: the original's month and the reversal's month both changed.
-    for (const occurredAt of [original.occurredAt, reversal.occurredAt]) {
-      this.events.emit(DomainEvents.TransactionCreated, {
-        transactionId: reversal.id,
+    // Cached summaries are per month: the month it left and the month it moved to both changed.
+    this.emitChanged(userId, id, existing.occurredAt, updated.occurredAt);
+    return updated;
+  }
+
+  /**
+   * Soft-deletes a transaction: its rows stay (so it can be restored) but it
+   * drops out of every balance, report, goal and list. Deleting the root of a
+   * recurring series stops the series, because the cron skips deleted roots;
+   * occurrences it already generated are separate records and stay.
+   */
+  async remove(userId: string, id: string) {
+    const existing = await this.findLive(userId, id);
+    const claimed = await this.prisma.transaction.updateMany({
+      where: { id, userId, deletedAt: null },
+      data: { deletedAt: new Date() },
+    });
+    if (claimed.count === 0) throw new NotFoundException('Transaction not found');
+    this.emitChanged(userId, id, existing.occurredAt);
+  }
+
+  /** Undoes a delete. A restored recurring root picks its series up again. */
+  async restore(userId: string, id: string) {
+    const claimed = await this.prisma.transaction.updateMany({
+      where: { id, userId, deletedAt: { not: null } },
+      data: { deletedAt: null },
+    });
+    if (claimed.count === 0) throw new NotFoundException('Deleted transaction not found');
+    const restored = await this.getById(userId, id);
+    this.emitChanged(userId, id, restored.occurredAt);
+    return restored;
+  }
+
+  /** A transaction of this user that isn't deleted, or 404 (another user's id looks the same as a missing one). */
+  private async findLive(userId: string, id: string) {
+    const transaction = await this.prisma.transaction.findFirst({ where: { id, userId, deletedAt: null } });
+    if (!transaction) throw new NotFoundException('Transaction not found');
+    return transaction;
+  }
+
+  private emitChanged(userId: string, transactionId: string, ...months: Date[]) {
+    const seen = new Set<string>();
+    for (const occurredAt of months) {
+      const month = `${occurredAt.getUTCFullYear()}-${occurredAt.getUTCMonth()}`;
+      if (seen.has(month)) continue;
+      seen.add(month);
+      this.events.emit(DomainEvents.TransactionChanged, {
+        transactionId,
         userId,
         occurredAt,
-      } satisfies TransactionCreatedEvent);
+      } satisfies TransactionChangedEvent);
     }
-    return reversal;
   }
 
   private async getRecurringRoot(userId: string, id: string) {
-    const transaction = await this.prisma.transaction.findFirst({ where: { id, userId } });
-    if (!transaction) throw new NotFoundException('Transaction not found');
+    const transaction = await this.findLive(userId, id);
     if (!transaction.isRecurring || transaction.parentTransactionId) {
       throw new BadRequestException('Transaction is not the root of a recurring series');
     }
@@ -256,8 +297,8 @@ export class TransactionsService {
     });
   }
 
-  private validateCommand(command: CreateTransactionCommand) {
-    if (command.isRecurring) {
+  private validateCommand(command: CreateTransactionCommand | UpdateTransactionCommand) {
+    if ('isRecurring' in command && command.isRecurring) {
       if (command.items?.length) {
         throw new BadRequestException('Recurring transactions cannot use split items');
       }

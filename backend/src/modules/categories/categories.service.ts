@@ -78,8 +78,9 @@ export class CategoriesService {
     if (!category) throw new NotFoundException(`Category ${categoryId} not found`);
 
     const [transactionCount, transactionItemCount, budgetCount] = await Promise.all([
-      this.prisma.transaction.count({ where: { categoryId } }),
-      this.prisma.transactionItem.count({ where: { categoryId } }),
+      // Deleted transactions don't keep a category in use (they lose it if it's deleted).
+      this.prisma.transaction.count({ where: { categoryId, deletedAt: null } }),
+      this.prisma.transactionItem.count({ where: { categoryId, transaction: { deletedAt: null } } }),
       this.prisma.budget.count({ where: { categoryId } }),
     ]);
     if (transactionCount > 0 || transactionItemCount > 0 || budgetCount > 0) {

@@ -157,14 +157,11 @@ model Transaction {
   recurringToAccountId   String?
   recurringToAccount     Account?           @relation("RecurringToAccount", fields: [recurringToAccountId], references: [id], onDelete: Restrict)
 
-  // Voiding never edits or deletes ledger rows. It stamps the original with
-  // voidedAt and appends a mirror transaction (flipped DEBIT/CREDIT) pointing
-  // back at it via reversesTransactionId, so balances net to zero and the
-  // audit trail keeps both. Reports skip the voided original and its reversal.
-  voidedAt              DateTime?
-  reversesTransactionId String?       @unique
-  reversesTransaction   Transaction?  @relation("Reversal", fields: [reversesTransactionId], references: [id], onDelete: Restrict)
-  reversedBy            Transaction?  @relation("Reversal")
+  // Soft delete. Transactions are the user's own records, so they can be edited
+  // (items are rewritten in place) and deleted. A deleted transaction keeps its
+  // rows so it can be restored, but every balance, report, goal and list skips
+  // it (`deletedAt: null`). A deleted recurring root generates nothing more.
+  deletedAt DateTime?
 
   // Links a generated occurrence back to the root transaction of its series.
   parentTransactionId  String?
@@ -175,6 +172,7 @@ model Transaction {
   updatedAt DateTime @updatedAt
 
   @@index([userId, occurredAt])
+  @@index([userId, deletedAt])
   @@index([userId, categoryId])
   @@index([isRecurring, recurringStatus, nextOccurrenceAt])
   @@index([parentTransactionId])

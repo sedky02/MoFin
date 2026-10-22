@@ -189,7 +189,7 @@ export class GoalsService {
       // period on both surfaces instead of disagreeing (audit DATA-XX).
       const rows = await this.prisma.transactionItem.groupBy({
         by: ['direction'],
-        where: { userId: goal.userId, accountId: goal.accountId, transaction: { occurredAt: { lte: boundary } } },
+        where: { userId: goal.userId, accountId: goal.accountId, transaction: { occurredAt: { lte: boundary }, deletedAt: null } },
         _sum: { amount: true },
       });
       return rows.reduce((sum, row) => {
@@ -215,9 +215,7 @@ export class GoalsService {
         transaction: {
           occurredAt: { gte: periodStart, lte: boundary },
           type: transactionType,
-          // Voided transactions and their reversals are not real income/spending.
-          voidedAt: null,
-          reversesTransactionId: null,
+          deletedAt: null,
         },
       },
       _sum: { amount: true },
