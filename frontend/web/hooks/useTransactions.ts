@@ -167,19 +167,3 @@ export function useDeleteTransaction({ onUndone }: { onUndone?: (id: string) => 
     onError: (err) => handleApiError(err, { fallback: "Could not delete transaction." }),
   });
 }
-
-/** Reverses a transaction by appending a mirror entry (the original is never edited or deleted). */
-export function useVoidTransaction() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => api.post<Transaction>(`/transactions/${id}/void`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: transactionKeys.all });
-      queryClient.invalidateQueries({ queryKey: ledgerKeys.all });
-      queryClient.invalidateQueries({ queryKey: analyticsKeys.all });
-      queryClient.invalidateQueries({ queryKey: searchKeys.all });
-      toast.success("Transaction voided — a reversal entry was added.");
-    },
-    onError: (err) => handleApiError(err, { fallback: "Could not void transaction." }),
-  });
-}
