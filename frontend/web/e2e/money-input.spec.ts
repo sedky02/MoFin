@@ -41,7 +41,7 @@ test("typing 1,234 in New transaction saves 1234.00", async ({ page }) => {
   expect(tx.items).toHaveLength(1);
   expect(tx.items[0].amount).toMatch(/^1234(\.0+)?$/);
 
-  // Void it so repeated runs don't move the fixture's balances.
-  const voided = await page.request.post(`/api/backend/transactions/${id}/void`);
-  expect(voided.ok(), `void failed with ${voided.status()}`).toBeTruthy();
+  // Delete it so repeated runs don't move the fixture's balances.
+  const deleted = await page.request.delete(`/api/backend/transactions/${id}`);
+  expect(deleted.ok(), `delete failed with ${deleted.status()}`).toBeTruthy();
 });

@@ -4,9 +4,9 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ApiClientError } from "@/lib/api";
-import { ArrowDown, ArrowDownLeft, ArrowLeft, ArrowRight, ArrowUpRight } from "lucide-react";
+import { ArrowDown, ArrowDownLeft, ArrowLeft, ArrowRight, ArrowUpRight, Pencil, Trash2 } from "lucide-react";
 import { useAccounts } from "@/hooks/useAccounts";
-import { useTransaction, useVoidTransaction } from "@/hooks/useTransactions";
+import { useDeleteTransaction, useTransaction } from "@/hooks/useTransactions";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { MoneyAmount } from "@/components/common/money-amount";
 import { TypeBadge } from "@/components/common/badges";
@@ -31,8 +31,9 @@ import type { Account } from "@/lib/types";
 
 export function TransactionDetail({ id }: { id: string }) {
   const router = useRouter();
-  const voidMut = useVoidTransaction();
-  const [confirmVoid, setConfirmVoid] = React.useState(false);
+  // After a delete the page goes back to the list; Undo in the toast brings the user back here.
+  const deleteMut = useDeleteTransaction({ onUndone: (undoneId) => router.push(`/transactions/${undoneId}`) });
+  const [confirmDelete, setConfirmDelete] = React.useState(false);
   const { data: tx, isLoading, isError, error, refetch } = useTransaction(id);
 
   // Older responses carried legs without their account. Only then fall back
@@ -141,29 +142,25 @@ export function TransactionDetail({ id }: { id: string }) {
           ) : null}
         </div>
 
-        {/* Voided / reversal state, and the void action itself. */}
-        {tx.voidedAt && (
-          <div className="mt-4 rounded-lg border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
-            Voided on {formatDateTime(tx.voidedAt)}. A reversal entry offsets it, so it no longer affects your
-            balance, monthly summary or goals.
-          </div>
-        )}
-        {tx.reversesTransactionId && (
-          <div className="mt-4 rounded-lg border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
-            This is the reversal of{" "}
-            <Link href={`/transactions/${tx.reversesTransactionId}`} className="font-medium text-primary-text underline-offset-4 hover:underline">
-              another transaction
+        {/* It's the user's own record: change it or remove it. */}
+        <div className="mt-4 flex flex-wrap gap-2 border-t border-border pt-4">
+          <Button asChild variant="outline" size="sm" className="gap-1.5">
+            <Link href={`/transactions/${tx.id}/edit`}>
+              <Pencil className="size-4" />
+              Edit
             </Link>
-            .
-          </div>
-        )}
-        {!tx.voidedAt && !tx.reversesTransactionId && (
-          <div className="mt-4 border-t border-border pt-4">
-            <Button variant="outline" size="sm" onClick={() => setConfirmVoid(true)} disabled={voidMut.isPending}>
-              Void transaction
-            </Button>
-          </div>
-        )}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 text-destructive hover:text-destructive"
+            onClick={() => setConfirmDelete(true)}
+            disabled={deleteMut.isPending}
+          >
+            <Trash2 className="size-4" />
+            Delete
+          </Button>
+        </div>
 
         {/* Recurring series management — only on the root of a series. */}
         {tx.isRecurring && !tx.parentTransactionId && <RecurringPanel tx={tx} />}
@@ -180,15 +177,19 @@ export function TransactionDetail({ id }: { id: string }) {
       </Card>
 
       <ConfirmDialog
-        open={confirmVoid}
-        onOpenChange={setConfirmVoid}
-        title="Void this transaction?"
-        description="Nothing is deleted. A reversing entry is added so your balance returns to what it was, and this transaction stops counting toward your monthly summary and goals. This can't be undone."
-        confirmLabel="Void transaction"
+        open={confirmDelete}
+        onOpenChange={setConfirmDelete}
+        title="Delete this transaction?"
+        description={
+          tx.isRecurring && !tx.parentTransactionId
+            ? "It's removed from your balances, summaries and goals, and the recurring series stops. Transactions the series already created stay. You can undo this right after."
+            : "It's removed from your balances, summaries and goals. You can undo this right after."
+        }
+        confirmLabel="Delete transaction"
         destructive
         onConfirm={() => {
-          setConfirmVoid(false);
-          voidMut.mutate(tx.id);
+          setConfirmDelete(false);
+          deleteMut.mutate(tx.id, { onSuccess: () => router.push("/search") });
         }}
       />
 

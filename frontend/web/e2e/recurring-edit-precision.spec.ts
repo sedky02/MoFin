@@ -15,7 +15,6 @@ type SeriesRoot = {
   description: string;
   isRecurring: boolean;
   parentTransactionId?: string | null;
-  voidedAt?: string | null;
   recurringAmount?: string | null;
   recurringStatus?: string | null;
 };
@@ -28,7 +27,7 @@ async function findRentRoot(page: Page): Promise<SeriesRoot> {
   expect(res.ok(), `search for "${RENT}" failed with ${res.status()}`).toBeTruthy();
   const body = (await res.json()) as { data: SeriesRoot[] };
   const root = body.data.find(
-    (t) => t.description === RENT && t.isRecurring && !t.parentTransactionId && !t.voidedAt,
+    (t) => t.description === RENT && t.isRecurring && !t.parentTransactionId,
   );
   expect(root, `fixture series "${RENT}" not found: run \`npm run e2e:seed\``).toBeTruthy();
   return root!;

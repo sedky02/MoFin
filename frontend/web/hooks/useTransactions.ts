@@ -1,12 +1,13 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { type QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import {
   transactionKeys,
   ledgerKeys,
   analyticsKeys,
   searchKeys,
+  goalKeys,
 } from "@/lib/query-keys";
 import { STALE } from "@/lib/query-client";
 import type { RecurringInterval, Transaction, TransactionType } from "@/lib/types";
@@ -99,18 +100,70 @@ export function useCancelRecurringTransaction(id: string) {
   });
 }
 
-/** Reverses a transaction by appending a mirror entry (the original is never edited or deleted). */
-export function useVoidTransaction() {
+/** Every field of a transaction; its recurrence is edited separately (useUpdateRecurringTransaction). */
+export type UpdateTransactionInput = Omit<CreateTransactionInput, "isRecurring" | "recurringInterval" | "recurringEndDate">;
+
+/** An edit, delete or restore moves balances, analytics, goals and lists, like a create. */
+function invalidateMoney(queryClient: QueryClient) {
+  queryClient.invalidateQueries({ queryKey: transactionKeys.all });
+  queryClient.invalidateQueries({ queryKey: ledgerKeys.all });
+  queryClient.invalidateQueries({ queryKey: analyticsKeys.all });
+  queryClient.invalidateQueries({ queryKey: searchKeys.all });
+  queryClient.invalidateQueries({ queryKey: goalKeys.all });
+}
+
+export function useUpdateTransaction(id: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => api.post<Transaction>(`/transactions/${id}/void`),
+    mutationFn: (input: UpdateTransactionInput) => api.patch<Transaction>(`/transactions/${id}`, input),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: transactionKeys.all });
-      queryClient.invalidateQueries({ queryKey: ledgerKeys.all });
-      queryClient.invalidateQueries({ queryKey: analyticsKeys.all });
-      queryClient.invalidateQueries({ queryKey: searchKeys.all });
-      toast.success("Transaction voided — a reversal entry was added.");
+      invalidateMoney(queryClient);
+      toast.success("Transaction updated.");
     },
-    onError: (err) => handleApiError(err, { fallback: "Could not void transaction." }),
+    onError: (err) => handleApiError(err, { fallback: "Could not update transaction." }),
+  });
+}
+
+/**
+ * Restores a deleted transaction. A plain call rather than a mutation: Undo is
+ * clicked in a toast, usually after the page that deleted it has gone, and a
+ * mutation's per-call callbacks don't run once its component unmounts.
+ */
+async function undoDelete(queryClient: QueryClient, id: string): Promise<boolean> {
+  try {
+    await api.post<Transaction>(`/transactions/${id}/restore`);
+  } catch (err) {
+    handleApiError(err, { fallback: "Could not restore transaction." });
+    return false;
+  }
+  invalidateMoney(queryClient);
+  toast.success("Transaction restored.");
+  return true;
+}
+
+/** How long the toast after a delete keeps its Undo button. */
+export const UNDO_DELETE_MS = 10_000;
+
+/**
+ * Soft-deletes a transaction. The toast offers Undo for a few seconds, which
+ * restores it and runs `onUndone` (e.g. to go back to its page).
+ */
+export function useDeleteTransaction({ onUndone }: { onUndone?: (id: string) => void } = {}) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete<void>(`/transactions/${id}`),
+    onSuccess: (_data, id) => {
+      invalidateMoney(queryClient);
+      toast.success("Transaction deleted.", {
+        duration: UNDO_DELETE_MS,
+        action: {
+          label: "Undo",
+          onClick: () => {
+            void undoDelete(queryClient, id).then((restored) => restored && onUndone?.(id));
+          },
+        },
+      });
+    },
+    onError: (err) => handleApiError(err, { fallback: "Could not delete transaction." }),
   });
 }

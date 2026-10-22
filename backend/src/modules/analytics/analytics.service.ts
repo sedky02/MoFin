@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { LedgerDirection, Prisma, TransactionType } from '@prisma/client';
-import { DomainEvents, TransactionCreatedEvent } from '../../common/events/domain-events';
+import { DomainEvents, TransactionChangedEvent, TransactionCreatedEvent } from '../../common/events/domain-events';
 import { PrismaService } from '../../database/prisma.service';
 
 @Injectable()
@@ -26,9 +26,7 @@ export class AnalyticsService {
     const transactions = await this.prisma.transaction.findMany({
       where: {
         userId,
-        // A voided transaction and its mirror reversal cancel out — neither is income/spending.
-        voidedAt: null,
-        reversesTransactionId: null,
+        deletedAt: null,
         occurredAt: { gte: start, lt: end },
         // Currency is applied per item below, not here: the other currencies' activity is still reported.
         ...(accountId ? { items: { some: { accountId } } } : {}),
@@ -110,9 +108,8 @@ export class AnalyticsService {
   /**
    * Income, expenses and closing balance for each of the last `months` calendar
    * months (UTC, oldest first), in one currency. One grouped query over the whole
-   * history — not N month queries and not row-by-row summing in Node. Income and
-   * expenses skip voided transactions and their reversals (they cancel out); the
-   * balance includes both so it matches the ledger exactly. Cached 15 min and
+   * history — not N month queries and not row-by-row summing in Node. Deleted
+   * transactions are left out of all three. Cached 15 min and
    * cleared whenever any transaction changes (a back-dated entry shifts every
    * later month's closing balance).
    */
@@ -130,12 +127,13 @@ export class AnalyticsService {
     >(Prisma.sql`
       SELECT to_char(date_trunc('month', t."occurredAt"), 'YYYY-MM') AS month,
         SUM(CASE WHEN ti.direction = 'CREDIT' THEN ti.amount ELSE -ti.amount END) AS net,
-        SUM(CASE WHEN t.type = 'INCOME' AND t."voidedAt" IS NULL AND t."reversesTransactionId" IS NULL THEN ti.amount ELSE 0 END) AS income,
-        SUM(CASE WHEN t.type = 'EXPENSE' AND t."voidedAt" IS NULL AND t."reversesTransactionId" IS NULL THEN ti.amount ELSE 0 END) AS expenses
+        SUM(CASE WHEN t.type = 'INCOME' THEN ti.amount ELSE 0 END) AS income,
+        SUM(CASE WHEN t.type = 'EXPENSE' THEN ti.amount ELSE 0 END) AS expenses
       FROM "TransactionItem" ti
       JOIN "Transaction" t ON t.id = ti."transactionId"
       WHERE ti."userId" = ${userId}
         AND ti.currency = ${currency}
+        AND t."deletedAt" IS NULL
         AND t."occurredAt" < ${end}
         ${accountId ? Prisma.sql`AND ti."accountId" = ${accountId}` : Prisma.empty}
       GROUP BY 1
@@ -181,7 +179,8 @@ export class AnalyticsService {
   }
 
   @OnEvent(DomainEvents.TransactionCreated)
-  async invalidateOnTransaction(event: TransactionCreatedEvent) {
+  @OnEvent(DomainEvents.TransactionChanged)
+  async invalidateOnTransaction(event: TransactionCreatedEvent | TransactionChangedEvent) {
     const year = event.occurredAt.getUTCFullYear();
     const month = event.occurredAt.getUTCMonth() + 1;
     const base = this.monthlySummaryCacheKey(year, month);

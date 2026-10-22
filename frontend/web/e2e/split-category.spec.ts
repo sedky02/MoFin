@@ -22,8 +22,6 @@ type Tx = {
   occurredAt: string;
   categoryId?: string | null;
   category?: Category | null;
-  voidedAt?: string | null;
-  reversesTransactionId?: string | null;
   items: Item[];
 };
 type Summary = { categoryBreakdown: { category: string; amount: string }[] };
@@ -31,7 +29,7 @@ type Summary = { categoryBreakdown: { category: string; amount: string }[] };
 /** Amount in thousandths, so decimal amounts add up exactly. */
 const toMilli = (amount: string) => Math.round(Number(amount) * 1000);
 
-async function api(page: Page, method: "GET" | "POST", path: string, data?: unknown) {
+async function api(page: Page, method: "GET" | "POST" | "DELETE", path: string, data?: unknown) {
   const res = await page.request.fetch(`/api/backend${path}`, { method, data });
   expect(res.ok(), `${method} ${path} failed with ${res.status()}: ${await res.text()}`).toBeTruthy();
   const text = await res.text();
@@ -87,7 +85,7 @@ async function expenseBreakdown(page: Page, currency: string): Promise<Map<strin
 function expectedBreakdown(transactions: Tx[], currency: string): Map<string, number> {
   const totals = new Map<string, number>();
   for (const tx of transactions) {
-    if (tx.type !== "EXPENSE" || tx.voidedAt || tx.reversesTransactionId) continue;
+    if (tx.type !== "EXPENSE") continue;
     const split = tx.items.length > 1;
     for (const item of tx.items) {
       if (item.currency !== currency) continue;
@@ -112,7 +110,7 @@ test.describe("split categories (UX fixture)", () => {
     expect(groceries && utilities, "fixture categories not found: run `npm run e2e:seed`").toBeTruthy();
 
     const month = await search(page);
-    const split = month.find((t) => t.description === FIXTURE_SPLIT && !t.voidedAt);
+    const split = month.find((t) => t.description === FIXTURE_SPLIT);
     expect(split, "fixture split not found this month: run `npm run e2e:seed`").toBeTruthy();
     // The split carries no category of its own; each line has one.
     expect(split!.categoryId ?? null).toBeNull();
@@ -176,7 +174,7 @@ test.describe("split categories (split after picking a category)", () => {
       (await api(page, "POST", "/categories", { name: CATEGORY, type: "EXPENSE" }));
 
     for (const tx of await search(page, { q: PREFIX })) {
-      if (!tx.voidedAt && !tx.reversesTransactionId) await api(page, "POST", `/transactions/${tx.id}/void`);
+      await api(page, "DELETE", `/transactions/${tx.id}`);
     }
 
     await page

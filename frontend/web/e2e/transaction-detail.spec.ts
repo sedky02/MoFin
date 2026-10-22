@@ -7,7 +7,7 @@ import { formatViolations, runAxe } from "./helpers/axe";
 
 const UUID_FRAGMENT = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-/i;
 
-type FixtureTx = { id: string; description: string; voidedAt?: string | null; reversesTransactionId?: string | null };
+type FixtureTx = { id: string; description: string };
 
 /** Finds a fixture transaction by exact description through the BFF, using the logged-in session. */
 async function findTransactionId(page: Page, description: string): Promise<string> {
@@ -17,7 +17,7 @@ async function findTransactionId(page: Page, description: string): Promise<strin
   expect(res.ok(), `search for "${description}" failed with ${res.status()}`).toBeTruthy();
   const body = (await res.json()) as { data: FixtureTx[] };
   const match = body.data.find(
-    (t) => t.description === description && !t.voidedAt && !t.reversesTransactionId,
+    (t) => t.description === description,
   );
   expect(match, `fixture transaction "${description}" not found: run \`npm run e2e:seed\``).toBeTruthy();
   return match!.id;

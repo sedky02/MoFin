@@ -21,6 +21,7 @@ export class SearchService {
     return this.prisma.paginated.transaction.paginate({
       where: {
         userId,
+        deletedAt: null,
         description: { contains: query.q, mode: 'insensitive' },
         // A split files its categories on its lines, an unsplit transaction on itself; match either.
         // OR (not a second `items` key) so it composes with the account/amount filter below.

@@ -33,7 +33,6 @@ export function useSuggestedAccountId(): string | undefined {
   const counts = new Map<string, number>();
   // Newest first, so on a tie the first account seen (most recent) wins below.
   for (const tx of recent ?? []) {
-    if (tx.voidedAt || tx.reversesTransactionId) continue;
     for (const id of new Set(tx.items.map((i) => i.accountId))) {
       if (known.has(id)) counts.set(id, (counts.get(id) ?? 0) + 1);
     }

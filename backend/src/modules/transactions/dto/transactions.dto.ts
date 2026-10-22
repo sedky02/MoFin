@@ -52,6 +52,23 @@ export interface CreateTransactionCommand {
 }
 
 /**
+ * Replaces every field of an existing transaction (the edit form sends the
+ * whole transaction, like create). Recurrence isn't part of it: a series'
+ * template is edited through PATCH /transactions/:id/recurring.
+ */
+export const updateTransactionSchema = createTransactionSchema.omit({
+  isRecurring: true,
+  recurringInterval: true,
+  recurringEndDate: true,
+});
+export type UpdateTransactionDto = z.infer<typeof updateTransactionSchema>;
+
+export type UpdateTransactionCommand = Omit<
+  CreateTransactionCommand,
+  'draftId' | 'isRecurring' | 'recurringInterval' | 'recurringEndDate' | 'parentTransactionId'
+>;
+
+/**
  * Edits the recurrence template on a root recurring transaction. Only affects
  * occurrences generated from now on — it never touches the root's own
  * TransactionItem rows or any already-generated occurrence.

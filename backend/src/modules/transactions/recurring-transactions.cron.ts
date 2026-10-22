@@ -41,7 +41,8 @@ export class RecurringTransactionsCron {
     try {
       const now = new Date();
       const dueRoots = await this.prisma.transaction.findMany({
-        where: { isRecurring: true, recurringStatus: RecurringStatus.ACTIVE, nextOccurrenceAt: { lte: now } }
+        // A deleted root is a stopped series (restoring it picks the series up again).
+        where: { isRecurring: true, recurringStatus: RecurringStatus.ACTIVE, deletedAt: null, nextOccurrenceAt: { lte: now } }
       });
 
       for (const root of dueRoots) {

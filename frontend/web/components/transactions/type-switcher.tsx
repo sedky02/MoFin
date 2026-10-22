@@ -18,15 +18,19 @@ const OPTIONS: {
 export function TypeSwitcher({
   value,
   onChange,
+  disabled,
 }: {
   value: TransactionType;
   onChange: (t: TransactionType) => void;
+  disabled?: boolean;
 }) {
   return (
     <div
       role="radiogroup"
       aria-label="Transaction type"
+      aria-disabled={disabled || undefined}
       onKeyDown={(e) => {
+        if (disabled) return;
         const dir = e.key === "ArrowRight" || e.key === "ArrowDown" ? 1 : e.key === "ArrowLeft" || e.key === "ArrowUp" ? -1 : 0;
         if (!dir) return;
         e.preventDefault();
@@ -48,12 +52,13 @@ export function TypeSwitcher({
             data-value={opt.value}
             aria-checked={selected}
             tabIndex={selected ? 0 : -1}
-            onClick={() => onChange(opt.value)}
+            disabled={disabled && !selected}
+            onClick={() => !disabled && onChange(opt.value)}
             className={cn(
               "flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all",
               selected
                 ? "bg-card shadow-sm"
-                : "text-muted-foreground hover:text-foreground",
+                : "text-muted-foreground hover:text-foreground disabled:pointer-events-none disabled:opacity-50",
             )}
           >
             <Icon className={cn("size-4", selected && opt.active)} />

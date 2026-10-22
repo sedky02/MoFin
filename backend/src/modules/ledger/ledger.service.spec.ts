@@ -161,6 +161,16 @@ describe('LedgerService', () => {
   });
 
   describe('getBalance', () => {
+    it("leaves deleted transactions' lines out of the sum", async () => {
+      const groupBy = jest.fn(async () => []);
+      const prisma = { account: { findFirst: jest.fn(async () => ({ id: 'a', currency: 'USD' })) }, transactionItem: { groupBy } };
+      const service = new LedgerService(prisma as never, new AccountsService(prisma as never));
+      await service.getBalance('u1', { accountId: 'a' });
+      expect(groupBy).toHaveBeenCalledWith(
+        expect.objectContaining({ where: expect.objectContaining({ userId: 'u1', transaction: { deletedAt: null } }) }),
+      );
+    });
+
     it('adds CREDITs and subtracts DEBITs from grouped DB rows', async () => {
       const rows = [
         { accountId: 'a', currency: 'USD', direction: 'CREDIT', _sum: { amount: new Prisma.Decimal('100') } },

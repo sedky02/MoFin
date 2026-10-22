@@ -116,6 +116,8 @@ export class LedgerService {
 
     const where = {
       userId,
+      // A deleted transaction's lines stay in the table (for restore) but are no longer money.
+      transaction: { deletedAt: null },
       ...(query.accountId ? { accountId: query.accountId } : {}),
       ...(query.currency ? { currency: query.currency } : {}),
     };

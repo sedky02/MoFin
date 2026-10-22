@@ -1,6 +1,16 @@
 import { SearchService } from './search.service';
 
 describe('SearchService.searchTransactions', () => {
+  it('never returns deleted transactions', async () => {
+    const paginate = jest.fn(async () => ({ data: [], total: 0, limit: 20, offset: 0 }));
+    const prisma = { paginated: { transaction: { paginate } } };
+    const service = new SearchService(prisma as never, {} as never, {} as never);
+    await service.searchTransactions('u1', { limit: 20, offset: 0 } as never);
+    expect(paginate).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ userId: 'u1', deletedAt: null }) }),
+    );
+  });
+
   function makeService(paginateResult: unknown) {
     const paginate = jest.fn(async () => paginateResult);
     const prisma = { paginated: { transaction: { paginate } } };

@@ -27,7 +27,17 @@ const accounts = {
   old: { id: '201bcfd6-0000-4000-8000-000000000003', userId: USER_ID, name: 'Old savings', type: 'SAVINGS', currency: 'EUR', archivedAt: new Date('2026-09-01T00:00:00Z') },
 };
 
-const transactions = [
+const transactions: Array<{
+  id: string;
+  userId: string;
+  type: string;
+  description: string;
+  currency: string;
+  occurredAt: Date;
+  categoryId: null;
+  deletedAt?: Date | null;
+  items: Array<{ id: string; accountId: string; categoryId: null; direction: string; amount: string; currency: string; memo: null }>;
+}> = [
   {
     id: 'tx-transfer',
     userId: USER_ID,
@@ -74,15 +84,24 @@ function project(tx: (typeof transactions)[number], include?: Include) {
 
 const prismaStub = {
   transaction: {
-    findFirst: async ({ where, include }: { where: { id: string; userId: string }; include?: Include }) => {
-      const tx = transactions.find((t) => t.id === where.id && t.userId === where.userId);
+    findFirst: async ({ where, include }: { where: { id: string; userId: string; deletedAt?: null }; include?: Include }) => {
+      const tx = transactions.find(
+        (t) => t.id === where.id && t.userId === where.userId && !('deletedAt' in where && t.deletedAt),
+      );
       return tx ? project(tx, include) : null;
+    },
+    // Soft delete and restore: `deletedAt: null` matches live rows, `{ not: null }` deleted ones.
+    updateMany: async ({ where, data }: { where: { id: string; userId: string; deletedAt: null | { not: null } }; data: { deletedAt: Date | null } }) => {
+      const wantDeleted = where.deletedAt !== null;
+      const rows = transactions.filter((t) => t.id === where.id && t.userId === where.userId && !!t.deletedAt === wantDeleted);
+      for (const row of rows) row.deletedAt = data.deletedAt;
+      return { count: rows.length };
     },
   },
   paginated: {
     transaction: {
-      paginate: async ({ where, include, limit, offset }: { where: { userId: string }; include?: Include; limit: number; offset: number }) => {
-        const rows = transactions.filter((t) => t.userId === where.userId);
+      paginate: async ({ where, include, limit, offset }: { where: { userId: string; deletedAt?: null }; include?: Include; limit: number; offset: number }) => {
+        const rows = transactions.filter((t) => t.userId === where.userId && !('deletedAt' in where && t.deletedAt));
         return { data: rows.slice(offset, offset + limit).map((t) => project(t, include)), total: rows.length, limit, offset };
       },
     },
@@ -132,6 +151,8 @@ describe('Transactions API (e2e)', () => {
   });
 
   const get = (path: string, user = USER_ID) => fetch(`${baseUrl}${path}`, { headers: { 'x-test-user': user } });
+  const send = (method: string, path: string, user = USER_ID) =>
+    fetch(`${baseUrl}${path}`, { method, headers: { 'x-test-user': user } });
 
   it('GET /transactions/:id returns items[].account.name for both legs of a transfer', async () => {
     const res = await get('/transactions/tx-transfer');
@@ -164,5 +185,32 @@ describe('Transactions API (e2e)', () => {
 
     const names = body.data.flatMap((t: { items: Array<{ account: { name: string } }> }) => t.items.map((i) => i.account.name));
     expect(names).toEqual(['Main checking', 'Emergency fund', 'Old savings']);
+  });
+
+  it('DELETE soft-deletes: the transaction 404s and leaves search, and restore brings it back', async () => {
+    expect((await send('DELETE', '/transactions/tx-transfer')).status).toBe(204);
+    expect((await get('/transactions/tx-transfer')).status).toBe(404);
+    const search = await (await get('/search/transactions?limit=20&offset=0')).json();
+    expect(search.data.map((t: { id: string }) => t.id)).toEqual(['tx-archived']);
+
+    // A second delete finds nothing live to delete.
+    expect((await send('DELETE', '/transactions/tx-transfer')).status).toBe(404);
+
+    const restored = await send('POST', '/transactions/tx-transfer/restore');
+    expect(restored.status).toBe(201);
+    expect((await restored.json()).id).toBe('tx-transfer');
+    expect((await get('/transactions/tx-transfer')).status).toBe(200);
+    // Restoring a live transaction is a 404 too.
+    expect((await send('POST', '/transactions/tx-transfer/restore')).status).toBe(404);
+  });
+
+  it("can't delete or restore another user's transaction", async () => {
+    expect((await send('DELETE', '/transactions/tx-transfer', 'someone-else')).status).toBe(404);
+    expect((await send('POST', '/transactions/tx-transfer/restore', 'someone-else')).status).toBe(404);
+    expect((await get('/transactions/tx-transfer')).status).toBe(200);
+  });
+
+  it('no longer has a void endpoint', async () => {
+    expect((await send('POST', '/transactions/tx-transfer/void')).status).toBe(404);
   });
 });

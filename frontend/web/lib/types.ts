@@ -93,9 +93,6 @@ export interface Transaction {
   recurringToAccountId?: string | null;
   parentTransactionId?: string | null;
 
-  // Voiding appends a mirror "reversal" transaction; the original is stamped voidedAt.
-  voidedAt?: string | null;
-  reversesTransactionId?: string | null;
 }
 
 // Shape the AI parser fills in and the review form edits.

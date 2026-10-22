@@ -96,6 +96,7 @@ describe('GoalsService', () => {
       // monthly summary on which period a back-dated entry belongs to
       // (audit DATA-XX).
       const call = groupBy.mock.calls[0][0] as { where: { createdAt?: unknown; transaction?: { occurredAt?: unknown } } };
+      expect((call.where.transaction as { deletedAt?: unknown }).deletedAt).toBeNull();
       expect(call.where.createdAt).toBeUndefined();
       expect(call.where.transaction?.occurredAt).toEqual({ lte: new Date('2026-01-15') });
     });
@@ -137,6 +138,8 @@ describe('GoalsService', () => {
       // uncategorized income/expense transactions are no longer excluded
       // (audit DATA-XX).
       expect(call.where.transaction?.type).toBe('INCOME');
+      // Deleted transactions are not income/spending any more.
+      expect((call.where.transaction as { deletedAt?: unknown }).deletedAt).toBeNull();
       expect(call.where.transaction?.category).toBeUndefined();
     });
 
