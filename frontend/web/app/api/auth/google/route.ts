@@ -1,6 +1,7 @@
 import { randomBytes } from "crypto";
 import { NextResponse } from "next/server";
 import { safeNextPath } from "@/lib/safe-next";
+import { loginErrorUrl } from "@/lib/auth-feedback";
 
 const STATE_COOKIE = "google_oauth";
 
@@ -16,12 +17,12 @@ export async function GET(req: Request) {
   const authUrlBase = process.env.GOOGLE_AUTH_URL;
   const redirectUri = process.env.GOOGLE_REDIRECT_URI;
   const scopes = process.env.GOOGLE_SCOPES;
+  const params = new URL(req.url).searchParams;
   if (!clientId || !authUrlBase || !redirectUri || !scopes) {
-    return NextResponse.redirect(new URL("/login?error=google_unconfigured", req.url));
+    return NextResponse.redirect(new URL(loginErrorUrl("google_unconfigured", params.get("next")), req.url));
   }
 
   const state = randomBytes(16).toString("hex");
-  const params = new URL(req.url).searchParams;
   const mcpAuthorize = params.get("mcp_authorize") ?? "";
   const next = safeNextPath(params.get("next"));
 

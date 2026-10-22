@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { AlertCircle, CheckCircle2 } from "lucide-react";
+import { AlertCircle, CheckCircle2, Info } from "lucide-react";
 import {
   Form,
   FormControl,
@@ -22,6 +22,7 @@ import { GoogleButton } from "@/components/common/google-button";
 import { ApiClientError } from "@/lib/api";
 import { handleApiError } from "@/lib/form-errors";
 import { safeNextPath } from "@/lib/safe-next";
+import { loginNotice } from "@/lib/auth-feedback";
 
 const loginSchema = z.object({
   email: z.string().email("Enter a valid email address."),
@@ -46,6 +47,8 @@ export default function LoginPage() {
   const params = new URLSearchParams(search);
   const justRegistered = params.get("registered") === "1";
   const justReset = params.get("reset") === "1";
+  // Why we landed here: a Google sign-in that didn't finish, or an expired session.
+  const notice = loginNotice(params);
 
   const form = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
@@ -125,6 +128,24 @@ export default function LoginPage() {
         >
           <CheckCircle2 className="mt-0.5 size-4 shrink-0" />
           <span>Your password has been reset. Sign in with your new password.</span>
+        </div>
+      )}
+
+      {notice && !rateLimited && (
+        <div
+          role="alert"
+          className={
+            notice.kind === "error"
+              ? "mb-5 flex items-start gap-2.5 rounded-lg border border-destructive/30 bg-destructive/10 px-3.5 py-3 text-sm text-destructive"
+              : "mb-5 flex items-start gap-2.5 rounded-lg border border-border bg-muted px-3.5 py-3 text-sm text-foreground"
+          }
+        >
+          {notice.kind === "error" ? (
+            <AlertCircle className="mt-0.5 size-4 shrink-0" />
+          ) : (
+            <Info className="mt-0.5 size-4 shrink-0" />
+          )}
+          <span>{notice.message}</span>
         </div>
       )}
 

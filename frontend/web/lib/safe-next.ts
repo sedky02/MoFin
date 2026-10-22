@@ -11,8 +11,15 @@ export function safeNextPath(raw: string | null | undefined): string {
   return raw;
 }
 
-/** `/login` URL that returns the user to `path` afterwards (plain `/login` for the default). */
-export function loginUrlWithNext(path: string): string {
+/**
+ * `/login` URL that returns the user to `path` afterwards (no `next` for the
+ * default), optionally with the reason the login page should explain.
+ */
+export function loginUrlWithNext(path: string, reason?: "expired"): string {
+  const qs = new URLSearchParams();
   const next = safeNextPath(path);
-  return next === DEFAULT_AFTER_LOGIN ? "/login" : `/login?next=${encodeURIComponent(next)}`;
+  if (next !== DEFAULT_AFTER_LOGIN) qs.set("next", next);
+  if (reason) qs.set("reason", reason);
+  const query = qs.toString();
+  return query ? `/login?${query}` : "/login";
 }
