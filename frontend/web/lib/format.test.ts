@@ -3,6 +3,7 @@ import {
   formatMoneyInput,
   interpretMoneyText,
   moneyInputHint,
+  moneyInputPrefix,
   normalizeMoneyTyping,
   parseMoneyInput,
   pasteMoneyText,
@@ -134,5 +135,18 @@ describe("parseMoneyInput", () => {
     for (const raw of ["", "0", "0,00", "-5", "abc", "1.2.3"]) {
       expect(parseMoneyInput(raw)).toBeNull();
     }
+  });
+});
+
+describe("moneyInputPrefix", () => {
+  it.each([
+    ["USD", "$"],
+    ["EUR", "€"],
+    ["PLN", "zł"],
+    ["TND", ""],
+    ["CHF", ""],
+    [undefined, ""],
+  ])("%s → %j", (currency, prefix) => {
+    expect(moneyInputPrefix(currency)).toBe(prefix);
   });
 });

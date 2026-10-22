@@ -43,19 +43,15 @@ import {
   useCancelRecurringTransaction,
   useUpdateRecurringTransaction,
 } from "@/hooks/useTransactions";
-import { formatDate, formatMoneyInput, parseMoneyInput } from "@/lib/format";
+import { formatDate, parseMoneyInput } from "@/lib/format";
 import { handleApiError } from "@/lib/form-errors";
+import {
+  buildRecurringUpdate,
+  recurringEndDateToIso,
+  recurringFormValues,
+  type RecurringFormValues,
+} from "@/lib/recurring-edit";
 import type { Transaction } from "@/lib/types";
-
-interface RecurringFormValues {
-  description: string;
-  amountRaw: string;
-  categoryId?: string;
-  fromAccountId?: string;
-  toAccountId?: string;
-  recurringInterval: "MONTHLY" | "YEARLY";
-  recurringEndDate: string;
-}
 
 /**
  * Shown on the root transaction of a recurring series. Displays cadence +
@@ -74,17 +70,19 @@ export function RecurringPanel({ tx }: { tx: Transaction }) {
   const relevantCategories = (categories ?? []).filter((c) => c.type === tx.type);
   const isCancelled = tx.recurringStatus === "CANCELLED";
 
-  const form = useForm<RecurringFormValues>({
-    defaultValues: {
-      description: tx.description,
-      amountRaw: formatMoneyInput(tx.recurringAmount ?? "0"),
-      categoryId: tx.categoryId ?? undefined,
-      fromAccountId: tx.recurringFromAccountId ?? undefined,
-      toAccountId: tx.recurringToAccountId ?? undefined,
-      recurringInterval: (tx.recurringInterval as "MONTHLY" | "YEARLY") ?? "MONTHLY",
-      recurringEndDate: tx.recurringEndDate ? tx.recurringEndDate.slice(0, 10) : "",
-    },
-  });
+  // What the dialog opened with; only fields that differ from it are sent.
+  const [initial, setInitial] = React.useState(() => recurringFormValues(tx));
+  const form = useForm<RecurringFormValues>({ defaultValues: initial });
+
+  function handleOpenChange(open: boolean) {
+    if (open) {
+      // Start from the series as it is now, not from an earlier open or save.
+      const current = recurringFormValues(tx);
+      setInitial(current);
+      form.reset(current);
+    }
+    setEditOpen(open);
+  }
 
   async function action() {
     const valid = await form.trigger(undefined, { shouldFocus: true });
@@ -94,27 +92,25 @@ export function RecurringPanel({ tx }: { tx: Transaction }) {
       form.setError("description", { message: "Add a short description." });
       return;
     }
-    if (values.recurringEndDate && new Date(`${values.recurringEndDate}T23:59:59`) <= new Date()) {
+    if (
+      values.recurringEndDate !== initial.recurringEndDate &&
+      values.recurringEndDate &&
+      new Date(recurringEndDateToIso(values.recurringEndDate)) <= new Date()
+    ) {
       form.setError("recurringEndDate", { message: "End date must be in the future." });
       return;
     }
-    const amount = parseMoneyInput(values.amountRaw);
-    if (!amount) {
+    if (values.amountRaw !== initial.amountRaw && !parseMoneyInput(values.amountRaw)) {
       form.setError("amountRaw", { message: "Enter an amount greater than 0." });
       return;
     }
+    const input = buildRecurringUpdate(tx.type, initial, values);
+    if (Object.keys(input).length === 0) {
+      setEditOpen(false);
+      return;
+    }
     try {
-      await updateMut.mutateAsync({
-        description: values.description,
-        amount,
-        categoryId: values.categoryId ?? null,
-        fromAccountId: tx.type !== "INCOME" ? values.fromAccountId : undefined,
-        toAccountId: tx.type !== "EXPENSE" ? values.toAccountId : undefined,
-        recurringInterval: values.recurringInterval,
-        recurringEndDate: values.recurringEndDate
-          ? new Date(`${values.recurringEndDate}T23:59:59`).toISOString()
-          : null,
-      });
+      await updateMut.mutateAsync(input);
       setEditOpen(false);
     } catch (err) {
       handleApiError(err, { setError: form.setError });
@@ -136,7 +132,7 @@ export function RecurringPanel({ tx }: { tx: Transaction }) {
 
       {!isCancelled && (
         <div className="ml-auto flex gap-2">
-          <Dialog open={editOpen} onOpenChange={setEditOpen}>
+          <Dialog open={editOpen} onOpenChange={handleOpenChange}>
             <DialogTrigger asChild>
               <Button type="button" variant="outline" size="sm">
                 Edit series
