@@ -35,6 +35,14 @@ describe('RecurringTransactionsCron', () => {
 
   afterEach(() => jest.clearAllMocks());
 
+  it('skips deleted roots: deleting the root stops its series', async () => {
+    const { cron, prisma } = makeCron();
+    await cron.generateDueOccurrences();
+    expect(prisma.transaction.findMany).toHaveBeenCalledWith({
+      where: expect.objectContaining({ isRecurring: true, recurringStatus: RecurringStatus.ACTIVE, deletedAt: null }),
+    });
+  });
+
   it('creates the occurrence and advances the cursor inside the same DB transaction', async () => {
     const { cron, prisma, transactionsService } = makeCron();
     await cron.generateDueOccurrences();

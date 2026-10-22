@@ -14,6 +14,14 @@ describe('AnalyticsService.getMonthlySummary', () => {
     return { service: new AnalyticsService(prisma as never), prisma };
   }
 
+  it('leaves deleted transactions out of the month', async () => {
+    const { service, prisma } = makeService([]);
+    await service.getMonthlySummary('u1', 2026, 7, false, undefined, 'USD');
+    expect(prisma.transaction.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ userId: 'u1', deletedAt: null }) }),
+    );
+  });
+
   const item = (accountId: string, amount: string, currency = 'TND') => ({
     accountId,
     amount: new Prisma.Decimal(amount),
@@ -289,5 +297,34 @@ describe('AnalyticsService.getMonthlySeries', () => {
     const { service, prisma } = setup([], { payload, expiresAt: new Date(Date.now() + 60_000) });
     await expect(service.getMonthlySeries('u1', 6, 'USD')).resolves.toBe(payload);
     expect(prisma.$queryRaw).not.toHaveBeenCalled();
+  });
+});
+
+describe('AnalyticsService.getMonthlySeries', () => {
+  it('leaves deleted transactions out of income, expenses and the running balance', async () => {
+    const queryRaw = jest.fn(async (_sql: Prisma.Sql) => []);
+    const prisma = {
+      analyticsCache: { findUnique: jest.fn(async () => null), upsert: jest.fn(async () => undefined) },
+      $queryRaw: queryRaw,
+    };
+    await new AnalyticsService(prisma as never).getMonthlySeries('u1', 6, 'USD');
+    const sql = (queryRaw.mock.calls[0][0] as Prisma.Sql).sql;
+    // One WHERE filter covers all three sums.
+    expect(sql).toContain('t."deletedAt" IS NULL');
+    expect(sql).not.toContain('voidedAt');
+  });
+});
+
+describe('AnalyticsService cache invalidation', () => {
+  it('clears the month on an edit, delete or restore, not just on create', async () => {
+    const deleteMany = jest.fn(async () => ({ count: 1 }));
+    const service = new AnalyticsService({ analyticsCache: { deleteMany } } as never);
+    await service.invalidateOnTransaction({ transactionId: 't1', userId: 'u1', occurredAt: new Date('2026-03-10T00:00:00Z') });
+    expect(deleteMany).toHaveBeenCalledWith({
+      where: expect.objectContaining({ userId: 'u1', OR: expect.arrayContaining([{ cacheKey: 'monthly-summary:v3:2026:3' }]) }),
+    });
+    // The listener is registered for both events.
+    const events = Reflect.getMetadata('EVENT_LISTENER_METADATA', service.invalidateOnTransaction) as { event: string }[];
+    expect(events.map((e) => e.event).sort()).toEqual(['transaction.changed', 'transaction.created']);
   });
 });

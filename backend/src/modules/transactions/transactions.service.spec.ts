@@ -1,7 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { RecurringInterval, TransactionType } from '@prisma/client';
 import { computeNextOccurrence, TransactionsService } from './transactions.service';
-import { CreateTransactionCommand } from './dto/transactions.dto';
+import { CreateTransactionCommand, UpdateTransactionCommand } from './dto/transactions.dto';
 import { CategoriesService } from '../categories/categories.service';
 
 describe('TransactionsService.validateCommand', () => {
@@ -236,8 +236,8 @@ describe('computeNextOccurrence', () => {
   });
 });
 
-describe('TransactionsService.voidTransaction', () => {
-  const original = {
+describe('TransactionsService edit, delete and restore', () => {
+  const existing = {
     id: 't1',
     userId: 'u1',
     type: TransactionType.EXPENSE,
@@ -245,76 +245,165 @@ describe('TransactionsService.voidTransaction', () => {
     currency: 'USD',
     categoryId: 'c1',
     occurredAt: new Date('2026-03-10T10:00:00Z'),
-    voidedAt: null,
-    reversesTransactionId: null,
-    items: [
-      { accountId: 'a1', categoryId: 'c1', direction: 'DEBIT', amount: '40', currency: 'USD', memo: null },
-      { accountId: 'a2', categoryId: null, direction: 'CREDIT', amount: '40', currency: 'USD', memo: 'm' },
-    ],
+    isRecurring: false,
+    parentTransactionId: null,
+    deletedAt: null,
   };
+  const edit: UpdateTransactionCommand = {
+    type: TransactionType.EXPENSE,
+    description: 'Groceries (fixed)',
+    amount: '45.50',
+    currency: 'USD',
+    occurredAt: new Date('2026-04-02T09:00:00Z'),
+    fromAccountId: 'a1',
+  };
+  const entries = [{ accountId: 'a1', direction: 'DEBIT', amount: '45.50', currency: 'USD', memo: 'Groceries (fixed)' }];
 
   function setup(overrides: { found?: unknown; claimed?: number } = {}) {
-    const tx = {
+    // The re-read returns whatever the claim wrote, like the database would.
+    let written: Record<string, unknown> = {};
+    const db = {
       transaction: {
-        updateMany: jest.fn(async () => ({ count: overrides.claimed ?? 1 })),
-        create: jest.fn(async () => ({ id: 'rev1' })),
-        findUniqueOrThrow: jest.fn(async () => ({ id: 'rev1', occurredAt: new Date('2026-04-01T00:00:00Z'), items: [] })),
+        updateMany: jest.fn(async (args: { data: Record<string, unknown> }) => {
+          written = args.data;
+          return { count: overrides.claimed ?? 1 };
+        }),
+        findUniqueOrThrow: jest.fn(async () => ({ ...existing, ...written, items: [] })),
       },
-      transactionItem: { createMany: jest.fn(async () => ({ count: 2 })) },
+      transactionItem: { deleteMany: jest.fn(async () => ({ count: 1 })) },
     };
     const prisma = {
-      transaction: { findFirst: jest.fn(async () => ('found' in overrides ? overrides.found : original)) },
-      $transaction: jest.fn(async (fn: (t: typeof tx) => unknown) => fn(tx)),
+      transaction: {
+        findFirst: jest.fn(async () => ('found' in overrides ? overrides.found : existing)),
+        updateMany: jest.fn(async () => ({ count: overrides.claimed ?? 1 })),
+      },
+      $transaction: jest.fn(async (fn: (t: typeof db) => unknown) => fn(db)),
     };
+    const ledger = { buildEntriesForCommand: jest.fn(async () => entries), createEntries: jest.fn(async () => undefined) };
+    const categories = { assertAssignable: jest.fn(async () => undefined) };
     const events = { emit: jest.fn() };
-    const service = new TransactionsService(prisma as never, {} as never, {} as never, {} as never, events as never);
-    return { service, tx, prisma, events };
+    const service = new TransactionsService(prisma as never, ledger as never, categories as never, {} as never, events as never);
+    const changedMonths = () =>
+      events.emit.mock.calls
+        .filter((c) => c[0] === 'transaction.changed')
+        .map((c) => (c[1] as { occurredAt: Date }).occurredAt.toISOString().slice(0, 7));
+    return { service, db, prisma, ledger, categories, events, changedMonths };
   }
 
-  it('stamps the original and appends a mirror with every direction flipped, same accounts and amounts', async () => {
-    const { service, tx } = setup();
-    await service.voidTransaction('u1', 't1');
+  describe('update', () => {
+    it('rewrites the fields and swaps the ledger lines in one database transaction', async () => {
+      const { service, db, prisma, ledger } = setup();
+      await service.update('u1', 't1', edit);
 
-    expect(tx.transaction.updateMany).toHaveBeenCalledWith({
-      where: { id: 't1', userId: 'u1', voidedAt: null },
-      data: { voidedAt: expect.any(Date) },
+      expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+      expect(db.transaction.updateMany).toHaveBeenCalledWith({
+        where: { id: 't1', userId: 'u1', deletedAt: null },
+        data: {
+          type: TransactionType.EXPENSE,
+          description: 'Groceries (fixed)',
+          currency: 'USD',
+          // No category in the edit clears the old one rather than keeping it.
+          categoryId: null,
+          occurredAt: edit.occurredAt,
+        },
+      });
+      expect(db.transactionItem.deleteMany).toHaveBeenCalledWith({ where: { transactionId: 't1', userId: 'u1' } });
+      expect(ledger.createEntries).toHaveBeenCalledWith(db, 'u1', 't1', entries);
     });
-    expect(tx.transaction.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({ reversesTransactionId: 't1', type: 'EXPENSE', currency: 'USD', description: 'Reversal: Groceries' }),
+
+    it('validates the new values like create does, before touching anything', async () => {
+      const { service, prisma, ledger } = setup();
+      await expect(service.update('u1', 't1', { ...edit, amount: '0' })).rejects.toBeInstanceOf(BadRequestException);
+      await expect(
+        service.update('u1', 't1', { ...edit, categoryId: 'c1', items: [{ amount: '20' }, { amount: '25.50' }] }),
+      ).rejects.toThrow('A split transaction cannot have its own category');
+      expect(ledger.buildEntriesForCommand).not.toHaveBeenCalled();
+      expect(prisma.$transaction).not.toHaveBeenCalled();
     });
-    const created = (tx.transactionItem.createMany.mock.calls[0] as unknown as [{ data: Array<Record<string, unknown>> }])[0].data;
-    expect(created.map((i) => [i.accountId, i.direction, String(i.amount)])).toEqual([
-      ['a1', 'CREDIT', '40'],
-      ['a2', 'DEBIT', '40'],
-    ]);
-    expect(created.every((i) => i.transactionId === 'rev1')).toBe(true);
+
+    it('checks the categories against the new type', async () => {
+      const { service, categories } = setup();
+      await service.update('u1', 't1', { ...edit, categoryId: 'c2', items: undefined });
+      expect(categories.assertAssignable).toHaveBeenCalledWith('u1', TransactionType.EXPENSE, 'c2');
+    });
+
+    it('clears cached summaries for the month it left and the month it moved to', async () => {
+      const moved = setup();
+      await moved.service.update('u1', 't1', edit);
+      expect(moved.changedMonths()).toEqual(['2026-03', '2026-04']);
+
+      const sameMonth = setup();
+      await sameMonth.service.update('u1', 't1', { ...edit, occurredAt: new Date('2026-03-20T09:00:00Z') });
+      expect(sameMonth.changedMonths()).toEqual(['2026-03']);
+    });
+
+    it('404s for an unknown, foreign or deleted transaction, and when a delete wins the race', async () => {
+      const missing = setup({ found: null });
+      await expect(missing.service.update('u1', 'nope', edit)).rejects.toThrow('not found');
+      expect(missing.prisma.transaction.findFirst).toHaveBeenCalledWith({ where: { id: 'nope', userId: 'u1', deletedAt: null } });
+
+      const raced = setup({ claimed: 0 });
+      await expect(raced.service.update('u1', 't1', edit)).rejects.toThrow('not found');
+      expect(raced.db.transactionItem.deleteMany).not.toHaveBeenCalled();
+    });
+
+    it("keeps a recurring root's type and currency, which its series is generated from", async () => {
+      const root = { ...existing, isRecurring: true };
+      const typeChange = setup({ found: root });
+      await expect(
+        typeChange.service.update('u1', 't1', { ...edit, type: TransactionType.INCOME, toAccountId: 'a1' }),
+      ).rejects.toThrow("can't change type");
+      const currencyChange = setup({ found: root });
+      await expect(currencyChange.service.update('u1', 't1', { ...edit, currency: 'EUR' })).rejects.toThrow(
+        "can't change currency",
+      );
+
+      // A generated occurrence is an ordinary record: it can change type.
+      const occurrence = setup({ found: { ...root, parentTransactionId: 'root' } });
+      await expect(
+        occurrence.service.update('u1', 't1', { ...edit, type: TransactionType.INCOME, fromAccountId: undefined, toAccountId: 'a1' }),
+      ).resolves.toBeDefined();
+    });
   });
 
-  it('invalidates cached summaries for both the original month and the reversal month', async () => {
-    const { service, events } = setup();
-    await service.voidTransaction('u1', 't1');
-    const months = events.emit.mock.calls.map((c) => (c[1] as { occurredAt: Date }).occurredAt.toISOString());
-    expect(months).toEqual(['2026-03-10T10:00:00.000Z', '2026-04-01T00:00:00.000Z']);
+  describe('remove', () => {
+    it('soft-deletes: stamps deletedAt only on a live row, and clears the cached month', async () => {
+      const { service, prisma, changedMonths } = setup();
+      await service.remove('u1', 't1');
+      expect(prisma.transaction.updateMany).toHaveBeenCalledWith({
+        where: { id: 't1', userId: 'u1', deletedAt: null },
+        data: { deletedAt: expect.any(Date) },
+      });
+      expect(changedMonths()).toEqual(['2026-03']);
+    });
+
+    it('404s for an unknown, foreign or already deleted transaction', async () => {
+      const missing = setup({ found: null });
+      await expect(missing.service.remove('u1', 'nope')).rejects.toThrow('not found');
+      expect(missing.prisma.transaction.updateMany).not.toHaveBeenCalled();
+
+      const raced = setup({ claimed: 0 });
+      await expect(raced.service.remove('u1', 't1')).rejects.toThrow('not found');
+      expect(raced.changedMonths()).toEqual([]);
+    });
   });
 
-  it('404s for an unknown or foreign transaction', async () => {
-    const { service } = setup({ found: null });
-    await expect(service.voidTransaction('u1', 'nope')).rejects.toThrow('not found');
-  });
+  describe('restore', () => {
+    it('clears deletedAt only on a deleted row and returns the transaction', async () => {
+      const { service, prisma, changedMonths } = setup();
+      const restored = await service.restore('u1', 't1');
+      expect(prisma.transaction.updateMany).toHaveBeenCalledWith({
+        where: { id: 't1', userId: 'u1', deletedAt: { not: null } },
+        data: { deletedAt: null },
+      });
+      expect(restored).toMatchObject({ id: 't1' });
+      expect(changedMonths()).toEqual(['2026-03']);
+    });
 
-  it('refuses to void a reversal', async () => {
-    const { service, tx } = setup({ found: { ...original, reversesTransactionId: 'x' } });
-    await expect(service.voidTransaction('u1', 't1')).rejects.toBeInstanceOf(BadRequestException);
-    expect(tx.transaction.create).not.toHaveBeenCalled();
-  });
-
-  it('refuses a second void, including when it loses the race to claim the original', async () => {
-    const already = setup({ found: { ...original, voidedAt: new Date() } });
-    await expect(already.service.voidTransaction('u1', 't1')).rejects.toThrow('already voided');
-
-    const raced = setup({ claimed: 0 });
-    await expect(raced.service.voidTransaction('u1', 't1')).rejects.toThrow('already voided');
-    expect(raced.tx.transaction.create).not.toHaveBeenCalled();
+    it("404s when there's no deleted transaction of this user with that id", async () => {
+      const { service } = setup({ claimed: 0 });
+      await expect(service.restore('u1', 't1')).rejects.toThrow('Deleted transaction not found');
+    });
   });
 });
 
@@ -330,7 +419,7 @@ describe('TransactionsService.getById', () => {
     await service.getById('u1', 't1');
 
     expect(prisma.transaction.findFirst).toHaveBeenCalledWith({
-      where: { id: 't1', userId: 'u1' },
+      where: { id: 't1', userId: 'u1', deletedAt: null },
       include: { items: { include: { category: true, account: true } }, category: true },
     });
   });
