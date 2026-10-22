@@ -47,7 +47,7 @@ import {
   transactionFormBase,
   type TransactionFormValues,
 } from "@/lib/transaction-schema";
-import { parseMoneyInput, toDatetimeLocal } from "@/lib/format";
+import { formatMoneyInput, parseMoneyInput, toDatetimeLocal } from "@/lib/format";
 import { add } from "@/lib/decimal";
 import { editBlockedByArchivedAccount, transactionFormValues } from "@/lib/transaction-edit";
 import type { Transaction } from "@/lib/types";
@@ -172,9 +172,10 @@ export function TransactionForm({ transaction }: { transaction?: Transaction }) 
     cancelSplit();
   }
 
-  const itemsTotal = (watchedItems ?? []).reduce(
-    (sum, item) => add(sum, parseMoneyInput(item.amountRaw) ?? "0"),
-    "0",
+  // With the currency's decimals ("96.30", not "96.3"), like a typed amount after blur.
+  const itemsTotal = formatMoneyInput(
+    (watchedItems ?? []).reduce((sum, item) => add(sum, parseMoneyInput(item.amountRaw) ?? "0"), "0"),
+    currency || undefined,
   );
 
   // While split, the total is derived from the items — not independently entered.
