@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatMoney } from "@/lib/format";
 import { tryParse } from "@/lib/decimal";
+import { heroHeadline } from "@/lib/hero-headline";
 import { cn } from "@/lib/utils";
 import type { MonthlySeriesPoint } from "@/lib/types";
 
@@ -50,12 +51,8 @@ export function BalanceOverview({
   const { data, isLoading } = useMonthlySeries(currency, accountId);
   const points = data?.points ?? [];
 
-  const change = (() => {
-    if (points.length < 2) return null;
-    const a = tryParse(points[points.length - 1].balance);
-    const b = tryParse(points[points.length - 2].balance);
-    return a && b && !a.minus(b).isZero() ? a.minus(b) : null;
-  })();
+  // Headline, caption and chip all follow the chosen metric (see lib/hero-headline.ts).
+  const headline = heroHeadline(metric, points, { amount, caption });
 
   const values = points.map((p) => tryParse(p[metric])?.toNumber() ?? 0);
   const max = Math.max(...values.map(Math.abs), 0);
@@ -83,25 +80,31 @@ export function BalanceOverview({
         </Tabs>
       </div>
 
-      <MoneyAmount
-        amount={amount}
-        currency={currency}
-        animate
-        className="mt-6 block text-5xl font-light leading-none tracking-[-0.035em] text-foreground sm:text-7xl"
-      />
+      {metric !== "balance" && isLoading ? (
+        <Skeleton className="mt-6 h-12 w-64 rounded-xl sm:h-[4.5rem]" />
+      ) : (
+        <MoneyAmount
+          key={metric}
+          amount={headline.amount}
+          currency={currency}
+          animate
+          className="mt-6 block text-5xl font-light leading-none tracking-[-0.035em] text-foreground sm:text-7xl"
+        />
+      )}
       <p className="mt-4 text-sm text-muted-foreground">
-        {caption}
-        {overdrawn && <span className="font-medium text-destructive"> · Overdrawn</span>}
+        {headline.caption}
+        {metric === "balance" && overdrawn && <span className="font-medium text-destructive"> · Overdrawn</span>}
       </p>
-      {change && (
+      {headline.chip && (
         <span
           className={cn(
             "mt-3 inline-flex w-fit items-center gap-1 rounded-full px-3 py-1 text-xs font-medium",
-            change.isNegative() ? "bg-destructive/15 text-destructive" : "bg-success/15 text-success",
+            headline.chip.tone === "bad" ? "bg-destructive/15 text-destructive" : "bg-success/15 text-success",
           )}
         >
-          <MoneyAmount amount={change.toString()} currency={currency} signed />
-          <span>this month</span>
+          {headline.chip.prefix && <span>{headline.chip.prefix}</span>}
+          <MoneyAmount amount={headline.chip.delta} currency={currency} signed />
+          <span>{headline.chip.suffix}</span>
         </span>
       )}
 
