@@ -183,6 +183,7 @@ test("a recurring series keeps its type, and a transaction on an archived accoun
   await expect(page.getByText("A recurring series keeps its type and currency.")).toBeVisible();
   await expect(page.getByRole("radio", { name: "Income" })).toBeDisabled();
   await expect(page.getByLabel("Amount in TND")).toHaveValue("12.345");
+  await expect(page.getByRole("button", { name: "Split transaction" })).toHaveCount(0);
 
   const archived = await find("Old savings opening deposit", () => true);
   await page.goto(`/transactions/${archived.id}/edit`);

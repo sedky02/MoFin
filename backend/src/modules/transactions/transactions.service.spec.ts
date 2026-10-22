@@ -357,6 +357,10 @@ describe('TransactionsService edit, delete and restore', () => {
       await expect(currencyChange.service.update('u1', 't1', { ...edit, currency: 'EUR' })).rejects.toThrow(
         "can't change currency",
       );
+      const split = setup({ found: root });
+      await expect(
+        split.service.update('u1', 't1', { ...edit, items: [{ amount: '20' }, { amount: '25.50' }] }),
+      ).rejects.toThrow("can't be split");
 
       // A generated occurrence is an ordinary record: it can change type.
       const occurrence = setup({ found: { ...root, parentTransactionId: 'root' } });

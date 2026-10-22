@@ -481,7 +481,8 @@ export function TransactionForm({ transaction }: { transaction?: Transaction }) 
               )}
             </div>
 
-            {type !== "TRANSFER" && !splitting && (
+            {/* A recurring transaction can't be split (create refuses it too). */}
+            {type !== "TRANSFER" && !splitting && !recurringRoot && (
               <div className="-mt-3 flex justify-end">
                 <button
                   type="button"

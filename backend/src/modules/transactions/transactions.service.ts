@@ -141,6 +141,10 @@ export class TransactionsService {
       if (command.currency !== existing.currency) {
         throw new BadRequestException("A recurring series can't change currency; delete it and create a new one");
       }
+      // Same rule as create: a recurring transaction is never split.
+      if ((command.items?.length ?? 0) > 1) {
+        throw new BadRequestException("A recurring transaction can't be split into items");
+      }
     }
 
     this.validateCommand(command);
