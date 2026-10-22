@@ -125,6 +125,6 @@ test.describe("session expiry on New transaction", () => {
     await page.reload();
     await expect(page.getByLabel("Amount in USD")).toHaveValue("");
     await expect(page.getByRole("status").filter({ hasText: "Restored your unsaved transaction." })).toHaveCount(0);
-    // Nothing was saved, so there is nothing to void.
+    // Nothing was saved, so there is nothing to delete.
   });
 });

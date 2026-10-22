@@ -209,13 +209,14 @@ async function seed() {
     ],
   });
 
-  // Voided expense. Voiding is only attempted for a transaction created in
-  // this run, so a re-run never double-voids.
-  const { tx: voided, isNew: voidedIsNew } = await ensureTx({
-    type: "EXPENSE", description: "Duplicate charge (voided)", amount: "59.00", currency: "USD",
+  // Deleted expense: recorded by mistake, then deleted (soft delete, so it's
+  // hidden from every list and total). Deleted rows aren't returned by search,
+  // so each run records and deletes a fresh one; none of them ever shows up.
+  const { tx: deleted, isNew: deletedIsNew } = await ensureTx({
+    type: "EXPENSE", description: "Duplicate charge (deleted)", amount: "59.00", currency: "USD",
     occurredAt: localDate(0, 7), fromAccountId: mainId, categoryId: cat["Dining out"].id,
   });
-  if (voidedIsNew) await call("POST", `/transactions/${voided.id}/void`);
+  if (deletedIsNew) await call("DELETE", `/transactions/${deleted.id}`);
 
   // Monthly recurring rent in TND (3 decimals).
   await ensureTx({

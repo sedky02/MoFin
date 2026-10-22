@@ -35,7 +35,7 @@ function splitRow(page: Page, n: number) {
 
 async function openNewTransaction(page: Page) {
   // Pin the active account to "Main checking" (USD). Left on "All accounts", the form
-  // suggests the most used recent account, which drifts as earlier runs void their rows.
+  // suggests the most used recent account, which drifts as earlier runs delete their rows.
   const accounts = await firstPage(page.request, "/accounts");
   const main = accounts.find((a) => a.name === "Main checking");
   expect(main, "fixture account \"Main checking\" not found: run `npm run e2e:seed`").toBeTruthy();
@@ -56,9 +56,9 @@ async function saveAndFetch(page: Page): Promise<SavedTx> {
   expect(res.ok()).toBeTruthy();
   const tx = (await res.json()) as SavedTx;
 
-  // Void it so repeated runs don't move the fixture's balances.
-  const voided = await page.request.post(`/api/backend/transactions/${id}/void`);
-  expect(voided.ok(), `void failed with ${voided.status()}`).toBeTruthy();
+  // Delete it so repeated runs don't move the fixture's balances.
+  const deleted = await page.request.delete(`/api/backend/transactions/${id}`);
+  expect(deleted.ok(), `delete failed with ${deleted.status()}`).toBeTruthy();
   return tx;
 }
 

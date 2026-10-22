@@ -15,8 +15,6 @@ type SearchTx = {
   type: "INCOME" | "EXPENSE" | "TRANSFER";
   description: string;
   occurredAt: string;
-  voidedAt?: string | null;
-  reversesTransactionId?: string | null;
   items: { amount: string; currency: string }[];
 };
 
@@ -43,8 +41,8 @@ async function transactionsIn(page: Page, start: Date, end: Date): Promise<Searc
     out.push(...body.data);
     if (body.data.length < 100 || out.length >= body.total) break;
   }
-  // Same rules as the summary: a voided transaction and its reversal cancel out.
-  return out.filter((t) => new Date(t.occurredAt) < end && !t.voidedAt && !t.reversesTransactionId);
+  // Search, like the summary, leaves deleted transactions out.
+  return out.filter((t) => new Date(t.occurredAt) < end);
 }
 
 /** Income and expenses per currency, from the transactions' own items. */
