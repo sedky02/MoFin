@@ -46,18 +46,44 @@ export interface CreateTransactionInput {
   recurringEndDate?: string;
 }
 
-export function useCreateTransaction() {
+/** How long the toast after a create keeps its Undo and View buttons. */
+export const UNDO_CREATE_MS = 10_000;
+
+/**
+ * Takes back a just-created transaction by soft-deleting it. A plain call rather
+ * than a mutation, for the same reason as undoDelete: the toast outlives the form.
+ */
+async function undoCreate(queryClient: QueryClient, id: string): Promise<boolean> {
+  try {
+    await api.delete<void>(`/transactions/${id}`);
+  } catch (err) {
+    handleApiError(err, { fallback: "Could not undo this transaction." });
+    return false;
+  }
+  invalidateMoney(queryClient);
+  toast.success("Transaction removed.");
+  return true;
+}
+
+/**
+ * Records a transaction. The toast offers Undo (deletes it again; for a recurring
+ * root that also stops the series) and View (opens it) for a few seconds.
+ */
+export function useCreateTransaction({
+  onView,
+  onUndone,
+}: { onView?: (id: string) => void; onUndone?: (id: string) => void } = {}) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: CreateTransactionInput) =>
       api.post<Transaction>("/transactions", input),
-    onSuccess: () => {
-      // A new transaction moves balances, analytics, and search results.
-      queryClient.invalidateQueries({ queryKey: transactionKeys.all });
-      queryClient.invalidateQueries({ queryKey: ledgerKeys.all });
-      queryClient.invalidateQueries({ queryKey: analyticsKeys.all });
-      queryClient.invalidateQueries({ queryKey: searchKeys.all });
-      toast.success("Transaction recorded.");
+    onSuccess: (tx) => {
+      invalidateMoney(queryClient);
+      toast.success("Transaction recorded.", {
+        duration: UNDO_CREATE_MS,
+        action: { label: "Undo", onClick: () => void undoCreate(queryClient, tx.id).then((ok) => ok && onUndone?.(tx.id)) },
+        cancel: { label: "View", onClick: () => onView?.(tx.id) },
+      });
     },
     onError: (err) => handleApiError(err, { fallback: "Could not record transaction." }),
   });

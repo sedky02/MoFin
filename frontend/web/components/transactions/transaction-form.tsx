@@ -88,7 +88,13 @@ export function TransactionForm({ transaction }: { transaction?: Transaction }) 
   const recurringRoot = !!transaction?.isRecurring && !transaction.parentTransactionId;
   const { data: accounts, isLoading: accountsLoading } = useAccounts();
   const { data: categories } = useCategories();
-  const createMut = useCreateTransaction();
+  const createMut = useCreateTransaction({
+    onView: (id) => router.push(`/transactions/${id}`),
+    // The new transaction's page is gone once it's undone, so leave it.
+    onUndone: (id) => {
+      if (window.location.pathname.startsWith(`/transactions/${id}`)) router.push("/search");
+    },
+  });
   const updateMut = useUpdateTransaction(transaction?.id ?? "");
 
   const accountList = accounts ?? [];
