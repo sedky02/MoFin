@@ -87,7 +87,7 @@ async function DashboardContent() {
   // had data to guess from) — DashboardBody re-derives this from live
   // useUser()/useLedgerBalance() query data and self-corrects once that
   // resolves, rather than ever showing this guess as a final answer.
-  const initialPrimaryCurrency = pickPrimaryCurrency(allBalances, user);
+  const initialPrimaryCurrency = pickPrimaryCurrency(allBalances, user, "", accounts);
 
   // Mirror the client's currency resolution (DashboardBody / BalanceCards) so the summary
   // and the chart series are requested with the same parameters the client will use.
@@ -104,8 +104,9 @@ async function DashboardContent() {
   const heroCurrency = heroCurrencies.includes(currency) ? currency : (heroCurrencies[0] ?? currency);
   const summaryCurrency = summaryApiCurrency(accountId, currency);
 
+  // Nothing to summarise without an account (and no currency to ask in).
   const [summary, series] = await Promise.all([
-    serverGet<MonthlySummary>("/analytics/monthly-summary", { year, month, accountId, currency: summaryCurrency }),
+    !accounts.length ? null : serverGet<MonthlySummary>("/analytics/monthly-summary", { year, month, accountId, currency: summaryCurrency }),
     heroCurrencies.length
       ? serverGet<MonthlySeries>("/analytics/monthly-series", { currency: heroCurrency, months: 6, accountId })
       : null,

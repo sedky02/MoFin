@@ -8,7 +8,7 @@ import { useUser } from "@/hooks/useUser";
 import { Button } from "@/components/ui/button";
 import { pickPrimaryCurrency } from "@/lib/format";
 import { tryParse } from "@/lib/decimal";
-import { allAccountsCaption, countArchivedHolding, totalsByCurrency } from "@/lib/balances";
+import { allAccountsCaption, countArchivedHolding, totalsByCurrency, zeroTotals } from "@/lib/balances";
 import { BalanceOverview } from "@/components/dashboard/balance-overview";
 import { SkeletonCard, ErrorState, EmptyState } from "@/components/common/states";
 import { Wallet } from "lucide-react";
@@ -30,13 +30,13 @@ export function BalanceCards({
   const { data, isLoading, isError, refetch } = useLedgerBalance({ accountId });
   const { data: user } = useUser();
   // Active accounts only; any other account in the all-accounts balances is archived.
-  const { data: activeAccounts } = useAccounts();
+  const { data: activeAccounts, isLoading: accountsLoading } = useAccounts();
   // The user's explicit pick; falls back to the primary currency until they choose.
   const [localPicked, setLocalPicked] = React.useState<string | undefined>();
   const picked = currency ?? localPicked;
   const setPicked = onCurrencyChange ?? setLocalPicked;
 
-  if (isLoading) {
+  if (isLoading || (accountsLoading && !data?.length)) {
     return (
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {Array.from({ length: 3 }).map((_, i) => (
@@ -52,8 +52,13 @@ export function BalanceCards({
 
   // Lead with the user's primary currency (same rule the monthly summary uses)
   // instead of whichever currency the API happened to list first.
-  const primary = pickPrimaryCurrency(data, user);
-  const totals = totalsByCurrency(data ?? []).sort(
+  const primary = pickPrimaryCurrency(data, user, "", activeAccounts);
+  // Accounts with no ledger activity are not in the balances at all: show them at zero, in
+  // their own currency, instead of pretending there is nothing here.
+  const scopedAccounts = (activeAccounts ?? []).filter((a) => !accountId || a.id === accountId);
+  const ledgerTotals = totalsByCurrency(data ?? []);
+  const noActivity = ledgerTotals.length === 0 && scopedAccounts.length > 0;
+  const totals = (noActivity ? zeroTotals(scopedAccounts) : ledgerTotals).sort(
     (a, b) => Number(b.currency === primary) - Number(a.currency === primary),
   );
 
@@ -61,11 +66,11 @@ export function BalanceCards({
     return (
       <EmptyState
         icon={Wallet}
-        title="No balances yet"
-        description="Add an account and record a transaction to see balances here."
+        title="No accounts yet"
+        description="Add an account to start tracking your balances."
         action={
           <Button asChild>
-            <Link href="/accounts">Create your first account</Link>
+            <Link href="/accounts">Add your first account</Link>
           </Button>
         }
       />
@@ -92,6 +97,13 @@ export function BalanceCards({
         accountId={accountId}
         currencies={totals.map((t) => ({ code: t.currency, overdrawn: isOverdrawn(t.amount) }))}
         onCurrencyChange={setPicked}
+        emptyAction={
+          noActivity ? (
+            <Button asChild>
+              <Link href="/transactions/new">Record your first transaction</Link>
+            </Button>
+          ) : undefined
+        }
       />
     </div>
   );
