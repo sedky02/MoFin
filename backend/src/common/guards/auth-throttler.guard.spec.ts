@@ -1,28 +1,92 @@
-import { AuthThrottlerGuard } from './auth-throttler.guard';
+import { ThrottlerRequest } from '@nestjs/throttler';
+import { sha256 } from '../utils/hash';
+import {
+  AUTH_THROTTLE,
+  AuthThrottlerGuard,
+  FORGOT_PASSWORD_THROTTLE,
+  ForgotPasswordThrottlerGuard,
+  authTracker,
+} from './auth-throttler.guard';
 
-describe('AuthThrottlerGuard.getTracker', () => {
-  // getTracker is protected; access it the same way the base class calls it internally.
-  const getTracker = (AuthThrottlerGuard.prototype as unknown as {
-    getTracker(req: Record<string, unknown>): Promise<string>;
-  }).getTracker;
-
-  it('keys on IP + normalized submitted email, not IP alone', async () => {
-    const tracker = await getTracker({ ip: '1.2.3.4', body: { email: '  Foo@Example.com ' } });
-    expect(tracker).toBe('1.2.3.4:foo@example.com');
+describe('authTracker', () => {
+  it('keys on IP + normalized submitted email, not IP alone', () => {
+    expect(authTracker({ ip: '1.2.3.4', body: { email: '  Foo@Example.com ' } })).toBe('1.2.3.4:foo@example.com');
   });
 
-  it('two different emails from the same IP get different trackers', async () => {
-    const a = await getTracker({ ip: '1.2.3.4', body: { email: 'a@x.com' } });
-    const b = await getTracker({ ip: '1.2.3.4', body: { email: 'b@x.com' } });
+  it('two different emails from the same IP get different trackers', () => {
+    const a = authTracker({ ip: '1.2.3.4', body: { email: 'a@x.com' } });
+    const b = authTracker({ ip: '1.2.3.4', body: { email: 'b@x.com' } });
     expect(a).not.toBe(b);
   });
 
-  it('falls back to IP alone when there is no email in the body (e.g. /auth/refresh)', async () => {
-    const tracker = await getTracker({ ip: '5.6.7.8', body: { refreshToken: 'x' } });
-    expect(tracker).toBe('5.6.7.8:');
+  it('the same email from different IPs gets different trackers', () => {
+    const a = authTracker({ ip: '1.2.3.4', body: { email: 'a@x.com' } });
+    const b = authTracker({ ip: '5.6.7.8', body: { email: 'a@x.com' } });
+    expect(a).not.toBe(b);
   });
 
-  it('does not throw when body is missing entirely', async () => {
-    await expect(getTracker({ ip: '5.6.7.8' })).resolves.toBe('5.6.7.8:');
+  it('keys a reset-password body on a hash of the presented token', () => {
+    expect(authTracker({ ip: '1.2.3.4', body: { token: 'reset-a', password: 'x' } })).toBe(`reset:${sha256('reset-a')}`);
+  });
+
+  it('never puts the raw reset token in the key', () => {
+    expect(authTracker({ ip: '1.2.3.4', body: { token: 'super-secret-token' } })).not.toContain('super-secret-token');
+  });
+
+  it('gives different reset tokens from the same IP different trackers', () => {
+    const a = authTracker({ ip: '1.2.3.4', body: { token: 'reset-a' } });
+    const b = authTracker({ ip: '1.2.3.4', body: { token: 'reset-b' } });
+    expect(a).not.toBe(b);
+  });
+
+  it.each([
+    ['no body', { ip: '5.6.7.8' }],
+    ['no email or token', { ip: '5.6.7.8', body: { refreshToken: 'x' } }],
+    ['an empty token', { ip: '5.6.7.8', body: { token: '' } }],
+    ['a non-string email', { ip: '5.6.7.8', body: { email: 42 } }],
+    ['a non-string token', { ip: '5.6.7.8', body: { token: 42 } }],
+  ])('falls back to the IP with %s', (_label, req) => {
+    expect(authTracker(req)).toBe('ip:5.6.7.8');
+  });
+});
+
+describe('AuthThrottlerGuard', () => {
+  const parent = Object.getPrototypeOf(AuthThrottlerGuard.prototype) as {
+    handleRequest(props: ThrottlerRequest): Promise<boolean>;
+  };
+
+  async function forwardedLimits(guardClass: typeof AuthThrottlerGuard) {
+    const guard = Object.create(guardClass.prototype) as AuthThrottlerGuard;
+    const spy = jest.spyOn(parent, 'handleRequest').mockResolvedValue(true);
+    const props = { limit: 300, ttl: 1_000, blockDuration: 1_000 } as ThrottlerRequest;
+    await (guard as unknown as { handleRequest(p: ThrottlerRequest): Promise<boolean> }).handleRequest(props);
+    const [forwarded] = spy.mock.calls[0];
+    spy.mockRestore();
+    return forwarded;
+  }
+
+  it('uses authTracker as its tracker', async () => {
+    const guard = Object.create(AuthThrottlerGuard.prototype) as AuthThrottlerGuard;
+    const tracker = await (guard as unknown as { getTracker(req: Record<string, unknown>): Promise<string> }).getTracker({
+      ip: '1.2.3.4',
+      body: { email: 'a@x.com' },
+    });
+    expect(tracker).toBe('1.2.3.4:a@x.com');
+  });
+
+  it('applies AUTH_THROTTLE regardless of the route/global limit', async () => {
+    expect(await forwardedLimits(AuthThrottlerGuard)).toMatchObject({
+      limit: AUTH_THROTTLE.limit,
+      ttl: AUTH_THROTTLE.ttl,
+      blockDuration: AUTH_THROTTLE.ttl,
+    });
+  });
+
+  it('ForgotPasswordThrottlerGuard applies FORGOT_PASSWORD_THROTTLE instead', async () => {
+    expect(await forwardedLimits(ForgotPasswordThrottlerGuard)).toMatchObject({
+      limit: FORGOT_PASSWORD_THROTTLE.limit,
+      ttl: FORGOT_PASSWORD_THROTTLE.ttl,
+      blockDuration: FORGOT_PASSWORD_THROTTLE.ttl,
+    });
   });
 });
