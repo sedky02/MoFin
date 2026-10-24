@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { lowerBound, upperBoundFilter } from '../../common/utils/date-bounds';
 import { PrismaService } from '../../database/prisma.service';
 import { AccountsService } from '../accounts/accounts.service';
 import { CategoriesService } from '../categories/categories.service';
@@ -28,7 +29,15 @@ export class SearchService {
         ...(query.categoryId
           ? { OR: [{ categoryId: query.categoryId }, { items: { some: { categoryId: query.categoryId } } }] }
           : {}),
-        ...(query.from || query.to ? { occurredAt: { gte: query.from ? new Date(query.from) : undefined, lte: query.to ? new Date(query.to) : undefined } } : {}),
+        // A date-only `to` covers that whole day (`lt` the next day); a datetime stays an inclusive instant.
+        ...(query.from || query.to
+          ? {
+              occurredAt: {
+                ...(query.from ? { gte: lowerBound(query.from) } : {}),
+                ...(query.to ? upperBoundFilter(query.to) : {})
+              }
+            }
+          : {}),
         ...(query.accountId || query.minAmount || query.maxAmount
           ? {
               items: {

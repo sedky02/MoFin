@@ -105,3 +105,62 @@ describe('SearchService category filter', () => {
     expect(where).not.toHaveProperty('categoryId');
   });
 });
+
+describe('SearchService date range', () => {
+  type DateFilter = { gte?: Date; lt?: Date; lte?: Date };
+
+  function makeService() {
+    const paginate = jest.fn(async (_args: { where: { occurredAt?: DateFilter } }) => ({ data: [], total: 0, limit: 20, offset: 0 }));
+    const prisma = { paginated: { transaction: { paginate } } };
+    const service = new SearchService(prisma as never, {} as never, {} as never);
+    return { service, paginate };
+  }
+
+  /** Whether a transaction at `iso` passes the occurredAt filter the service built. */
+  function matches(filter: DateFilter, iso: string) {
+    const at = new Date(iso).getTime();
+    return (
+      (filter.gte === undefined || at >= filter.gte.getTime()) &&
+      (filter.lt === undefined || at < filter.lt.getTime()) &&
+      (filter.lte === undefined || at <= filter.lte.getTime())
+    );
+  }
+
+  async function occurredAtFilter(range: { from?: string; to?: string }) {
+    const { service, paginate } = makeService();
+    await service.searchTransactions('u1', { limit: 20, offset: 0, ...range } as never);
+    return paginate.mock.calls[0][0].where.occurredAt!;
+  }
+
+  it('from = to = one day returns that whole day', async () => {
+    const filter = await occurredAtFilter({ from: '2026-10-24', to: '2026-10-24' });
+
+    expect(matches(filter, '2026-10-24T00:00:00.000Z')).toBe(true);
+    expect(matches(filter, '2026-10-24T12:00:00.000Z')).toBe(true);
+    expect(matches(filter, '2026-10-24T23:59:00.000Z')).toBe(true);
+    expect(matches(filter, '2026-10-24T23:59:59.999Z')).toBe(true);
+    expect(matches(filter, '2026-10-23T23:59:59.999Z')).toBe(false);
+    expect(matches(filter, '2026-10-25T00:00:00.000Z')).toBe(false);
+  });
+
+  it('a date-only `to` on its own includes its last day', async () => {
+    const filter = await occurredAtFilter({ to: '2026-10-31' });
+
+    expect(filter).not.toHaveProperty('gte');
+    expect(matches(filter, '2026-10-31T23:59:00.000Z')).toBe(true);
+    expect(matches(filter, '2026-11-01T00:00:00.000Z')).toBe(false);
+  });
+
+  it('keeps a datetime `to` as an inclusive instant', async () => {
+    const filter = await occurredAtFilter({ from: '2026-10-01T00:00:00.000Z', to: '2026-10-24T12:00:00.000Z' });
+
+    expect(matches(filter, '2026-10-24T12:00:00.000Z')).toBe(true);
+    expect(matches(filter, '2026-10-24T12:00:00.001Z')).toBe(false);
+  });
+
+  it('adds no date condition without a range', async () => {
+    const { service, paginate } = makeService();
+    await service.searchTransactions('u1', { limit: 20, offset: 0 } as never);
+    expect(paginate.mock.calls[0][0].where).not.toHaveProperty('occurredAt');
+  });
+});
