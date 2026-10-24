@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ThrottlerGuard } from '@nestjs/throttler';
 
 /**
- * Keys the tight per-route limit on login/register/refresh by the submitted
+ * Keys the tight per-route limit on login/register/password reset by the submitted
  * email plus IP, not IP alone. IP alone is what the default tracker uses, but
  * every request from every user in this app arrives via the same BFF hop —
  * keying by IP+email is what actually stops credential stuffing (many
