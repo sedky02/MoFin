@@ -4,7 +4,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { RecurringStatus } from '@prisma/client';
 import { DomainEvents, TransactionCreatedEvent } from '../../common/events/domain-events';
 import { PrismaService } from '../../database/prisma.service';
-import { computeNextOccurrence, TransactionsService } from './transactions.service';
+import { computeNextOccurrence, isPastEndDate, TransactionsService } from './transactions.service';
 
 /**
  * Fixed key for a Postgres session advisory lock, arbitrary but stable. Only
@@ -47,6 +47,17 @@ export class RecurringTransactionsCron {
 
       for (const root of dueRoots) {
         try {
+          // A series whose cursor is already past its end date (e.g. one
+          // created or edited before create/updateRecurring ended it on the
+          // spot) ends here without posting anything.
+          if (isPastEndDate(root.nextOccurrenceAt!, root.recurringEndDate)) {
+            await this.prisma.transaction.update({
+              where: { id: root.id },
+              data: { recurringStatus: RecurringStatus.CANCELLED, nextOccurrenceAt: null }
+            });
+            continue;
+          }
+
           // Occurrence creation and cursor advance commit atomically: a crash
           // between them is impossible, and the @@unique([parentTransactionId,
           // occurredAt]) constraint rejects a duplicate outright if this ever
@@ -69,7 +80,7 @@ export class RecurringTransactionsCron {
             );
 
             const next = computeNextOccurrence(root.occurredAt.getUTCDate(), root.nextOccurrenceAt!, root.recurringInterval!);
-            const ended = root.recurringEndDate ? next > root.recurringEndDate : false;
+            const ended = isPastEndDate(next, root.recurringEndDate);
 
             await db.transaction.update({
               where: { id: root.id },
