@@ -37,7 +37,8 @@ function row(page: Page, description: string): Locator {
 async function settled(page: Page) {
   const footer = page.locator("main p[role=status]");
   await expect(footer.or(page.getByText("No matching transactions"))).toBeVisible({ timeout: 15_000 });
-  await expect(footer).not.toContainText("updating");
+  // No footer at all on the empty state.
+  if (await footer.isVisible()) await expect(footer).not.toContainText("updating");
 }
 
 async function choose(page: Page, field: string, option: string) {
