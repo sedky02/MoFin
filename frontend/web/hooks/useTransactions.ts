@@ -106,7 +106,7 @@ export function useUpdateRecurringTransaction(id: string) {
     mutationFn: (input: UpdateRecurringTransactionInput) =>
       api.patch<Transaction>(`/transactions/${id}/recurring`, input),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: transactionKeys.all });
+      invalidateSeries(queryClient);
       toast.success("Recurring transaction updated.");
     },
     onError: (err) => handleApiError(err, { fallback: "Could not update recurring transaction." }),
@@ -119,11 +119,17 @@ export function useCancelRecurringTransaction(id: string) {
   return useMutation({
     mutationFn: () => api.post<Transaction>(`/transactions/${id}/recurring/cancel`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: transactionKeys.all });
+      invalidateSeries(queryClient);
       toast.success("Recurring transaction cancelled.");
     },
     onError: (err) => handleApiError(err, { fallback: "Could not cancel recurring transaction." }),
   });
+}
+
+/** A series edit or cancel moves no money, but the root's page and the lists (the Recurring view) show it. */
+function invalidateSeries(queryClient: QueryClient) {
+  queryClient.invalidateQueries({ queryKey: transactionKeys.all });
+  queryClient.invalidateQueries({ queryKey: searchKeys.all });
 }
 
 /** Every field of a transaction; its recurrence is edited separately (useUpdateRecurringTransaction). */
