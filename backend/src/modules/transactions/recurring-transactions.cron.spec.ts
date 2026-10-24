@@ -14,14 +14,14 @@ describe('RecurringTransactionsCron', () => {
     nextOccurrenceAt: new Date('2026-02-28T00:00:00Z'),
     recurringAmount: { toString: () => '1000' },
     recurringInterval: RecurringInterval.MONTHLY,
-    recurringEndDate: null,
+    recurringEndDate: null as Date | null,
     recurringFromAccountId: 'acc-1',
     recurringToAccountId: null
   };
 
-  function makeCron({ locked = true } = {}) {
+  function makeCron({ locked = true, due = root }: { locked?: boolean; due?: typeof root } = {}) {
     const prisma = {
-      transaction: { findMany: jest.fn().mockResolvedValue([root]) },
+      transaction: { findMany: jest.fn().mockResolvedValue([due]), update: jest.fn() },
       $transaction: jest.fn(async (fn: (db: unknown) => unknown) => fn(fakeDb)),
       $queryRaw: jest.fn().mockResolvedValue([{ locked }])
     };
@@ -55,6 +55,43 @@ describe('RecurringTransactionsCron', () => {
       where: { id: 'root-1' },
       data: { nextOccurrenceAt: new Date('2026-03-31T00:00:00Z') }
     });
+  });
+
+  it('ends a series whose next occurrence is already past its end date, posting nothing', async () => {
+    // Created Oct 17 with end Oct 30: the Nov 17 charge was excluded by the user.
+    const pastEnd = {
+      ...root,
+      occurredAt: new Date('2026-10-17T00:00:00Z'),
+      nextOccurrenceAt: new Date('2026-11-17T00:00:00Z'),
+      recurringEndDate: new Date('2026-10-30T00:00:00Z')
+    };
+    const { cron, prisma, transactionsService, events } = makeCron({ due: pastEnd });
+    await cron.generateDueOccurrences();
+
+    expect(transactionsService.create).not.toHaveBeenCalled();
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+    expect(events.emit).not.toHaveBeenCalled();
+    expect(prisma.transaction.update).toHaveBeenCalledWith({
+      where: { id: 'root-1' },
+      data: { recurringStatus: RecurringStatus.CANCELLED, nextOccurrenceAt: null }
+    });
+  });
+
+  it('posts the occurrence that lands exactly on the end date, then ends the series', async () => {
+    const lastOne = { ...root, recurringEndDate: new Date('2026-02-28T00:00:00Z') };
+    const { cron, transactionsService, events } = makeCron({ due: lastOne });
+    await cron.generateDueOccurrences();
+
+    expect(transactionsService.create).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({ occurredAt: new Date('2026-02-28T00:00:00Z'), parentTransactionId: 'root-1' }),
+      fakeDb
+    );
+    expect(fakeDb.transaction.update).toHaveBeenCalledWith({
+      where: { id: 'root-1' },
+      data: { recurringStatus: RecurringStatus.CANCELLED, nextOccurrenceAt: null }
+    });
+    expect(events.emit).toHaveBeenCalledTimes(1);
   });
 
   it('emits TransactionCreated only after the transaction commits', async () => {
