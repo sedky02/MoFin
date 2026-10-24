@@ -73,21 +73,24 @@ export function TransactionRow({
           )}
         </p>
         <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
-          {(tx.category || tx.type !== "TRANSFER") && (
-            <span className="flex min-w-0 items-center gap-1.5">
-              <CategoryDot color={filedUnder.category?.color} />
-              <span className="truncate">
-                {filedUnder.split && (
-                  <>
-                    Split <span aria-hidden>·</span>{" "}
-                  </>
-                )}
-                {filedUnder.label}
+          {/* Category and date share a line that never wraps; the category truncates instead. */}
+          <span className="flex min-w-0 max-w-full items-center gap-2">
+            {(tx.category || tx.type !== "TRANSFER") && (
+              <span className="flex min-w-0 items-center gap-1.5">
+                <CategoryDot color={filedUnder.category?.color} />
+                <span className="truncate">
+                  {filedUnder.split && (
+                    <>
+                      Split <span aria-hidden>·</span>{" "}
+                    </>
+                  )}
+                  {filedUnder.label}
+                </span>
+                {(!glance || accountLabel) && <span aria-hidden>·</span>}
               </span>
-              {(!glance || accountLabel) && <span aria-hidden>·</span>}
-            </span>
-          )}
-          {!glance && <span className="tabular shrink-0">{formatDate(tx.occurredAt)}</span>}
+            )}
+            {!glance && <span className="tabular shrink-0">{formatDate(tx.occurredAt)}</span>}
+          </span>
           {accountLabel && (
             <>
               {/* On a phone the account gets its own line, so category and date keep theirs. */}
