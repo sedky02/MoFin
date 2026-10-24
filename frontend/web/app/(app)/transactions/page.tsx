@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { PageHeader } from "@/components/common/page-header";
-import { SearchView, type SearchInitial } from "@/components/search/search-view";
+import type { SearchInitial } from "@/components/search/search-view";
+import { TransactionsViews } from "@/components/transactions/transactions-views";
 import { Skeleton } from "@/components/ui/skeleton";
-import { parseRecurrence, parseSort, parseType } from "@/lib/transaction-list-params";
+import { parseRecurrence, parseSort, parseType, parseView } from "@/lib/transaction-list-params";
 
 export const metadata: Metadata = { title: "Transactions" };
 
@@ -20,7 +21,7 @@ export default function TransactionsPage({
     <div className="mx-auto max-w-3xl">
       <PageHeader
         title="Transactions"
-        description="Every transaction you have recorded. Search and filter by text, account, category, type, date, or amount."
+        description="Every transaction you have recorded. Search and filter by text, account, category, type, date, or amount, or see your recurring series."
       />
       <Suspense fallback={<SearchSkeleton />}>
         <SearchContent searchParams={searchParams} />
@@ -52,7 +53,7 @@ async function SearchContent({
     page: first(sp.page) ? Number(first(sp.page)) : 1,
   };
 
-  return <SearchView initial={initial} />;
+  return <TransactionsViews initialView={parseView(first(sp.view))} initial={initial} />;
 }
 
 function SearchSkeleton() {
