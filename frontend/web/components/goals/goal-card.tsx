@@ -5,7 +5,7 @@ import type { Account, Goal } from "@/lib/types";
 import { MoneyAmount } from "@/components/common/money-amount";
 import { GoalTypeBadge, GoalStatusBadge } from "@/components/common/badges";
 import { GoalProgressBar } from "@/components/goals/goal-progress-bar";
-import { formatDate, goalProgressRatio } from "@/lib/format";
+import { formatDate, formatPeriodDate, goalProgressRatio } from "@/lib/format";
 import { isGreaterThan } from "@/lib/decimal";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -42,7 +42,7 @@ export function GoalCard({
     goal.type === "EXPENSE" && !!instance && isGreaterThan(instance.progressAmount, instance.targetAmount);
 
   const periodLabel = instance
-    ? `${formatDate(instance.periodStart)} – ${formatDate(instance.periodEnd)}`
+    ? `${formatPeriodDate(instance.periodStart)} – ${formatPeriodDate(instance.periodEnd)}`
     : "No active period";
 
   return (

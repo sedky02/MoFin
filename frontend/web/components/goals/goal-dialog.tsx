@@ -15,6 +15,7 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -63,8 +64,9 @@ const schema = z
     if (!value.isRecurring && !value.periodEnd) {
       ctx.addIssue({ code: "custom", path: ["periodEnd"], message: "End date is required for a fixed goal." });
     }
-    if (!value.isRecurring && value.periodEnd && value.periodEnd <= value.periodStart) {
-      ctx.addIssue({ code: "custom", path: ["periodEnd"], message: "End date must be after the start date." });
+    // The end date counts in full, so a one-day goal (start = end) is fine.
+    if (!value.isRecurring && value.periodEnd && value.periodEnd < value.periodStart) {
+      ctx.addIssue({ code: "custom", path: ["periodEnd"], message: "End date can't be before the start date." });
     }
   });
 type Values = z.infer<typeof schema>;
@@ -289,6 +291,7 @@ export function GoalDialog({
                         <FormControl>
                           <Input type="date" {...field} />
                         </FormControl>
+                        <FormDescription>Transactions on this day still count.</FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}

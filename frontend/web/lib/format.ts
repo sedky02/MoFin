@@ -310,6 +310,22 @@ export function formatDate(iso: string): string {
   }).format(d);
 }
 
+/**
+ * A goal period's first or last day. The API's periods are UTC days (00:00 to
+ * 23:59:59.999), so they're read in UTC: in local time a period ending
+ * 23:59:59.999Z would show the next day east of UTC.
+ */
+export function formatPeriodDate(iso: string): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  return new Intl.DateTimeFormat(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  }).format(d);
+}
+
 export function formatDateTime(iso: string): string {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return iso;

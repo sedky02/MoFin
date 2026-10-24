@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { GoalStatusBadge } from "@/components/common/badges";
 import { MoneyAmount } from "@/components/common/money-amount";
 import { SkeletonRows, EmptyState, ErrorState } from "@/components/common/states";
-import { formatDate } from "@/lib/format";
+import { formatPeriodDate } from "@/lib/format";
 import { History } from "lucide-react";
 import { useGoalHistory } from "@/hooks/useGoals";
 import type { Account, Goal } from "@/lib/types";
@@ -58,7 +58,7 @@ export function GoalHistoryDialog({
                 {data.map((instance) => (
                   <TableRow key={instance.id}>
                     <TableCell className="whitespace-nowrap text-sm">
-                      {formatDate(instance.periodStart)} – {formatDate(instance.periodEnd)}
+                      {formatPeriodDate(instance.periodStart)} – {formatPeriodDate(instance.periodEnd)}
                     </TableCell>
                     <TableCell className="whitespace-nowrap text-sm">
                       <MoneyAmount amount={instance.progressAmount} currency={currency} />

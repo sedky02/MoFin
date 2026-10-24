@@ -1,6 +1,7 @@
 import { GoalRecurrenceUnit, GoalType } from '@prisma/client';
 import { z } from 'zod';
 import { amountStringSchema, dateStringSchema } from '../../../common/dto/common-fields';
+import { inclusiveUpperBound, lowerBound } from '../../../common/utils/date-bounds';
 import { paginationSchema } from '../../../common/dto/pagination';
 
 const baseGoalSchema = z.object({
@@ -36,7 +37,8 @@ export const createGoalSchema = baseGoalSchema.superRefine((value, ctx) => {
       message: 'recurrenceUnit must not be set when isRecurring is false',
     });
   }
-  if (value.periodEnd && Date.parse(value.periodEnd) <= Date.parse(value.periodStart)) {
+  // A date-only end covers its whole day, so a goal may start and end on the same date.
+  if (value.periodEnd && inclusiveUpperBound(value.periodEnd) <= lowerBound(value.periodStart)) {
     ctx.addIssue({ code: 'custom', path: ['periodEnd'], message: 'periodEnd must be after periodStart' });
   }
 });

@@ -1,4 +1,5 @@
 import { GoalRecurrenceUnit, GoalStatus, GoalType, Prisma } from '@prisma/client';
+import { createGoalSchema } from './dto/goals.dto';
 import { GoalsService, resolvePeriodBounds } from './goals.service';
 
 describe('GoalsService', () => {
@@ -164,6 +165,135 @@ describe('GoalsService', () => {
         new Date('2026-01-15'),
       );
       expect(result.toString()).toBe('0');
+    });
+  });
+
+  describe('fixed goal end date', () => {
+    const END_DAY = '2026-10-24';
+    const STORED_END = new Date('2026-10-24T23:59:59.999Z');
+
+    afterEach(() => jest.useRealTimers());
+
+    it('stores a date-only end as the last instant of that day, on the goal and its instance', async () => {
+      const create = jest.fn(async (args: unknown) => args);
+      const prisma = { goal: { create } };
+      const accountsService = { assertActive: jest.fn(async () => ({ id: 'a1' })) };
+      const service = new GoalsService(prisma as never, accountsService as never);
+
+      await service.create('u1', {
+        accountId: 'a1',
+        name: 'October cap',
+        type: GoalType.EXPENSE,
+        targetAmount: '100',
+        isRecurring: false,
+        periodStart: '2026-10-01',
+        periodEnd: END_DAY,
+      });
+
+      const { data } = create.mock.calls[0][0] as {
+        data: { periodStart: Date; periodEnd: Date; instances: { create: { periodStart: Date; periodEnd: Date } } };
+      };
+      expect(data.periodStart).toEqual(new Date('2026-10-01T00:00:00.000Z'));
+      expect(data.periodEnd).toEqual(STORED_END);
+      expect(data.instances.create.periodEnd).toEqual(STORED_END);
+    });
+
+    it('counts transactions on the end day, up to its last minute', async () => {
+      const aggregate = jest.fn((_args: unknown) => Promise.resolve({ _sum: { amount: new Prisma.Decimal('0') } }));
+      const service = new GoalsService({ transactionItem: { aggregate } } as never, {} as never);
+
+      await service.computeProgressAmount(
+        { type: GoalType.EXPENSE, accountId: 'a1', userId: 'u1' },
+        new Date('2026-10-01T00:00:00.000Z'),
+        STORED_END,
+        new Date('2026-10-26T09:00:00.000Z'),
+      );
+
+      const call = aggregate.mock.calls[0][0] as { where: { transaction: { occurredAt: { gte: Date; lte: Date } } } };
+      const { gte, lte } = call.where.transaction.occurredAt;
+      const counted = (iso: string) => new Date(iso) >= gte && new Date(iso) <= lte;
+      expect(counted('2026-10-24T00:00:00.000Z')).toBe(true);
+      expect(counted('2026-10-24T12:00:00.000Z')).toBe(true);
+      expect(counted('2026-10-24T23:59:00.000Z')).toBe(true);
+      expect(counted('2026-10-25T00:00:00.000Z')).toBe(false);
+    });
+
+    function makeRolloverService(instance: { periodEnd: Date }) {
+      // Applies the `periodEnd < now` filter the way the database would.
+      const findMany = jest.fn(async ({ where }: { where: { periodEnd: { lt: Date } } }) =>
+        instance.periodEnd < where.periodEnd.lt ? [instance] : [],
+      );
+      const update = jest.fn(async () => ({}));
+      const aggregate = jest.fn(async () => ({ _sum: { amount: new Prisma.Decimal('40') } }));
+      const prisma = {
+        goalInstance: { findMany, update },
+        goal: { findMany: jest.fn(async () => []) },
+        transactionItem: { aggregate },
+      };
+      return { service: new GoalsService(prisma as never, {} as never), update };
+    }
+
+    const instance = {
+      id: 'i1',
+      periodStart: new Date('2026-10-01T00:00:00.000Z'),
+      periodEnd: STORED_END,
+      targetAmount: new Prisma.Decimal('100'),
+      status: GoalStatus.IN_PROGRESS,
+      goal: { type: GoalType.EXPENSE, accountId: 'a1', userId: 'u1', isRecurring: false },
+    };
+
+    it('does not finalize during its last day', async () => {
+      jest.useFakeTimers({ now: new Date('2026-10-24T23:59:00.000Z') });
+      const { service, update } = makeRolloverService(instance);
+
+      await service.rolloverExpiredInstances();
+
+      expect(update).not.toHaveBeenCalled();
+    });
+
+    it('finalizes once its last day is over', async () => {
+      jest.useFakeTimers({ now: new Date('2026-10-25T00:00:00.000Z') });
+      const { service, update } = makeRolloverService(instance);
+
+      await service.rolloverExpiredInstances();
+
+      expect(update).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: 'i1' }, data: expect.objectContaining({ status: GoalStatus.ACHIEVED }) }),
+      );
+    });
+
+    it('reads as still running on its last day and as ended the next day', async () => {
+      const goal = {
+        id: 'g1',
+        userId: 'u1',
+        accountId: 'a1',
+        type: GoalType.EXPENSE,
+        isRecurring: false,
+        instances: [instance],
+      };
+      const prisma = {
+        goal: { findFirst: jest.fn(async () => goal), findFirstOrThrow: jest.fn(async () => goal) },
+        transactionItem: { aggregate: jest.fn(async () => ({ _sum: { amount: new Prisma.Decimal('40') } })) },
+      };
+      const service = new GoalsService(prisma as never, {} as never);
+
+      jest.useFakeTimers({ now: new Date('2026-10-24T23:59:00.000Z') });
+      expect((await service.findOne('u1', 'g1')).currentInstance?.status).toBe(GoalStatus.IN_PROGRESS);
+
+      jest.setSystemTime(new Date('2026-10-25T00:00:00.000Z'));
+      expect((await service.findOne('u1', 'g1')).currentInstance?.status).toBe(GoalStatus.ACHIEVED);
+    });
+  });
+
+  describe('createGoalSchema', () => {
+    const base = { accountId: 'a1', name: 'One day', type: GoalType.EXPENSE, targetAmount: '10', isRecurring: false };
+
+    it('accepts a fixed goal that starts and ends on the same date', () => {
+      expect(createGoalSchema.safeParse({ ...base, periodStart: '2026-10-24', periodEnd: '2026-10-24' }).success).toBe(true);
+    });
+
+    it('still rejects an end date before the start date', () => {
+      expect(createGoalSchema.safeParse({ ...base, periodStart: '2026-10-24', periodEnd: '2026-10-23' }).success).toBe(false);
     });
   });
 
