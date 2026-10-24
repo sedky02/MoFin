@@ -72,7 +72,7 @@ export function TransactionRow({
             <Repeat className="size-3 shrink-0 text-muted-foreground" aria-label="Recurring" />
           )}
         </p>
-        <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
+        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
           {(tx.category || tx.type !== "TRANSFER") && (
             <span className="flex min-w-0 items-center gap-1.5">
               <CategoryDot color={filedUnder.category?.color} />
@@ -90,8 +90,9 @@ export function TransactionRow({
           {!glance && <span className="tabular shrink-0">{formatDate(tx.occurredAt)}</span>}
           {accountLabel && (
             <>
-              {!glance && <span aria-hidden>·</span>}
-              <span className="truncate">{accountLabel}</span>
+              {/* On a phone the account gets its own line, so category and date keep theirs. */}
+              {!glance && <span aria-hidden className="hidden sm:inline">·</span>}
+              <span className="min-w-0 basis-full truncate sm:basis-auto">{accountLabel}</span>
             </>
           )}
         </div>
