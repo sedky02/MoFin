@@ -20,6 +20,10 @@ const envSchema = z.object({
   JWT_MCP_SECRET: secretSchema,
   JWT_ACCESS_TTL: z.string().default('15m'),
   JWT_REFRESH_TTL: z.string().default('30d'),
+  // Derives each rotated refresh token from the one it replaces, so a retry
+  // right after a rotation can get the same successor back. Changing it only
+  // affects tokens rotated in the 30 s before the change.
+  REFRESH_TOKEN_SECRET: secretSchema,
   PORT: z.coerce.number().int().positive().default(3000),
 
   // --- OAuth 2.1 authorization server (MCP custom connector) ---

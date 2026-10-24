@@ -2,7 +2,7 @@ import { GatewayTimeoutException, Injectable, ServiceUnavailableException, Unaut
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { randomBytes } from 'crypto';
+import { createHmac, randomBytes } from 'crypto';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
 import { parseDurationMs } from '../../common/utils/duration';
@@ -17,6 +17,10 @@ import { WEB_AUDIENCE } from './auth.constants';
 // entirely for unknown emails / Google-only accounts, a measurable timing
 // side-channel for account enumeration (audit SEC-XX).
 const DUMMY_PASSWORD_HASH = bcrypt.hashSync(randomBytes(32).toString('hex'), 12);
+
+// How long a just-rotated refresh token still gets its successor back
+// instead of counting as reuse (B-22).
+const ROTATION_GRACE_MS = 30_000;
 
 @Injectable()
 export class AuthService {
@@ -63,18 +67,28 @@ export class AuthService {
   }
 
   /**
-   * Refresh tokens are opaque random strings persisted (hashed) server-side
-   * with a familyId, mirroring OAuthService.exchangeRefreshToken: rotate on
-   * every use, and if a token is presented that was already revoked/rotated
-   * (reuse — the classic signal of a stolen token), revoke the whole family
-   * so the thief's and the legitimate holder's tokens both stop working.
+   * Refresh tokens are opaque strings persisted (hashed) server-side with a
+   * familyId, mirroring OAuthService.exchangeRefreshToken: rotate on every
+   * use, and if a token is presented that was already revoked/rotated (reuse,
+   * the classic signal of a stolen token), revoke the whole family so the
+   * thief's and the legitimate holder's tokens both stop working.
+   *
+   * One exception: a token rotated less than ROTATION_GRACE_MS ago gets the
+   * same successor back, as long as that successor is still live. Several
+   * tabs, or requests sent before the browser stored the new cookie, present
+   * the old token right after a rotation; that is not theft. The successor is
+   * an HMAC of the presented token (see successorOf), so it can be recomputed
+   * here and checked against the stored hash without ever storing it.
    */
   async refreshTokens(refreshToken: string) {
-    const tokenHash = sha256(refreshToken);
-    const stored = await this.prisma.refreshToken.findUnique({ where: { tokenHash } });
+    const stored = await this.prisma.refreshToken.findUnique({ where: { tokenHash: sha256(refreshToken) } });
     if (!stored) throw new UnauthorizedException('Invalid refresh token');
 
+    const successor = this.successorOf(refreshToken);
+
     if (stored.revokedAt || stored.rotatedToId) {
+      const retried = await this.reissueRecentRotation(stored, successor);
+      if (retried) return retried;
       await this.prisma.refreshToken.updateMany({
         where: { familyId: stored.familyId, revokedAt: null },
         data: { revokedAt: new Date() },
@@ -88,14 +102,61 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({ where: { id: stored.userId } });
     if (!user) throw new UnauthorizedException('Invalid refresh token');
 
-    const next = await this.issueTokens(user.id, user.email, stored.familyId);
-
-    await this.prisma.refreshToken.update({
-      where: { id: stored.id },
-      data: { revokedAt: new Date(), rotatedToId: sha256(next.refreshToken) },
+    // Claim the token and create its successor in one step, so two concurrent
+    // refreshes with the same token can't both rotate it.
+    const claimed = await this.prisma.$transaction(async (tx) => {
+      const { count } = await tx.refreshToken.updateMany({
+        where: { id: stored.id, revokedAt: null, rotatedToId: null },
+        data: { revokedAt: new Date(), rotatedToId: sha256(successor) },
+      });
+      if (count === 0) return false;
+      await tx.refreshToken.create({ data: this.refreshTokenRow(successor, user.id, stored.familyId) });
+      return true;
     });
+    if (!claimed) {
+      // A concurrent refresh with the same token won: hand out its successor.
+      const current = await this.prisma.refreshToken.findUnique({ where: { id: stored.id } });
+      const retried = current && (await this.reissueRecentRotation(current, successor));
+      if (retried) return retried;
+      throw new UnauthorizedException('Invalid refresh token');
+    }
 
-    return next;
+    return { accessToken: await this.signAccessToken(user.id, user.email), refreshToken: successor };
+  }
+
+  /**
+   * Returns the existing successor (with a new access token) when `stored`
+   * was rotated within the grace window to `successor` and that successor is
+   * still live. Returns null otherwise: revoked without rotation (logout or
+   * family revocation), rotated too long ago, rotated before successors were
+   * derived, or the successor itself already rotated or revoked.
+   */
+  private async reissueRecentRotation(
+    stored: { revokedAt: Date | null; rotatedToId: string | null },
+    successor: string,
+  ) {
+    if (!stored.revokedAt || !stored.rotatedToId) return null;
+    if (Date.now() - stored.revokedAt.getTime() > ROTATION_GRACE_MS) return null;
+    if (stored.rotatedToId !== sha256(successor)) return null;
+
+    const next = await this.prisma.refreshToken.findUnique({ where: { tokenHash: stored.rotatedToId } });
+    if (!next || next.revokedAt || next.rotatedToId || next.expiresAt < new Date()) return null;
+
+    const user = await this.prisma.user.findUnique({ where: { id: next.userId } });
+    if (!user) return null;
+
+    return { accessToken: await this.signAccessToken(user.id, user.email), refreshToken: successor };
+  }
+
+  /**
+   * The refresh token that replaces `refreshToken` on rotation. Deterministic
+   * (HMAC with REFRESH_TOKEN_SECRET) so a retry within the grace window can
+   * be given the same successor. Login tokens stay random.
+   */
+  private successorOf(refreshToken: string): string {
+    return createHmac('sha256', this.config.getOrThrow<string>('REFRESH_TOKEN_SECRET'))
+      .update(refreshToken)
+      .digest('base64url');
   }
 
   /** Revokes every refresh token in the presented token's family. */
@@ -185,14 +246,21 @@ export class AuthService {
 
   /**
    * Mints a fresh access token (JWT) and refresh token (opaque, persisted
-   * hashed) for `userId`, linking the new refresh token into `familyId` —
-   * a fresh random id on login/register, or the presented token's own family
-   * when rotating during refresh, so `logout`/reuse-detection can revoke
-   * every token ever issued from a single login in one update.
+   * hashed) for `userId`, linking the new refresh token into `familyId`, a
+   * fresh random id on login, so `logout`/reuse-detection can revoke every
+   * token ever issued from a single login in one update. Rotation during
+   * refresh creates its successor in `refreshTokens` instead.
    */
   private async issueTokens(userId: string, email: string, familyId: string) {
+    const accessToken = await this.signAccessToken(userId, email);
+    const refreshToken = randomBytes(32).toString('base64url');
+    await this.prisma.refreshToken.create({ data: this.refreshTokenRow(refreshToken, userId, familyId) });
+    return { accessToken, refreshToken };
+  }
+
+  private signAccessToken(userId: string, email: string): Promise<string> {
     const issuer = this.config.getOrThrow<string>('OAUTH_ISSUER').replace(/\/$/, '');
-    const accessToken = await this.jwtService.signAsync(
+    return this.jwtService.signAsync(
       { sub: userId, email },
       {
         secret: this.config.getOrThrow<string>('JWT_ACCESS_SECRET'),
@@ -201,19 +269,16 @@ export class AuthService {
         audience: WEB_AUDIENCE,
       },
     );
+  }
 
-    const refreshToken = randomBytes(32).toString('base64url');
+  private refreshTokenRow(refreshToken: string, userId: string, familyId: string) {
     const refreshTtlMs = parseDurationMs(this.config.get<string>('JWT_REFRESH_TTL', '30d'));
-    await this.prisma.refreshToken.create({
-      data: {
-        tokenHash: sha256(refreshToken),
-        userId,
-        familyId,
-        expiresAt: new Date(Date.now() + refreshTtlMs),
-      },
-    });
-
-    return { accessToken, refreshToken };
+    return {
+      tokenHash: sha256(refreshToken),
+      userId,
+      familyId,
+      expiresAt: new Date(Date.now() + refreshTtlMs),
+    };
   }
 }
 

@@ -83,6 +83,7 @@ describeWithDb('Password recovery (e2e)', () => {
     process.env.DATABASE_URL = E2E_DATABASE_URL;
     process.env.JWT_ACCESS_SECRET ??= `e2e-access-${'a'.repeat(32)}`;
     process.env.JWT_MCP_SECRET ??= `e2e-mcp-${'b'.repeat(32)}`;
+    process.env.REFRESH_TOKEN_SECRET ??= `e2e-refresh-${'c'.repeat(32)}`;
     process.env.WEB_URL = 'http://web.e2e';
 
     // Imported after the env is set: ConfigModule validates on import.
