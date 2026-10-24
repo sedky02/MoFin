@@ -52,6 +52,7 @@ import {
   type RecurringFormValues,
 } from "@/lib/recurring-edit";
 import type { Transaction } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 /**
  * Shown on the root transaction of a recurring series. Displays cadence +
@@ -60,6 +61,32 @@ import type { Transaction } from "@/lib/types";
  * generated is touched).
  */
 export function RecurringPanel({ tx }: { tx: Transaction }) {
+  const isCancelled = tx.recurringStatus === "CANCELLED";
+
+  return (
+    <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border pt-4">
+      <Badge variant={isCancelled ? "outline" : "secondary"} className="gap-1">
+        <Repeat className="size-3" />
+        {tx.recurringInterval === "YEARLY" ? "Yearly" : "Monthly"}
+        {isCancelled && " · Cancelled"}
+      </Badge>
+      {!isCancelled && tx.nextOccurrenceAt && (
+        <span className="text-xs text-muted-foreground">
+          Next on {formatDate(tx.nextOccurrenceAt)}
+        </span>
+      )}
+
+      {!isCancelled && <RecurringSeriesActions tx={tx} className="ml-auto" />}
+    </div>
+  );
+}
+
+/**
+ * "Edit series" and "Cancel series" for an active series root, shared by the
+ * root's detail page and the Recurring list. Cancelling stops the series and
+ * keeps every transaction, the root included; deleting the root is separate.
+ */
+export function RecurringSeriesActions({ tx, className }: { tx: Transaction; className?: string }) {
   const [editOpen, setEditOpen] = React.useState(false);
   const { data: accounts } = useAccounts();
   const { data: categories } = useCategories();
@@ -68,7 +95,6 @@ export function RecurringPanel({ tx }: { tx: Transaction }) {
 
   const accountList = accounts ?? [];
   const relevantCategories = (categories ?? []).filter((c) => c.type === tx.type);
-  const isCancelled = tx.recurringStatus === "CANCELLED";
 
   // What the dialog opened with; only fields that differ from it are sent.
   const [initial, setInitial] = React.useState(() => recurringFormValues(tx));
@@ -118,207 +144,192 @@ export function RecurringPanel({ tx }: { tx: Transaction }) {
   }
 
   return (
-    <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border pt-4">
-      <Badge variant={isCancelled ? "outline" : "secondary"} className="gap-1">
-        <Repeat className="size-3" />
-        {tx.recurringInterval === "YEARLY" ? "Yearly" : "Monthly"}
-        {isCancelled && " · Cancelled"}
-      </Badge>
-      {!isCancelled && tx.nextOccurrenceAt && (
-        <span className="text-xs text-muted-foreground">
-          Next on {formatDate(tx.nextOccurrenceAt)}
-        </span>
-      )}
-
-      {!isCancelled && (
-        <div className="ml-auto flex gap-2">
-          <Dialog open={editOpen} onOpenChange={handleOpenChange}>
-            <DialogTrigger asChild>
-              <Button type="button" variant="outline" size="sm">
-                Edit series
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Edit recurring transaction</DialogTitle>
-                <DialogDescription>
-                  Changes only affect occurrences generated from now on.
-                </DialogDescription>
-              </DialogHeader>
-              <Form {...form}>
-                <form action={action} className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="description"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Description</FormLabel>
+    <div className={cn("flex gap-2", className)}>
+      <Dialog open={editOpen} onOpenChange={handleOpenChange}>
+        <DialogTrigger asChild>
+          <Button type="button" variant="outline" size="sm">
+            Edit series
+          </Button>
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit recurring transaction</DialogTitle>
+            <DialogDescription>
+              Changes only affect occurrences generated from now on.
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...form}>
+            <form action={action} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="amountRaw"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Amount</FormLabel>
+                    <FormControl>
+                      <MoneyInput
+                        value={field.value}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                        currency={tx.currency}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              {tx.type !== "INCOME" && (
+                <FormField
+                  control={form.control}
+                  name="fromAccountId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{tx.type === "TRANSFER" ? "From account" : "Account"}</FormLabel>
+                      <FormControl>
+                        <AccountSelect
+                          accounts={accountList}
+                          value={field.value}
+                          onChange={field.onChange}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+              {tx.type !== "EXPENSE" && (
+                <FormField
+                  control={form.control}
+                  name="toAccountId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{tx.type === "TRANSFER" ? "To account" : "Account"}</FormLabel>
+                      <FormControl>
+                        <AccountSelect
+                          accounts={accountList}
+                          value={field.value}
+                          onChange={field.onChange}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+              {tx.type !== "TRANSFER" && (
+                <FormField
+                  control={form.control}
+                  name="categoryId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        Category{" "}
+                        <span className="font-normal text-muted-foreground">(optional)</span>
+                      </FormLabel>
+                      <Select value={field.value} onValueChange={field.onChange}>
                         <FormControl>
-                          <Input {...field} />
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Uncategorized" />
+                          </SelectTrigger>
                         </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="amountRaw"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Amount</FormLabel>
+                        <SelectContent>
+                          {relevantCategories.map((c) => (
+                            <SelectItem key={c.id} value={c.id}>
+                              {c.icon ? `${c.icon} ` : ""}
+                              {c.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+              <div className="grid grid-cols-2 gap-3">
+                <FormField
+                  control={form.control}
+                  name="recurringInterval"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Every</FormLabel>
+                      <Select value={field.value} onValueChange={field.onChange}>
                         <FormControl>
-                          <MoneyInput
-                            value={field.value}
-                            onChange={field.onChange}
-                            onBlur={field.onBlur}
-                            currency={tx.currency}
-                          />
+                          <SelectTrigger className="w-full">
+                            <SelectValue />
+                          </SelectTrigger>
                         </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  {tx.type !== "INCOME" && (
-                    <FormField
-                      control={form.control}
-                      name="fromAccountId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{tx.type === "TRANSFER" ? "From account" : "Account"}</FormLabel>
-                          <FormControl>
-                            <AccountSelect
-                              accounts={accountList}
-                              value={field.value}
-                              onChange={field.onChange}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                        <SelectContent>
+                          <SelectItem value="MONTHLY">Month</SelectItem>
+                          <SelectItem value="YEARLY">Year</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
                   )}
-                  {tx.type !== "EXPENSE" && (
-                    <FormField
-                      control={form.control}
-                      name="toAccountId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{tx.type === "TRANSFER" ? "To account" : "Account"}</FormLabel>
-                          <FormControl>
-                            <AccountSelect
-                              accounts={accountList}
-                              value={field.value}
-                              onChange={field.onChange}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                />
+                <FormField
+                  control={form.control}
+                  name="recurringEndDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        Ends <span className="font-normal text-muted-foreground">(optional)</span>
+                      </FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
                   )}
-                  {tx.type !== "TRANSFER" && (
-                    <FormField
-                      control={form.control}
-                      name="categoryId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>
-                            Category{" "}
-                            <span className="font-normal text-muted-foreground">(optional)</span>
-                          </FormLabel>
-                          <Select value={field.value} onValueChange={field.onChange}>
-                            <FormControl>
-                              <SelectTrigger className="w-full">
-                                <SelectValue placeholder="Uncategorized" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {relevantCategories.map((c) => (
-                                <SelectItem key={c.id} value={c.id}>
-                                  {c.icon ? `${c.icon} ` : ""}
-                                  {c.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  )}
-                  <div className="grid grid-cols-2 gap-3">
-                    <FormField
-                      control={form.control}
-                      name="recurringInterval"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Every</FormLabel>
-                          <Select value={field.value} onValueChange={field.onChange}>
-                            <FormControl>
-                              <SelectTrigger className="w-full">
-                                <SelectValue />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="MONTHLY">Month</SelectItem>
-                              <SelectItem value="YEARLY">Year</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="recurringEndDate"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>
-                            Ends <span className="font-normal text-muted-foreground">(optional)</span>
-                          </FormLabel>
-                          <FormControl>
-                            <Input type="date" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  <DialogFooter>
-                    <SubmitButton pendingText="Saving…">Save changes</SubmitButton>
-                  </DialogFooter>
-                </form>
-              </Form>
-            </DialogContent>
-          </Dialog>
+                />
+              </div>
+              <DialogFooter>
+                <SubmitButton pendingText="Saving…">Save changes</SubmitButton>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
 
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button type="button" variant="ghost" size="sm" className="text-destructive hover:text-destructive">
-                Cancel series
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Cancel recurring transaction?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  No further occurrences will be generated. Transactions already recorded are
-                  not affected.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Keep it</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={() => cancelMut.mutate()}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                >
-                  Cancel series
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </div>
-      )}
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <Button type="button" variant="ghost" size="sm" className="text-destructive hover:text-destructive">
+            Cancel series
+          </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel recurring transaction?</AlertDialogTitle>
+            <AlertDialogDescription>
+              No further occurrences of &ldquo;{tx.description}&rdquo; will be generated.
+              Transactions already recorded, this one included, are not affected.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep it</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => cancelMut.mutate()}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Cancel series
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
