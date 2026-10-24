@@ -12,13 +12,13 @@ async function newUser(request: APIRequestContext, tag: string, project: string)
   const email = `b25-${tag}-${Date.now().toString(36)}-${project}@mofin.test`;
   const registered = await request.post(`${API}/auth/register`, { data: { email, password: PASSWORD } });
   expect(registered.ok(), `register failed with ${registered.status()}`).toBeTruthy();
-  // Through the BFF, so the session cookies land in this test's browser context.
+  // Through the BFF with the page's own request context, so the session cookies reach the page.
   const login = await request.post("/api/auth/login", { data: { email, password: PASSWORD } });
   expect(login.ok(), `login failed with ${login.status()}`).toBeTruthy();
 }
 
-test("a new user with no accounts is offered one step: add an account", async ({ page, request }, testInfo) => {
-  await newUser(request, "none", testInfo.project.name);
+test("a new user with no accounts is offered one step: add an account", async ({ page }, testInfo) => {
+  await newUser(page.request, "none", testInfo.project.name);
   await page.goto("/dashboard");
 
   const main = page.getByRole("main");
@@ -32,9 +32,9 @@ test("a new user with no accounts is offered one step: add an account", async ({
   expect(await main.innerText()).not.toContain("$");
 });
 
-test("an account without activity shows its own zero and the next step", async ({ page, request }, testInfo) => {
-  await newUser(request, "tnd", testInfo.project.name);
-  const created = await request.post("/api/backend/accounts", {
+test("an account without activity shows its own zero and the next step", async ({ page }, testInfo) => {
+  await newUser(page.request, "tnd", testInfo.project.name);
+  const created = await page.request.post("/api/backend/accounts", {
     data: { name: "Dinar", type: "BANK", currency: "TND", metadata: { decimals: 3 } },
   });
   expect(created.ok(), `account create failed with ${created.status()}`).toBeTruthy();
