@@ -52,8 +52,8 @@ const createToast = (page: Page) => page.locator("[data-sonner-toast]").filter({
  * survives. Not "Back to transactions": that goes back in history, to the New form.
  */
 async function leaveByLink(page: Page) {
-  await page.getByRole("link", { name: "Dashboard", exact: true }).filter({ visible: true }).first().click();
-  await expect(page).toHaveURL(/\/dashboard$/);
+  await page.getByRole("link", { name: "Goals", exact: true }).filter({ visible: true }).first().click();
+  await expect(page).toHaveURL(/\/goals$/);
 }
 
 async function cleanUp(request: APIRequestContext, id: string) {
@@ -113,7 +113,7 @@ test("Undo still works after navigating away from the form", async ({ page }) =>
     expect(await balanceCents(page.request, accountId)).toBe(before);
     expect(await searchIds(page.request, description)).toEqual([]);
     // Already elsewhere, so the undo leaves the user where they are.
-    await expect(page).toHaveURL(/\/dashboard$/);
+    await expect(page).toHaveURL(/\/goals$/);
   } finally {
     await cleanUp(page.request, id);
   }
