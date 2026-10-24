@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import type { NavItem } from "./nav-items";
+import { isNavActive, type NavItem } from "./nav-items";
 import { Badge } from "@/components/ui/badge";
 import { usePendingDraftCount } from "@/hooks/useDrafts";
 import { useViewTransitionRouter } from "@/hooks/use-view-transition-router";
@@ -26,11 +26,7 @@ export function NavLink({
     navigate(item.href);
     onNavigate?.();
   }
-  // Dashboard matches exactly; others match the section prefix.
-  const active =
-    item.href === "/dashboard"
-      ? pathname === "/dashboard"
-      : pathname.startsWith(item.href);
+  const active = isNavActive(pathname, item.href);
 
   return (
     <Link

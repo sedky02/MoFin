@@ -13,7 +13,7 @@ import { ThemeToggle } from "./theme-toggle";
 import { UserMenu } from "./user-menu";
 import { AccountSwitcher } from "@/components/dashboard/account-switcher";
 import { useActiveAccount } from "@/hooks/useActiveAccount";
-import { BOTTOM_NAV_ITEMS, isBottomNavActive } from "./nav-items";
+import { BOTTOM_NAV_ITEMS, isNavActive } from "./nav-items";
 import { cn } from "@/lib/utils";
 
 /** The account new transactions, drafts and goals default to. "All accounts" = no default. */
@@ -124,7 +124,7 @@ function MobileBottomNav({ menuOpen, onOpenMenu }: { menuOpen: boolean; onOpenMe
     >
       {BOTTOM_NAV_ITEMS.map((item) => {
         const Icon = item.icon;
-        const active = isBottomNavActive(pathname, item.href);
+        const active = isNavActive(pathname, item.href);
         return (
           <Link
             key={item.href}
