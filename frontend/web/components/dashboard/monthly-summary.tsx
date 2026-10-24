@@ -294,7 +294,7 @@ export function MonthlySummaryCard({
             <Button size="sm" variant="secondary" onClick={() => setOffset(0)}>
               Back to this month
             </Button>
-          ) : (
+          ) : accounts.length === 0 ? undefined : (
             <Button asChild size="sm">
               <Link href="/transactions/new">{isExpense ? "Record an expense" : "Record income"}</Link>
             </Button>

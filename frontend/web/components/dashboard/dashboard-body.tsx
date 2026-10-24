@@ -11,6 +11,10 @@ import { BalanceCards } from "@/components/dashboard/balance-cards";
 import { MonthlySummaryCard } from "@/components/dashboard/monthly-summary";
 import { RecentTransactions } from "@/components/dashboard/recent-transactions";
 import { GoalsSummary } from "@/components/dashboard/goals-summary";
+import { EmptyState } from "@/components/common/states";
+import { Button } from "@/components/ui/button";
+import { Wallet } from "lucide-react";
+import Link from "next/link";
 
 /**
  * Client-driven body below the (server-rendered) greeting header. Holds which
@@ -40,7 +44,7 @@ export function DashboardBody({
   // that succeeded, fetched fresh through the BFF's refresh-on-401 path when
   // it didn't) so a guessed currency is never the final answer — it
   // self-corrects the moment real data arrives.
-  const primaryCurrency = pickPrimaryCurrency(balances, user, initialPrimaryCurrency);
+  const primaryCurrency = pickPrimaryCurrency(balances, user, initialPrimaryCurrency, accounts);
 
   // The balance hero and the monthly summary each keep their own currency choice. Amounts
   // never mix currencies, so an all-accounts view is shown one currency at a time.
@@ -53,6 +57,24 @@ export function DashboardBody({
   // The summary's switch also offers currencies that only have activity this month (an
   // archived account's, say), so its pick stands even when no active account holds it.
   const summaryCurrency = selectedAccount?.currency ?? summaryCurrencyPick ?? resolve();
+
+  // No account yet: nothing below can work (no balance, no summary, no transaction to
+  // record), so the page offers the one step that does.
+  if (accounts && accounts.length === 0) {
+    return (
+      <EmptyState
+        icon={Wallet}
+        title="Welcome to MoFin"
+        description="Add an account to start tracking your balances, then record your first transaction."
+        action={
+          <Button asChild>
+            <Link href="/accounts">Add your first account</Link>
+          </Button>
+        }
+        className="py-20"
+      />
+    );
+  }
 
   return (
     <section className="space-y-8">

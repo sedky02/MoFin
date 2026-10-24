@@ -37,6 +37,7 @@ export function BalanceOverview({
   accountId,
   currencies = [],
   onCurrencyChange,
+  emptyAction,
 }: {
   amount: string;
   currency: string;
@@ -46,6 +47,8 @@ export function BalanceOverview({
   /** Every currency the user holds; a switch is shown when there is more than one. */
   currencies?: { code: string; overdrawn: boolean }[];
   onCurrencyChange?: (currency: string) => void;
+  /** Shown under the headline when there is no activity yet (the first step to take). */
+  emptyAction?: React.ReactNode;
 }) {
   const [metric, setMetric] = React.useState<Metric>("balance");
   const { data, isLoading } = useMonthlySeries(currency, accountId);
@@ -95,6 +98,7 @@ export function BalanceOverview({
         {headline.caption}
         {metric === "balance" && overdrawn && <span className="font-medium text-destructive"> · Overdrawn</span>}
       </p>
+      {emptyAction && <div className="mt-5">{emptyAction}</div>}
       {headline.chip && (
         <span
           className={cn(

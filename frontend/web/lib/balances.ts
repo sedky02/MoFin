@@ -16,6 +16,14 @@ export function totalsByCurrency(balances: LedgerBalance[]): { currency: string;
 }
 
 /**
+ * Zero totals, one per currency of `accounts`, for an account that exists but has no ledger
+ * activity yet (the balance endpoint lists nothing for it). Order follows the accounts.
+ */
+export function zeroTotals(accounts: { currency: string }[]): { currency: string; amount: string }[] {
+  return [...new Set(accounts.map((a) => a.currency))].map((currency) => ({ currency, amount: "0" }));
+}
+
+/**
  * How many accounts outside `activeAccountIds` (i.e. archived) hold a non-zero
  * balance in `currency`. Those are part of the all-accounts total, so the hero
  * says so; an archived account at zero changes nothing and isn't counted.
