@@ -66,7 +66,7 @@ export function RecentTransactions({ accountId, className }: { accountId?: strin
       <div className="flex shrink-0 items-center justify-between px-5 pb-2 pt-5">
         <h2 className="label-sm text-foreground!">Recent transactions</h2>
         <Button asChild variant="ghost" size="sm" className="-mr-2 gap-1 text-xs">
-          <Link href="/search">
+          <Link href="/transactions">
             View all <ArrowRight className="size-3.5" />
           </Link>
         </Button>

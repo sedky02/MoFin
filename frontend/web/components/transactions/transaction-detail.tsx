@@ -77,7 +77,7 @@ export function TransactionDetail({ id }: { id: string }) {
     <div className="mx-auto max-w-2xl">
       <Button asChild variant="ghost" size="sm" className="mb-4 gap-1.5 text-muted-foreground">
         <Link
-          href="/search"
+          href="/transactions"
           onClick={(e) => {
             if (window.history.length > 1) {
               e.preventDefault();
@@ -189,7 +189,7 @@ export function TransactionDetail({ id }: { id: string }) {
         destructive
         onConfirm={() => {
           setConfirmDelete(false);
-          deleteMut.mutate(tx.id, { onSuccess: () => router.push("/search") });
+          deleteMut.mutate(tx.id, { onSuccess: () => router.push("/transactions") });
         }}
       />
 

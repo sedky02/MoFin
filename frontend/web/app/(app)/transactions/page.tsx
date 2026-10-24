@@ -1,20 +1,27 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { PageHeader } from "@/components/common/page-header";
 import { SearchView, type SearchInitial } from "@/components/search/search-view";
 import { Skeleton } from "@/components/ui/skeleton";
+import { parseRecurrence, parseSort, parseType } from "@/lib/transaction-list-params";
+
+export const metadata: Metadata = { title: "Transactions" };
 
 function first(v: string | string[] | undefined): string | undefined {
   return Array.isArray(v) ? v[0] : v;
 }
 
-export default function SearchPage({
+export default function TransactionsPage({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   return (
     <div className="mx-auto max-w-3xl">
-      <PageHeader title="Search" description="Find any transaction by text, account, category, date, or amount." />
+      <PageHeader
+        title="Transactions"
+        description="Every transaction you have recorded. Search and filter by text, account, category, type, date, or amount."
+      />
       <Suspense fallback={<SearchSkeleton />}>
         <SearchContent searchParams={searchParams} />
       </Suspense>
@@ -38,6 +45,9 @@ async function SearchContent({
     to: first(sp.to),
     minAmount: first(sp.minAmount),
     maxAmount: first(sp.maxAmount),
+    type: parseType(first(sp.type)),
+    recurrence: parseRecurrence(first(sp.recurrence)),
+    sort: parseSort(first(sp.sort)),
     limit: first(sp.limit) ? Number(first(sp.limit)) : 25,
     page: first(sp.page) ? Number(first(sp.page)) : 1,
   };
