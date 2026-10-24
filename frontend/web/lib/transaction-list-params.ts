@@ -31,6 +31,18 @@ export const SORT_OPTIONS: { value: TransactionSort; label: string }[] = [
   { value: "amount-asc", label: "Amount: low to high" },
 ];
 
+// The search endpoint also takes these, for the Recurring view: each series once
+// (by its root), active ones first by next date. Not offered as list filters.
+export type SearchRecurrence = Recurrence | "series";
+export type SearchSort = TransactionSort | "next-occurrence";
+
+/** The page's views: every transaction, or the recurring series (?view=recurring). */
+export type TransactionsView = "all" | "recurring";
+
+export function parseView(value: string | undefined): TransactionsView {
+  return value === "recurring" ? "recurring" : "all";
+}
+
 function pick<T extends string>(options: { value: T }[], value: string | undefined): T | undefined {
   return options.find((o) => o.value === value)?.value;
 }

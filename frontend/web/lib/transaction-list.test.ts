@@ -5,6 +5,7 @@ import {
   parseRecurrence,
   parseSort,
   parseType,
+  parseView,
 } from "@/lib/transaction-list-params";
 import type { Account, LedgerItem } from "@/lib/types";
 
@@ -60,6 +61,18 @@ describe("transaction list params", () => {
     expect(parseRecurrence("all")).toBeUndefined();
     expect(parseSort("amount-desc")).toBe("amount-desc");
     expect(parseSort(undefined)).toBeUndefined();
+  });
+
+  it("keeps the Recurring view's own query values out of the list filters", () => {
+    // `series` and `next-occurrence` are the Recurring view's; a URL can't put them on the list.
+    expect(parseRecurrence("series")).toBeUndefined();
+    expect(parseSort("next-occurrence")).toBeUndefined();
+  });
+
+  it("opens the Recurring view only on ?view=recurring", () => {
+    expect(parseView("recurring")).toBe("recurring");
+    expect(parseView(undefined)).toBe("all");
+    expect(parseView("Recurring")).toBe("all");
   });
 
   it("labels archived accounts in the account filter", () => {

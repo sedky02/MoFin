@@ -5,7 +5,7 @@ import { api } from "@/lib/api";
 import { searchKeys } from "@/lib/query-keys";
 import { STALE } from "@/lib/query-client";
 import type { Paginated, Transaction, TransactionType } from "@/lib/types";
-import type { Recurrence, TransactionSort } from "@/lib/transaction-list-params";
+import type { SearchRecurrence, SearchSort } from "@/lib/transaction-list-params";
 
 export interface SearchParams {
   q?: string;
@@ -16,8 +16,8 @@ export interface SearchParams {
   minAmount?: string;
   maxAmount?: string;
   type?: TransactionType;
-  recurrence?: Recurrence;
-  sort?: TransactionSort;
+  recurrence?: SearchRecurrence;
+  sort?: SearchSort;
   limit?: number;
 }
 

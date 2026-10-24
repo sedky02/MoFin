@@ -16,6 +16,20 @@ const DATE_ORDER = {
   oldest: [{ occurredAt: 'asc' }, { createdAt: 'asc' }]
 } satisfies Record<'newest' | 'oldest', Prisma.TransactionOrderByWithRelationInput[]>;
 
+// What a series list wants first: active series (the enum sorts in declaration
+// order, ACTIVE before CANCELLED), the soonest next occurrence first. Rows
+// outside any series carry neither field and come last, newest first.
+const NEXT_OCCURRENCE_ORDER = [
+  { recurringStatus: { sort: 'asc', nulls: 'last' } },
+  { nextOccurrenceAt: { sort: 'asc', nulls: 'last' } },
+  ...DATE_ORDER.newest
+] satisfies Prisma.TransactionOrderByWithRelationInput[];
+
+function orderFor(sort: SearchSort | undefined): Prisma.TransactionOrderByWithRelationInput[] {
+  if (sort === 'next-occurrence') return NEXT_OCCURRENCE_ORDER;
+  return DATE_ORDER[sort === 'oldest' ? 'oldest' : 'newest'];
+}
+
 /**
  * A transaction's total from its ledger legs: what left an account (expense,
  * transfer) or came into one (income). A transfer's two legs carry the same
@@ -80,10 +94,12 @@ export class SearchService {
         ...(query.recurrence === 'recurring'
           ? { AND: [{ OR: [{ isRecurring: true }, { parentTransactionId: { not: null } }] }] }
           : {}),
-        ...(query.recurrence === 'one-off' ? { isRecurring: false, parentTransactionId: null } : {})
+        ...(query.recurrence === 'one-off' ? { isRecurring: false, parentTransactionId: null } : {}),
+        // Only a root carries the series template (schedule, amount, status).
+        ...(query.recurrence === 'series' ? { isRecurring: true, parentTransactionId: null } : {})
       },
       include: TRANSACTION_INCLUDE,
-      orderBy: DATE_ORDER[query.sort === 'oldest' ? 'oldest' : 'newest'],
+      orderBy: orderFor(query.sort),
       limit: query.limit,
       offset: query.offset
     } satisfies Prisma.TransactionFindManyArgs & { limit: number; offset: number };
