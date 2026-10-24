@@ -9,6 +9,8 @@ import { useAccounts } from "@/hooks/useAccounts";
 import { GoalMiniCard } from "@/components/goals/goal-mini-card";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { goalScopeLabel } from "@/lib/goal-scope";
 import { SkeletonCard, EmptyState, ErrorState } from "@/components/common/states";
 
 /** Glanceable goals for the dashboard; editing, history and ending a goal live on /goals. */
@@ -73,18 +75,31 @@ export function GoalsSummary({ accountId }: { accountId?: string } = {}) {
             }
           />
         ) : (
-          <ul className="grid grid-cols-1 gap-3">
-            {visible.map((goal) => (
-              <li key={goal.id}>
-                <Link
-                  href="/goals"
-                  className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  <GoalMiniCard goal={goal} account={accountsById.get(goal.accountId)} />
-                </Link>
-              </li>
-            ))}
-          </ul>
+          <TooltipProvider delayDuration={300}>
+            <ul className="grid grid-cols-1 gap-3">
+              {visible.map((goal) => {
+                const account = accountsById.get(goal.accountId);
+                return (
+                  <li key={goal.id}>
+                    {/* What the goal counts stays off the tile; hover or focus shows it. */}
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Link
+                          href="/goals"
+                          className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                          <GoalMiniCard goal={goal} account={account} />
+                        </Link>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" sideOffset={6} data-testid="goal-scope-tooltip">
+                        {goalScopeLabel(goal.type, account?.name)}
+                      </TooltipContent>
+                    </Tooltip>
+                  </li>
+                );
+              })}
+            </ul>
+          </TooltipProvider>
         )}
       </div>
       <GoalDialog open={dialogOpen} onOpenChange={setDialogOpen} />

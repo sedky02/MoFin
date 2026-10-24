@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
-// B-27: every goal card, dashboard tile and the goal dialog says what the goal counts.
+// B-27: every goal card and the goal dialog says what the goal counts; dashboard tiles
+// show it only as a tooltip, so the dashboard stays clean.
 // Needs the UX fixture: `npm run e2e:seed`.
 
 const EXPENSE = "Counts all expenses from Main checking";
@@ -18,15 +19,21 @@ test("goal cards show the scope line", async ({ page }) => {
   await expect(card("Emergency fund target").getByTestId("goal-scope")).toHaveText(BALANCE);
 });
 
-test("dashboard tiles show the scope line", async ({ page }) => {
+test("dashboard tiles keep the scope out of the tile and show it on hover and focus", async ({ page }) => {
   await page.goto("/dashboard");
-  const tiles = page.getByTestId("goal-scope");
-  await expect(tiles.first()).toBeVisible();
-  const texts = await tiles.allTextContents();
-  expect(texts.length).toBeGreaterThan(0);
-  for (const t of texts) {
-    expect(t).toMatch(/^(Counts all (income into|expenses from)|Tracks the balance of) \S/);
-  }
+  const tile = page.locator("li").filter({ hasText: "Monthly spending cap" }).getByRole("link");
+  await expect(tile).toBeVisible();
+  await expect(page.getByTestId("goal-scope")).toHaveCount(0);
+
+  await tile.hover();
+  await expect(page.getByTestId("goal-scope-tooltip")).toContainText(EXPENSE);
+  await expect(tile).toHaveAccessibleDescription(EXPENSE);
+
+  // Leave in several steps: Radix closes on the next pointer move outside its grace area.
+  await page.mouse.move(5, 5, { steps: 10 });
+  await expect(page.getByTestId("goal-scope-tooltip")).toHaveCount(0);
+  await tile.focus();
+  await expect(page.getByTestId("goal-scope-tooltip")).toContainText(EXPENSE);
 });
 
 test("the goal dialog updates the scope line as type and account change", async ({ page }) => {
