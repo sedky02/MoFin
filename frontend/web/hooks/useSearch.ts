@@ -4,7 +4,8 @@ import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { searchKeys } from "@/lib/query-keys";
 import { STALE } from "@/lib/query-client";
-import type { Paginated, Transaction } from "@/lib/types";
+import type { Paginated, Transaction, TransactionType } from "@/lib/types";
+import type { Recurrence, TransactionSort } from "@/lib/transaction-list-params";
 
 export interface SearchParams {
   q?: string;
@@ -14,6 +15,9 @@ export interface SearchParams {
   to?: string;
   minAmount?: string;
   maxAmount?: string;
+  type?: TransactionType;
+  recurrence?: Recurrence;
+  sort?: TransactionSort;
   limit?: number;
 }
 
@@ -38,7 +42,7 @@ export function useSearchTransactions(params: SearchParams) {
 }
 
 /**
- * Page-number paginated search (the /search page uses numbered pages rather than
+ * Page-number paginated search (the /transactions list uses numbered pages rather than
  * infinite scroll). `total` (from the backend) tells us whether a next page exists —
  * no more over-fetching a sentinel row, which also means `limit` can safely reach
  * the pagination schema's max (100) without silently exceeding it (limit + 1 used to).
