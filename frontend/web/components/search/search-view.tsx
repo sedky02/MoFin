@@ -407,12 +407,27 @@ export function SearchView({ initial }: { initial: SearchInitial }) {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactElement<{ id?: string }> }) {
+function Field({ label, children }: { label: string; children: React.ReactElement<{ id?: string; children?: React.ReactNode }> }) {
   const id = React.useId();
   return (
     <div className="space-y-1.5">
       <Label htmlFor={id} className="text-xs text-muted-foreground">{label}</Label>
-      {React.cloneElement(children, { id })}
+      {withControlId(children, id)}
     </div>
+  );
+}
+
+/**
+ * Puts the label's id on the focusable control. A Select's root renders nothing,
+ * so for a Select it goes on the trigger, or the dropdown would have no name.
+ */
+function withControlId(control: React.ReactElement<{ id?: string; children?: React.ReactNode }>, id: string) {
+  if (control.type !== Select) return React.cloneElement(control, { id });
+  return React.cloneElement(
+    control,
+    {},
+    React.Children.map(control.props.children, (child) =>
+      React.isValidElement<{ id?: string }>(child) && child.type === SelectTrigger ? React.cloneElement(child, { id }) : child,
+    ),
   );
 }
