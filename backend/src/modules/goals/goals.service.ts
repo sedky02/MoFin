@@ -1,6 +1,7 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { Goal, GoalInstance, GoalRecurrenceUnit, GoalStatus, GoalType, Prisma, TransactionType } from '@prisma/client';
+import { inclusiveUpperBound, lowerBound } from '../../common/utils/date-bounds';
 import { PrismaService } from '../../database/prisma.service';
 import { AccountsService } from '../accounts/accounts.service';
 import { CreateGoalDto, GoalHistoryQueryDto, ListGoalsQueryDto, UpdateGoalDto } from './dto/goals.dto';
@@ -47,8 +48,11 @@ export class GoalsService {
     if (dto.isRecurring) {
       [periodStart, periodEnd] = resolvePeriodBounds(new Date(dto.periodStart), dto.recurrenceUnit!);
     } else {
-      periodStart = new Date(dto.periodStart);
-      periodEnd = new Date(dto.periodEnd!);
+      // Stored inclusively like a recurring period's end (23:59:59.999), so a
+      // date-only end date counts its whole last day and the goal only
+      // finalizes once that day is over.
+      periodStart = lowerBound(dto.periodStart);
+      periodEnd = inclusiveUpperBound(dto.periodEnd!);
     }
 
     return this.prisma.goal.create({
