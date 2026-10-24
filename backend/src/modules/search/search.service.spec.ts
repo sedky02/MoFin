@@ -222,6 +222,30 @@ describe('SearchService type, recurrence and sort', () => {
     expect(where).not.toHaveProperty('AND');
   });
 
+  it('lists a series once, by its root, and never a deleted root', async () => {
+    const { service, paginate } = makeService();
+    await service.searchTransactions('u1', { limit: 20, offset: 0, recurrence: 'series', accountId: 'dinar' } as never);
+    const { where } = paginate.mock.calls[0][0];
+    expect(where).toEqual(
+      expect.objectContaining({ userId: 'u1', isRecurring: true, parentTransactionId: null, deletedAt: null }),
+    );
+    // Not the roots-and-occurrences match of `recurring`.
+    expect(where).not.toHaveProperty('AND');
+    // Composes with the other filters.
+    expect(where.items).toEqual({ some: expect.objectContaining({ accountId: 'dinar' }) });
+  });
+
+  it('sorts active series first, soonest next occurrence first, then newest', async () => {
+    const { service, paginate } = makeService();
+    await service.searchTransactions('u1', { limit: 20, offset: 0, recurrence: 'series', sort: 'next-occurrence' } as never);
+    expect(paginate.mock.calls[0][0].orderBy).toEqual([
+      { recurringStatus: { sort: 'asc', nulls: 'last' } },
+      { nextOccurrenceAt: { sort: 'asc', nulls: 'last' } },
+      { occurredAt: 'desc' },
+      { createdAt: 'desc' },
+    ]);
+  });
+
   it('adds no type or recurrence condition when neither is asked for', async () => {
     const { service, paginate } = makeService();
     await service.searchTransactions('u1', { limit: 20, offset: 0 } as never);

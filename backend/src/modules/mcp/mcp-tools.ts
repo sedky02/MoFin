@@ -15,7 +15,7 @@ export const MCP_TOOLS: ReadonlyArray<{ name: McpToolName; title: string; descri
     name: 'search_transactions',
     title: 'Search transactions',
     description:
-      "Search the user's transactions with text, category, account, amount, date, type and recurring filters, sorted by date or amount (paginated).",
+      "Search the user's transactions with text, category, account, amount, date, type and recurring filters, sorted by date, amount or next occurrence (paginated). `recurrence: series` lists each recurring series once, by its root.",
   },
   {
     name: 'get_balance',
