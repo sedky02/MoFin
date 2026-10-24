@@ -6,9 +6,9 @@ import { MoneyAmount } from "@/components/common/money-amount";
 import { CurrencySwitch } from "@/components/dashboard/currency-switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { formatMoney } from "@/lib/format";
 import { tryParse } from "@/lib/decimal";
 import { heroHeadline } from "@/lib/hero-headline";
+import { barLabel, chartTableRows } from "@/lib/hero-chart-a11y";
 import { cn } from "@/lib/utils";
 import type { MonthlySeriesPoint } from "@/lib/types";
 
@@ -60,6 +60,7 @@ export function BalanceOverview({
   const values = points.map((p) => tryParse(p[metric])?.toNumber() ?? 0);
   const max = Math.max(...values.map(Math.abs), 0);
   const last = points.length - 1;
+  const chartId = React.useId();
 
   return (
     <div className="relative flex h-full flex-1 flex-col overflow-hidden rounded-hero bg-card p-6 shadow-hero sm:p-8">
@@ -125,8 +126,10 @@ export function BalanceOverview({
               return (
                 <div key={p.month} className="group relative flex h-full flex-1 flex-col items-center justify-end gap-1.5">
                   <div
+                    role="img"
                     tabIndex={0}
-                    aria-label={`${long(p.month)}: income ${formatMoney(p.income, currency)}, expenses ${formatMoney(p.expenses, currency)}, balance ${formatMoney(p.balance, currency)}`}
+                    aria-label={barLabel(long(p.month), metric, p, currency)}
+                    aria-describedby={`${chartId}-tip-${i}`}
                     className="relative flex w-full flex-1 items-end rounded-t-md outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     {isNow && (
@@ -145,6 +148,7 @@ export function BalanceOverview({
                     />
                     {/* Hover / keyboard-focus details for this month */}
                     <div
+                      id={`${chartId}-tip-${i}`}
                       role="tooltip"
                       className={cn(
                         "pointer-events-none invisible absolute bottom-full z-20 mb-2 w-52 origin-bottom scale-95 rounded-xl bg-popover p-3 text-xs opacity-0 shadow-surface transition-[opacity,transform,visibility] duration-150 group-hover:visible group-hover:scale-100 group-hover:opacity-100 group-focus-within:visible group-focus-within:scale-100 group-focus-within:opacity-100",
@@ -173,6 +177,29 @@ export function BalanceOverview({
               );
             })}
           </div>
+
+          <table className="sr-only">
+            <caption>Last {points.length} months</caption>
+            <thead>
+              <tr>
+                {["Month", "Income", "Expenses", "Balance"].map((h) => (
+                  <th key={h} scope="col">
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {chartTableRows(points, currency, long).map((row, i) => (
+                <tr key={points[i].month}>
+                  <th scope="row">{row[0]}</th>
+                  {row.slice(1).map((cell, j) => (
+                    <td key={j}>{cell}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
 
           <div
             aria-hidden
