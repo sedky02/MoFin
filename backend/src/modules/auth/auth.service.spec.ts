@@ -60,6 +60,24 @@ describe('AuthService refresh token rotation', () => {
     });
   });
 
+  // No grace window yet: only the successor's hash is stored (rotatedToId),
+  // so its raw value can't be handed out again. A token rotated a moment ago
+  // is treated exactly like any other reuse. The web BFF covers the common
+  // case (requests still in flight with the old cookie) by reusing its own
+  // fresh rotation for 30 s.
+  it('treats a token rotated seconds ago as reuse and revokes the family (no grace window)', async () => {
+    const justNow = new Date(Date.now() - 2_000);
+    const stored = { id: 'rt1', userId: 'u1', familyId: 'fam1', revokedAt: justNow, rotatedToId: 'rt2-hash', expiresAt: FUTURE };
+    const { service, prisma } = makeService({ stored });
+
+    await expect(service.refreshTokens('just-rotated-token')).rejects.toThrow('Refresh token reuse detected');
+    expect(prisma.refreshToken.updateMany).toHaveBeenCalledWith({
+      where: { familyId: 'fam1', revokedAt: null },
+      data: { revokedAt: expect.any(Date) },
+    });
+    expect(prisma.refreshToken.create).not.toHaveBeenCalled();
+  });
+
   it('detects reuse of an already-revoked token and revokes the whole family', async () => {
     const stored = { id: 'rt1', userId: 'u1', familyId: 'fam1', revokedAt: new Date(), rotatedToId: null, expiresAt: FUTURE };
     const { service, prisma } = makeService({ stored });
