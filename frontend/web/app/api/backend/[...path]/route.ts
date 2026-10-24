@@ -26,13 +26,26 @@ const PROXY_TIMEOUT_MS = 8_000;
 // don't stampede /auth/refresh. Keyed by refresh token so different users'
 // requests (which race on a shared Node process) never share state.
 // See RefreshOutcome for what "rejected" vs "unavailable" mean to the session.
+//
+// A successful rotation stays in the map for REFRESH_REUSE_MS. Requests the
+// browser sent before it received the rotated cookies still carry the old
+// refresh token, and their 401 can arrive after the refresh has finished.
+// Presenting that token to the backend again counts as reuse and revokes the
+// whole session, so they get the same new pair instead. Failures are
+// released at once so the next 401 can try again.
+const REFRESH_REUSE_MS = 30_000;
 const refreshPromises = new Map<string, Promise<RefreshOutcome>>();
 
 async function refreshTokens(refreshToken: string, req: Request): Promise<RefreshOutcome> {
   let promise = refreshPromises.get(refreshToken);
   if (!promise) {
-    promise = requestRefresh(refreshToken, req).finally(() => {
-      refreshPromises.delete(refreshToken); // release so a later 401 can refresh again
+    promise = requestRefresh(refreshToken, req).then((outcome) => {
+      if (outcome.kind === "ok") {
+        setTimeout(() => refreshPromises.delete(refreshToken), REFRESH_REUSE_MS).unref?.();
+      } else {
+        refreshPromises.delete(refreshToken); // release so a later 401 can refresh again
+      }
+      return outcome;
     });
     refreshPromises.set(refreshToken, promise);
   }

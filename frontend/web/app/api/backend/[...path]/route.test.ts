@@ -108,3 +108,51 @@ describe("backend proxy refresh handling", () => {
     expect(cookies.some((c) => c.startsWith(`${REFRESH_COOKIE}=new-refresh`))).toBe(true);
   });
 });
+
+describe("backend proxy refresh lock", () => {
+  const refreshCalls = () =>
+    fetchMock.mock.calls.filter(([input]) => String(input) === `${BACKEND_URL}/auth/refresh`).length;
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("hands a late request still carrying the old refresh token the same new pair", async () => {
+    backend(
+      () => Response.json({ accessToken: "new-access", refreshToken: "new-refresh" }),
+      () => Response.json([]),
+    );
+
+    const first = await call();
+    const late = await call(); // same cookies: sent before the browser saw the rotation
+
+    expect(refreshCalls()).toBe(1);
+    for (const res of [first, late]) {
+      expect(res.status).toBe(200);
+      expect(res.headers.getSetCookie().some((c) => c.startsWith(`${REFRESH_COOKIE}=new-refresh`))).toBe(true);
+    }
+  });
+
+  it("refreshes again once the reuse window has passed", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout"] });
+    backend(
+      () => Response.json({ accessToken: "new-access", refreshToken: "new-refresh" }),
+      () => Response.json([]),
+    );
+
+    await call();
+    vi.advanceTimersByTime(30_000);
+    await call();
+
+    expect(refreshCalls()).toBe(2);
+  });
+
+  it("doesn't hold on to a failed refresh, so the next 401 tries again", async () => {
+    backend(() => new Response(null, { status: 429 }));
+
+    await call();
+    await call();
+
+    expect(refreshCalls()).toBe(2);
+  });
+});
