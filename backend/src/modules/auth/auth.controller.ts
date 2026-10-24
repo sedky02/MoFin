@@ -2,7 +2,7 @@ import { Body, Controller, Get, HttpCode, HttpStatus, Post, UseGuards } from '@n
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { AuthThrottlerGuard } from '../../common/guards/auth-throttler.guard';
+import { AuthThrottlerGuard, ForgotPasswordThrottlerGuard } from '../../common/guards/auth-throttler.guard';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { ApiZodBody } from '../../common/swagger/api-zod';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
@@ -37,9 +37,9 @@ export class AuthController {
   // Tighter limit on credential endpoints to blunt brute-force / abuse (audit
   // B5), keyed on submitted email + IP (not IP alone, see AuthThrottlerGuard)
   // so it actually stops credential stuffing instead of just rate-limiting
-  // "whoever is behind this BFF" as a single client.
+  // "whoever is behind this BFF" as a single client. No @Throttle here: the
+  // global guard would read it too and apply the same limit per IP.
   @UseGuards(AuthThrottlerGuard)
-  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('register')
   @ApiZodBody(registerSchema)
   register(@Body(new ZodValidationPipe(registerSchema)) dto: RegisterDto) {
@@ -47,7 +47,6 @@ export class AuthController {
   }
 
   @UseGuards(AuthThrottlerGuard)
-  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('login')
   @ApiZodBody(loginSchema)
   login(@Body(new ZodValidationPipe(loginSchema)) dto: LoginDto) {
@@ -68,8 +67,7 @@ export class AuthController {
    * timing doesn't tell the two cases apart either. Rate-limited per
    * email + IP to stop the endpoint being used to flood an inbox.
    */
-  @UseGuards(AuthThrottlerGuard)
-  @Throttle({ default: { limit: 5, ttl: 15 * 60_000 } })
+  @UseGuards(ForgotPasswordThrottlerGuard)
   @Post('password/forgot')
   @HttpCode(HttpStatus.ACCEPTED)
   @ApiZodBody(forgotPasswordSchema)
@@ -78,8 +76,8 @@ export class AuthController {
     return { message: FORGOT_PASSWORD_MESSAGE };
   }
 
+  // Limited per presented reset token (see authTracker), not per IP.
   @UseGuards(AuthThrottlerGuard)
-  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('password/reset')
   @HttpCode(HttpStatus.OK)
   @ApiZodBody(resetPasswordSchema)
