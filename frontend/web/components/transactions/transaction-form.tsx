@@ -553,6 +553,7 @@ export function TransactionForm({ transaction }: { transaction?: Transaction }) 
                           name={`items.${i}.categoryId`}
                           render={({ field: catField }) => (
                             <FormItem className="flex-1">
+                              <FormLabel className="sr-only">Item {i + 1} category</FormLabel>
                               <Select
                                 // "" (not undefined) so a cleared row shows the placeholder again.
                                 value={catField.value ?? ""}
@@ -610,6 +611,7 @@ export function TransactionForm({ transaction }: { transaction?: Transaction }) 
                         name={`items.${i}.description`}
                         render={({ field: descField }) => (
                           <FormItem>
+                            <FormLabel className="sr-only">Item {i + 1} note</FormLabel>
                             <FormControl>
                               <Input
                                 placeholder="Item description (optional)"
