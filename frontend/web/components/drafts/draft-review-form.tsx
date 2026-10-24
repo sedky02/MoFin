@@ -27,7 +27,8 @@ import { useAccounts } from "@/hooks/useAccounts";
 import { useCategories } from "@/hooks/useCategories";
 import { makeTransactionSchema, type TransactionFormValues } from "@/lib/transaction-schema";
 import { handleApiError } from "@/lib/form-errors";
-import { parseMoneyInput, formatMoneyInput, toDatetimeLocal } from "@/lib/format";
+import { parseMoneyInput, toDatetimeLocal } from "@/lib/format";
+import { draftAmountInput } from "@/lib/draft-review";
 import type { DraftTransaction, ParsedTransactionData } from "@/lib/types";
 import { Loader2 } from "lucide-react";
 
@@ -53,7 +54,7 @@ export function DraftReviewForm({
     defaultValues: {
       type: p.type ?? "EXPENSE",
       description: p.description ?? draft.rawInput,
-      amountRaw: p.amount ? formatMoneyInput(p.amount) : "",
+      amountRaw: draftAmountInput(p),
       currency: p.currency ?? "",
       fromAccountId: p.fromAccountId ?? undefined,
       toAccountId: p.toAccountId ?? undefined,
