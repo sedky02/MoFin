@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ApiClientError } from "@/lib/api";
-import { ArrowDown, ArrowDownLeft, ArrowLeft, ArrowRight, ArrowUpRight, Pencil, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowDownLeft, ArrowLeft, ArrowRight, ArrowUpRight, ChevronRight, Pencil, Trash2 } from "lucide-react";
 import { useAccounts } from "@/hooks/useAccounts";
 import { useDeleteTransaction, useTransaction } from "@/hooks/useTransactions";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
@@ -168,9 +168,12 @@ export function TransactionDetail({ id }: { id: string }) {
         {/* Generated occurrences just link back to the series they belong to. */}
         {tx.parentTransactionId && (
           <div className="mt-4 border-t border-border pt-4">
-            <Badge variant="outline" className="gap-1">
-              <Repeat className="size-3" />
-              Generated from a recurring series
+            <Badge asChild variant="outline" className="h-6 gap-1">
+              <Link href={`/transactions/${tx.parentTransactionId}`}>
+                <Repeat className="size-3" />
+                Generated from a recurring series
+                <ChevronRight className="size-3" aria-hidden="true" />
+              </Link>
             </Badge>
           </div>
         )}
