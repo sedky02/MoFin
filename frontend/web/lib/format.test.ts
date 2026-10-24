@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   formatMoneyInput,
+  formatPeriodDate,
   interpretMoneyText,
   moneyInputHint,
   moneyInputPrefix,
@@ -148,5 +149,17 @@ describe("moneyInputPrefix", () => {
     [undefined, ""],
   ])("%s → %j", (currency, prefix) => {
     expect(moneyInputPrefix(currency)).toBe(prefix);
+  });
+});
+
+describe("formatPeriodDate", () => {
+  it("reads a period's last instant as that day, whatever the local zone", () => {
+    // 23:59:59.999Z is already the next day east of UTC; the period still ends on the 31st.
+    expect(formatPeriodDate("2026-10-31T23:59:59.999Z")).toBe(formatPeriodDate("2026-10-31T00:00:00.000Z"));
+    expect(formatPeriodDate("2026-10-31T23:59:59.999Z")).not.toBe(formatPeriodDate("2026-11-01T00:00:00.000Z"));
+  });
+
+  it("returns an unreadable value as-is", () => {
+    expect(formatPeriodDate("not a date")).toBe("not a date");
   });
 });
