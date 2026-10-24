@@ -38,6 +38,7 @@ import { useAccounts } from "@/hooks/useAccounts";
 import { useActiveAccount } from "@/hooks/useActiveAccount";
 import { useCreateGoal, useUpdateGoal } from "@/hooks/useGoals";
 import { parseMoneyInput } from "@/lib/format";
+import { goalScopeLabel } from "@/lib/goal-scope";
 import type { Goal } from "@/lib/types";
 
 const GOAL_TYPES = [
@@ -123,6 +124,9 @@ export function GoalDialog({
   }, [open, goal, form]);
 
   const isRecurring = form.watch("isRecurring");
+  const watchedType = form.watch("type");
+  const watchedAccountId = form.watch("accountId");
+  const scopeAccount = accounts?.find((a) => a.id === watchedAccountId);
 
   async function action() {
     const valid = await form.trigger(undefined, { shouldFocus: true });
@@ -220,6 +224,9 @@ export function GoalDialog({
                       ))}
                     </SelectContent>
                   </Select>
+                  <FormDescription data-testid="goal-scope">
+                    {goalScopeLabel(watchedType, scopeAccount?.name)}
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}

@@ -7,6 +7,7 @@ import { GoalTypeBadge, GoalStatusBadge } from "@/components/common/badges";
 import { GoalProgressBar } from "@/components/goals/goal-progress-bar";
 import { formatDate, formatPeriodDate, goalProgressRatio } from "@/lib/format";
 import { isGreaterThan } from "@/lib/decimal";
+import { goalScopeLabel } from "@/lib/goal-scope";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -113,6 +114,9 @@ export function GoalCard({
           {instance && <GoalStatusBadge status={instance.status} />}
         </div>
         <GoalProgressBar ratio={ratio} overTarget={overTarget} />
+        <p className="truncate text-xs text-muted-foreground" data-testid="goal-scope">
+          {goalScopeLabel(goal.type, account?.name)}
+        </p>
         <p className="text-xs text-muted-foreground">
           {readOnly && goal.archivedAt ? `Ended on ${formatDate(goal.archivedAt)}` : periodLabel}
         </p>

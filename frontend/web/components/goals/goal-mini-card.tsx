@@ -4,6 +4,7 @@ import { GoalProgressBar } from "@/components/goals/goal-progress-bar";
 import { CategoryIcon } from "@/components/dashboard/category-icon";
 import { goalProgressRatio } from "@/lib/format";
 import { isGreaterThan, tryParse } from "@/lib/decimal";
+import { goalScopeLabel } from "@/lib/goal-scope";
 
 /**
  * Compact, read-only goal tile for the dashboard. Its colour says where the goal stands
@@ -45,7 +46,10 @@ export function GoalMiniCard({ goal, account }: { goal: Goal; account?: Account 
 
       <GoalProgressBar ratio={ratio} overTarget={overTarget} />
 
-      <div className="mt-2 flex justify-between text-xs text-muted-foreground tabular">
+      <p className="mt-2 truncate text-xs text-muted-foreground" data-testid="goal-scope">
+        {goalScopeLabel(goal.type, account?.name)}
+      </p>
+      <div className="mt-1 flex justify-between text-xs text-muted-foreground tabular">
         <MoneyAmount amount={instance?.progressAmount ?? "0"} currency={currency} />
         <MoneyAmount amount={goal.targetAmount} currency={currency} />
       </div>
