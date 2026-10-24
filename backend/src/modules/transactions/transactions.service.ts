@@ -38,6 +38,16 @@ export function computeNextOccurrence(anchorDay: number, from: Date, interval: R
   );
 }
 
+/**
+ * Whether a series' next occurrence falls after its end date. The end date is
+ * inclusive: an occurrence landing exactly on it is still posted. A series
+ * past its end is ended (CANCELLED with no next occurrence) rather than left
+ * active, so the cron never posts a charge the user excluded.
+ */
+export function isPastEndDate(nextOccurrenceAt: Date, recurringEndDate: Date | null | undefined): boolean {
+  return recurringEndDate ? nextOccurrenceAt > recurringEndDate : false;
+}
+
 @Injectable()
 export class TransactionsService {
   constructor(
@@ -65,6 +75,13 @@ export class TransactionsService {
     }
     const ledgerEntries = await this.ledgerService.buildEntriesForCommand(userId, command);
 
+    const firstNextOccurrenceAt = command.isRecurring
+      ? computeNextOccurrence(command.occurredAt.getUTCDate(), command.occurredAt, command.recurringInterval!)
+      : null;
+    // The root itself is always posted; if the end date already excludes the
+    // next occurrence there's nothing left to generate, so it starts ended.
+    const endedAtCreate = firstNextOccurrenceAt ? isPastEndDate(firstNextOccurrenceAt, command.recurringEndDate) : false;
+
     const run = async (db: Db) => {
       const created = await db.transaction.create({
         data: {
@@ -80,16 +97,12 @@ export class TransactionsService {
             ? {
                 isRecurring: true,
                 recurringInterval: command.recurringInterval,
-                recurringStatus: RecurringStatus.ACTIVE,
+                recurringStatus: endedAtCreate ? RecurringStatus.CANCELLED : RecurringStatus.ACTIVE,
                 recurringEndDate: command.recurringEndDate,
                 recurringAmount: new Prisma.Decimal(command.amount),
                 recurringFromAccountId: command.fromAccountId,
                 recurringToAccountId: command.toAccountId,
-                nextOccurrenceAt: computeNextOccurrence(
-                  command.occurredAt.getUTCDate(),
-                  command.occurredAt,
-                  command.recurringInterval!
-                )
+                nextOccurrenceAt: endedAtCreate ? null : firstNextOccurrenceAt
               }
             : {})
         }
@@ -274,6 +287,13 @@ export class TransactionsService {
       nextOccurrenceAt = computeNextOccurrence(root.occurredAt.getUTCDate(), lastOccurrenceAt, command.recurringInterval);
     }
 
+    // Moving the end date (or the interval) so the next occurrence falls past
+    // the end ends the series now, the same way the cron ends it after its
+    // last occurrence. Ended is final: like a cancelled series it can't be
+    // edited back to life.
+    const recurringEndDate = command.recurringEndDate === undefined ? root.recurringEndDate : command.recurringEndDate;
+    const ended = nextOccurrenceAt ? isPastEndDate(nextOccurrenceAt, recurringEndDate) : false;
+
     return this.prisma.transaction.update({
       where: { id: root.id },
       data: {
@@ -285,7 +305,7 @@ export class TransactionsService {
         recurringInterval: command.recurringInterval,
         recurringEndDate:
           command.recurringEndDate === null ? null : (command.recurringEndDate ?? undefined),
-        nextOccurrenceAt
+        ...(ended ? { recurringStatus: RecurringStatus.CANCELLED, nextOccurrenceAt: null } : { nextOccurrenceAt })
       },
       include: TRANSACTION_INCLUDE
     });
