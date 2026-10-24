@@ -1,4 +1,5 @@
-import { SearchService } from './search.service';
+import { Prisma } from '@prisma/client';
+import { SearchService, transactionTotal } from './search.service';
 
 describe('SearchService.searchTransactions', () => {
   it('never returns deleted transactions', async () => {
@@ -162,5 +163,151 @@ describe('SearchService date range', () => {
     const { service, paginate } = makeService();
     await service.searchTransactions('u1', { limit: 20, offset: 0 } as never);
     expect(paginate.mock.calls[0][0].where).not.toHaveProperty('occurredAt');
+  });
+});
+
+describe('SearchService type, recurrence and sort', () => {
+  type FindManyArgs = { where: Record<string, unknown>; select?: unknown; include?: unknown };
+
+  function makeService(matches: unknown[] = []) {
+    const paginate = jest.fn(async (_args: { where: Record<string, unknown>; orderBy: unknown }) => ({
+      data: [],
+      total: 0,
+      limit: 20,
+      offset: 0,
+    }));
+    // First call ranks the matches (select), second loads the page (include).
+    const findMany = jest.fn(async (args: FindManyArgs) => {
+      if (args.select) return matches;
+      const ids = (args.where.id as { in: string[] }).in;
+      // Out of order on purpose: the page must come back in ranked order.
+      return [...ids].reverse().map((id) => ({ id }));
+    });
+    const prisma = { paginated: { transaction: { paginate } }, transaction: { findMany } };
+    const accountsService = { assertOwned: jest.fn(async (): Promise<unknown> => ({})) };
+    const categoriesService = { assertAvailable: jest.fn(async () => ({})) };
+    const service = new SearchService(prisma as never, accountsService as never, categoriesService as never);
+    return { service, paginate, findMany, accountsService };
+  }
+
+  const leg = (direction: 'DEBIT' | 'CREDIT', amount: string) => ({ direction, amount: new Prisma.Decimal(amount) });
+  const match = (id: string, occurredAt: string, items: ReturnType<typeof leg>[]) => ({
+    id,
+    occurredAt: new Date(occurredAt),
+    createdAt: new Date(occurredAt),
+    items,
+  });
+
+  it('filters by transaction type', async () => {
+    const { service, paginate } = makeService();
+    await service.searchTransactions('u1', { limit: 20, offset: 0, type: 'TRANSFER' } as never);
+    expect(paginate.mock.calls[0][0].where).toEqual(expect.objectContaining({ type: 'TRANSFER', deletedAt: null }));
+  });
+
+  it('treats a series root and its generated occurrences as recurring', async () => {
+    const { service, paginate } = makeService();
+    await service.searchTransactions('u1', { limit: 20, offset: 0, recurrence: 'recurring', categoryId: 'rent' } as never);
+    const { where } = paginate.mock.calls[0][0];
+    expect(where.AND).toEqual([{ OR: [{ isRecurring: true }, { parentTransactionId: { not: null } }] }]);
+    // The category match keeps its own OR.
+    expect(where.OR).toEqual([{ categoryId: 'rent' }, { items: { some: { categoryId: 'rent' } } }]);
+    expect(where.deletedAt).toBeNull();
+  });
+
+  it('keeps one-off transactions to those outside any series', async () => {
+    const { service, paginate } = makeService();
+    await service.searchTransactions('u1', { limit: 20, offset: 0, recurrence: 'one-off' } as never);
+    const { where } = paginate.mock.calls[0][0];
+    expect(where).toEqual(expect.objectContaining({ isRecurring: false, parentTransactionId: null, deletedAt: null }));
+    expect(where).not.toHaveProperty('AND');
+  });
+
+  it('adds no type or recurrence condition when neither is asked for', async () => {
+    const { service, paginate } = makeService();
+    await service.searchTransactions('u1', { limit: 20, offset: 0 } as never);
+    const { where } = paginate.mock.calls[0][0];
+    expect(where).not.toHaveProperty('type');
+    expect(where).not.toHaveProperty('AND');
+    expect(where).not.toHaveProperty('isRecurring');
+  });
+
+  it('sorts newest first by default and oldest first on request', async () => {
+    const { service, paginate } = makeService();
+    await service.searchTransactions('u1', { limit: 20, offset: 0 } as never);
+    await service.searchTransactions('u1', { limit: 20, offset: 0, sort: 'oldest' } as never);
+    expect(paginate.mock.calls[0][0].orderBy).toEqual([{ occurredAt: 'desc' }, { createdAt: 'desc' }]);
+    expect(paginate.mock.calls[1][0].orderBy).toEqual([{ occurredAt: 'asc' }, { createdAt: 'asc' }]);
+  });
+
+  const MATCHES = [
+    match('coffee', '2026-10-03', [leg('DEBIT', '4.5')]),
+    // A split: its total is both lines.
+    match('groceries', '2026-10-02', [leg('DEBIT', '30'), leg('DEBIT', '25')]),
+    // A transfer's legs carry the same amount; it moved 500, not 1000.
+    match('transfer', '2026-10-01', [leg('DEBIT', '500'), leg('CREDIT', '500')]),
+    match('salary', '2026-09-30', [leg('CREDIT', '2000')]),
+    // Same total as the coffee, older: comes after it either way.
+    match('snack', '2026-09-01', [leg('DEBIT', '4.5')]),
+  ];
+
+  it('sorts by amount high to low, newest first between equal totals', async () => {
+    const { service, paginate, findMany } = makeService(MATCHES);
+    const result = await service.searchTransactions('u1', {
+      limit: 20,
+      offset: 0,
+      sort: 'amount-desc',
+      recurrence: 'one-off',
+    } as never);
+
+    expect(paginate).not.toHaveBeenCalled();
+    expect(result.data.map((tx) => tx.id)).toEqual(['salary', 'transfer', 'groceries', 'coffee', 'snack']);
+    expect(result.total).toBe(5);
+    // The ranking query carries the same filters as the date-sorted one.
+    expect(findMany.mock.calls[0][0].where).toEqual(
+      expect.objectContaining({ userId: 'u1', deletedAt: null, isRecurring: false }),
+    );
+  });
+
+  it('sorts by amount low to high and loads only the requested page', async () => {
+    const { service, findMany } = makeService(MATCHES);
+    const result = await service.searchTransactions('u1', { limit: 2, offset: 2, sort: 'amount-asc' } as never);
+
+    expect(result).toEqual(expect.objectContaining({ total: 5, limit: 2, offset: 2 }));
+    // Low to high, the coffee and the snack tie at 4.5: newest (coffee) first.
+    expect(result.data.map((tx) => tx.id)).toEqual(['groceries', 'transfer']);
+    expect(findMany.mock.calls[1][0]).toEqual(
+      expect.objectContaining({ where: { id: { in: ['groceries', 'transfer'] } }, include: expect.anything() }),
+    );
+  });
+
+  it('accepts an archived account in the account filter (read check, not the write check)', async () => {
+    const { service, paginate, accountsService } = makeService();
+    accountsService.assertOwned.mockResolvedValue({ id: 'old-savings', archivedAt: new Date() });
+
+    await service.searchTransactions('u1', { limit: 20, offset: 0, accountId: 'old-savings' } as never);
+
+    expect(accountsService.assertOwned).toHaveBeenCalledWith('u1', 'old-savings');
+    expect(paginate.mock.calls[0][0].where.items).toEqual({
+      some: expect.objectContaining({ accountId: 'old-savings' }),
+    });
+  });
+});
+
+describe('transactionTotal', () => {
+  const d = (v: string) => new Prisma.Decimal(v);
+
+  it('adds expense lines, reads a transfer once and reads income from its credit side', () => {
+    const split = [
+      { direction: 'DEBIT', amount: d('12.345') },
+      { direction: 'DEBIT', amount: d('0.655') },
+    ];
+    expect(transactionTotal(split).toString()).toBe('13');
+    const transfer = [
+      { direction: 'DEBIT', amount: d('500') },
+      { direction: 'CREDIT', amount: d('500') },
+    ];
+    expect(transactionTotal(transfer).toString()).toBe('500');
+    expect(transactionTotal([{ direction: 'CREDIT', amount: d('2000') }]).toString()).toBe('2000');
+    expect(transactionTotal([]).toString()).toBe('0');
   });
 });
