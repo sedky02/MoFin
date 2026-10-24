@@ -1,6 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
-import { RecurringInterval, TransactionType } from '@prisma/client';
-import { computeNextOccurrence, TransactionsService } from './transactions.service';
+import { RecurringInterval, RecurringStatus, TransactionType } from '@prisma/client';
+import { computeNextOccurrence, isPastEndDate, TransactionsService } from './transactions.service';
 import { CreateTransactionCommand, UpdateTransactionCommand } from './dto/transactions.dto';
 import { CategoriesService } from '../categories/categories.service';
 
@@ -233,6 +233,141 @@ describe('computeNextOccurrence', () => {
     const lateOnThe31st = new Date(Date.UTC(2026, 0, 31, 23, 30));
     const next = computeNextOccurrence(lateOnThe31st.getUTCDate(), lateOnThe31st, RecurringInterval.MONTHLY);
     expect(next).toEqual(new Date(Date.UTC(2026, 1, 28, 23, 30)));
+  });
+});
+
+describe('isPastEndDate', () => {
+  const next = new Date('2026-11-17T09:00:00Z');
+
+  it('is inclusive: an occurrence landing exactly on the end date is still due', () => {
+    expect(isPastEndDate(next, new Date('2026-11-17T09:00:00Z'))).toBe(false);
+  });
+
+  it('is true once the occurrence falls after the end date', () => {
+    expect(isPastEndDate(next, new Date('2026-10-30T00:00:00Z'))).toBe(true);
+  });
+
+  it('never ends an open-ended series', () => {
+    expect(isPastEndDate(next, null)).toBe(false);
+    expect(isPastEndDate(next, undefined)).toBe(false);
+  });
+});
+
+describe('TransactionsService recurring end date', () => {
+  const createdOn = new Date('2026-10-17T09:00:00Z');
+  const firstNext = new Date('2026-11-17T09:00:00Z');
+  const rent: CreateTransactionCommand = {
+    type: TransactionType.EXPENSE,
+    description: 'Rent',
+    amount: '1000',
+    currency: 'USD',
+    occurredAt: createdOn,
+    fromAccountId: 'a1',
+    isRecurring: true,
+    recurringInterval: RecurringInterval.MONTHLY,
+  };
+
+  function setupCreate() {
+    const db = {
+      transaction: {
+        create: jest.fn(async () => ({ id: 'r1' })),
+        findUniqueOrThrow: jest.fn(async () => ({ id: 'r1', occurredAt: createdOn, items: [] })),
+      },
+    };
+    const prisma = { $transaction: jest.fn(async (fn: (t: typeof db) => unknown) => fn(db)) };
+    const ledger = { buildEntriesForCommand: jest.fn(async () => []), createEntries: jest.fn(async () => undefined) };
+    const categories = { assertAssignable: jest.fn(async () => undefined) };
+    const service = new TransactionsService(prisma as never, ledger as never, categories as never, {} as never, { emit: jest.fn() } as never);
+    const written = () => (db.transaction.create.mock.calls[0] as unknown as [{ data: Record<string, unknown> }])[0].data;
+    return { service, written };
+  }
+
+  it('starts a series ended when its end date falls before the first next occurrence', async () => {
+    const { service, written } = setupCreate();
+    await service.create('u1', { ...rent, recurringEndDate: new Date('2026-10-30T00:00:00Z') });
+    expect(written()).toMatchObject({ recurringStatus: RecurringStatus.CANCELLED, nextOccurrenceAt: null });
+  });
+
+  it('keeps a series active when the end date is exactly the first next occurrence', async () => {
+    const { service, written } = setupCreate();
+    await service.create('u1', { ...rent, recurringEndDate: firstNext });
+    expect(written()).toMatchObject({ recurringStatus: RecurringStatus.ACTIVE, nextOccurrenceAt: firstNext });
+  });
+
+  it('keeps an open-ended series active', async () => {
+    const { service, written } = setupCreate();
+    await service.create('u1', rent);
+    expect(written()).toMatchObject({ recurringStatus: RecurringStatus.ACTIVE, nextOccurrenceAt: firstNext });
+  });
+
+  const root = {
+    id: 'r1',
+    userId: 'u1',
+    type: TransactionType.EXPENSE,
+    currency: 'USD',
+    occurredAt: createdOn,
+    isRecurring: true,
+    parentTransactionId: null,
+    deletedAt: null,
+    recurringStatus: RecurringStatus.ACTIVE,
+    recurringInterval: RecurringInterval.MONTHLY,
+    recurringAmount: '1000',
+    recurringFromAccountId: 'a1',
+    recurringToAccountId: null,
+    recurringEndDate: new Date('2027-06-30T00:00:00Z'),
+    nextOccurrenceAt: firstNext,
+  };
+
+  function setupUpdate(found: unknown = root) {
+    const update = jest.fn(async () => ({}));
+    const prisma = { transaction: { findFirst: jest.fn(async () => found), update } };
+    const accounts = { assertActive: jest.fn(async () => ({})) };
+    const service = new TransactionsService(prisma as never, {} as never, {} as never, accounts as never, {} as never);
+    const written = () => (update.mock.calls[0] as unknown as [{ data: Record<string, unknown> }])[0].data;
+    return { service, update, written };
+  }
+
+  it('ends the series when an edit moves the end date before the next occurrence', async () => {
+    const { service, written } = setupUpdate();
+    await service.updateRecurring('u1', 'r1', { recurringEndDate: new Date('2026-10-30T00:00:00Z') });
+    expect(written()).toMatchObject({
+      recurringEndDate: new Date('2026-10-30T00:00:00Z'),
+      recurringStatus: RecurringStatus.CANCELLED,
+      nextOccurrenceAt: null,
+    });
+  });
+
+  it('keeps the series active when the edited end date is exactly the next occurrence', async () => {
+    const { service, written } = setupUpdate();
+    await service.updateRecurring('u1', 'r1', { recurringEndDate: firstNext });
+    expect(written()).toMatchObject({ nextOccurrenceAt: firstNext });
+    expect(written()).not.toHaveProperty('recurringStatus');
+  });
+
+  it('ends the series when an interval change pushes the next occurrence past the stored end date', async () => {
+    const { service, written } = setupUpdate({ ...root, recurringEndDate: new Date('2027-01-31T00:00:00Z') });
+    await service.updateRecurring('u1', 'r1', { recurringInterval: RecurringInterval.YEARLY });
+    expect(written()).toMatchObject({ recurringStatus: RecurringStatus.CANCELLED, nextOccurrenceAt: null });
+  });
+
+  it('leaves the series running when the end date is cleared or untouched', async () => {
+    const cleared = setupUpdate();
+    await cleared.service.updateRecurring('u1', 'r1', { recurringEndDate: null });
+    expect(cleared.written()).toMatchObject({ recurringEndDate: null, nextOccurrenceAt: firstNext });
+    expect(cleared.written()).not.toHaveProperty('recurringStatus');
+
+    const untouched = setupUpdate();
+    await untouched.service.updateRecurring('u1', 'r1', { description: 'Rent (new flat)' });
+    expect(untouched.written()).toMatchObject({ nextOccurrenceAt: firstNext });
+    expect(untouched.written()).not.toHaveProperty('recurringStatus');
+  });
+
+  it('refuses to edit an ended series, so a later end date does not bring it back', async () => {
+    const { service, update } = setupUpdate({ ...root, recurringStatus: RecurringStatus.CANCELLED, nextOccurrenceAt: null });
+    await expect(service.updateRecurring('u1', 'r1', { recurringEndDate: null })).rejects.toThrow(
+      'Cannot edit a cancelled recurring series',
+    );
+    expect(update).not.toHaveBeenCalled();
   });
 });
 
