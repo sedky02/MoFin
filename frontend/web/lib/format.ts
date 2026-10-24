@@ -67,7 +67,7 @@ export function formatMoney(
  * correct there — but an INCOME/EXPENSE can be split into multiple items
  * whose amounts sum to the total, so those must be summed.
  */
-export function transactionAmount(tx: Transaction): string {
+export function transactionAmount(tx: Pick<Transaction, "type" | "items">): string {
   if (tx.type === "TRANSFER") return tx.items[0]?.amount ?? "0";
   return tx.items.reduce((sum, item) => add(sum, item.amount), "0");
 }
