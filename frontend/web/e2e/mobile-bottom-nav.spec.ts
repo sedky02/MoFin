@@ -24,7 +24,7 @@ const moreButton = (page: Page) => page.locator('nav[aria-label="Primary mobile"
 
 const SLOTS = [
   { name: "Dashboard", path: "/dashboard" },
-  { name: "Transactions", path: "/search" },
+  { name: "Transactions", path: "/transactions" },
   { name: "Add", path: "/transactions/new" },
   { name: "Goals", path: "/goals" },
 ] as const;

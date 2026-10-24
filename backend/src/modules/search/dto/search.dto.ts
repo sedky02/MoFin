@@ -10,5 +10,10 @@ export const searchTransactionsSchema = paginationSchema.extend({
   to: dateStringSchema.optional(),
   minAmount: amountStringSchema.optional(),
   maxAmount: amountStringSchema.optional(),
+  type: z.enum(['INCOME', 'EXPENSE', 'TRANSFER']).optional(),
+  // Leave it out for both. A recurring transaction is a series root or one of the occurrences it generated.
+  recurrence: z.enum(['recurring', 'one-off']).optional(),
+  // Amount sorts compare the transaction total as stored, across currencies.
+  sort: z.enum(['newest', 'oldest', 'amount-desc', 'amount-asc']).optional(),
 });
 export type SearchTransactionsDto = z.infer<typeof searchTransactionsSchema>;

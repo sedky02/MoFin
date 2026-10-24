@@ -3,7 +3,7 @@ import {
   Wallet,
   PlusCircle,
   Sparkles,
-  Search,
+  ReceiptText,
   Tags,
   Target,
   Bot,
@@ -27,7 +27,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/goals", label: "Goals", icon: Target },
   { href: "/transactions/new", label: "New Transaction", icon: PlusCircle },
   { href: "/drafts", label: "Drafts", icon: Sparkles, badge: "drafts" },
-  { href: "/search", label: "Search", icon: Search, barLabel: "Transactions" },
+  { href: "/transactions", label: "Transactions", icon: ReceiptText },
   { href: "/categories", label: "Categories", icon: Tags },
   { href: "/connect", label: "AI Connector", icon: Bot },
   { href: "/settings", label: "Settings", icon: Settings },
@@ -35,23 +35,23 @@ export const NAV_ITEMS: NavItem[] = [
 
 /**
  * Mobile bottom bar routes, in order; the "More" button follows them and opens
- * the nav sheet. The Transactions slot is the Search item (the transaction list
- * lives there for now), so its href is read from NAV_ITEMS and moves with it.
+ * the nav sheet.
  */
-const BOTTOM_NAV_HREFS = ["/dashboard", "/search", "/transactions/new", "/goals"];
+const BOTTOM_NAV_HREFS = ["/dashboard", "/transactions", "/transactions/new", "/goals"];
 
 export const BOTTOM_NAV_ITEMS: NavItem[] = BOTTOM_NAV_HREFS.flatMap((href) =>
   NAV_ITEMS.filter((i) => i.href === href),
 );
 
-/** Sidebar-style section matching, plus transaction detail pages for the list slot. */
-export function isBottomNavActive(pathname: string, href: string): boolean {
+const isUnder = (pathname: string, href: string) => pathname === href || pathname.startsWith(`${href}/`);
+
+/**
+ * Whether a nav item is the current section, for the sidebar and the bottom bar.
+ * The dashboard matches exactly, other items match their section. The add form
+ * sits under /transactions but is its own item, so it doesn't also light up the list.
+ */
+export function isNavActive(pathname: string, href: string): boolean {
   if (href === "/dashboard") return pathname === "/dashboard";
-  if (pathname.startsWith(href)) return true;
-  const listHref = NAV_ITEMS.find((i) => i.barLabel === "Transactions")?.href;
-  return (
-    href === listHref &&
-    pathname.startsWith("/transactions/") &&
-    !pathname.startsWith("/transactions/new")
-  );
+  if (href === "/transactions") return isUnder(pathname, href) && !isUnder(pathname, "/transactions/new");
+  return isUnder(pathname, href);
 }

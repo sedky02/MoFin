@@ -34,3 +34,21 @@ export function transactionAccountLegs(tx: Pick<Transaction, "items">): {
     to: tx.items.find((item) => item.direction === "CREDIT"),
   };
 }
+
+/**
+ * The account a list row names: the one it touched, or "From → To" for a
+ * transfer. `undefined` while a name can't be resolved yet (see ledgerAccountName).
+ */
+export function transactionAccountLabel(
+  tx: Pick<Transaction, "type" | "items">,
+  accountsById?: ReadonlyMap<string, Account>,
+): string | undefined {
+  const { from, to } = transactionAccountLegs(tx);
+  const name = (item?: LedgerItem) => (item ? ledgerAccountName(item, accountsById) : undefined);
+  if (tx.type === "TRANSFER") {
+    const fromName = name(from);
+    const toName = name(to);
+    return fromName && toName ? `${fromName} → ${toName}` : (fromName ?? toName);
+  }
+  return name(from ?? to);
+}

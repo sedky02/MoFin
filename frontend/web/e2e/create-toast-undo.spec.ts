@@ -79,7 +79,7 @@ test("Undo on the create toast deletes the new transaction and the balance retur
     expect(await balanceCents(page.request, accountId)).toBe(before);
 
     // Its own page is gone, so the user is not left on a 404.
-    await expect(page).toHaveURL(/\/search$/);
+    await expect(page).toHaveURL(/\/transactions$/);
     await expect(page.getByText(description)).toHaveCount(0);
   } finally {
     await cleanUp(page.request, id);

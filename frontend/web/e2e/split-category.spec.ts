@@ -137,7 +137,7 @@ test.describe("split categories (UX fixture)", () => {
     }
 
     // And its row in the search results names the split, not one stale category.
-    await page.goto(`/search?q=${encodeURIComponent("Supermarket")}&categoryId=${utilities!.id}`);
+    await page.goto(`/transactions?q=${encodeURIComponent("Supermarket")}&categoryId=${utilities!.id}`);
     await expect(row(page, FIXTURE_SPLIT).first()).toContainText("Split · 2 categories");
   });
 });

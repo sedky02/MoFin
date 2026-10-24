@@ -21,6 +21,17 @@ import { useAccounts } from "@/hooks/useAccounts";
 import { useCategories } from "@/hooks/useCategories";
 import { useSearchPage, type SearchParams } from "@/hooks/useSearch";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { transactionAccountLabel } from "@/lib/transaction-accounts";
+import {
+  DEFAULT_SORT,
+  RECURRENCE_OPTIONS,
+  SORT_OPTIONS,
+  TYPE_OPTIONS,
+  accountOptionLabel,
+  parseRecurrence,
+  parseSort,
+  parseType,
+} from "@/lib/transaction-list-params";
 
 const ALL = "__all__";
 
@@ -31,7 +42,8 @@ export interface SearchInitial extends SearchParams {
 export function SearchView({ initial }: { initial: SearchInitial }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { data: accounts } = useAccounts();
+  // Archived accounts too: their history is still filterable, and rows name them.
+  const { data: accounts } = useAccounts("all");
   const { data: categories } = useCategories();
 
   const [q, setQ] = React.useState(initial.q ?? "");
@@ -41,6 +53,9 @@ export function SearchView({ initial }: { initial: SearchInitial }) {
   const [to, setTo] = React.useState(initial.to ?? "");
   const [minAmount, setMinAmount] = React.useState(initial.minAmount ?? "");
   const [maxAmount, setMaxAmount] = React.useState(initial.maxAmount ?? "");
+  const [type, setType] = React.useState(initial.type ?? "");
+  const [recurrence, setRecurrence] = React.useState(initial.recurrence ?? "");
+  const [sort, setSort] = React.useState(initial.sort ?? DEFAULT_SORT);
   const [limit, setLimit] = React.useState(initial.limit ?? 25);
   const [page, setPage] = React.useState(initial.page ?? 1);
 
@@ -58,6 +73,9 @@ export function SearchView({ initial }: { initial: SearchInitial }) {
     to: to || undefined,
     minAmount: debouncedMin || undefined,
     maxAmount: debouncedMax || undefined,
+    type: parseType(type),
+    recurrence: parseRecurrence(recurrence),
+    sort: sort === DEFAULT_SORT ? undefined : sort,
     limit,
   };
 
@@ -68,11 +86,25 @@ export function SearchView({ initial }: { initial: SearchInitial }) {
     !!from ||
     !!to ||
     !!debouncedMin ||
-    !!debouncedMax;
+    !!debouncedMax ||
+    !!type ||
+    !!recurrence;
 
   // Reset to page 1 whenever a filter changes.
   // Skipped on mount so a ?page=3 URL (refresh, Back) isn't snapped to page 1.
-  const filterKey = [debouncedQ, categoryId, accountId, from, to, debouncedMin, debouncedMax, limit].join("|");
+  const filterKey = [
+    debouncedQ,
+    categoryId,
+    accountId,
+    from,
+    to,
+    debouncedMin,
+    debouncedMax,
+    type,
+    recurrence,
+    sort,
+    limit,
+  ].join("|");
   const prevFilterKey = React.useRef(filterKey);
   React.useEffect(() => {
     if (prevFilterKey.current === filterKey) return;
@@ -90,11 +122,29 @@ export function SearchView({ initial }: { initial: SearchInitial }) {
     if (to) params.set("to", to);
     if (debouncedMin) params.set("minAmount", debouncedMin);
     if (debouncedMax) params.set("maxAmount", debouncedMax);
+    if (type) params.set("type", type);
+    if (recurrence) params.set("recurrence", recurrence);
+    if (sort !== DEFAULT_SORT) params.set("sort", sort);
     if (limit !== 25) params.set("limit", String(limit));
     if (page > 1) params.set("page", String(page));
     const qs = params.toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-  }, [debouncedQ, categoryId, accountId, from, to, debouncedMin, debouncedMax, limit, page, pathname, router]);
+  }, [
+    debouncedQ,
+    categoryId,
+    accountId,
+    from,
+    to,
+    debouncedMin,
+    debouncedMax,
+    type,
+    recurrence,
+    sort,
+    limit,
+    page,
+    pathname,
+    router,
+  ]);
 
   const { data, isLoading, isFetching, isError, refetch } = useSearchPage(
     filters,
@@ -110,11 +160,14 @@ export function SearchView({ initial }: { initial: SearchInitial }) {
     setTo("");
     setMinAmount("");
     setMaxAmount("");
+    setType("");
+    setRecurrence("");
     setLimit(25);
     setPage(1);
   }
 
   const rows = data?.rows ?? [];
+  const accountsById = accounts ? new Map(accounts.map((a) => [a.id, a])) : undefined;
 
   return (
     <div className="space-y-5">
@@ -170,7 +223,7 @@ export function SearchView({ initial }: { initial: SearchInitial }) {
                 <SelectItem value={ALL}>All accounts</SelectItem>
                 {(accounts ?? []).map((a) => (
                   <SelectItem key={a.id} value={a.id}>
-                    {a.name}
+                    {accountOptionLabel(a)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -190,6 +243,56 @@ export function SearchView({ initial }: { initial: SearchInitial }) {
                 {(categories ?? []).map((c) => (
                   <SelectItem key={c.id} value={c.id}>
                     {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+
+          <Field label="Type">
+            <Select value={type || ALL} onValueChange={(v) => setType(v === ALL ? "" : (parseType(v) ?? ""))}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="All types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>All types</SelectItem>
+                {TYPE_OPTIONS.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>
+                    {o.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+
+          <Field label="Recurring">
+            <Select
+              value={recurrence || ALL}
+              onValueChange={(v) => setRecurrence(v === ALL ? "" : (parseRecurrence(v) ?? ""))}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Recurring and one-off" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>Recurring and one-off</SelectItem>
+                {RECURRENCE_OPTIONS.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>
+                    {o.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+
+          <Field label="Sort by">
+            <Select value={sort} onValueChange={(v) => setSort(parseSort(v) ?? DEFAULT_SORT)}>
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {SORT_OPTIONS.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>
+                    {o.label}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -244,7 +347,7 @@ export function SearchView({ initial }: { initial: SearchInitial }) {
       {isLoading ? (
         <SkeletonRows rows={6} />
       ) : isError ? (
-        <ErrorState description="Search failed." onRetry={() => refetch()} />
+        <ErrorState description="Couldn't load transactions." onRetry={() => refetch()} />
       ) : rows.length === 0 ? (
         <EmptyState
           icon={SearchIcon}
@@ -267,7 +370,7 @@ export function SearchView({ initial }: { initial: SearchInitial }) {
           <Card className="overflow-hidden border-0 p-0 shadow-sm">
             <div className="divide-y divide-border">
               {rows.map((tx) => (
-                <TransactionRow key={tx.id} tx={tx} />
+                <TransactionRow key={tx.id} tx={tx} accountLabel={transactionAccountLabel(tx, accountsById)} />
               ))}
             </div>
           </Card>
@@ -304,12 +407,27 @@ export function SearchView({ initial }: { initial: SearchInitial }) {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactElement<{ id?: string }> }) {
+function Field({ label, children }: { label: string; children: React.ReactElement<{ id?: string; children?: React.ReactNode }> }) {
   const id = React.useId();
   return (
     <div className="space-y-1.5">
       <Label htmlFor={id} className="text-xs text-muted-foreground">{label}</Label>
-      {React.cloneElement(children, { id })}
+      {withControlId(children, id)}
     </div>
+  );
+}
+
+/**
+ * Puts the label's id on the focusable control. A Select's root renders nothing,
+ * so for a Select it goes on the trigger, or the dropdown would have no name.
+ */
+function withControlId(control: React.ReactElement<{ id?: string; children?: React.ReactNode }>, id: string) {
+  if (control.type !== Select) return React.cloneElement(control, { id });
+  return React.cloneElement(
+    control,
+    {},
+    React.Children.map(control.props.children, (child) =>
+      React.isValidElement<{ id?: string }>(child) && child.type === SelectTrigger ? React.cloneElement(child, { id }) : child,
+    ),
   );
 }

@@ -134,7 +134,7 @@ test("deleting takes a transaction out of balances, summaries and search, and Un
     await expectNoAxeViolations(page, "delete dialog");
     await dialog.getByRole("button", { name: "Delete transaction" }).click();
 
-    await expect(page).toHaveURL(/\/search$/);
+    await expect(page).toHaveURL(/\/transactions$/);
     const toast = page.locator("[data-sonner-toast]").filter({ hasText: "Transaction deleted." });
     await expect(toast).toBeVisible();
 

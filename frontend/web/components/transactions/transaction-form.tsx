@@ -92,7 +92,7 @@ export function TransactionForm({ transaction }: { transaction?: Transaction }) 
     onView: (id) => router.push(`/transactions/${id}`),
     // The new transaction's page is gone once it's undone, so leave it.
     onUndone: (id) => {
-      if (window.location.pathname.startsWith(`/transactions/${id}`)) router.push("/search");
+      if (window.location.pathname.startsWith(`/transactions/${id}`)) router.push("/transactions");
     },
   });
   const updateMut = useUpdateTransaction(transaction?.id ?? "");
