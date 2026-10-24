@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { allAccountsCaption, countArchivedHolding, totalsByCurrency } from "@/lib/balances";
+import { allAccountsCaption, countArchivedHolding, totalsByCurrency, zeroTotals } from "@/lib/balances";
 
 // Mirrors the UX fixture: two active USD accounts, an active and an archived EUR account.
 const balances = [
@@ -50,5 +50,18 @@ describe("allAccountsCaption", () => {
 
   it("pluralises several", () => {
     expect(allAccountsCaption("EUR", 2)).toBe("Across all EUR accounts · incl. 2 archived accounts");
+  });
+});
+
+describe("zeroTotals", () => {
+  it("lists one zero per account currency, in account order", () => {
+    expect(zeroTotals([{ currency: "TND" }, { currency: "USD" }, { currency: "TND" }])).toEqual([
+      { currency: "TND", amount: "0" },
+      { currency: "USD", amount: "0" },
+    ]);
+  });
+
+  it("is empty without accounts", () => {
+    expect(zeroTotals([])).toEqual([]);
   });
 });

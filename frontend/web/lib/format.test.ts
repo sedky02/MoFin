@@ -8,6 +8,7 @@ import {
   normalizeMoneyTyping,
   parseMoneyInput,
   pasteMoneyText,
+  pickPrimaryCurrency,
 } from "@/lib/format";
 
 /** What a money field ends up holding after blur: normalise, then tidy. */
@@ -161,5 +162,27 @@ describe("formatPeriodDate", () => {
 
   it("returns an unreadable value as-is", () => {
     expect(formatPeriodDate("not a date")).toBe("not a date");
+  });
+});
+
+describe("pickPrimaryCurrency", () => {
+  const user = { settings: { defaultCurrency: "EUR" } } as never;
+  const balances = [{ key: "a:TND", balance: "1" }];
+
+  it("prefers the user's setting", () => {
+    expect(pickPrimaryCurrency(balances, user, "", [{ currency: "USD" }])).toBe("EUR");
+  });
+
+  it("then the most common balance currency", () => {
+    expect(pickPrimaryCurrency(balances, null, "", [{ currency: "USD" }])).toBe("TND");
+  });
+
+  it("then the first account's currency, so an account with no activity keeps its own", () => {
+    expect(pickPrimaryCurrency([], null, "", [{ currency: "TND" }, { currency: "USD" }])).toBe("TND");
+  });
+
+  it("falls back to a neutral value, not USD", () => {
+    expect(pickPrimaryCurrency([], null)).toBe("");
+    expect(pickPrimaryCurrency(undefined, undefined, "", [])).toBe("");
   });
 });

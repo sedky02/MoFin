@@ -274,7 +274,8 @@ export function parseBalanceKey(key: string): {
 export function pickPrimaryCurrency(
   balances: LedgerBalance[] | null | undefined,
   user: User | null | undefined,
-  fallback = "USD",
+  fallback = "",
+  accounts?: { currency: string }[] | null,
 ): string {
   const settingCurrency = user?.settings?.defaultCurrency;
   if (typeof settingCurrency === "string" && settingCurrency) return settingCurrency;
@@ -287,7 +288,9 @@ export function pickPrimaryCurrency(
     }
     return [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0];
   }
-  return fallback;
+  // No settings and no ledger activity: the first account's currency, else the caller's
+  // neutral fallback (empty, so nothing prints a currency the user never chose).
+  return accounts?.[0]?.currency || fallback;
 }
 
 /** Currency-match guard used in the transaction form's Zod superRefine. */
