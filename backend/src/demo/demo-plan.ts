@@ -76,7 +76,7 @@ export interface DemoPlan {
 
 const ACCOUNTS: DemoAccountPlan[] = [
   { key: 'checking', name: 'Everyday checking', type: AccountType.BANK, currency: 'USD', openingBalance: '2350.00' },
-  { key: 'savings', name: 'Savings', type: AccountType.SAVINGS, currency: 'USD', openingBalance: '6200.00' },
+  { key: 'savings', name: 'Savings', type: AccountType.SAVINGS, currency: 'USD', openingBalance: '5800.00' },
   // The enum has no credit type; a card is a bank account that starts in debt.
   { key: 'card', name: 'Credit card', type: AccountType.BANK, currency: 'USD', openingBalance: '-420.00' },
   { key: 'travel', name: 'Euro travel', type: AccountType.CASH, currency: 'EUR', openingBalance: '300.00' },
@@ -220,11 +220,11 @@ export function buildDemoPlan(now: Date, seed = DEMO_SEED): DemoPlan {
     });
 
     // Side work, paid into savings: one or two invoices a month.
-    for (const payDay of random.distinct(random.int(1, 2), 6, 26)) {
+    for (const payDay of random.distinct(random.int(1, 3), 6, 26)) {
       add({
         type: TransactionType.INCOME,
         description: `Freelance invoice #${invoice++}`,
-        amount: toAmount(random.int(120, 380) * 100),
+        amount: toAmount(random.int(150, 450) * 100),
         currency: 'USD',
         occurredAt: atTime(day(payDay), 14),
         to: 'savings',
