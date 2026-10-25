@@ -17,7 +17,7 @@ const DATE_ORDER = {
 } satisfies Record<'newest' | 'oldest', Prisma.TransactionOrderByWithRelationInput[]>;
 
 // What a series list wants first: active series (the enum sorts in declaration
-// order, ACTIVE before CANCELLED), the soonest next occurrence first. Rows
+// order: ACTIVE, PAUSED, CANCELLED), the soonest next occurrence first. Rows
 // outside any series carry neither field and come last, newest first.
 const NEXT_OCCURRENCE_ORDER = [
   { recurringStatus: { sort: 'asc', nulls: 'last' } },
