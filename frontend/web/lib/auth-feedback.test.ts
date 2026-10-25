@@ -22,6 +22,13 @@ describe("loginNotice", () => {
     });
   });
 
+  it("confirms signing out everywhere", () => {
+    expect(notice("reason=signed_out")).toEqual({
+      kind: "info",
+      message: "You've been signed out on every device. Sign in to continue.",
+    });
+  });
+
   it("gives an unknown error code a generic message, never the raw value", () => {
     const n = notice("error=%3Cb%3Ehacked%3C%2Fb%3E");
     expect(n).toEqual({ kind: "error", message: "Sign-in didn't finish. Please try again." });

@@ -21,14 +21,18 @@ export class ApiClientError extends Error {
 }
 
 const BASE = "/api/backend";
+// The BFF's own session routes (password change, sign out everywhere), which
+// read or clear the auth cookies server-side instead of being proxied.
+const AUTH_BASE = "/api/auth";
 
 type RequestOpts = Omit<RequestInit, "body"> & {
   body?: unknown;
   // path beneath /api/v1, e.g. "/accounts" or "/ledger/balance"
   searchParams?: Record<string, string | number | boolean | undefined | null>;
+  base?: string;
 };
 
-function buildUrl(path: string, searchParams?: RequestOpts["searchParams"]): string {
+function buildUrl(path: string, searchParams?: RequestOpts["searchParams"], base = BASE): string {
   const clean = path.startsWith("/") ? path : `/${path}`;
   const qs = new URLSearchParams();
   if (searchParams) {
@@ -37,11 +41,11 @@ function buildUrl(path: string, searchParams?: RequestOpts["searchParams"]): str
     }
   }
   const query = qs.toString();
-  return `${BASE}${clean}${query ? `?${query}` : ""}`;
+  return `${base}${clean}${query ? `?${query}` : ""}`;
 }
 
 async function request<T>(path: string, opts: RequestOpts = {}): Promise<T> {
-  const { body, searchParams, headers, ...rest } = opts;
+  const { body, searchParams, headers, base, ...rest } = opts;
   const init: RequestInit = {
     ...rest,
     headers: {
@@ -53,7 +57,7 @@ async function request<T>(path: string, opts: RequestOpts = {}): Promise<T> {
   };
   if (body !== undefined) init.body = JSON.stringify(body);
 
-  const res = await fetch(buildUrl(path, searchParams), init);
+  const res = await fetch(buildUrl(path, searchParams, base), init);
 
   if (res.status === 204) return undefined as T;
 
@@ -123,4 +127,10 @@ export const api = {
   put: <T>(path: string, body?: unknown) =>
     request<T>(path, { method: "PUT", body }),
   delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
+};
+
+/** Same error handling as `api`, against the BFF's /api/auth/* routes. */
+export const authApi = {
+  post: <T>(path: string, body?: unknown) =>
+    request<T>(path, { method: "POST", body, base: AUTH_BASE }),
 };

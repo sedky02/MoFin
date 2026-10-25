@@ -3,9 +3,12 @@ import { sha256 } from '../utils/hash';
 import {
   AUTH_THROTTLE,
   AuthThrottlerGuard,
+  CHANGE_PASSWORD_THROTTLE,
+  ChangePasswordThrottlerGuard,
   FORGOT_PASSWORD_THROTTLE,
   ForgotPasswordThrottlerGuard,
   authTracker,
+  userTracker,
 } from './auth-throttler.guard';
 
 describe('authTracker', () => {
@@ -88,5 +91,34 @@ describe('AuthThrottlerGuard', () => {
       ttl: FORGOT_PASSWORD_THROTTLE.ttl,
       blockDuration: FORGOT_PASSWORD_THROTTLE.ttl,
     });
+  });
+
+  it('ChangePasswordThrottlerGuard applies CHANGE_PASSWORD_THROTTLE, keyed on the user', async () => {
+    expect(await forwardedLimits(ChangePasswordThrottlerGuard)).toMatchObject({
+      limit: CHANGE_PASSWORD_THROTTLE.limit,
+      ttl: CHANGE_PASSWORD_THROTTLE.ttl,
+      blockDuration: CHANGE_PASSWORD_THROTTLE.ttl,
+    });
+    const guard = Object.create(ChangePasswordThrottlerGuard.prototype) as ChangePasswordThrottlerGuard;
+    const tracker = await (guard as unknown as { getTracker(req: Record<string, unknown>): Promise<string> }).getTracker({
+      ip: '1.2.3.4',
+      user: { id: 'user-1' },
+    });
+    expect(tracker).toBe('user:user-1');
+  });
+});
+
+describe('userTracker', () => {
+  it('keys on the signed-in user, whatever the IP', () => {
+    expect(userTracker({ ip: '1.2.3.4', user: { id: 'u1' } })).toBe('user:u1');
+    expect(userTracker({ ip: '5.6.7.8', user: { id: 'u1' } })).toBe('user:u1');
+  });
+
+  it.each([
+    ['no user', { ip: '5.6.7.8' }],
+    ['an empty id', { ip: '5.6.7.8', user: { id: '' } }],
+    ['a non-string id', { ip: '5.6.7.8', user: { id: 42 } }],
+  ])('falls back to the IP with %s', (_label, req) => {
+    expect(userTracker(req)).toBe('ip:5.6.7.8');
   });
 });

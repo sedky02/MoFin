@@ -38,7 +38,7 @@ import { useAccounts } from "@/hooks/useAccounts";
 import { useActiveAccount } from "@/hooks/useActiveAccount";
 import { useCreateGoal, useUpdateGoal } from "@/hooks/useGoals";
 import { parseMoneyInput } from "@/lib/format";
-import { goalScopeLabel } from "@/lib/goal-scope";
+import { goalRuleHint, goalScopeLabel } from "@/lib/goal-scope";
 import type { Goal } from "@/lib/types";
 
 const GOAL_TYPES = [
@@ -224,8 +224,14 @@ export function GoalDialog({
                       ))}
                     </SelectContent>
                   </Select>
-                  <FormDescription data-testid="goal-scope">
-                    {goalScopeLabel(watchedType, scopeAccount?.name)}
+                  {/* One description element, so the select's aria-describedby reads both lines. */}
+                  <FormDescription>
+                    <span className="block" data-testid="goal-scope">
+                      {goalScopeLabel(watchedType, scopeAccount?.name)}
+                    </span>
+                    <span className="mt-1 block" data-testid="goal-rule">
+                      {goalRuleHint(watchedType)}
+                    </span>
                   </FormDescription>
                   <FormMessage />
                 </FormItem>

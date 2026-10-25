@@ -493,7 +493,7 @@ export function TransactionForm({ transaction }: { transaction?: Transaction }) 
                 <button
                   type="button"
                   onClick={startSplit}
-                  className="flex items-center gap-1.5 text-sm font-medium text-primary-text transition-opacity hover:opacity-70"
+                  className="flex items-center gap-1.5 text-sm font-medium pointer-coarse:min-h-11 text-primary-text transition-opacity hover:opacity-70"
                 >
                   <Split className="size-4" />
                   Split transaction

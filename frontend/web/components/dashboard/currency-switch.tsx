@@ -59,7 +59,7 @@ export function CurrencySwitch({
           aria-checked={c.code === value}
           onClick={() => onChange(c.code)}
           className={cn(
-            "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium tabular transition-colors",
+            "relative inline-flex items-center gap-1.5 rounded-full px-3 py-1 pointer-coarse:after:absolute pointer-coarse:after:inset-x-0 pointer-coarse:after:-inset-y-2.5 text-xs font-medium tabular transition-colors",
             c.code === value ? "bg-primary/15 text-primary-text" : "text-muted-foreground hover:text-foreground",
           )}
         >
@@ -101,7 +101,7 @@ export function CurrencyMenu({
       <SelectTrigger
         size="sm"
         aria-label="Currency"
-        className="h-6 gap-1 rounded-md border-0 bg-transparent px-1.5 py-0 text-xs font-medium text-foreground shadow-none hover:bg-muted dark:bg-transparent dark:hover:bg-muted"
+        className="relative h-6 gap-1 pointer-coarse:data-[size=sm]:h-7 pointer-coarse:after:absolute pointer-coarse:after:inset-x-0 pointer-coarse:after:-inset-y-2 rounded-md border-0 bg-transparent px-1.5 py-0 text-xs font-medium text-foreground shadow-none hover:bg-muted dark:bg-transparent dark:hover:bg-muted"
       >
         <SelectValue />
         {otherHasActivity && (
