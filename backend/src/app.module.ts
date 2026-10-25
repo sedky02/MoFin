@@ -17,6 +17,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { BudgetsModule } from './modules/budgets/budgets.module';
 import { CategoriesModule } from './modules/categories/categories.module';
 import { DraftTransactionsModule } from './modules/draft-transactions/draft-transactions.module';
+import { ExportModule } from './modules/export/export.module';
 import { GoalsModule } from './modules/goals/goals.module';
 import { LedgerModule } from './modules/ledger/ledger.module';
 import { McpModule } from './modules/mcp/mcp.module';
@@ -55,6 +56,7 @@ import { UsersModule } from './modules/users/users.module';
     SearchModule,
     BudgetsModule,
     GoalsModule,
+    ExportModule,
   ],
   providers: [
     // Global guards run in registration order: rate limit first, so an

@@ -373,4 +373,10 @@ describe('Public routes across every controller', () => {
     const guards = Reflect.getMetadata(GUARDS_METADATA, McpController) as unknown[];
     expect(guards).toContain(OAuthMcpAuthGuard);
   });
+
+  it('keeps the data export protected', () => {
+    const exportRoutes = routes().filter((r) => r.route === 'GET /export');
+    expect(exportRoutes).toHaveLength(1);
+    expect(exportRoutes[0].isPublic).toBe(false);
+  });
 });
