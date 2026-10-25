@@ -47,8 +47,16 @@ export interface Category {
   color?: string | null;
   icon?: string | null;
   isSystem: boolean;
+  /** Set when archived: hidden from pickers, still shown on the transactions that use it. */
+  archivedAt?: string | null;
   createdAt?: string;
   updatedAt?: string;
+}
+
+/** What still uses a category; anything above zero blocks deleting it. */
+export interface CategoryUsage {
+  transactions: number;
+  budgets: number;
 }
 
 export interface LedgerItem {
