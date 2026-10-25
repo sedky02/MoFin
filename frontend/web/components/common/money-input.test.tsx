@@ -8,7 +8,17 @@ import { MoneyInput } from "@/components/common/money-input";
 afterEach(cleanup);
 
 /** Controlled MoneyInput, as the forms use it. Records every value it was given. */
-function Harness({ currency, large, seen }: { currency?: string; large?: boolean; seen: string[] }) {
+function Harness({
+  currency,
+  large,
+  allowNegative,
+  seen,
+}: {
+  currency?: string;
+  large?: boolean;
+  allowNegative?: boolean;
+  seen: string[];
+}) {
   const [value, setValue] = React.useState("");
   return (
     <>
@@ -21,13 +31,14 @@ function Harness({ currency, large, seen }: { currency?: string; large?: boolean
         }}
         currency={currency}
         large={large}
+        allowNegative={allowNegative}
       />
       <button type="button">elsewhere</button>
     </>
   );
 }
 
-function setup(props: { currency?: string; large?: boolean } = {}) {
+function setup(props: { currency?: string; large?: boolean; allowNegative?: boolean } = {}) {
   const seen: string[] = [];
   render(<Harness {...props} seen={seen} />);
   return { seen, input: screen.getByRole("textbox") as HTMLInputElement, user: userEvent.setup() };
@@ -92,6 +103,22 @@ describe("MoneyInput", () => {
     expect(input.value).toBe("1234.56");
     await user.tab();
     expect(input.value).toBe("1234.56");
+  });
+
+  it("keeps a leading minus when negatives are allowed, tidied to the currency", async () => {
+    const { input, user } = setup({ currency: "TND", allowNegative: true });
+    expect(input.getAttribute("inputmode")).toBe("text");
+    await user.type(input, "-1250,5");
+    await user.tab();
+    expect(input.value).toBe("-1250.500");
+  });
+
+  it("leaves a minus unreadable when negatives aren't allowed", async () => {
+    const { input, user } = setup({ currency: "USD" });
+    expect(input.getAttribute("inputmode")).toBe("decimal");
+    await user.type(input, "-5");
+    await user.tab();
+    expect(input.value).toBe("-5");
   });
 
   it("leaves unreadable text alone on blur", async () => {

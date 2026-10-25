@@ -1,4 +1,10 @@
-import { GatewayTimeoutException, Injectable, ServiceUnavailableException, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  GatewayTimeoutException,
+  Injectable,
+  ServiceUnavailableException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
@@ -8,7 +14,7 @@ import { PrismaService } from '../../database/prisma.service';
 import { parseDurationMs } from '../../common/utils/duration';
 import { sha256 } from '../../common/utils/hash';
 import { UsersService } from '../users/users.service';
-import { LoginDto, RegisterDto } from './dto/auth.dto';
+import { ChangePasswordDto, LoginDto, RegisterDto } from './dto/auth.dto';
 import { WEB_AUDIENCE } from './auth.constants';
 
 // Precomputed once at module load (not per-request) so `login` always pays
@@ -21,6 +27,9 @@ const DUMMY_PASSWORD_HASH = bcrypt.hashSync(randomBytes(32).toString('hex'), 12)
 // How long a just-rotated refresh token still gets its successor back
 // instead of counting as reuse (B-22).
 const ROTATION_GRACE_MS = 30_000;
+
+export const GOOGLE_ONLY_PASSWORD_MESSAGE =
+  'This account signs in with Google, so it has no password to change.';
 
 @Injectable()
 export class AuthService {
@@ -170,6 +179,62 @@ export class AuthService {
   }
 
   /**
+   * Changes the password of a signed-in user after checking the current one.
+   *
+   * Every other web session of the account is signed out: all refresh tokens
+   * are revoked except those in the family of `dto.refreshToken`, the
+   * caller's own session (ignored unless it belongs to this user). Any
+   * outstanding password reset link is spent too, since it was issued for
+   * the old password. Access tokens already issued elsewhere stay valid
+   * until their short TTL (JWT_ACCESS_TTL) runs out.
+   *
+   * A wrong current password is a 400 with a field error rather than a 401:
+   * the session itself is fine, and the BFF reads a 401 as "session over".
+   */
+  async changePassword(userId: string, dto: ChangePasswordDto): Promise<{ message: string }> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new UnauthorizedException();
+    if (!user.passwordHash) throw new BadRequestException(GOOGLE_ONLY_PASSWORD_MESSAGE);
+
+    if (!(await bcrypt.compare(dto.currentPassword, user.passwordHash))) {
+      throw fieldError('currentPassword', 'The current password is incorrect.');
+    }
+    if (dto.newPassword === dto.currentPassword) {
+      throw fieldError('newPassword', 'Choose a password different from the current one.');
+    }
+
+    const passwordHash = await bcrypt.hash(dto.newPassword, 12);
+    const current = dto.refreshToken
+      ? await this.prisma.refreshToken.findUnique({ where: { tokenHash: sha256(dto.refreshToken) } })
+      : null;
+    const keepFamilyId = current?.userId === userId ? current.familyId : undefined;
+    const now = new Date();
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.user.update({ where: { id: userId }, data: { passwordHash } });
+      await tx.refreshToken.updateMany({
+        where: { userId, revokedAt: null, ...(keepFamilyId ? { familyId: { not: keepFamilyId } } : {}) },
+        data: { revokedAt: now },
+      });
+      await tx.passwordResetToken.updateMany({ where: { userId, usedAt: null }, data: { usedAt: now } });
+    });
+
+    return { message: 'Password changed.' };
+  }
+
+  /**
+   * Signs the user out of every web session, the caller's included, by
+   * revoking all of their refresh tokens. As with a password change, access
+   * tokens already issued keep working until their short TTL runs out.
+   */
+  async revokeAllSessions(userId: string): Promise<void> {
+    await this.prisma.refreshToken.updateMany({
+      where: { userId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+  }
+
+  /**
    * Exchange a Google authorization code for MoFin tokens. The web BFF calls
    * this server-to-server after Google redirects back, so the id_token arrives
    * directly from Google's token endpoint over TLS — we validate its claims
@@ -238,7 +303,7 @@ export class AuthService {
       const byEmail = await this.prisma.user.findUnique({ where: { email } });
       user = byEmail
         ? await this.prisma.user.update({ where: { id: byEmail.id }, data: { googleId } })
-        : await this.prisma.user.create({ data: { email, googleId, displayName } });
+        : await this.usersService.createUser({ email, googleId, displayName });
     }
 
     return this.issueTokens(user.id, user.email, randomBytes(16).toString('hex'));
@@ -280,6 +345,11 @@ export class AuthService {
       expiresAt: new Date(Date.now() + refreshTtlMs),
     };
   }
+}
+
+/** A 400 shaped like ZodValidationPipe's, so the form shows it on `path`. */
+function fieldError(path: string, message: string): BadRequestException {
+  return new BadRequestException({ message: 'Validation failed', errors: [{ path, message }] });
 }
 
 /** Decode (without signature verification) the payload of a JWT. */

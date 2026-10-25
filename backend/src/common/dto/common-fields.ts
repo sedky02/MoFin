@@ -8,6 +8,14 @@ export const amountStringSchema = z
   .string()
   .regex(/^\d+(\.\d+)?$/, 'Amount must be a non-negative decimal string');
 
+/**
+ * Like amountStringSchema but may carry a leading minus, for amounts that can
+ * sit below zero (an account's opening balance on a credit account).
+ */
+export const signedAmountStringSchema = z
+  .string()
+  .regex(/^-?\d+(\.\d+)?$/, 'Amount must be a decimal string');
+
 /** Any value that Date.parse can understand (mirrors the old @IsDateString). */
 export const dateStringSchema = z
   .string()

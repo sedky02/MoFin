@@ -22,6 +22,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/common/page-header";
 import { SubmitButton } from "@/components/common/submit-button";
 import { ThemeToggle } from "@/components/shell/theme-toggle";
+import { DataCard } from "@/components/settings/data-card";
 import { useUser, useUpdateUser } from "@/hooks/useUser";
 import { useAccounts } from "@/hooks/useAccounts";
 import { useConnectedApps, useDisconnectApp } from "@/hooks/useConnectedApps";
@@ -29,6 +30,7 @@ import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import type { ConnectedApp } from "@/lib/types";
 import { handleApiError } from "@/lib/form-errors";
+import { SecurityCard } from "@/components/settings/security-card";
 
 const schema = z.object({
   displayName: z.string().trim().max(80, "Keep it under 80 characters.").optional(),
@@ -232,6 +234,8 @@ export default function SettingsPage() {
         )}
       </Card>
 
+      <SecurityCard user={user} isLoading={isLoading} />
+
       <ConfirmDialog
         open={!!toDisconnect}
         onOpenChange={(o) => !o && setToDisconnect(undefined)}
@@ -244,6 +248,8 @@ export default function SettingsPage() {
           setToDisconnect(undefined);
         }}
       />
+
+      <DataCard />
 
       <Card className="mt-6 flex-row items-center justify-between border-0 p-6 shadow-sm">
         <div>

@@ -64,3 +64,30 @@ export class ForgotPasswordThrottlerGuard extends AuthThrottlerGuard {
     return FORGOT_PASSWORD_THROTTLE;
   }
 }
+
+/** Per-user limit on POST /auth/password/change. */
+export const CHANGE_PASSWORD_THROTTLE = { limit: 5, ttl: 60_000 } as const;
+
+/**
+ * Throttle key for password change: the signed-in user's id, so a stolen
+ * session can't use the route to guess the current password faster than the
+ * login route allows, whatever IPs it comes from. The global JWT guard runs
+ * first, so `req.user` is set by the time this guard reads it.
+ */
+export function userTracker(req: Record<string, unknown>): string {
+  const id = (req.user as { id?: unknown } | undefined)?.id;
+  if (typeof id === 'string' && id.length > 0) return `user:${id}`;
+  return `ip:${String(req.ip)}`;
+}
+
+/** CHANGE_PASSWORD_THROTTLE per userTracker key. */
+@Injectable()
+export class ChangePasswordThrottlerGuard extends AuthThrottlerGuard {
+  protected throttle(): { limit: number; ttl: number } {
+    return CHANGE_PASSWORD_THROTTLE;
+  }
+
+  protected async getTracker(req: Record<string, unknown>): Promise<string> {
+    return userTracker(req);
+  }
+}

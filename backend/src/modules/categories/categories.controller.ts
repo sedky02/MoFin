@@ -40,6 +40,21 @@ export class CategoriesController {
     return this.categoriesService.list(user.id, query);
   }
 
+  @Get(':id/usage')
+  usage(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+    return this.categoriesService.usage(user.id, id);
+  }
+
+  @Patch(':id/archive')
+  archive(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+    return this.categoriesService.archive(user.id, id);
+  }
+
+  @Patch(':id/restore')
+  restore(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+    return this.categoriesService.restore(user.id, id);
+  }
+
   @Patch(':id')
   @ApiZodBody(updateCategorySchema)
   update(

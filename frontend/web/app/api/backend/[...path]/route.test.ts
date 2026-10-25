@@ -156,3 +156,48 @@ describe("backend proxy refresh lock", () => {
     expect(refreshCalls()).toBe(2);
   });
 });
+
+describe("backend proxy passthrough", () => {
+  it("streams a download back with its type, filename and exact bytes", async () => {
+    const csv = '﻿Date,Description\r\n2026-10-02,"Café, ""bio"""\r\n';
+    fetchMock.mockResolvedValue(
+      new Response(csv, {
+        headers: {
+          "content-type": "text/csv; charset=utf-8",
+          "content-disposition": 'attachment; filename="mofin-export-2026-10-25.csv"',
+          "x-internal": "not for the browser",
+        },
+      }),
+    );
+
+    const res = await call(["export"]);
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toBe("text/csv; charset=utf-8");
+    expect(res.headers.get("content-disposition")).toBe('attachment; filename="mofin-export-2026-10-25.csv"');
+    expect(res.headers.get("x-internal")).toBeNull();
+    expect(res.headers.get("x-request-id")).toBeTruthy();
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    expect(bytes.slice(0, 3)).toEqual(new Uint8Array([0xef, 0xbb, 0xbf]));
+    expect(new TextDecoder("utf-8", { ignoreBOM: true }).decode(bytes)).toBe(csv);
+  });
+
+  it("keeps JSON responses as they were", async () => {
+    fetchMock.mockResolvedValue(Response.json([{ id: "a1" }]));
+
+    const res = await call();
+
+    expect(res.headers.get("content-type")).toMatch(/^application\/json/);
+    expect(res.headers.get("content-disposition")).toBeNull();
+    expect(await res.json()).toEqual([{ id: "a1" }]);
+  });
+
+  it("answers a 204 with no body", async () => {
+    fetchMock.mockResolvedValue(new Response(null, { status: 204 }));
+
+    const res = await call();
+
+    expect(res.status).toBe(204);
+    expect(res.body).toBeNull();
+  });
+});

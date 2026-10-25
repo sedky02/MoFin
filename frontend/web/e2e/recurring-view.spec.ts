@@ -146,6 +146,19 @@ test("the Recurring view lists every series once, with its next date", async ({ 
   await expect(seriesRow(page, rent!.id)).toBeVisible();
 });
 
+test("the Recurring tab survives a reload and switching back to All clears the URL", async ({ page }) => {
+  await page.goto("/transactions");
+  await page.getByRole("tab", { name: "Recurring" }).click();
+  await expect(page).toHaveURL(/[?&]view=recurring(&|$)/);
+  await page.reload();
+  await expect(page.getByRole("tab", { name: "Recurring" })).toHaveAttribute("aria-selected", "true");
+  await settled(page);
+
+  await page.getByRole("tab", { name: "All" }).click();
+  await expect(page.getByRole("tab", { name: "All" })).toHaveAttribute("aria-selected", "true");
+  await expect(page).not.toHaveURL(/view=recurring/);
+});
+
 test("cancelling from the Recurring view ends the series and keeps the transaction", async ({ page }) => {
   const accounts = await page.request.get("/api/backend/accounts", { params: { limit: 100, offset: 0 } });
   expect(accounts.ok()).toBeTruthy();

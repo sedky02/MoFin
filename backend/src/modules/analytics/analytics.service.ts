@@ -4,6 +4,11 @@ import { LedgerDirection, Prisma, TransactionType } from '@prisma/client';
 import { DomainEvents, TransactionChangedEvent, TransactionCreatedEvent } from '../../common/events/domain-events';
 import { PrismaService } from '../../database/prisma.service';
 
+type MonthlySeries = {
+  currency: string;
+  points: { month: string; income: string; expenses: string; balance: string }[];
+};
+
 @Injectable()
 export class AnalyticsService {
   constructor(private readonly prisma: PrismaService) {}
@@ -107,20 +112,58 @@ export class AnalyticsService {
 
   /**
    * Income, expenses and closing balance for each of the last `months` calendar
-   * months (UTC, oldest first), in one currency. One grouped query over the whole
+   * months (UTC, oldest first), in one currency. Every closing balance includes
+   * the opening balances of the accounts in scope: they are what the accounts
+   * held before their first entry. They never count as income.
+   */
+  async getMonthlySeries(userId: string, months: number, currency: string, accountId?: string): Promise<MonthlySeries> {
+    const [series, opening] = await Promise.all([
+      this.getLedgerMonthlySeries(userId, months, currency, accountId),
+      this.openingBalanceTotal(userId, currency, accountId),
+    ]);
+    if (opening.isZero()) return series;
+    return {
+      ...series,
+      points: series.points.map((point) => ({
+        ...point,
+        balance: new Prisma.Decimal(point.balance).plus(opening).toString(),
+      })),
+    };
+  }
+
+  /**
+   * Sum of the opening balances in `currency` (archived accounts included, like
+   * their ledger entries). Read fresh on every call rather than cached with the
+   * series, so editing an account's opening balance shows up straight away.
+   */
+  private async openingBalanceTotal(userId: string, currency: string, accountId?: string): Promise<Prisma.Decimal> {
+    const { _sum } = await this.prisma.account.aggregate({
+      where: { userId, currency, ...(accountId ? { id: accountId } : {}) },
+      _sum: { openingBalance: true },
+    });
+    return _sum.openingBalance ?? new Prisma.Decimal(0);
+  }
+
+  /**
+   * The ledger part of getMonthlySeries. One grouped query over the whole
    * history — not N month queries and not row-by-row summing in Node. Deleted
    * transactions are left out of all three. Cached 15 min and
    * cleared whenever any transaction changes (a back-dated entry shifts every
    * later month's closing balance).
    */
-  async getMonthlySeries(userId: string, months: number, currency: string, accountId?: string) {
+  private async getLedgerMonthlySeries(
+    userId: string,
+    months: number,
+    currency: string,
+    accountId?: string,
+  ): Promise<MonthlySeries> {
     const now = new Date();
     const first = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - (months - 1), 1));
     const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
     const cacheKey = `monthly-series:v1:${months}:${currency}:${accountId ?? 'all'}:${now.getUTCFullYear()}-${now.getUTCMonth() + 1}`;
 
     const cached = await this.prisma.analyticsCache.findUnique({ where: { userId_cacheKey: { userId, cacheKey } } });
-    if (cached && cached.expiresAt > new Date()) return cached.payload;
+    if (cached && cached.expiresAt > new Date()) return cached.payload as unknown as MonthlySeries;
 
     const rows = await this.prisma.$queryRaw<
       { month: string; net: Prisma.Decimal | string; income: Prisma.Decimal | string; expenses: Prisma.Decimal | string }[]
@@ -161,7 +204,7 @@ export class AnalyticsService {
       };
     });
 
-    const payload = { currency, points };
+    const payload: MonthlySeries = { currency, points };
     const expiresAt = new Date(Date.now() + 1000 * 60 * 15);
     await this.prisma.analyticsCache.upsert({
       where: { userId_cacheKey: { userId, cacheKey } },

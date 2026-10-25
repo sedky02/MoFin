@@ -102,6 +102,10 @@ model Account {
   name             String
   type             AccountType
   currency         String
+  /// What the account held before tracking started, in its own currency.
+  /// Added to the ledger-derived balance; never a transaction, so it stays
+  /// out of income, expenses and Income/Expense goals.
+  openingBalance   Decimal           @default(0) @db.Decimal(18, 4)
   metadata         Json              @default("{}")
   archivedAt       DateTime?
   transactionItems TransactionItem[]
@@ -122,6 +126,9 @@ model Category {
   type             CategoryType
   color            String?
   icon             String?
+  // A retired category: hidden from pickers but kept on the transactions,
+  // reports and history that already use it. Restoring clears it.
+  archivedAt       DateTime?
   transactions     Transaction[]
   transactionItems TransactionItem[]
   budgets          Budget[]

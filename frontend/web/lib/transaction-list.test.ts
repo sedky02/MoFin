@@ -6,6 +6,7 @@ import {
   parseSort,
   parseType,
   parseView,
+  recurringViewHref,
 } from "@/lib/transaction-list-params";
 import type { Account, LedgerItem } from "@/lib/types";
 
@@ -73,6 +74,8 @@ describe("transaction list params", () => {
     expect(parseView("recurring")).toBe("recurring");
     expect(parseView(undefined)).toBe("all");
     expect(parseView("Recurring")).toBe("all");
+    expect(parseView(recurringViewHref("/transactions").split("view=")[1])).toBe("recurring");
+    expect(recurringViewHref("/transactions")).toBe("/transactions?view=recurring");
   });
 
   it("labels archived accounts in the account filter", () => {

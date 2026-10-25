@@ -365,12 +365,18 @@ describe('Public routes across every controller', () => {
     const protectedRoutes = routes().filter((r) => !r.isPublic);
     // Spot-check the user-scoped families; the exact list above already pins the rest.
     expect(protectedRoutes.map((r) => r.route)).toEqual(
-      expect.arrayContaining(['GET /auth/me', 'GET /oauth/grants', 'DELETE /oauth/grants/:clientId', 'GET /accounts', 'POST /transactions']),
+      expect.arrayContaining(['GET /auth/me', 'POST /auth/password/change', 'POST /auth/sessions/revoke-all', 'GET /oauth/grants', 'DELETE /oauth/grants/:clientId', 'GET /accounts', 'POST /transactions']),
     );
   });
 
   it('keeps OAuthMcpAuthGuard on the public MCP routes', () => {
     const guards = Reflect.getMetadata(GUARDS_METADATA, McpController) as unknown[];
     expect(guards).toContain(OAuthMcpAuthGuard);
+  });
+
+  it('keeps the data export protected', () => {
+    const exportRoutes = routes().filter((r) => r.route === 'GET /export');
+    expect(exportRoutes).toHaveLength(1);
+    expect(exportRoutes[0].isPublic).toBe(false);
   });
 });

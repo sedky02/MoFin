@@ -22,6 +22,24 @@ describe('AnalyticsService.getMonthlySummary', () => {
     );
   });
 
+  it("never counts an account's opening balance as income", async () => {
+    // An account opened with 5000 and one 100 salary this month: income is the salary only.
+    const { service, prisma } = makeService([
+      { type: TransactionType.INCOME, category: null, items: [{ accountId: 'acc-a', amount: new Prisma.Decimal('100'), currency: 'USD' }] },
+    ]);
+    const account = { aggregate: jest.fn(), findMany: jest.fn(), findFirst: jest.fn() };
+    Object.assign(prisma, { account });
+    const result = (await service.getMonthlySummary('u1', 2026, 10, false, 'acc-a', 'USD')) as {
+      income: string;
+      expenses: string;
+      savingsRate: string;
+    };
+    expect(result).toEqual(expect.objectContaining({ income: '100', expenses: '0', savingsRate: '1.0000' }));
+    expect(account.aggregate).not.toHaveBeenCalled();
+    expect(account.findMany).not.toHaveBeenCalled();
+    expect(account.findFirst).not.toHaveBeenCalled();
+  });
+
   const item = (accountId: string, amount: string, currency = 'TND') => ({
     accountId,
     amount: new Prisma.Decimal(amount),
@@ -262,10 +280,16 @@ describe('AnalyticsService.getMonthlySummary', () => {
 });
 
 describe('AnalyticsService.getMonthlySeries', () => {
-  function setup(rows: unknown[], cached: unknown = null) {
+  // `openings` are accounts' opening balances by currency; the aggregate mock sums the requested one.
+  function setup(rows: unknown[], cached: unknown = null, openings: Record<string, string> = {}) {
     const prisma = {
       analyticsCache: { findUnique: jest.fn(async () => cached), upsert: jest.fn(async () => ({})) },
       $queryRaw: jest.fn(async () => rows),
+      account: {
+        aggregate: jest.fn(async ({ where }: { where: { currency: string } }) => ({
+          _sum: { openingBalance: openings[where.currency] ? new Prisma.Decimal(openings[where.currency]) : null },
+        })),
+      },
     };
     return { service: new AnalyticsService(prisma as never), prisma };
   }
@@ -292,6 +316,37 @@ describe('AnalyticsService.getMonthlySeries', () => {
     ]);
   });
 
+  it('adds the opening balance to every point, empty months included', async () => {
+    const { service } = setup(
+      [{ month: '2026-09', net: '-100', income: '0', expenses: '100' }],
+      null,
+      { USD: '5000', EUR: '700' },
+    );
+    const result = await service.getMonthlySeries('u1', 3, 'USD');
+    expect(result.points.map((p) => p.balance)).toEqual(['5000', '4900', '4900']);
+    // Never income: income and expenses are the ledger's alone.
+    expect(result.points.map((p) => p.income)).toEqual(['0', '0', '0']);
+    expect(result.points.map((p) => p.expenses)).toEqual(['0', '100', '0']);
+  });
+
+  it("adds only the series currency's opening balances, scoped like the ledger query", async () => {
+    const { service, prisma } = setup([], null, { USD: '5000', TND: '1250.500' });
+    const result = await service.getMonthlySeries('u1', 2, 'TND', 'acc-t');
+    expect(result.points.map((p) => p.balance)).toEqual(['1250.5', '1250.5']);
+    expect(prisma.account.aggregate).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { userId: 'u1', currency: 'TND', id: 'acc-t' } }),
+    );
+  });
+
+  it('adds the opening balance to a cached series too, without caching it', async () => {
+    const payload = { currency: 'USD', points: [{ month: '2026-10', income: '0', expenses: '0', balance: '10' }] };
+    const { service, prisma } = setup([], { payload, expiresAt: new Date(Date.now() + 60_000) }, { USD: '5000' });
+    const result = await service.getMonthlySeries('u1', 1, 'USD');
+    expect(result.points[0].balance).toBe('5010');
+    expect(payload.points[0].balance).toBe('10');
+    expect(prisma.analyticsCache.upsert).not.toHaveBeenCalled();
+  });
+
   it('serves a fresh cached payload without querying', async () => {
     const payload = { currency: 'USD', points: [] };
     const { service, prisma } = setup([], { payload, expiresAt: new Date(Date.now() + 60_000) });
@@ -306,6 +361,7 @@ describe('AnalyticsService.getMonthlySeries', () => {
     const prisma = {
       analyticsCache: { findUnique: jest.fn(async () => null), upsert: jest.fn(async () => undefined) },
       $queryRaw: queryRaw,
+      account: { aggregate: jest.fn(async () => ({ _sum: { openingBalance: null } })) },
     };
     await new AnalyticsService(prisma as never).getMonthlySeries('u1', 6, 'USD');
     const sql = (queryRaw.mock.calls[0][0] as Prisma.Sql).sql;
