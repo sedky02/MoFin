@@ -2,6 +2,7 @@ import { randomBytes } from "crypto";
 import { NextResponse } from "next/server";
 import { safeNextPath } from "@/lib/safe-next";
 import { loginErrorUrl } from "@/lib/auth-feedback";
+import { secureCookies } from "@/lib/auth-cookies";
 
 const STATE_COOKIE = "google_oauth";
 
@@ -37,7 +38,7 @@ export async function GET(req: Request) {
   const res = NextResponse.redirect(authUrl);
   res.cookies.set(STATE_COOKIE, JSON.stringify({ state, mcpAuthorize, next }), {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: secureCookies(),
     sameSite: "lax",
     path: "/api/auth/google",
     maxAge: 600,
