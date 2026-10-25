@@ -14,6 +14,27 @@ The goal is simple:
 
 ---
 
+## Run it with Docker
+
+Needs Docker with Compose v2. From the repo root:
+
+```bash
+cp .env.example .env        # optional: every setting has a local demo default
+docker compose up --build
+```
+
+Then open http://localhost:3001 and sign in with the demo account; the backend
+prints its email and password when it seeds it (`docker compose logs backend`).
+
+- Postgres, the API (http://localhost:3000, docs at `/docs`) and the web app each run in their own container. Migrations run on every start.
+- The demo account is created once and kept across restarts. `docker compose down -v` wipes the database, and the next `up` seeds it again.
+- Ports 3000/3001 taken? Set `API_PORT`/`WEB_PORT` in `.env`.
+- The keys in `.env.example` are public and for local demos only. Plain `http://localhost` also needs `COOKIE_SECURE=false`, which the demo sets; use `true` behind HTTPS.
+
+For development with hot reload, run only Postgres (`docker compose -f backend/docker-compose.yml up -d`) and start the apps with npm.
+
+---
+
 ## Key Features
 
 ### Core Finance System
