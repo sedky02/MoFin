@@ -79,7 +79,7 @@ export function MonthlySummaryCard({
     : "All accounts";
 
   const arrow =
-    "inline-flex size-7 items-center justify-center rounded-full text-foreground/70 transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-35 pointer-coarse:size-10";
+    "inline-flex size-7 items-center justify-center rounded-full text-foreground/70 transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-35 pointer-coarse:size-11";
 
   // The month stepper is the card's primary control, so it carries the month as a title.
   const monthNav = (
