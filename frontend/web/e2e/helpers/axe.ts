@@ -11,6 +11,9 @@ export async function settle(page: Page) {
 
 export async function runAxe(page: Page, opts: { skipSettle?: boolean } = {}) {
   if (!opts.skipSettle) await settle(page);
+  // The dev-only Next indicator and query devtools button sit over the bottom
+  // nav's first tab; they aren't part of the app and don't ship to production.
+  await page.addStyleTag({ content: "nextjs-portal, .tsqd-parent-container { display: none !important; }" });
   const results = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze();
   return results.violations;
 }
