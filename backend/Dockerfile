@@ -39,6 +39,8 @@ RUN npm ci --omit=dev && npm cache clean --force
 FROM base AS runtime
 ENV NODE_ENV=production
 ENV PORT=3000
+# The entrypoint uses npx for `prisma migrate deploy`; skip npm's update check.
+ENV NPM_CONFIG_UPDATE_NOTIFIER=false
 
 COPY --from=prod-deps --chown=node:node /app/node_modules ./node_modules
 COPY --from=build --chown=node:node /app/dist ./dist
