@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { TransactionType } from '@prisma/client';
+import { Prisma, TransactionType } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
 import { CreateCategoryDto, ListCategoriesQueryDto, UpdateCategoryDto } from './dto/categories.dto';
 
@@ -22,13 +22,33 @@ export class CategoriesService {
   }
 
   async create(userId: string, dto: CreateCategoryDto) {
-    const category = await this.prisma.category.create({ data: { ...dto, userId } });
-    return this.toResponse(category);
+    try {
+      const category = await this.prisma.category.create({ data: { ...dto, userId } });
+      return this.toResponse(category);
+    } catch (err) {
+      // The name is unique per user and type, archived categories included, so
+      // point at the archived one instead of a bare "already exists".
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        const archived = await this.prisma.category.findFirst({
+          where: { userId, name: dto.name, type: dto.type, archivedAt: { not: null } },
+        });
+        if (archived) {
+          throw new ConflictException(`"${dto.name}" is archived. Restore it from your archived categories instead.`);
+        }
+      }
+      throw err;
+    }
   }
 
   async list(userId: string, query: ListCategoriesQueryDto) {
+    const archivedFilter =
+      query.status === 'active'
+        ? { archivedAt: null }
+        : query.status === 'archived'
+          ? { archivedAt: { not: null } }
+          : {};
     const page = await this.prisma.paginated.category.paginate({
-      where: { OR: [{ userId }, { userId: null }] },
+      where: { OR: [{ userId }, { userId: null }], ...archivedFilter },
       orderBy: [{ type: 'asc' }, { name: 'asc' }],
       limit: query.limit,
       offset: query.offset
@@ -36,6 +56,11 @@ export class CategoriesService {
     return { ...page, data: page.data.map((category) => this.toResponse(category)) };
   }
 
+  /**
+   * Archived categories pass: they stay on the transactions that already use
+   * them, so editing one of those transactions, or searching by the category,
+   * must keep working. Archiving only takes them out of the pickers.
+   */
   async assertAvailable(userId: string, categoryId?: string | null) {
     if (!categoryId) return null;
     const category = await this.prisma.category.findFirst({
@@ -66,26 +91,62 @@ export class CategoriesService {
     return category;
   }
 
-  async update(userId: string, categoryId: string, dto: UpdateCategoryDto) {
+  private async assertOwned(userId: string, categoryId: string) {
     const category = await this.prisma.category.findFirst({ where: { id: categoryId, userId } });
     if (!category) throw new NotFoundException(`Category ${categoryId} not found`);
+    return category;
+  }
+
+  async update(userId: string, categoryId: string, dto: UpdateCategoryDto) {
+    await this.assertOwned(userId, categoryId);
     const updated = await this.prisma.category.update({ where: { id: categoryId }, data: dto });
     return this.toResponse(updated);
   }
 
-  async remove(userId: string, categoryId: string) {
-    const category = await this.prisma.category.findFirst({ where: { id: categoryId, userId } });
-    if (!category) throw new NotFoundException(`Category ${categoryId} not found`);
+  /**
+   * What still points at the category: live transactions that use it on the
+   * transaction itself or on one of its split lines (each counted once), and
+   * budgets. Deleted transactions don't count; they lose the category if it's
+   * deleted.
+   */
+  async usage(userId: string, categoryId: string) {
+    await this.assertOwned(userId, categoryId);
+    return this.countUsage(categoryId);
+  }
 
-    const [transactionCount, transactionItemCount, budgetCount] = await Promise.all([
-      // Deleted transactions don't keep a category in use (they lose it if it's deleted).
-      this.prisma.transaction.count({ where: { categoryId, deletedAt: null } }),
-      this.prisma.transactionItem.count({ where: { categoryId, transaction: { deletedAt: null } } }),
+  private async countUsage(categoryId: string) {
+    const [transactions, budgets] = await Promise.all([
+      this.prisma.transaction.count({
+        where: { deletedAt: null, OR: [{ categoryId }, { items: { some: { categoryId } } }] },
+      }),
       this.prisma.budget.count({ where: { categoryId } }),
     ]);
-    if (transactionCount > 0 || transactionItemCount > 0 || budgetCount > 0) {
+    return { transactions, budgets };
+  }
+
+  async archive(userId: string, categoryId: string) {
+    const category = await this.assertOwned(userId, categoryId);
+    if (category.archivedAt) return this.toResponse(category);
+    const archived = await this.prisma.category.update({ where: { id: categoryId }, data: { archivedAt: new Date() } });
+    return this.toResponse(archived);
+  }
+
+  async restore(userId: string, categoryId: string) {
+    const category = await this.prisma.category.findFirst({
+      where: { id: categoryId, userId, archivedAt: { not: null } },
+    });
+    if (!category) throw new NotFoundException(`Archived category ${categoryId} not found`);
+    const restored = await this.prisma.category.update({ where: { id: categoryId }, data: { archivedAt: null } });
+    return this.toResponse(restored);
+  }
+
+  async remove(userId: string, categoryId: string) {
+    await this.assertOwned(userId, categoryId);
+
+    const { transactions, budgets } = await this.countUsage(categoryId);
+    if (transactions > 0 || budgets > 0) {
       throw new ConflictException(
-        'This category is used by existing transactions or budgets and cannot be deleted.',
+        'This category is used by existing transactions or budgets and cannot be deleted. Archive it instead.',
       );
     }
 
