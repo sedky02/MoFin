@@ -43,6 +43,11 @@ export function parseView(value: string | undefined): TransactionsView {
   return value === "recurring" ? "recurring" : "all";
 }
 
+/** The URL of the Recurring view. */
+export function recurringViewHref(pathname: string): string {
+  return `${pathname}?view=recurring`;
+}
+
 function pick<T extends string>(options: { value: T }[], value: string | undefined): T | undefined {
   return options.find((o) => o.value === value)?.value;
 }

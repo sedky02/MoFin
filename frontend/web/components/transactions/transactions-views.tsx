@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SearchView, type SearchInitial } from "@/components/search/search-view";
 import { RecurringSeriesList } from "@/components/transactions/recurring-series-list";
-import { parseView, type TransactionsView } from "@/lib/transaction-list-params";
+import { parseView, recurringViewHref, type TransactionsView } from "@/lib/transaction-list-params";
 
 /**
  * The /transactions page's two views: every transaction (searchable), and
@@ -28,8 +28,13 @@ export function TransactionsViews({
   function changeView(next: string) {
     const value = parseView(next);
     setView(value);
-    if (value === "recurring") router.replace(`${pathname}?view=recurring`, { scroll: false });
   }
+
+  // The Recurring view owns the URL while it's shown; the list writes its own
+  // filters back when it becomes visible again. Runs after the list's effect.
+  React.useEffect(() => {
+    if (view === "recurring") router.replace(recurringViewHref(pathname), { scroll: false });
+  }, [view, pathname, router]);
 
   return (
     <Tabs value={view} onValueChange={changeView} className="gap-5">
@@ -44,7 +49,7 @@ export function TransactionsViews({
 
       <TabsContent value="all" forceMount className="text-base data-[state=inactive]:hidden">
         <Activity mode={view === "all" ? "visible" : "hidden"}>
-          <SearchView initial={initial} />
+          <SearchView initial={initial} active={view === "all"} />
         </Activity>
       </TabsContent>
       <TabsContent value="recurring" className="text-base">
