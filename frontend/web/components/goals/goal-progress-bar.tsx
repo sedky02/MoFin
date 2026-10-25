@@ -19,10 +19,10 @@ export function GoalProgressBar({
       aria-valuenow={Math.round(ratio)}
       aria-valuetext={`${Math.round(ratio)}%${overTarget ? ", over target" : ""}`}
       aria-label="Goal progress"
-      className={cn("h-2 w-full overflow-hidden rounded-full bg-foreground/10", className)}
+      className={cn("h-2 w-full overflow-hidden rounded-full bg-track", className)}
     >
       <div
-        className={cn("h-full rounded-full transition-all", overTarget ? "bg-destructive" : "bg-primary")}
+        className={cn("h-full rounded-full transition-all", overTarget ? "bg-destructive" : "bg-primary-graphic")}
         style={{ width: `${ratio}%` }}
       />
     </div>

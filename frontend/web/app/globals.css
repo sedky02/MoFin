@@ -39,6 +39,8 @@
   --color-primary-foreground: var(--primary-foreground);
   --color-primary: var(--primary);
   --color-primary-text: var(--primary-text);
+  --color-primary-graphic: var(--primary-graphic);
+  --color-track: var(--track);
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
@@ -64,6 +66,10 @@
   --primary: #cbe600;
   /* Lime is ~1.4:1 as text on light backgrounds; use this for text/icons. */
   --primary-text: #4a5a00;
+  /* Lime is 1.4:1 as a fill on white; progress fills, the current-month bar and the first donut slice use this (4.8:1). */
+  --primary-graphic: #6b7a00;
+  /* Progress track: 3.5:1 against the graphic ink, so the filled part reads as a shape. */
+  --track: #dcdcd8;
   --primary-foreground: #131313;
   --secondary: #f2f2ef;
   --secondary-foreground: #131313;
@@ -76,13 +82,14 @@
   --success: #5d6b00;
   --warning: #b45309;
   --border: #e6e6e2;
-  --input: #e1e1dd;
+  /* Control borders need 3:1 (WCAG 1.4.11): 3.4:1 on white, 3.2:1 on the page. */
+  --input: #8a8c87;
   --ring: #5d6b00;
-  --chart-1: #a4b800;
+  --chart-1: var(--primary-graphic);
   --chart-2: #2e5bff;
   --chart-3: #d97706;
   --chart-4: #d92020;
-  --chart-5: #6b7a00;
+  --chart-5: #7c3aed;
   --chart-6: #6f8bff;
   /* Neutral for de-emphasised data (past-month bars): 3.6:1 on white. */
   --bar: #86868b;
@@ -111,6 +118,8 @@
   --popover-foreground: #e5e2e1;
   --primary: #d2f000;
   --primary-text: #d2f000;
+  --primary-graphic: #d2f000;
+  --track: rgba(255, 255, 255, 0.1);
   --primary-foreground: #0a0a00;
   --secondary: #1c1b1b;
   --secondary-foreground: #e5e2e1;
@@ -123,7 +132,7 @@
   --success: #c8e600;
   --warning: #fbbf24;
   --border: rgba(255, 255, 255, 0.09);
-  --input: rgba(255, 255, 255, 0.12);
+  --input: rgba(255, 255, 255, 0.4);
   --ring: #d2f000;
   --chart-1: #d2f000;
   --chart-2: #2e5bff;

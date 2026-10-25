@@ -142,7 +142,7 @@ export function BalanceOverview({
                         "w-full rounded-t-md transition-[height,filter] duration-300 group-hover:brightness-110 group-focus-within:brightness-110",
                         // The current month carries the colour (red for spending or a negative balance, the
                         // accent otherwise); history is a neutral that still clears 3:1 against the card.
-                        isNow ? (v < 0 || metric === "expenses" ? "bg-destructive" : "bg-primary") : "bg-bar",
+                        isNow ? (v < 0 || metric === "expenses" ? "bg-destructive" : "bg-primary-graphic") : "bg-bar",
                       )}
                       style={{ height: `${pct}%` }}
                     />
