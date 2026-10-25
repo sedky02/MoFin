@@ -125,6 +125,11 @@ function makeFakeDb() {
   const prisma = {
     goal,
     goalInstance,
+    // Balance goals start from the account's opening balance (B-10); these fake
+    // accounts have none.
+    account: {
+      findFirst: async () => ({ openingBalance: new Prisma.Decimal(0) }),
+    },
     transactionItem: {
       // Every fake transaction has one item on the goal's account: income
       // credits it, expense debits it.
