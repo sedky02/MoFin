@@ -123,6 +123,9 @@ model Category {
   type             CategoryType
   color            String?
   icon             String?
+  // A retired category: hidden from pickers but kept on the transactions,
+  // reports and history that already use it. Restoring clears it.
+  archivedAt       DateTime?
   transactions     Transaction[]
   transactionItems TransactionItem[]
   budgets          Budget[]

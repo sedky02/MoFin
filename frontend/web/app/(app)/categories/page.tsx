@@ -1,12 +1,18 @@
 "use client";
 
 import * as React from "react";
-import { Plus, Tags, Lock, Pencil, Trash2 } from "lucide-react";
-import { useCategories, useDeleteCategory } from "@/hooks/useCategories";
+import { ArchiveRestore, Plus, Tags, Lock, Pencil, Trash2 } from "lucide-react";
+import {
+  useArchiveCategory,
+  useCategories,
+  useDeleteCategory,
+  useRestoreCategory,
+} from "@/hooks/useCategories";
 import { CategoryDialog } from "@/components/categories/category-dialog";
+import { DeleteCategoryDialog } from "@/components/categories/delete-category-dialog";
 import { PageHeader } from "@/components/common/page-header";
-import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState, ErrorState } from "@/components/common/states";
@@ -19,18 +25,31 @@ import { CategoryIcon } from "@/components/dashboard/category-icon";
 import { cn } from "@/lib/utils";
 import type { Category } from "@/lib/types";
 
+type TileActions = {
+  onEdit?: (c: Category) => void;
+  onDelete?: (c: Category) => void;
+  onRestore?: (c: Category) => void;
+  /** Id of the category a delete, archive or restore is in flight for. */
+  busyId?: string;
+};
+
 function CategoryTile({
   category,
   onEdit,
   onDelete,
-}: {
-  category: Category;
-  onEdit: (c: Category) => void;
-  onDelete: (c: Category) => void;
-}) {
+  onRestore,
+  busyId,
+}: { category: Category } & TileActions) {
+  const busy = busyId === category.id;
   return (
     // `flex-row` is required: Card is `flex-col` by default, so `flex` alone stacks everything vertically.
-    <Card className="flex-row items-center gap-3 border-0 p-3.5 shadow-sm">
+    <Card
+      aria-busy={busy || undefined}
+      className={cn(
+        "flex-row items-center gap-3 border-0 p-3.5 shadow-sm transition-opacity",
+        busy && "opacity-60",
+      )}
+    >
       <span
         className="flex size-9 shrink-0 items-center justify-center rounded-lg text-base"
         style={{
@@ -70,26 +89,43 @@ function CategoryTile({
           </TooltipTrigger>
           <TooltipContent>System category — can&apos;t be edited</TooltipContent>
         </Tooltip>
+      ) : onRestore ? (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="gap-1.5 text-muted-foreground"
+          disabled={busy}
+          onClick={() => onRestore(category)}
+          aria-label={`Restore ${category.name}`}
+        >
+          <ArchiveRestore className="size-4" />
+          Restore
+        </Button>
       ) : (
         <>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-8 text-muted-foreground"
-            onClick={() => onEdit(category)}
-            aria-label={`Edit ${category.name}`}
-          >
-            <Pencil className="size-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-8 text-muted-foreground"
-            onClick={() => onDelete(category)}
-            aria-label={`Delete ${category.name}`}
-          >
-            <Trash2 className="size-4" />
-          </Button>
+          {onEdit && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-8 text-muted-foreground"
+              onClick={() => onEdit(category)}
+              aria-label={`Edit ${category.name}`}
+            >
+              <Pencil className="size-4" />
+            </Button>
+          )}
+          {onDelete && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-8 text-muted-foreground"
+              disabled={busy}
+              onClick={() => onDelete(category)}
+              aria-label={`Delete ${category.name}`}
+            >
+              <Trash2 className="size-4" />
+            </Button>
+          )}
         </>
       )}
     </Card>
@@ -100,15 +136,12 @@ function Section({
   title,
   hint,
   items,
-  onEdit,
-  onDelete,
+  ...actions
 }: {
   title: string;
   hint: string;
   items: Category[];
-  onEdit: (c: Category) => void;
-  onDelete: (c: Category) => void;
-}) {
+} & TileActions) {
   if (items.length === 0) return null;
   return (
     <section>
@@ -118,16 +151,30 @@ function Section({
       </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {items.map((c) => (
-          <CategoryTile key={c.id} category={c} onEdit={onEdit} onDelete={onDelete} />
+          <CategoryTile key={c.id} category={c} {...actions} />
         ))}
       </div>
     </section>
   );
 }
 
+function TilesSkeleton() {
+  return (
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <Skeleton key={i} className="h-[68px] rounded-xl" />
+      ))}
+    </div>
+  );
+}
+
 export default function CategoriesPage() {
-  const { data, isLoading, isError, refetch } = useCategories();
+  const [tab, setTab] = React.useState<"active" | "archived">("active");
+  const { data, isLoading, isError, refetch } = useCategories("active");
+  const archived = useCategories("archived", tab === "archived");
   const deleteCategory = useDeleteCategory();
+  const archiveCategory = useArchiveCategory();
+  const restoreCategory = useRestoreCategory();
   const [open, setOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<Category | undefined>();
   const [toDelete, setToDelete] = React.useState<Category | undefined>();
@@ -141,12 +188,12 @@ export default function CategoriesPage() {
     setOpen(true);
   }
 
-  function confirmDelete() {
-    if (!toDelete) return;
-    const id = toDelete.id;
-    setToDelete(undefined);
-    deleteCategory.mutate(id);
-  }
+  // The tile stays until the server confirms; it's only dimmed meanwhile.
+  const busyId =
+    (deleteCategory.isPending && deleteCategory.variables) ||
+    (archiveCategory.isPending && archiveCategory.variables) ||
+    (restoreCategory.isPending && restoreCategory.variables) ||
+    undefined;
 
   const userCategories = (data ?? []).filter((c) => !c.isSystem);
   const systemCategories = (data ?? []).filter((c) => c.isSystem);
@@ -164,54 +211,87 @@ export default function CategoriesPage() {
         }
       />
 
-      {isLoading ? (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-[68px] rounded-xl" />
-          ))}
-        </div>
-      ) : isError ? (
-        <ErrorState description="Couldn't load categories." onRetry={() => refetch()} />
-      ) : (data ?? []).length === 0 ? (
-        <EmptyState
-          icon={Tags}
-          title="No categories yet"
-          description="Create a category to start organizing your spending."
-          action={
-            <Button onClick={openCreate} className="gap-2">
-              <Plus className="size-4" />
-              New category
-            </Button>
-          }
-        />
-      ) : (
-        <div className="space-y-8">
-          <Section
-            title="Your categories"
-            hint={`${userCategories.length}`}
-            items={userCategories}
-            onEdit={openEdit}
-            onDelete={setToDelete}
-          />
-          <Section
-            title="System categories"
-            hint="read-only"
-            items={systemCategories}
-            onEdit={openEdit}
-            onDelete={setToDelete}
-          />
-        </div>
-      )}
+      <Tabs value={tab} onValueChange={(v) => setTab(v as "active" | "archived")}>
+        <TabsList>
+          <TabsTrigger value="active">Active</TabsTrigger>
+          <TabsTrigger value="archived">Archived</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="active" className="mt-6">
+          {isLoading ? (
+            <TilesSkeleton />
+          ) : isError ? (
+            <ErrorState description="Couldn't load categories." onRetry={() => refetch()} />
+          ) : (data ?? []).length === 0 ? (
+            <EmptyState
+              icon={Tags}
+              title="No categories yet"
+              description="Create a category to start organizing your spending."
+              action={
+                <Button onClick={openCreate} className="gap-2">
+                  <Plus className="size-4" />
+                  New category
+                </Button>
+              }
+            />
+          ) : (
+            <div className="space-y-8">
+              <Section
+                title="Your categories"
+                hint={`${userCategories.length}`}
+                items={userCategories}
+                onEdit={openEdit}
+                onDelete={setToDelete}
+                busyId={busyId}
+              />
+              <Section
+                title="System categories"
+                hint="read-only"
+                items={systemCategories}
+              />
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="archived" className="mt-6">
+          {archived.isLoading ? (
+            <TilesSkeleton />
+          ) : archived.isError ? (
+            <ErrorState
+              description="Couldn't load your archived categories."
+              onRetry={() => archived.refetch()}
+            />
+          ) : !archived.data || archived.data.length === 0 ? (
+            <EmptyState
+              icon={Tags}
+              title="No archived categories"
+              description="Categories you archive are hidden from pickers but stay on past transactions. They'll show up here."
+            />
+          ) : (
+            <Section
+              title="Archived"
+              hint="hidden from pickers, kept on past transactions"
+              items={archived.data}
+              onRestore={(c) => restoreCategory.mutate(c.id)}
+              busyId={busyId}
+            />
+          )}
+        </TabsContent>
+      </Tabs>
 
       <CategoryDialog open={open} onOpenChange={setOpen} category={editing} />
 
-      <ConfirmDialog
-        open={!!toDelete}
+      <DeleteCategoryDialog
+        category={toDelete}
         onOpenChange={(o) => !o && setToDelete(undefined)}
-        title={`Delete "${toDelete?.name}"?`}
-        description="This permanently removes the category. Categories used by transactions or budgets can't be deleted."
-        confirmLabel="Delete"
-        onConfirm={confirmDelete}
+        onDelete={(c) => {
+          setToDelete(undefined);
+          deleteCategory.mutate(c.id);
+        }}
+        onArchive={(c) => {
+          setToDelete(undefined);
+          archiveCategory.mutate(c.id);
+        }}
       />
     </>
   );
