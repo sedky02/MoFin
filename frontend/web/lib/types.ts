@@ -17,6 +17,8 @@ export interface User {
   email: string;
   displayName?: string | null;
   settings?: UserSettings | null;
+  /** False for an account that only signs in with Google (no password to change). */
+  hasPassword?: boolean;
   createdAt: string;
   updatedAt: string;
 }

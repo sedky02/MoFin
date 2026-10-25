@@ -365,7 +365,7 @@ describe('Public routes across every controller', () => {
     const protectedRoutes = routes().filter((r) => !r.isPublic);
     // Spot-check the user-scoped families; the exact list above already pins the rest.
     expect(protectedRoutes.map((r) => r.route)).toEqual(
-      expect.arrayContaining(['GET /auth/me', 'GET /oauth/grants', 'DELETE /oauth/grants/:clientId', 'GET /accounts', 'POST /transactions']),
+      expect.arrayContaining(['GET /auth/me', 'POST /auth/password/change', 'POST /auth/sessions/revoke-all', 'GET /oauth/grants', 'DELETE /oauth/grants/:clientId', 'GET /accounts', 'POST /transactions']),
     );
   });
 

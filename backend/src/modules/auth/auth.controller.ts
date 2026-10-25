@@ -5,6 +5,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 import {
   AuthThrottlerGuard,
+  ChangePasswordThrottlerGuard,
   FORGOT_PASSWORD_IP_THROTTLE,
   ForgotPasswordThrottlerGuard,
 } from '../../common/guards/auth-throttler.guard';
@@ -16,6 +17,7 @@ import { AuthenticatedUser } from '../../common/types/authenticated-user';
 import { AuthService } from './auth.service';
 import { FORGOT_PASSWORD_MESSAGE, PasswordResetService } from './password-reset.service';
 import {
+  ChangePasswordDto,
   ForgotPasswordDto,
   GoogleLoginDto,
   LoginDto,
@@ -23,6 +25,7 @@ import {
   RefreshTokenDto,
   RegisterDto,
   ResetPasswordDto,
+  changePasswordSchema,
   forgotPasswordSchema,
   googleLoginSchema,
   loginSchema,
@@ -98,6 +101,28 @@ export class AuthController {
   @ApiZodBody(resetPasswordSchema)
   resetPassword(@Body(new ZodValidationPipe(resetPasswordSchema)) dto: ResetPasswordDto) {
     return this.passwordResetService.resetPassword(dto.token, dto.password);
+  }
+
+  // Limited per user (see ChangePasswordThrottlerGuard) so a signed-in
+  // session can't be used to brute-force the current password.
+  @UseGuards(ChangePasswordThrottlerGuard)
+  @ApiBearerAuth('jwt')
+  @Post('password/change')
+  @HttpCode(HttpStatus.OK)
+  @ApiZodBody(changePasswordSchema)
+  changePassword(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body(new ZodValidationPipe(changePasswordSchema)) dto: ChangePasswordDto,
+  ) {
+    return this.authService.changePassword(user.id, dto);
+  }
+
+  /** Signs out every web session of the caller, this one included. */
+  @ApiBearerAuth('jwt')
+  @Post('sessions/revoke-all')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  revokeAllSessions(@CurrentUser() user: AuthenticatedUser) {
+    return this.authService.revokeAllSessions(user.id);
   }
 
   @Public()

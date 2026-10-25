@@ -6,9 +6,12 @@ import { z } from 'zod';
 // be created for the same address in different cases.
 const emailField = z.string().trim().toLowerCase().email();
 
+// The one rule every new password follows: register, reset and change.
+const newPasswordField = z.string().min(8);
+
 export const registerSchema = z.object({
   email: emailField,
-  password: z.string().min(8),
+  password: newPasswordField,
   displayName: z.string().optional(),
 });
 export type RegisterDto = z.infer<typeof registerSchema>;
@@ -39,9 +42,19 @@ export type ForgotPasswordDto = z.infer<typeof forgotPasswordSchema>;
 // arbitrarily large string from being hashed.
 export const resetPasswordSchema = z.object({
   token: z.string().min(1).max(256),
-  password: z.string().min(8),
+  password: newPasswordField,
 });
 export type ResetPasswordDto = z.infer<typeof resetPasswordSchema>;
+
+// `refreshToken` is the caller's own session token, which the web BFF reads
+// from its cookie and forwards so that session survives the change. Without
+// it every session of the account is signed out, the caller's included.
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1),
+  newPassword: newPasswordField,
+  refreshToken: z.string().min(1).optional(),
+});
+export type ChangePasswordDto = z.infer<typeof changePasswordSchema>;
 
 // Exchanged server-to-server by the web BFF Google callback: the one-time
 // authorization code from Google plus the exact redirect_uri used to obtain it.
