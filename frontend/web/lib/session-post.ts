@@ -10,12 +10,12 @@ import {
   BACKEND_URL,
   REFRESH_COOKIE,
   clearAuthCookies,
-  forwardedForHeader,
   refreshUnavailableResponse,
   requestRefresh,
   setAuthCookies,
   type BackendTokens,
 } from "@/lib/auth-cookies";
+import { bffHeaders } from "@/lib/bff-headers";
 
 export interface SessionPostResult {
   /** The response for the browser: the backend's status and body, plus any cookie changes. */
@@ -78,7 +78,7 @@ async function send(
       headers: {
         "Content-Type": "application/json",
         authorization: `Bearer ${accessToken}`,
-        ...forwardedForHeader(req),
+        ...bffHeaders(req),
       },
       body: JSON.stringify(body),
       cache: "no-store",

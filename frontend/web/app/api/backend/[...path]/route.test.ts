@@ -9,6 +9,7 @@ vi.mock("next/headers", () => ({
 
 import { GET } from "./route";
 import { ACCESS_COOKIE, BACKEND_URL, REFRESH_COOKIE } from "@/lib/auth-cookies";
+import { BFF_SECRET_HEADER, CLIENT_IP_HEADER } from "@/lib/bff-headers";
 
 const fetchMock = vi.fn<typeof fetch>();
 
@@ -199,5 +200,48 @@ describe("backend proxy passthrough", () => {
 
     expect(res.status).toBe(204);
     expect(res.body).toBeNull();
+  });
+});
+
+describe("backend proxy client IP", () => {
+  const SECRET = "s".repeat(40);
+
+  beforeEach(() => {
+    vi.stubEnv("BFF_SHARED_SECRET", SECRET);
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  function callFrom(ip: string) {
+    const req = new Request("http://web.test/api/backend/accounts", { headers: { "x-forwarded-for": ip } });
+    return GET(req, { params: Promise.resolve({ path: ["accounts"] }) });
+  }
+
+  it("sends the client IP and the shared secret to the backend", async () => {
+    fetchMock.mockResolvedValue(Response.json([]));
+
+    await callFrom("203.0.113.7");
+
+    const sent = new Headers(fetchMock.mock.calls[0][1]?.headers);
+    expect(sent.get(CLIENT_IP_HEADER)).toBe("203.0.113.7");
+    expect(sent.get(BFF_SECRET_HEADER)).toBe(SECRET);
+  });
+
+  it("sends them on the refresh and the retry too", async () => {
+    backend(
+      () => Response.json({ accessToken: "new-access", refreshToken: "new-refresh" }),
+      () => Response.json([]),
+    );
+
+    await callFrom("203.0.113.7");
+
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    for (const [, init] of fetchMock.mock.calls) {
+      const sent = new Headers(init?.headers);
+      expect(sent.get(CLIENT_IP_HEADER)).toBe("203.0.113.7");
+      expect(sent.get(BFF_SECRET_HEADER)).toBe(SECRET);
+    }
   });
 });

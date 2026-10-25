@@ -1,8 +1,9 @@
 // Server-side backend fetch for Server Component prefetching (dashboard).
 // Calls BACKEND_URL directly with the access_token cookie. All financial data is
 // dynamic — never cached, never wrapped in "use cache" (it is user-specific).
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { ACCESS_COOKIE, BACKEND_URL } from "@/lib/auth-cookies";
+import { bffHeaders } from "@/lib/bff-headers";
 
 /** Server-to-server calls must never hang indefinitely (audit PERF-XX). */
 const BACKEND_TIMEOUT_MS = 8_000;
@@ -52,6 +53,9 @@ export async function serverGet<T>(
   const clean = path.startsWith("/") ? path : `/${path}`;
   const url = `${BACKEND_URL}${clean}${qs.toString() ? `?${qs}` : ""}`;
 
+  // Counts the prefetch against the browser's IP, not this server's.
+  const upstream = bffHeaders(await headers());
+
   let res: Response;
   try {
     res = await fetch(url, {
@@ -59,6 +63,7 @@ export async function serverGet<T>(
         authorization: `Bearer ${accessToken}`,
         // Lets this prefetch be traced across both processes' logs (audit OBS-01).
         "x-request-id": crypto.randomUUID(),
+        ...upstream,
       },
       cache: "no-store",
       signal: AbortSignal.timeout(BACKEND_TIMEOUT_MS),
