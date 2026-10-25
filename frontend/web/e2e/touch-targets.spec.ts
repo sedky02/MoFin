@@ -31,19 +31,18 @@ const ROUTES = [
 ];
 
 const MIN = 44;
-// Secondary buttons: <Button> adds 6 px of slop per side, so its xs/sm/icon-xs/icon-sm
-// sizes land at 36-40 px. They are accepted down to this size.
-const MIN_SECONDARY_BUTTON = 40;
 
-type Measured = { desc: string; width: number; height: number; secondary: boolean };
+type Measured = { desc: string; width: number; height: number };
 
 async function measure(page: Page): Promise<Measured[]> {
   return page.evaluate(() => {
     const sel =
       'a[href], button, input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]), select, textarea, summary, [role="button"], [role="link"], [role="tab"], [role="checkbox"], [role="switch"], [role="radio"], [role="menuitem"], [role="option"]';
-    const out: { desc: string; width: number; height: number; secondary: boolean }[] = [];
+    const out: { desc: string; width: number; height: number }[] = [];
     for (const el of Array.from(document.querySelectorAll<HTMLElement>(sel))) {
       if (el.closest("nextjs-portal, .tsqd-parent-container")) continue;
+      // Hidden from users, e.g. the native <select> Radix renders for form submission.
+      if (el.closest('[aria-hidden="true"]')) continue;
       const cs = getComputedStyle(el);
       const r = el.getBoundingClientRect();
       if (r.width === 0 || r.height === 0 || cs.visibility === "hidden" || cs.display === "none") continue;
@@ -75,7 +74,6 @@ async function measure(page: Page): Promise<Measured[]> {
         desc: `${el.tagName.toLowerCase()}${id}[${(el.getAttribute("aria-label") || el.textContent || "").trim().slice(0, 30)}]`,
         width: Math.round((right - left) * 10) / 10,
         height: Math.round((bottom - top) * 10) / 10,
-        secondary: el.dataset.slot === "button",
       });
     }
     return out;
@@ -86,10 +84,7 @@ for (const route of ROUTES) {
   test(`${route}: every interactive element has a 44 px effective target`, async ({ page }) => {
     await page.goto(route);
     await settle(page);
-    const small = (await measure(page)).filter((m) => {
-      const min = m.secondary ? MIN_SECONDARY_BUTTON : MIN;
-      return m.width < min || m.height < min;
-    });
+    const small = (await measure(page)).filter((m) => m.width < MIN || m.height < MIN);
     expect(small.map((m) => `${m.desc} ${m.width}x${m.height}`)).toEqual([]);
   });
 
