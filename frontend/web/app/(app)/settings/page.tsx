@@ -22,6 +22,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/common/page-header";
 import { SubmitButton } from "@/components/common/submit-button";
 import { ThemeToggle } from "@/components/shell/theme-toggle";
+import { DataCard } from "@/components/settings/data-card";
 import { useUser, useUpdateUser } from "@/hooks/useUser";
 import { useAccounts } from "@/hooks/useAccounts";
 import { useConnectedApps, useDisconnectApp } from "@/hooks/useConnectedApps";
@@ -247,6 +248,8 @@ export default function SettingsPage() {
           setToDisconnect(undefined);
         }}
       />
+
+      <DataCard />
 
       <Card className="mt-6 flex-row items-center justify-between border-0 p-6 shadow-sm">
         <div>
