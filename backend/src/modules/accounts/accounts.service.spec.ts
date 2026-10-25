@@ -1,5 +1,7 @@
 import { NotFoundException } from '@nestjs/common';
+import { AccountType, Prisma } from '@prisma/client';
 import { AccountsService } from './accounts.service';
+import { createAccountSchema, updateAccountSchema } from './dto/accounts.dto';
 
 describe('AccountsService.list', () => {
   function makeService(paginateResult: unknown) {
@@ -79,5 +81,61 @@ describe('AccountsService ownership checks', () => {
     await expect(service.update('u1', 'old', { name: 'Renamed' })).rejects.toBeInstanceOf(NotFoundException);
     await expect(service.archive('u1', 'old')).rejects.toBeInstanceOf(NotFoundException);
     expect(update).not.toHaveBeenCalled();
+  });
+});
+
+describe('AccountsService opening balance', () => {
+  function makeService() {
+    const create = jest.fn(async (args: { data: unknown }) => args.data);
+    const update = jest.fn(async (args: { data: unknown }) => args.data);
+    const findFirst = jest.fn(async () => ({ id: 'a1', userId: 'u1', currency: 'USD', archivedAt: null }));
+    const prisma = { account: { create, update, findFirst } };
+    return { service: new AccountsService(prisma as never), create, update };
+  }
+
+  it('stores an opening balance given on create as a Decimal', async () => {
+    const { service, create } = makeService();
+    await service.create('u1', { name: 'Checking', type: AccountType.BANK, currency: 'USD', openingBalance: '5000' });
+    const { data } = create.mock.calls[0][0] as { data: { openingBalance: Prisma.Decimal; userId: string } };
+    expect(data.userId).toBe('u1');
+    expect(data.openingBalance).toEqual(new Prisma.Decimal('5000'));
+  });
+
+  it("leaves it to the column's default (0) when create omits it", async () => {
+    const { service, create } = makeService();
+    await service.create('u1', { name: 'Cash', type: AccountType.CASH, currency: 'TND' });
+    const { data } = create.mock.calls[0][0] as { data: { openingBalance?: unknown } };
+    expect(data.openingBalance).toBeUndefined();
+  });
+
+  it('edits the opening balance, and leaves it alone when an edit omits it', async () => {
+    const { service, update } = makeService();
+    await service.update('u1', 'a1', { openingBalance: '-1250.500' });
+    await service.update('u1', 'a1', { name: 'Renamed' });
+    const [first, second] = update.mock.calls.map((c) => (c[0] as { data: { openingBalance?: Prisma.Decimal } }).data);
+    expect(first.openingBalance).toEqual(new Prisma.Decimal('-1250.5'));
+    expect(second.openingBalance).toBeUndefined();
+  });
+});
+
+describe('account DTOs: openingBalance', () => {
+  const base = { name: 'Card', type: AccountType.BANK, currency: 'TND' };
+
+  it('is optional on create', () => {
+    expect(createAccountSchema.safeParse(base).success).toBe(true);
+  });
+
+  it.each(['5000', '0', '-1250.500', '1234.5678'])('accepts %s', (openingBalance) => {
+    expect(createAccountSchema.safeParse({ ...base, openingBalance }).success).toBe(true);
+    expect(updateAccountSchema.safeParse({ openingBalance }).success).toBe(true);
+  });
+
+  it.each(['12,50', '1e3', '--5', '+5', 'abc', '', '5.'])('rejects %s', (openingBalance) => {
+    expect(createAccountSchema.safeParse({ ...base, openingBalance }).success).toBe(false);
+    expect(updateAccountSchema.safeParse({ openingBalance }).success).toBe(false);
+  });
+
+  it('is a string, never a number (precision)', () => {
+    expect(createAccountSchema.safeParse({ ...base, openingBalance: 5000 }).success).toBe(false);
   });
 });
