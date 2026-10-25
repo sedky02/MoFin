@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { buildRecurringUpdate, recurringEndDateToIso, recurringFormValues } from "@/lib/recurring-edit";
-import type { Transaction } from "@/lib/types";
+import {
+  buildRecurringUpdate,
+  recurringEndDateToIso,
+  recurringFormValues,
+  seriesAccountOptions,
+} from "@/lib/recurring-edit";
+import type { Account, Transaction } from "@/lib/types";
 
 /** The fixture's monthly rent: 12.345 TND out of "Dinar". */
 function rent(overrides: Partial<Transaction> = {}): Transaction {
@@ -83,5 +88,27 @@ describe("buildRecurringUpdate", () => {
     const initial = recurringFormValues(rent());
     expect(buildRecurringUpdate("EXPENSE", initial, { ...initial, toAccountId: "main" })).toEqual({});
     expect(buildRecurringUpdate("INCOME", initial, { ...initial, fromAccountId: "main" })).toEqual({});
+  });
+});
+
+describe("seriesAccountOptions", () => {
+  const account = (id: string, currency: string): Account => ({
+    id,
+    name: id,
+    type: "BANK",
+    currency,
+    archivedAt: null,
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+  });
+  const accounts = [account("main", "USD"), account("dinar", "TND"), account("savings", "USD")];
+
+  it("offers only accounts in the series' currency", () => {
+    expect(seriesAccountOptions(accounts, "USD").map((a) => a.id)).toEqual(["main", "savings"]);
+    expect(seriesAccountOptions(accounts, "TND").map((a) => a.id)).toEqual(["dinar"]);
+  });
+
+  it("leaves out the other side of a transfer", () => {
+    expect(seriesAccountOptions(accounts, "USD", "main").map((a) => a.id)).toEqual(["savings"]);
   });
 });

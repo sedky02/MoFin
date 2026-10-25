@@ -75,6 +75,16 @@ export class TransactionsController {
     });
   }
 
+  @Post(':id/recurring/pause')
+  pauseRecurring(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+    return this.transactionsService.pauseRecurring(user.id, id);
+  }
+
+  @Post(':id/recurring/resume')
+  resumeRecurring(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+    return this.transactionsService.resumeRecurring(user.id, id);
+  }
+
   @Post(':id/recurring/cancel')
   cancelRecurring(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
     return this.transactionsService.cancelRecurring(user.id, id);

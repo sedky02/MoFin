@@ -1,6 +1,14 @@
 import { formatMoneyInput, parseMoneyInput, toDatetimeLocal } from "@/lib/format";
 import type { UpdateRecurringTransactionInput } from "@/hooks/useTransactions";
-import type { Transaction } from "@/lib/types";
+import type { Account, Transaction } from "@/lib/types";
+
+/**
+ * The accounts a series can move to: those in its currency, since every
+ * occurrence posts in it, and for a transfer not the account on the other side.
+ */
+export function seriesAccountOptions(accounts: Account[], currency: string, otherSideId?: string): Account[] {
+  return accounts.filter((a) => a.currency === currency && a.id !== otherSideId);
+}
 
 export interface RecurringFormValues {
   description: string;

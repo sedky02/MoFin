@@ -10,7 +10,7 @@ export type GoalType = "BALANCE" | "INCOME" | "EXPENSE";
 export type GoalRecurrenceUnit = "MONTH" | "YEAR";
 export type GoalStatus = "IN_PROGRESS" | "ACHIEVED" | "FAILED";
 export type RecurringInterval = "MONTHLY" | "YEARLY";
-export type RecurringStatus = "ACTIVE" | "CANCELLED";
+export type RecurringStatus = "ACTIVE" | "PAUSED" | "CANCELLED";
 
 export interface User {
   id: string;
@@ -103,6 +103,10 @@ export interface Transaction {
   recurringAmount?: string | null;
   recurringFromAccountId?: string | null;
   recurringToAccountId?: string | null;
+  // Why the series was paused when it couldn't post (an archived account...);
+  // empty for a manual pause, cleared on resume.
+  recurringError?: string | null;
+  lastFailedAt?: string | null;
   parentTransactionId?: string | null;
 
 }

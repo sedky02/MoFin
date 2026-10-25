@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common';
 import { RecurringInterval, RecurringStatus, TransactionType } from '@prisma/client';
 import { RecurringTransactionsCron } from './recurring-transactions.cron';
 
@@ -21,12 +22,17 @@ describe('RecurringTransactionsCron', () => {
 
   function makeCron({ locked = true, due = root }: { locked?: boolean; due?: typeof root } = {}) {
     const prisma = {
-      transaction: { findMany: jest.fn().mockResolvedValue([due]), update: jest.fn() },
+      transaction: {
+        findMany: jest.fn().mockResolvedValue([due]),
+        update: jest.fn(),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 })
+      },
       $transaction: jest.fn(async (fn: (db: unknown) => unknown) => fn(fakeDb)),
       $queryRaw: jest.fn().mockResolvedValue([{ locked }])
     };
     const transactionsService = {
-      create: jest.fn().mockResolvedValue({ id: 'occ-1', occurredAt: root.nextOccurrenceAt })
+      create: jest.fn().mockResolvedValue({ id: 'occ-1', occurredAt: root.nextOccurrenceAt }),
+      findSeriesProblem: jest.fn().mockResolvedValue(null)
     };
     const events = { emit: jest.fn() };
     const cron = new RecurringTransactionsCron(prisma as never, transactionsService as never, events as never);
@@ -120,5 +126,65 @@ describe('RecurringTransactionsCron', () => {
 
     // pg_try_advisory_lock then pg_advisory_unlock: two raw calls total.
     expect(prisma.$queryRaw).toHaveBeenCalledTimes(2);
+  });
+
+  describe('a series that can no longer post', () => {
+    beforeEach(() => jest.useFakeTimers({ now: new Date('2026-10-25T00:00:05Z') }));
+    afterEach(() => jest.useRealTimers());
+
+    const pausedWith = (reason: string) => ({
+      where: { id: 'root-1', recurringStatus: RecurringStatus.ACTIVE },
+      data: { recurringStatus: RecurringStatus.PAUSED, recurringError: reason, lastFailedAt: new Date('2026-10-25T00:00:05Z') }
+    });
+
+    it('is paused with the reason instead of failing every night, posting nothing', async () => {
+      const { cron, prisma, transactionsService, events } = makeCron();
+      transactionsService.findSeriesProblem.mockResolvedValue('Account Savings is archived');
+
+      await cron.generateDueOccurrences();
+
+      expect(prisma.transaction.updateMany).toHaveBeenCalledWith(pausedWith('Account Savings is archived'));
+      expect(transactionsService.create).not.toHaveBeenCalled();
+      expect(events.emit).not.toHaveBeenCalled();
+    });
+
+    it('is paused when create rejects the occurrence', async () => {
+      const { cron, prisma, transactionsService } = makeCron();
+      transactionsService.create.mockRejectedValue(new BadRequestException('Transfers cannot have a category'));
+
+      await cron.generateDueOccurrences();
+
+      expect(prisma.transaction.updateMany).toHaveBeenCalledWith(pausedWith('Transfers cannot have a category'));
+    });
+
+    it('is only fetched while active, so a paused series is not retried', async () => {
+      const { cron, prisma } = makeCron();
+      await cron.generateDueOccurrences();
+      expect(prisma.transaction.findMany).toHaveBeenCalledWith({
+        where: expect.objectContaining({ recurringStatus: RecurringStatus.ACTIVE })
+      });
+    });
+  });
+
+  it('keeps a series active through an unexpected error, to retry on the next run', async () => {
+    const { cron, prisma, transactionsService } = makeCron();
+    transactionsService.create.mockRejectedValue(new Error('Connection terminated unexpectedly'));
+
+    await cron.generateDueOccurrences();
+
+    expect(prisma.transaction.updateMany).not.toHaveBeenCalled();
+    expect(prisma.transaction.update).not.toHaveBeenCalled();
+  });
+
+  it('moves on to the next series after pausing one', async () => {
+    const other = { ...root, id: 'root-2' };
+    const { cron, prisma, transactionsService } = makeCron();
+    prisma.transaction.findMany.mockResolvedValue([root, other]);
+    transactionsService.findSeriesProblem.mockResolvedValueOnce('Account Savings is archived').mockResolvedValueOnce(null);
+
+    await cron.generateDueOccurrences();
+
+    expect(transactionsService.create).toHaveBeenCalledTimes(1);
+    expect(transactionsService.create).toHaveBeenCalledWith('user-1', expect.objectContaining({ parentTransactionId: 'root-2' }), fakeDb);
   });
 });

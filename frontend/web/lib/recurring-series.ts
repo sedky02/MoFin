@@ -30,9 +30,28 @@ export function seriesIsActive(tx: Pick<Transaction, "recurringStatus">): boolea
   return tx.recurringStatus === "ACTIVE";
 }
 
+export function seriesIsPaused(tx: Pick<Transaction, "recurringStatus">): boolean {
+  return tx.recurringStatus === "PAUSED";
+}
+
+/** Still running or on hold, so it can be edited, paused or resumed, and cancelled. Not once it's cancelled or ended. */
+export function seriesIsOpen(tx: Pick<Transaction, "recurringStatus">): boolean {
+  return seriesIsActive(tx) || seriesIsPaused(tx);
+}
+
 /**
- * The next date an active series posts on. None once it's cancelled or ended:
- * a cancelled root can still carry the date it would have posted next.
+ * What a paused series shows in place of its next date: the reason when it
+ * was paused because it couldn't post, plain "Paused" when the user paused it.
+ */
+export function seriesPausedLabel(tx: Pick<Transaction, "recurringStatus" | "recurringError">): string | undefined {
+  if (!seriesIsPaused(tx)) return undefined;
+  return tx.recurringError ? `Paused: ${tx.recurringError}` : "Paused";
+}
+
+/**
+ * The next date an active series posts on. None once it's paused, cancelled
+ * or ended: such a root can still carry the date it would have posted next,
+ * already in the past for a series the job paused.
  */
 export function seriesNextOccurrence(tx: Pick<Transaction, "recurringStatus" | "nextOccurrenceAt">): string | undefined {
   return seriesIsActive(tx) && tx.nextOccurrenceAt ? tx.nextOccurrenceAt : undefined;

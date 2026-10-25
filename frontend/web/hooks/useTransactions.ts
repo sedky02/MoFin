@@ -113,6 +113,39 @@ export function useUpdateRecurringTransaction(id: string) {
   });
 }
 
+/** Holds an active series: nothing is generated until it's resumed. */
+export function usePauseRecurringTransaction(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post<Transaction>(`/transactions/${id}/recurring/pause`),
+    onSuccess: () => {
+      invalidateSeries(queryClient);
+      toast.success("Recurring transaction paused.");
+    },
+    onError: (err) => handleApiError(err, { fallback: "Could not pause recurring transaction." }),
+  });
+}
+
+/**
+ * Picks a paused series up from its next date on or after today (what fell due
+ * while paused is skipped). The API refuses with the reason while it still can't post.
+ */
+export function useResumeRecurringTransaction(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post<Transaction>(`/transactions/${id}/recurring/resume`),
+    onSuccess: () => {
+      invalidateSeries(queryClient);
+      toast.success("Recurring transaction resumed.");
+    },
+    onError: (err) => {
+      // A refused resume records why on the series, which the panel then shows.
+      invalidateSeries(queryClient);
+      handleApiError(err, { fallback: "Could not resume recurring transaction." });
+    },
+  });
+}
+
 /** Stops future generation. Already-generated occurrences are left as-is. */
 export function useCancelRecurringTransaction(id: string) {
   const queryClient = useQueryClient();
@@ -126,7 +159,7 @@ export function useCancelRecurringTransaction(id: string) {
   });
 }
 
-/** A series edit or cancel moves no money, but the root's page and the lists (the Recurring view) show it. */
+/** A series edit, pause, resume or cancel moves no money, but the root's page and the lists (the Recurring view) show it. */
 function invalidateSeries(queryClient: QueryClient) {
   queryClient.invalidateQueries({ queryKey: transactionKeys.all });
   queryClient.invalidateQueries({ queryKey: searchKeys.all });

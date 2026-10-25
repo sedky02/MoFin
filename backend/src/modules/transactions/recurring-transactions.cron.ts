@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { HttpException, Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { RecurringStatus } from '@prisma/client';
@@ -19,6 +19,11 @@ const ADVISORY_LOCK_KEY = 727_002_001;
  * daily and catches up one occurrence at a time per series so an outage of
  * any length is caught up gradually rather than all at once, mirroring
  * GoalsService's rollover job.
+ *
+ * A series that can't post for a reason that won't fix itself (an archived
+ * account, a currency mismatch...) is PAUSED with that reason instead of
+ * failing every night; the user resumes it once it's fixed. Anything else
+ * (the database going away mid-run) is logged and retried on the next run.
  */
 @Injectable()
 export class RecurringTransactionsCron {
@@ -55,6 +60,12 @@ export class RecurringTransactionsCron {
               where: { id: root.id },
               data: { recurringStatus: RecurringStatus.CANCELLED, nextOccurrenceAt: null }
             });
+            continue;
+          }
+
+          const problem = await this.transactionsService.findSeriesProblem(root.userId, root);
+          if (problem) {
+            await this.pause(root.id, problem);
             continue;
           }
 
@@ -98,12 +109,34 @@ export class RecurringTransactionsCron {
             occurredAt: created.occurredAt
           } satisfies TransactionCreatedEvent);
         } catch (error) {
-          this.logger.error(`Failed to generate recurring occurrence for transaction ${root.id}`, error as Error);
+          // create() rejecting the occurrence (a 4xx) means the template itself
+          // is invalid in a way findSeriesProblem doesn't know about yet, and
+          // it would fail the same way tomorrow.
+          if (error instanceof HttpException && error.getStatus() < 500) {
+            await this.pause(root.id, error.message).catch((pauseError: Error) =>
+              this.logger.error(`Failed to pause recurring series ${root.id}`, pauseError)
+            );
+          } else {
+            this.logger.error(`Failed to generate recurring occurrence for transaction ${root.id}`, error as Error);
+          }
         }
       }
     } finally {
       await this.releaseLock();
     }
+  }
+
+  /**
+   * Holds a series that can't post, keeping the reason for the user. Only an
+   * ACTIVE series is paused, so a cancel that landed during the run wins.
+   */
+  private async pause(rootId: string, reason: string): Promise<void> {
+    await this.prisma.transaction.updateMany({
+      where: { id: rootId, recurringStatus: RecurringStatus.ACTIVE },
+      data: { recurringStatus: RecurringStatus.PAUSED, recurringError: reason, lastFailedAt: new Date() }
+    });
+    // The reason can name the user's accounts, so the log keeps to the id.
+    this.logger.warn(`Paused recurring series ${rootId} that can no longer post`);
   }
 
   private async acquireLock(): Promise<boolean> {
