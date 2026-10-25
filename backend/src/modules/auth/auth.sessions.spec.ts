@@ -45,7 +45,7 @@ describe('AuthService password change and sign-out everywhere', () => {
       Object.entries(where).every(([key, value]) => {
         const actual = row[key as keyof T];
         if (value && typeof value === 'object' && 'not' in value)
-          return actual !== (value as { not: unknown }).not;
+          return actual !== value.not;
         return actual === value;
       });
     const updateMany =

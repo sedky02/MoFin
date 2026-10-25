@@ -353,7 +353,7 @@ describe('goal rules (B-26)', () => {
         '2026-10-04T09:00:00.000Z',
       );
 
-      const card = (await db.service.findOne('u1', goal.id)).currentInstance!;
+      const card = (await db.service.findOne('u1', goal.id)).currentInstance;
       const { data } = await db.service.history('u1', goal.id, {
         limit: 20,
         offset: 0,
@@ -453,7 +453,7 @@ describe('goal rules (B-26)', () => {
       );
 
       expect(
-        (await db.service.findOne('u1', goal.id)).currentInstance!.status,
+        (await db.service.findOne('u1', goal.id)).currentInstance.status,
       ).toBe(GoalStatus.ACHIEVED);
       expect(db.instancesOf(goal.id)[0].status).toBe(GoalStatus.ACHIEVED);
 
@@ -463,7 +463,7 @@ describe('goal rules (B-26)', () => {
         '2026-10-06T09:00:00.000Z',
       );
       at('2026-10-07T12:00:00.000Z');
-      const card = (await db.service.findOne('u1', goal.id)).currentInstance!;
+      const card = (await db.service.findOne('u1', goal.id)).currentInstance;
       expect(card.status).toBe(GoalStatus.ACHIEVED);
       expect(card.progressAmount.toString()).toBe('700'); // progress itself stays live
 
@@ -486,7 +486,7 @@ describe('goal rules (B-26)', () => {
       await db.service.findOne('u1', goal.id);
 
       pay.deletedAt = new Date();
-      const card = (await db.service.findOne('u1', goal.id)).currentInstance!;
+      const card = (await db.service.findOne('u1', goal.id)).currentInstance;
       expect([card.status, card.progressAmount.toString()]).toEqual([
         GoalStatus.ACHIEVED,
         '0',
@@ -503,13 +503,13 @@ describe('goal rules (B-26)', () => {
       );
 
       expect(
-        (await db.service.findOne('u1', goal.id)).currentInstance!.status,
+        (await db.service.findOne('u1', goal.id)).currentInstance.status,
       ).toBe(GoalStatus.FAILED);
       expect(db.instancesOf(goal.id)[0].status).toBe(GoalStatus.IN_PROGRESS);
 
       big.deletedAt = new Date();
       expect(
-        (await db.service.findOne('u1', goal.id)).currentInstance!.status,
+        (await db.service.findOne('u1', goal.id)).currentInstance.status,
       ).toBe(GoalStatus.IN_PROGRESS);
     });
 
@@ -527,7 +527,7 @@ describe('goal rules (B-26)', () => {
       expect(db.instancesOf(goal.id)[0].status).toBe(GoalStatus.ACHIEVED);
 
       await db.service.update('u1', goal.id, { targetAmount: '200' });
-      const card = (await db.service.findOne('u1', goal.id)).currentInstance!;
+      const card = (await db.service.findOne('u1', goal.id)).currentInstance;
       expect([card.status, card.targetAmount.toString()]).toEqual([
         GoalStatus.IN_PROGRESS,
         '200',
@@ -561,7 +561,7 @@ describe('goal rules (B-26)', () => {
       await db.service.rolloverExpiredInstances();
 
       expect(db.instancesOf(goal.id)).toEqual([frozen]);
-      const card = (await db.service.findOne('u1', goal.id)).currentInstance!;
+      const card = (await db.service.findOne('u1', goal.id)).currentInstance;
       expect([card.status, card.progressAmount.toString()]).toEqual([
         GoalStatus.IN_PROGRESS,
         '120',
@@ -610,7 +610,7 @@ describe('goal rules (B-26)', () => {
         '120',
       ]);
 
-      const card = (await db.service.findOne('u1', goal.id)).currentInstance!;
+      const card = (await db.service.findOne('u1', goal.id)).currentInstance;
       expect(card.id).toBe(fresh.id);
       expect(card.progressAmount.toString()).toBe('40');
 

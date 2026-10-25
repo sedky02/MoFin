@@ -38,7 +38,7 @@ export class McpServerFactory {
         {
           title: tool.title,
           description: tool.description,
-          inputSchema: mcpToolSchemas[tool.name].shape as ZodRawShape,
+          inputSchema: mcpToolSchemas[tool.name].shape,
         },
         async (args) => {
           const result = await this.mcp.dispatch(userId, tool.name, args);

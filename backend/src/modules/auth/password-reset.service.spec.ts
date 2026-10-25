@@ -49,7 +49,7 @@ function makeService(
   const service = new PasswordResetService(
     prisma as never,
     usersService as never,
-    mail as never,
+    mail,
     config as never,
   );
   return { service, prisma, tx, mail, sent, passwordResetToken };

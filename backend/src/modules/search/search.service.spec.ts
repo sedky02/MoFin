@@ -15,7 +15,7 @@ describe('SearchService.searchTransactions', () => {
       {} as never,
       {} as never,
     );
-    await service.searchTransactions('u1', { limit: 20, offset: 0 } as never);
+    await service.searchTransactions('u1', { limit: 20, offset: 0 });
     expect(paginate).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({ userId: 'u1', deletedAt: null }),
@@ -48,7 +48,7 @@ describe('SearchService.searchTransactions', () => {
     const result = await service.searchTransactions('u1', {
       limit: 10,
       offset: 0,
-    } as never);
+    });
 
     expect(result).toBe(page);
     expect(result.data).toHaveLength(10);
@@ -83,7 +83,7 @@ describe('SearchService.searchTransactions', () => {
       offset: 0,
       accountId: 'a1',
       categoryId: 'c1',
-    } as never);
+    });
 
     expect(accountsService.assertOwned).toHaveBeenCalledWith('u1', 'a1');
     expect(categoriesService.assertAvailable).toHaveBeenCalledWith('u1', 'c1');
@@ -97,7 +97,7 @@ describe('SearchService.searchTransactions', () => {
       offset: 0,
     });
 
-    await service.searchTransactions('u1', { limit: 20, offset: 0 } as never);
+    await service.searchTransactions('u1', { limit: 20, offset: 0 });
 
     expect(paginate).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -138,7 +138,7 @@ describe('SearchService category filter', () => {
       limit: 20,
       offset: 0,
       categoryId: 'dining',
-    } as never);
+    });
 
     const { where } = paginate.mock.calls[0][0];
     expect(where.OR).toEqual([
@@ -157,7 +157,7 @@ describe('SearchService category filter', () => {
       offset: 0,
       categoryId: 'dining',
       accountId: 'a1',
-    } as never);
+    });
 
     const { where } = paginate.mock.calls[0][0];
     expect(where.OR).toEqual([
@@ -172,7 +172,7 @@ describe('SearchService category filter', () => {
   it('adds no category condition when no category is asked for', async () => {
     const { service, paginate } = makeService();
 
-    await service.searchTransactions('u1', { limit: 20, offset: 0 } as never);
+    await service.searchTransactions('u1', { limit: 20, offset: 0 });
 
     const { where } = paginate.mock.calls[0][0];
     expect(where).not.toHaveProperty('OR');
@@ -217,7 +217,7 @@ describe('SearchService date range', () => {
       limit: 20,
       offset: 0,
       ...range,
-    } as never);
+    });
     return paginate.mock.calls[0][0].where.occurredAt!;
   }
 
@@ -255,7 +255,7 @@ describe('SearchService date range', () => {
 
   it('adds no date condition without a range', async () => {
     const { service, paginate } = makeService();
-    await service.searchTransactions('u1', { limit: 20, offset: 0 } as never);
+    await service.searchTransactions('u1', { limit: 20, offset: 0 });
     expect(paginate.mock.calls[0][0].where).not.toHaveProperty('occurredAt');
   });
 });
@@ -407,7 +407,7 @@ describe('SearchService type, recurrence and sort', () => {
 
   it('adds no type or recurrence condition when neither is asked for', async () => {
     const { service, paginate } = makeService();
-    await service.searchTransactions('u1', { limit: 20, offset: 0 } as never);
+    await service.searchTransactions('u1', { limit: 20, offset: 0 });
     const { where } = paginate.mock.calls[0][0];
     expect(where).not.toHaveProperty('type');
     expect(where).not.toHaveProperty('AND');
@@ -416,7 +416,7 @@ describe('SearchService type, recurrence and sort', () => {
 
   it('sorts newest first by default and oldest first on request', async () => {
     const { service, paginate } = makeService();
-    await service.searchTransactions('u1', { limit: 20, offset: 0 } as never);
+    await service.searchTransactions('u1', { limit: 20, offset: 0 });
     await service.searchTransactions('u1', {
       limit: 20,
       offset: 0,
@@ -506,7 +506,7 @@ describe('SearchService type, recurrence and sort', () => {
       limit: 20,
       offset: 0,
       accountId: 'old-savings',
-    } as never);
+    });
 
     expect(accountsService.assertOwned).toHaveBeenCalledWith(
       'u1',

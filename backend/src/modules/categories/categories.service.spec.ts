@@ -90,7 +90,7 @@ describe('CategoriesService.isSystem', () => {
     });
     const result = await service.update('u1', 'c1', {
       name: 'Renamed',
-    } as never);
+    });
     expect(result).toEqual({
       id: 'c1',
       userId: 'u1',
@@ -102,7 +102,7 @@ describe('CategoriesService.isSystem', () => {
   it('update() still rejects a category it does not own (e.g. a global/userId:null one) — that 404 stays as defence in depth', async () => {
     const { service } = makeService({ findFirst: null });
     await expect(
-      service.update('u1', 'global-cat', { name: 'Nope' } as never),
+      service.update('u1', 'global-cat', { name: 'Nope' }),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 });

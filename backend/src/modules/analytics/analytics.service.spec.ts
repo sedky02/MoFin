@@ -636,7 +636,7 @@ describe('AnalyticsService.getMonthlySeries', () => {
       6,
       'USD',
     );
-    const sql = (queryRaw.mock.calls[0][0] as Prisma.Sql).sql;
+    const sql = queryRaw.mock.calls[0][0].sql;
     // One WHERE filter covers all three sums.
     expect(sql).toContain('t."deletedAt" IS NULL');
     expect(sql).not.toContain('voidedAt');

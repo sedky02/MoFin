@@ -23,7 +23,7 @@ function toOpenApi(schema: ZodSchema): SchemaObject {
     $refStrategy: 'none',
   });
   delete json.$schema;
-  return json as SchemaObject;
+  return json;
 }
 
 export function ApiZodBody(schema: ZodSchema): MethodDecorator {

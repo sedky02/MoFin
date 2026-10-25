@@ -32,7 +32,7 @@ export class DraftTransactionsService {
       data: {
         userId,
         rawInput: dto.rawInput,
-        parsedData: dto.parsedData as unknown as Prisma.InputJsonValue,
+        parsedData: dto.parsedData,
         confidenceScore: new Prisma.Decimal(dto.confidenceScore),
       },
     });
@@ -103,7 +103,7 @@ export class DraftTransactionsService {
             data: {
               status: DraftStatus.APPROVED,
               approvedAt: new Date(),
-              parsedData: parsed as unknown as Prisma.InputJsonValue,
+              parsedData: parsed,
             },
           });
           if (count === 0) {
