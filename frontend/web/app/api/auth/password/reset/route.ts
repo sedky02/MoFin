@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { BACKEND_TIMEOUT_MS, BACKEND_URL, clearAuthCookies, forwardedForHeader } from "@/lib/auth-cookies";
+import { bffHeaders } from "@/lib/bff-headers";
+import { BACKEND_TIMEOUT_MS, BACKEND_URL, clearAuthCookies } from "@/lib/auth-cookies";
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
@@ -14,7 +15,7 @@ export async function POST(req: Request) {
   try {
     upstream = await fetch(`${BACKEND_URL}/auth/password/reset`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", ...forwardedForHeader(req) },
+      headers: { "Content-Type": "application/json", ...bffHeaders(req) },
       body: JSON.stringify({ token: body.token, password: body.password }),
       cache: "no-store",
       signal: AbortSignal.timeout(BACKEND_TIMEOUT_MS),

@@ -10,6 +10,7 @@ import {
   clearAuthCookies,
   type BackendTokens,
 } from "@/lib/auth-cookies";
+import { bffHeaders } from "@/lib/bff-headers";
 
 /**
  * Cross-origin login bridge (web → backend).
@@ -79,7 +80,7 @@ export async function GET(req: NextRequest) {
   const requestHandoff = () =>
     fetch(`${BACKEND_URL}/oauth/session/handoff`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${accessToken}` },
+      headers: { Authorization: `Bearer ${accessToken}`, ...bffHeaders(req) },
       cache: "no-store",
       signal: AbortSignal.timeout(BACKEND_TIMEOUT_MS),
     });
