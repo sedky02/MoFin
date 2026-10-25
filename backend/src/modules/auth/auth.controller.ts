@@ -4,6 +4,7 @@ import { Throttle } from '@nestjs/throttler';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { AuthThrottlerGuard } from '../../common/guards/auth-throttler.guard';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RefreshThrottlerGuard } from '../../common/guards/refresh-throttler.guard';
 import { ApiZodBody } from '../../common/swagger/api-zod';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import { AuthenticatedUser } from '../../common/types/authenticated-user';
@@ -54,8 +55,9 @@ export class AuthController {
     return this.authService.login(dto);
   }
 
-  @UseGuards(AuthThrottlerGuard)
-  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  // Limited per presented token rather than per IP (see RefreshThrottlerGuard),
+  // so tabs and users sharing an IP don't trip each other into a 429.
+  @UseGuards(RefreshThrottlerGuard)
   @Post('refresh')
   @ApiZodBody(refreshTokenSchema)
   refresh(@Body(new ZodValidationPipe(refreshTokenSchema)) dto: RefreshTokenDto) {

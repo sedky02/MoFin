@@ -1,7 +1,7 @@
 // Server-only auth cookie helpers (imported only by route handlers / Server Components).
 // Tokens live in httpOnly cookies; the browser never sees them. Secure flag follows
 // NODE_ENV (false in dev, true in prod).
-import type { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
 export const ACCESS_COOKIE = "access_token";
 export const REFRESH_COOKIE = "refresh_token";
@@ -59,14 +59,24 @@ export interface BackendTokens {
 }
 
 /**
- * Exchange a refresh token for a fresh token pair. Returns null if the refresh
- * token is invalid/expired or the backend is unreachable (best-effort; never
- * throws). Same logic as the deduped refresh in the backend proxy route.
+ * Outcome of presenting a refresh token to the backend:
+ * - "ok": rotated; set the new pair.
+ * - "rejected": the backend refused the token (invalid, expired, reused), so
+ *   the session is over and the caller clears the cookies.
+ * - "unavailable": rate limited (429), a 5xx, a timeout or a network error.
+ *   That says nothing about the token, so the session must be kept and the
+ *   client told to retry. `retryAfter` relays the backend's Retry-After.
  */
-export async function refreshTokens(
+export type RefreshOutcome =
+  | { kind: "ok"; tokens: BackendTokens }
+  | { kind: "rejected" }
+  | { kind: "unavailable"; retryAfter?: string };
+
+/** Exchange a refresh token for a fresh token pair. Never throws. */
+export async function requestRefresh(
   refreshToken: string,
   req?: Request,
-): Promise<BackendTokens | null> {
+): Promise<RefreshOutcome> {
   try {
     const res = await fetch(`${BACKEND_URL}/auth/refresh`, {
       method: "POST",
@@ -75,9 +85,38 @@ export async function refreshTokens(
       cache: "no-store",
       signal: AbortSignal.timeout(BACKEND_TIMEOUT_MS),
     });
-    if (!res.ok) return null;
-    return (await res.json()) as BackendTokens;
+    if (res.status === 429 || res.status >= 500) {
+      return { kind: "unavailable", retryAfter: res.headers.get("retry-after") ?? undefined };
+    }
+    if (!res.ok) return { kind: "rejected" };
+    return { kind: "ok", tokens: (await res.json()) as BackendTokens };
   } catch {
-    return null;
+    // Timed out / unreachable (e.g. a cold-starting backend).
+    return { kind: "unavailable" };
   }
+}
+
+/**
+ * requestRefresh collapsed to the token pair, or null, for callers that
+ * don't tell a rejected token apart from an unavailable backend.
+ */
+export async function refreshTokens(
+  refreshToken: string,
+  req?: Request,
+): Promise<BackendTokens | null> {
+  const outcome = await requestRefresh(refreshToken, req);
+  return outcome.kind === "ok" ? outcome.tokens : null;
+}
+
+/**
+ * 503 for a refresh that couldn't be completed right now. Leaves the auth
+ * cookies alone so the client can retry instead of being logged out.
+ */
+export function refreshUnavailableResponse(retryAfter?: string): NextResponse {
+  const res = NextResponse.json(
+    { statusCode: 503, message: "Couldn't refresh your session right now. Please try again." },
+    { status: 503 },
+  );
+  if (retryAfter) res.headers.set("retry-after", retryAfter);
+  return res;
 }

@@ -17,7 +17,7 @@ describe('AuthThrottlerGuard.getTracker', () => {
     expect(a).not.toBe(b);
   });
 
-  it('falls back to IP alone when there is no email in the body (e.g. /auth/refresh)', async () => {
+  it('falls back to IP alone when there is no email in the body', async () => {
     const tracker = await getTracker({ ip: '5.6.7.8', body: { refreshToken: 'x' } });
     expect(tracker).toBe('5.6.7.8:');
   });
