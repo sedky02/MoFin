@@ -1,6 +1,7 @@
-// Server-only: POSTs to an authenticated backend route as the signed-in user,
-// for BFF routes the generic proxy can't serve because the backend needs the
-// session's refresh token in the body (only this server can read the cookie).
+// Server-only: POSTs (or DELETEs) to an authenticated backend route as the
+// signed-in user, for BFF routes the generic proxy can't serve: the backend
+// needs the session's refresh token in the body (only this server can read
+// the cookie), or the route has to change the auth cookies afterwards.
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import {
@@ -34,12 +35,14 @@ export async function postAsSession(
   req: Request,
   path: string,
   body: (refreshToken: string | undefined) => object,
+  method: "POST" | "DELETE" = "POST",
 ): Promise<SessionPostResult> {
   const cookieStore = await cookies();
   const accessToken = cookieStore.get(ACCESS_COOKIE)?.value;
   const refreshToken = cookieStore.get(REFRESH_COOKIE)?.value;
+  const post = (token: string, payload: object) => send(req, method, path, token, payload);
 
-  let upstream = accessToken ? await post(req, path, accessToken, body(refreshToken)) : undefined;
+  let upstream = accessToken ? await post(accessToken, body(refreshToken)) : undefined;
   let rotated: BackendTokens | undefined;
 
   if (!upstream || upstream.status === 401) {
@@ -50,7 +53,7 @@ export async function postAsSession(
       return { res: refreshUnavailableResponse(outcome.retryAfter), ok: false };
     }
     rotated = outcome.tokens;
-    upstream = await post(req, path, rotated.accessToken, body(rotated.refreshToken));
+    upstream = await post(rotated.accessToken, body(rotated.refreshToken));
     if (upstream.status === 401) return { res: sessionExpired(), ok: false };
   }
 
@@ -62,10 +65,16 @@ export async function postAsSession(
   return { res, ok: upstream.ok };
 }
 
-async function post(req: Request, path: string, accessToken: string, body: object): Promise<Response> {
+async function send(
+  req: Request,
+  method: "POST" | "DELETE",
+  path: string,
+  accessToken: string,
+  body: object,
+): Promise<Response> {
   try {
     return await fetch(`${BACKEND_URL}/${path}`, {
-      method: "POST",
+      method,
       headers: {
         "Content-Type": "application/json",
         authorization: `Bearer ${accessToken}`,

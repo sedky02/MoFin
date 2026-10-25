@@ -21,7 +21,8 @@ export class ApiClientError extends Error {
 }
 
 const BASE = "/api/backend";
-// The BFF's own session routes (password change, sign out everywhere), which
+// The BFF's own session routes (password change, sign out everywhere, delete
+// account), which
 // read or clear the auth cookies server-side instead of being proxied.
 const AUTH_BASE = "/api/auth";
 
@@ -133,4 +134,6 @@ export const api = {
 export const authApi = {
   post: <T>(path: string, body?: unknown) =>
     request<T>(path, { method: "POST", body, base: AUTH_BASE }),
+  delete: <T>(path: string, body?: unknown) =>
+    request<T>(path, { method: "DELETE", body, base: AUTH_BASE }),
 };

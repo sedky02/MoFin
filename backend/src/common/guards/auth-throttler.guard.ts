@@ -91,3 +91,17 @@ export class ChangePasswordThrottlerGuard extends AuthThrottlerGuard {
     return userTracker(req);
   }
 }
+
+/** Per-user limit on DELETE /users/me. */
+export const DELETE_ACCOUNT_THROTTLE = { limit: 5, ttl: 60_000 } as const;
+
+/**
+ * DELETE_ACCOUNT_THROTTLE per userTracker key. The route checks the current
+ * password, so it gets the same per-user cap as a password change.
+ */
+@Injectable()
+export class DeleteAccountThrottlerGuard extends ChangePasswordThrottlerGuard {
+  protected throttle(): { limit: number; ttl: number } {
+    return DELETE_ACCOUNT_THROTTLE;
+  }
+}
