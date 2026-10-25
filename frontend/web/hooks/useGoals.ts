@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { goalKeys } from "@/lib/query-keys";
 import { STALE } from "@/lib/query-client";
-import type { Goal, GoalInstance, GoalRecurrenceUnit, GoalType, Paginated } from "@/lib/types";
+import type { Goal, GoalHistoryInstance, GoalRecurrenceUnit, GoalType, Paginated } from "@/lib/types";
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/form-errors";
 
@@ -35,7 +35,7 @@ export function useGoalHistory(goalId: string, enabled = true) {
   return useQuery({
     queryKey: goalKeys.history(goalId),
     queryFn: async () => {
-      const result = await api.get<Paginated<GoalInstance>>(`/goals/${goalId}/history`, {
+      const result = await api.get<Paginated<GoalHistoryInstance>>(`/goals/${goalId}/history`, {
         limit: GOALS_PAGE_SIZE,
         offset: 0,
       });
@@ -116,7 +116,7 @@ export function useRestoreGoal() {
   return useMutation({
     mutationFn: (id: string) => api.patch<Goal>(`/goals/${id}/restore`),
     onError: (err) => handleApiError(err, { fallback: "Could not restore goal." }),
-    onSuccess: () => toast.success("Goal restored."),
+    onSuccess: () => toast.success("Goal restored. It tracks again from today."),
     onSettled: () => queryClient.invalidateQueries({ queryKey: goalKeys.all }),
   });
 }
