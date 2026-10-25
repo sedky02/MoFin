@@ -44,7 +44,8 @@ test("goal history labels the open period as live, matching the card", async ({ 
   await page.goto("/goals");
   const card = goalCard(page, "Monthly spending cap");
   // The card's progress amount (the bold one before " / target").
-  const cardAmount = (await card.locator(".tabular.font-semibold").first().innerText()).trim();
+  // innerText can repeat the amount (visible + screen-reader copy) on two lines.
+  const cardAmount = (await card.locator(".tabular.font-semibold").first().innerText()).trim().split("\n")[0].trim();
 
   await card.getByRole("button", { name: "Actions for Monthly spending cap" }).click();
   await page.getByRole("menuitem", { name: "View history" }).click();
