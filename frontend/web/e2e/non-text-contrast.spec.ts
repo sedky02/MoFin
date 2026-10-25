@@ -83,10 +83,14 @@ async function measure(page: Page): Promise<Pair[]> {
 
 for (const theme of ["light", "dark"] as const) {
   test.describe(`non-text contrast, ${theme}`, () => {
-    test.beforeEach(async ({ page }) => {
+    test.beforeEach(async ({ page, context, baseURL }) => {
+      // Pin the scope to all accounts: a remembered single account may have no
+      // spending this month, and then there is no donut to measure.
+      await context.addCookies([{ name: "mofin-active-account", value: "all", url: baseURL! }]);
       await page.addInitScript((t) => {
         try {
           localStorage.setItem("mofin-theme", t);
+          localStorage.setItem("mofin-active-account", "all");
         } catch {
           /* storage unavailable */
         }
@@ -96,6 +100,10 @@ for (const theme of ["light", "dark"] as const) {
     test("dashboard: Now bar, past bars, donut slices and goal progress", async ({ page }) => {
       await page.goto("/dashboard");
       await expect(page.locator('[role="img"][aria-label][tabindex="0"]').first()).toBeVisible();
+      // The summary opens in the primary currency; when that has no spending this
+      // month it offers the one that does.
+      const switchCurrency = page.getByRole("button", { name: /^Show [A-Z]{3}$/ });
+      if (await switchCurrency.isVisible()) await switchCurrency.click();
       await expect(page.locator('svg[role="img"] circle').nth(1)).toBeAttached();
       // Let the arcs finish animating in before sampling.
       await page.waitForTimeout(1200);
