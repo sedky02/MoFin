@@ -3,13 +3,23 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
 import { CreateAccountDto, ListAccountsQueryDto, UpdateAccountDto } from './dto/accounts.dto';
 
+// Undefined stays undefined: create falls back to the column's 0, update leaves it as is.
+function toDecimal(amount: string | undefined): Prisma.Decimal | undefined {
+  return amount === undefined ? undefined : new Prisma.Decimal(amount);
+}
+
 @Injectable()
 export class AccountsService {
   constructor(private readonly prisma: PrismaService) {}
 
   create(userId: string, dto: CreateAccountDto) {
     return this.prisma.account.create({
-      data: { ...dto, userId, metadata: dto.metadata as Prisma.InputJsonValue | undefined }
+      data: {
+        ...dto,
+        userId,
+        openingBalance: toDecimal(dto.openingBalance),
+        metadata: dto.metadata as Prisma.InputJsonValue | undefined,
+      }
     });
   }
 
@@ -53,7 +63,11 @@ export class AccountsService {
     await this.assertActive(userId, accountId);
     return this.prisma.account.update({
       where: { id: accountId },
-      data: { ...dto, metadata: dto.metadata as Prisma.InputJsonValue | undefined }
+      data: {
+        ...dto,
+        openingBalance: toDecimal(dto.openingBalance),
+        metadata: dto.metadata as Prisma.InputJsonValue | undefined,
+      }
     });
   }
 

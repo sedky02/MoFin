@@ -191,15 +191,24 @@ export class GoalsService {
       // monthly summary already keys off occurredAt, so a back-dated entry
       // (catching up on a receipt from last month) must land in the same
       // period on both surfaces instead of disagreeing (audit DATA-XX).
-      const rows = await this.prisma.transactionItem.groupBy({
-        by: ['direction'],
-        where: { userId: goal.userId, accountId: goal.accountId, transaction: { occurredAt: { lte: boundary }, deletedAt: null } },
-        _sum: { amount: true },
-      });
+      //
+      // The account's opening balance is the starting point: it's what the
+      // account held before its first entry, so it counts at any boundary.
+      const [rows, account] = await Promise.all([
+        this.prisma.transactionItem.groupBy({
+          by: ['direction'],
+          where: { userId: goal.userId, accountId: goal.accountId, transaction: { occurredAt: { lte: boundary }, deletedAt: null } },
+          _sum: { amount: true },
+        }),
+        this.prisma.account.findFirst({
+          where: { id: goal.accountId, userId: goal.userId },
+          select: { openingBalance: true },
+        }),
+      ]);
       return rows.reduce((sum, row) => {
         const amount = row._sum.amount ?? new Prisma.Decimal(0);
         return row.direction === 'CREDIT' ? sum.plus(amount) : sum.minus(amount);
-      }, new Prisma.Decimal(0));
+      }, account?.openingBalance ?? new Prisma.Decimal(0));
     }
 
     // Matches transactions by their OWN type field, exactly like

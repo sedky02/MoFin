@@ -3,7 +3,7 @@ import { Prisma } from '@prisma/client';
 import { AccountsService } from '../accounts/accounts.service';
 import { LedgerService } from './ledger.service';
 
-type TestAccount = { id: string; currency: string; archivedAt?: Date | null };
+type TestAccount = { id: string; currency: string; archivedAt?: Date | null; openingBalance?: string };
 
 describe('LedgerService', () => {
   const account = (currency: string) => ({ id: `acc-${currency}`, currency });
@@ -18,8 +18,15 @@ describe('LedgerService', () => {
       if ('archivedAt' in where && found.archivedAt) return null;
       return found;
     });
+    // Mirrors the opening-balance query's where-clause: non-zero, optional id/currency.
+    const findMany = jest.fn(async ({ where }: { where: { userId: string; id?: string; currency?: string } }) =>
+      Object.values(accounts)
+        .filter((a) => where.userId === 'u1' && !new Prisma.Decimal(a.openingBalance ?? 0).isZero())
+        .filter((a) => (where.id ? a.id === where.id : true) && (where.currency ? a.currency === where.currency : true))
+        .map((a) => ({ id: a.id, currency: a.currency, openingBalance: new Prisma.Decimal(a.openingBalance!) })),
+    );
     const prisma = {
-      account: { findFirst },
+      account: { findFirst, findMany },
       transactionItem: { groupBy: jest.fn(async () => groupedRows) },
     };
     return new LedgerService(prisma as never, new AccountsService(prisma as never));
@@ -163,7 +170,10 @@ describe('LedgerService', () => {
   describe('getBalance', () => {
     it("leaves deleted transactions' lines out of the sum", async () => {
       const groupBy = jest.fn(async () => []);
-      const prisma = { account: { findFirst: jest.fn(async () => ({ id: 'a', currency: 'USD' })) }, transactionItem: { groupBy } };
+      const prisma = {
+        account: { findFirst: jest.fn(async () => ({ id: 'a', currency: 'USD' })), findMany: jest.fn(async () => []) },
+        transactionItem: { groupBy },
+      };
       const service = new LedgerService(prisma as never, new AccountsService(prisma as never));
       await service.getBalance('u1', { accountId: 'a' });
       expect(groupBy).toHaveBeenCalledWith(
@@ -208,6 +218,56 @@ describe('LedgerService', () => {
     it("404s for an account that isn't the user's", async () => {
       const service = makeService({ a: { id: 'a', currency: 'USD' } });
       await expect(service.getBalance('someone-else', { accountId: 'a' })).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('starts an account from its opening balance', async () => {
+      const rows = [{ accountId: 'a', currency: 'USD', direction: 'DEBIT', _sum: { amount: new Prisma.Decimal('200') } }];
+      const service = makeService({ a: { id: 'a', currency: 'USD', openingBalance: '5000' } }, rows);
+      await expect(service.getBalance('u1', { accountId: 'a' })).resolves.toEqual([{ key: 'USD', balance: '4800' }]);
+    });
+
+    it('shows an opening balance for an account with no entries yet', async () => {
+      const service = makeService({ a: { id: 'a', currency: 'USD', openingBalance: '5000' } });
+      await expect(service.getBalance('u1', { accountId: 'a' })).resolves.toEqual([{ key: 'USD', balance: '5000' }]);
+    });
+
+    it('keeps a negative opening balance (a credit account) negative', async () => {
+      const service = makeService({ card: { id: 'card', currency: 'TND', openingBalance: '-1250.500' } });
+      await expect(service.getBalance('u1', { accountId: 'card' })).resolves.toEqual([{ key: 'TND', balance: '-1250.5' }]);
+    });
+
+    it("adds each opening balance to its own account's currency only", async () => {
+      const rows = [
+        { accountId: 'a', currency: 'USD', direction: 'CREDIT', _sum: { amount: new Prisma.Decimal('50') } },
+        { accountId: 'b', currency: 'EUR', direction: 'DEBIT', _sum: { amount: new Prisma.Decimal('10') } },
+      ];
+      const service = makeService(
+        {
+          a: { id: 'a', currency: 'USD', openingBalance: '1000' },
+          b: { id: 'b', currency: 'EUR', openingBalance: '300' },
+          old: { id: 'old', currency: 'EUR', archivedAt: new Date('2026-09-01'), openingBalance: '25' },
+        },
+        rows,
+      );
+      const all = await service.getBalance('u1', {});
+      expect(all).toHaveLength(3);
+      expect(all).toEqual(
+        expect.arrayContaining([
+          { key: 'a:USD', balance: '1050' },
+          { key: 'b:EUR', balance: '290' },
+          // Archived accounts still hold their opening balance.
+          { key: 'old:EUR', balance: '25' },
+        ]),
+      );
+
+    });
+
+    it('asks only for opening balances in the requested currency', async () => {
+      const service = makeService({
+        a: { id: 'a', currency: 'USD', openingBalance: '1000' },
+        b: { id: 'b', currency: 'EUR', openingBalance: '300' },
+      });
+      await expect(service.getBalance('u1', { currency: 'EUR' })).resolves.toEqual([{ key: 'b:EUR', balance: '300' }]);
     });
 
     it('treats a group with no matching rows (null _sum) as zero', async () => {
