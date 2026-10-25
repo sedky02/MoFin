@@ -4,6 +4,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { GlobalJwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { PrismaExceptionFilter } from './common/filters/prisma-exception.filter';
 import { LoggerModule } from './common/logger/logger.module';
@@ -56,7 +57,11 @@ import { UsersModule } from './modules/users/users.module';
     GoalsModule,
   ],
   providers: [
+    // Global guards run in registration order: rate limit first, so an
+    // unauthenticated flood is still throttled, then require a web access
+    // token on every route not marked @Public().
     { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: GlobalJwtAuthGuard },
     // Order matters: Nest checks global filters in REVERSE registration
     // order, so AllExceptionsFilter (registered first, checked last) is the
     // fallback behind PrismaExceptionFilter's more specific `@Catch()` scope.

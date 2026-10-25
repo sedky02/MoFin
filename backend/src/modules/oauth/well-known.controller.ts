@@ -1,5 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiExcludeController } from '@nestjs/swagger';
+import { Public } from '../../common/decorators/public.decorator';
 import { OAuthService } from './oauth.service';
 
 /**
@@ -8,6 +9,7 @@ import { OAuthService } from './oauth.service';
  * claude.ai derives them from the resource origin per RFC 8414 / RFC 9728.
  */
 @ApiExcludeController()
+@Public()
 @Controller('.well-known')
 export class WellKnownController {
   constructor(private readonly oauth: OAuthService) {}

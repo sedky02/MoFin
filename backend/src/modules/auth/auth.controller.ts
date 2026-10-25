@@ -2,6 +2,7 @@ import { Body, Controller, Get, HttpCode, HttpStatus, Post, UseGuards } from '@n
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { Public } from '../../common/decorators/public.decorator';
 import {
   AuthThrottlerGuard,
   FORGOT_PASSWORD_IP_THROTTLE,
@@ -44,6 +45,7 @@ export class AuthController {
   // so it actually stops credential stuffing instead of just rate-limiting
   // "whoever is behind this BFF" as a single client. No @Throttle here: the
   // global guard would read it too and apply the same limit per IP.
+  @Public()
   @UseGuards(AuthThrottlerGuard)
   @Post('register')
   @ApiZodBody(registerSchema)
@@ -51,6 +53,7 @@ export class AuthController {
     return this.authService.register(dto);
   }
 
+  @Public()
   @UseGuards(AuthThrottlerGuard)
   @Post('login')
   @ApiZodBody(loginSchema)
@@ -60,6 +63,7 @@ export class AuthController {
 
   // Limited per presented token rather than per IP (see RefreshThrottlerGuard),
   // so tabs and users sharing an IP don't trip each other into a 429.
+  @Public()
   @UseGuards(RefreshThrottlerGuard)
   @Post('refresh')
   @ApiZodBody(refreshTokenSchema)
@@ -75,6 +79,7 @@ export class AuthController {
    * (the global guard reads this @Throttle) so one client can't mail many
    * addresses.
    */
+  @Public()
   @UseGuards(ForgotPasswordThrottlerGuard)
   @Throttle({ default: FORGOT_PASSWORD_IP_THROTTLE })
   @Post('password/forgot')
@@ -86,6 +91,7 @@ export class AuthController {
   }
 
   // Limited per presented reset token (see authTracker), not per IP.
+  @Public()
   @UseGuards(AuthThrottlerGuard)
   @Post('password/reset')
   @HttpCode(HttpStatus.OK)
@@ -94,12 +100,14 @@ export class AuthController {
     return this.passwordResetService.resetPassword(dto.token, dto.password);
   }
 
+  @Public()
   @Post('logout')
   @ApiZodBody(logoutSchema)
   logout(@Body(new ZodValidationPipe(logoutSchema)) dto: LogoutDto) {
     return this.authService.logout(dto.refreshToken);
   }
 
+  @Public()
   @Post('google')
   @ApiZodBody(googleLoginSchema)
   google(@Body(new ZodValidationPipe(googleLoginSchema)) dto: GoogleLoginDto) {

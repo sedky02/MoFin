@@ -3,6 +3,7 @@ import { Controller, Delete, Get, HttpStatus, Post, Req, Res, UseGuards } from '
 import { ApiBody, ApiExcludeEndpoint, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { Public } from '../../common/decorators/public.decorator';
 import { OAuthMcpAuthGuard } from '../../common/guards/oauth-mcp-auth.guard';
 import { AuthenticatedUser } from '../../common/types/authenticated-user';
 import { McpServerFactory } from './mcp-server.factory';
@@ -13,8 +14,12 @@ import { McpServerFactory } from './mcp-server.factory';
  * Authentication is handled by OAuthMcpAuthGuard (sets req.user); a fresh
  * MCP server + transport is built per request and scoped to that user. Stateless
  * means no session map and a single JSON response per call (enableJsonResponse).
+ *
+ * `@Public()` only skips the global web JWT guard: MCP clients carry an OAuth
+ * access token, not a web one, and OAuthMcpAuthGuard still runs on every route.
  */
 @ApiTags('mcp')
+@Public()
 @UseGuards(OAuthMcpAuthGuard)
 @Controller('mcp')
 export class McpController {

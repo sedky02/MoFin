@@ -1,6 +1,9 @@
 import { Controller, Get, HttpCode, HttpStatus, ServiceUnavailableException } from '@nestjs/common';
+import { Public } from '../common/decorators/public.decorator';
 import { PrismaService } from '../database/prisma.service';
 
+// Probed by infra without credentials.
+@Public()
 @Controller('health')
 export class HealthController {
   constructor(private readonly prisma: PrismaService) {}
