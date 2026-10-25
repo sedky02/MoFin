@@ -6,7 +6,7 @@ import { safeNextPath, DEFAULT_AFTER_LOGIN } from "@/lib/safe-next";
 /** Every ?error= code the auth routes emit. */
 export type LoginErrorCode = "google_failed" | "google_unconfigured";
 /** Every ?reason= the app emits. */
-export type LoginReason = "expired" | "signed_out";
+export type LoginReason = "expired" | "signed_out" | "account_deleted";
 
 const ERROR_MESSAGES: Record<LoginErrorCode, string> = {
   google_failed: "Google sign-in didn't finish — try again or use email.",
@@ -17,6 +17,7 @@ const UNKNOWN_ERROR_MESSAGE = "Sign-in didn't finish. Please try again.";
 const REASON_MESSAGES: Record<LoginReason, string> = {
   expired: "Your session expired. Sign in to continue.",
   signed_out: "You've been signed out on every device. Sign in to continue.",
+  account_deleted: "Your account and its data were deleted.",
 };
 
 export type LoginNotice = { kind: "error" | "info"; message: string };

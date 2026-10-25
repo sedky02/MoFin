@@ -29,6 +29,13 @@ describe("loginNotice", () => {
     });
   });
 
+  it("confirms a deleted account", () => {
+    expect(notice("reason=account_deleted")).toEqual({
+      kind: "info",
+      message: "Your account and its data were deleted.",
+    });
+  });
+
   it("gives an unknown error code a generic message, never the raw value", () => {
     const n = notice("error=%3Cb%3Ehacked%3C%2Fb%3E");
     expect(n).toEqual({ kind: "error", message: "Sign-in didn't finish. Please try again." });
