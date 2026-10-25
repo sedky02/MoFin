@@ -34,6 +34,8 @@ export interface Account {
   name: string;
   type: AccountType;
   currency: string;
+  /** Decimal string in the account's currency, added to its balance. Never a transaction. */
+  openingBalance?: string;
   metadata?: Record<string, unknown> | null;
   archivedAt?: string | null;
   createdAt: string;
