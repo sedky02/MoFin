@@ -8,7 +8,9 @@ import {
   moneyInputHint,
   moneyInputPrefix,
   normalizeMoneyTyping,
+  normalizeSignedMoneyTyping,
   pasteMoneyText,
+  signedMoneyInputHint,
 } from "@/lib/format";
 
 interface MoneyInputProps {
@@ -21,6 +23,8 @@ interface MoneyInputProps {
   id?: string;
   /** Hero style: bare, centred, oversized figure with the currency code above. */
   large?: boolean;
+  /** Accept one leading minus (an opening balance can be below zero). */
+  allowNegative?: boolean;
   "aria-invalid"?: boolean;
   "aria-describedby"?: string;
 }
@@ -47,13 +51,16 @@ export function MoneyInput({
   className,
   id,
   large,
+  allowNegative = false,
   "aria-describedby": describedBy,
   ...aria
 }: MoneyInputProps) {
   const autoId = React.useId();
   const baseId = id ?? autoId;
   const hintId = `${baseId}-hint`;
-  const hint = moneyInputHint(value, currency);
+  const hint = allowNegative ? signedMoneyInputHint(value, currency) : moneyInputHint(value, currency);
+  // Phone decimal keypads have no minus key, so a signed field asks for the full keyboard.
+  const inputMode = allowNegative ? "text" : "decimal";
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     // Keep the raw text. Normalising per keystroke turned "1," into "1." and
@@ -68,11 +75,12 @@ export function MoneyInput({
     const el = e.currentTarget;
     const start = el.selectionStart ?? el.value.length;
     const end = el.selectionEnd ?? start;
-    onChange(pasteMoneyText(el.value, start, end, pasted));
+    onChange(pasteMoneyText(el.value, start, end, pasted, allowNegative));
   }
 
   function handleBlur() {
-    const normalized = value ? normalizeMoneyTyping(value) : null;
+    const normalize = allowNegative ? normalizeSignedMoneyTyping : normalizeMoneyTyping;
+    const normalized = value ? normalize(value) : null;
     if (normalized !== null) {
       const tidy = formatMoneyInput(normalized, currency);
       if (tidy && tidy !== value) onChange(tidy);
@@ -101,7 +109,7 @@ export function MoneyInput({
         </span>
         <input
           id={id}
-          inputMode="decimal"
+          inputMode={inputMode}
           autoComplete="off"
           placeholder="0.00"
           value={value}
@@ -139,7 +147,7 @@ export function MoneyInput({
         )}
         <Input
           id={id}
-          inputMode="decimal"
+          inputMode={inputMode}
           autoComplete="off"
           placeholder="0.00"
           value={value}
