@@ -25,6 +25,7 @@ import {
   tokenBodySchema,
 } from './dto/oauth.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { Public } from '../../common/decorators/public.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { AuthenticatedUser } from '../../common/types/authenticated-user';
 import { OAuthService } from './oauth.service';
@@ -43,6 +44,7 @@ export class OAuthController {
 
   // --- Dynamic Client Registration ---
 
+  @Public()
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post('register')
   async register(@Body() body: unknown, @Res() res: Response) {
@@ -53,6 +55,7 @@ export class OAuthController {
 
   // --- Authorization endpoint ---
 
+  @Public()
   @Get('authorize')
   async authorize(@Req() req: Request, @Res() res: Response) {
     const parsed = authorizeQuerySchema.safeParse(req.query);
@@ -106,6 +109,7 @@ export class OAuthController {
     return this.renderConsent(res, q, client.clientName ?? q.client_id, user.email);
   }
 
+  @Public()
   @Post('consent')
   async consent(@Body() body: unknown, @Req() req: Request, @Res() res: Response) {
     const dto = consentBodySchema.parse(body);
@@ -131,6 +135,7 @@ export class OAuthController {
 
   // --- Token endpoint ---
 
+  @Public()
   @Post('token')
   async token(@Body() body: unknown, @Res() res: Response) {
     const dto = tokenBodySchema.parse(body);
@@ -165,6 +170,7 @@ export class OAuthController {
   // --- Revocation (RFC 7009) ---
 
   /** Public client, so the token itself is the credential. Always 200 per the RFC. */
+  @Public()
   @Post('revoke')
   async revoke(@Body() body: unknown, @Res() res: Response) {
     const dto = revokeBodySchema.parse(body);
@@ -189,6 +195,7 @@ export class OAuthController {
 
   // --- Cross-origin login bridge ---
 
+  @Public()
   @Post('session/handoff')
   async handoff(@Headers('authorization') authorization: string | undefined, @Res() res: Response) {
     const token = authorization?.replace(/^Bearer\s+/i, '');
@@ -197,6 +204,7 @@ export class OAuthController {
     res.status(201).json({ handoff });
   }
 
+  @Public()
   @Get('session/consume')
   async consume(
     @Query('handoff') handoff: string,
