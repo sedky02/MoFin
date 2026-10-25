@@ -2,7 +2,11 @@ import { Body, Controller, Get, HttpCode, HttpStatus, Post, UseGuards } from '@n
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { AuthThrottlerGuard } from '../../common/guards/auth-throttler.guard';
+import {
+  AuthThrottlerGuard,
+  FORGOT_PASSWORD_IP_THROTTLE,
+  ForgotPasswordThrottlerGuard,
+} from '../../common/guards/auth-throttler.guard';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RefreshThrottlerGuard } from '../../common/guards/refresh-throttler.guard';
 import { ApiZodBody } from '../../common/swagger/api-zod';
@@ -38,9 +42,9 @@ export class AuthController {
   // Tighter limit on credential endpoints to blunt brute-force / abuse (audit
   // B5), keyed on submitted email + IP (not IP alone, see AuthThrottlerGuard)
   // so it actually stops credential stuffing instead of just rate-limiting
-  // "whoever is behind this BFF" as a single client.
+  // "whoever is behind this BFF" as a single client. No @Throttle here: the
+  // global guard would read it too and apply the same limit per IP.
   @UseGuards(AuthThrottlerGuard)
-  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('register')
   @ApiZodBody(registerSchema)
   register(@Body(new ZodValidationPipe(registerSchema)) dto: RegisterDto) {
@@ -48,7 +52,6 @@ export class AuthController {
   }
 
   @UseGuards(AuthThrottlerGuard)
-  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('login')
   @ApiZodBody(loginSchema)
   login(@Body(new ZodValidationPipe(loginSchema)) dto: LoginDto) {
@@ -68,10 +71,12 @@ export class AuthController {
    * Always 202 with the same body, whether or not the email has an account.
    * The work (lookup, token, email) runs after the response is sent, so the
    * timing doesn't tell the two cases apart either. Rate-limited per
-   * email + IP to stop the endpoint being used to flood an inbox.
+   * email + IP to stop the endpoint being used to flood an inbox, and per IP
+   * (the global guard reads this @Throttle) so one client can't mail many
+   * addresses.
    */
-  @UseGuards(AuthThrottlerGuard)
-  @Throttle({ default: { limit: 5, ttl: 15 * 60_000 } })
+  @UseGuards(ForgotPasswordThrottlerGuard)
+  @Throttle({ default: FORGOT_PASSWORD_IP_THROTTLE })
   @Post('password/forgot')
   @HttpCode(HttpStatus.ACCEPTED)
   @ApiZodBody(forgotPasswordSchema)
@@ -80,8 +85,8 @@ export class AuthController {
     return { message: FORGOT_PASSWORD_MESSAGE };
   }
 
+  // Limited per presented reset token (see authTracker), not per IP.
   @UseGuards(AuthThrottlerGuard)
-  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('password/reset')
   @HttpCode(HttpStatus.OK)
   @ApiZodBody(resetPasswordSchema)
