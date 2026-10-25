@@ -99,6 +99,10 @@ model Account {
   name             String
   type             AccountType
   currency         String
+  /// What the account held before tracking started, in its own currency.
+  /// Added to the ledger-derived balance; never a transaction, so it stays
+  /// out of income, expenses and Income/Expense goals.
+  openingBalance   Decimal           @default(0) @db.Decimal(18, 4)
   metadata         Json              @default("{}")
   archivedAt       DateTime?
   transactionItems TransactionItem[]
