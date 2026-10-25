@@ -2,7 +2,11 @@ import { Body, Controller, Get, HttpCode, HttpStatus, Post, UseGuards } from '@n
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { AuthThrottlerGuard, ForgotPasswordThrottlerGuard } from '../../common/guards/auth-throttler.guard';
+import {
+  AuthThrottlerGuard,
+  FORGOT_PASSWORD_IP_THROTTLE,
+  ForgotPasswordThrottlerGuard,
+} from '../../common/guards/auth-throttler.guard';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { ApiZodBody } from '../../common/swagger/api-zod';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
@@ -65,9 +69,12 @@ export class AuthController {
    * Always 202 with the same body, whether or not the email has an account.
    * The work (lookup, token, email) runs after the response is sent, so the
    * timing doesn't tell the two cases apart either. Rate-limited per
-   * email + IP to stop the endpoint being used to flood an inbox.
+   * email + IP to stop the endpoint being used to flood an inbox, and per IP
+   * (the global guard reads this @Throttle) so one client can't mail many
+   * addresses.
    */
   @UseGuards(ForgotPasswordThrottlerGuard)
+  @Throttle({ default: FORGOT_PASSWORD_IP_THROTTLE })
   @Post('password/forgot')
   @HttpCode(HttpStatus.ACCEPTED)
   @ApiZodBody(forgotPasswordSchema)

@@ -9,6 +9,13 @@ export const AUTH_THROTTLE = { limit: 5, ttl: 60_000 } as const;
 export const FORGOT_PASSWORD_THROTTLE = { limit: 5, ttl: 15 * 60_000 } as const;
 
 /**
+ * Per-IP cap on POST /auth/password/forgot, applied by the global guard from
+ * the route's @Throttle. The per-email limit alone would let one IP send
+ * reset emails to any number of addresses.
+ */
+export const FORGOT_PASSWORD_IP_THROTTLE = { limit: 20, ttl: 15 * 60_000 } as const;
+
+/**
  * Throttle key for the credential routes:
  * - the submitted email plus IP, when the body has an email (login, register,
  *   forgot password);

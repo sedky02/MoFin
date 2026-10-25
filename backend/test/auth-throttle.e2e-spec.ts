@@ -13,7 +13,11 @@ import { Test } from '@nestjs/testing';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import * as request from 'supertest';
 import { App } from 'supertest/types';
-import { AUTH_THROTTLE, FORGOT_PASSWORD_THROTTLE } from '../src/common/guards/auth-throttler.guard';
+import {
+  AUTH_THROTTLE,
+  FORGOT_PASSWORD_IP_THROTTLE,
+  FORGOT_PASSWORD_THROTTLE,
+} from '../src/common/guards/auth-throttler.guard';
 import { AuthController } from '../src/modules/auth/auth.controller';
 import { AuthService } from '../src/modules/auth/auth.service';
 import { PasswordResetService } from '../src/modules/auth/password-reset.service';
@@ -124,5 +128,17 @@ describe('Credential route rate limiting (e2e)', () => {
       await post('login', { email: `bulk${i}@example.com`, password: 'x' }).expect(201);
     }
     await post('login', { email: 'one-more@example.com', password: 'x' }).expect(429);
+  });
+
+  it('caps password/forgot per IP across different emails, with Retry-After', async () => {
+    for (let i = 0; i < FORGOT_PASSWORD_IP_THROTTLE.limit; i++) {
+      await post('password/forgot', { email: `user${i}@example.test` }).expect(202);
+    }
+    const res = await post('password/forgot', { email: 'one-more@example.test' });
+    expect(res.status).toBe(429);
+    expect(Number(res.headers['retry-after'])).toBeGreaterThan(0);
+
+    // Another IP is unaffected.
+    await post('password/forgot', { email: 'one-more@example.test' }, '198.51.100.20').expect(202);
   });
 });
