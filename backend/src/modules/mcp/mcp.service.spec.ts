@@ -3,7 +3,10 @@ import { MCP_TOOLS } from './mcp-tools';
 import { McpService } from './mcp.service';
 
 describe('McpService.dispatch', () => {
-  const drafts = { create: jest.fn(() => 'created'), approve: jest.fn(() => 'approved') };
+  const drafts = {
+    create: jest.fn(() => 'created'),
+    approve: jest.fn(() => 'approved'),
+  };
   const search = { searchTransactions: jest.fn(() => 'searched') };
   const ledger = { getBalance: jest.fn(() => 'balance') };
   const analytics = { getMonthlySummary: jest.fn(() => 'summary') };
@@ -27,7 +30,9 @@ describe('McpService.dispatch', () => {
 
   it('routes create_draft_transaction to DraftTransactionsService.create', () => {
     const args = { rawInput: 'x', parsedData: {}, confidenceScore: 0.5 };
-    expect(service.dispatch('u1', 'create_draft_transaction', args)).toBe('created');
+    expect(service.dispatch('u1', 'create_draft_transaction', args)).toBe(
+      'created',
+    );
     expect(drafts.create).toHaveBeenCalledWith('u1', args);
   });
 
@@ -36,12 +41,16 @@ describe('McpService.dispatch', () => {
     // the same MCP connector that created the draft (SEC-XX).
     const toolNames: string[] = MCP_TOOLS.map((t) => t.name);
     expect(toolNames).not.toContain('approve_draft_transaction');
-    expect(Object.keys(mcpToolSchemas)).not.toContain('approve_draft_transaction');
+    expect(Object.keys(mcpToolSchemas)).not.toContain(
+      'approve_draft_transaction',
+    );
   });
 
   it('routes search_transactions to SearchService', () => {
     service.dispatch('u1', 'search_transactions', { q: 'coffee' });
-    expect(search.searchTransactions).toHaveBeenCalledWith('u1', { q: 'coffee' });
+    expect(search.searchTransactions).toHaveBeenCalledWith('u1', {
+      q: 'coffee',
+    });
   });
 
   it('routes get_balance to LedgerService', () => {
@@ -50,11 +59,35 @@ describe('McpService.dispatch', () => {
   });
 
   it('routes get_monthly_summary with year, month, refresh, account and currency', () => {
-    service.dispatch('u1', 'get_monthly_summary', { year: 2026, month: 6, refresh: true, currency: 'TND' });
-    expect(analytics.getMonthlySummary).toHaveBeenCalledWith('u1', 2026, 6, true, undefined, 'TND');
+    service.dispatch('u1', 'get_monthly_summary', {
+      year: 2026,
+      month: 6,
+      refresh: true,
+      currency: 'TND',
+    });
+    expect(analytics.getMonthlySummary).toHaveBeenCalledWith(
+      'u1',
+      2026,
+      6,
+      true,
+      undefined,
+      'TND',
+    );
 
-    service.dispatch('u1', 'get_monthly_summary', { year: 2026, month: 6, refresh: false, accountId: 'acc-1' });
-    expect(analytics.getMonthlySummary).toHaveBeenCalledWith('u1', 2026, 6, false, 'acc-1', undefined);
+    service.dispatch('u1', 'get_monthly_summary', {
+      year: 2026,
+      month: 6,
+      refresh: false,
+      accountId: 'acc-1',
+    });
+    expect(analytics.getMonthlySummary).toHaveBeenCalledWith(
+      'u1',
+      2026,
+      6,
+      false,
+      'acc-1',
+      undefined,
+    );
   });
 
   it('routes list_accounts to AccountsService, forwarding pagination args', () => {
@@ -75,7 +108,14 @@ describe('McpService.dispatch', () => {
   });
 
   it('routes get_goal_history using the goalId argument, forwarding pagination args separately', () => {
-    service.dispatch('u1', 'get_goal_history', { goalId: 'g1', limit: 20, offset: 0 });
-    expect(goals.history).toHaveBeenCalledWith('u1', 'g1', { limit: 20, offset: 0 });
+    service.dispatch('u1', 'get_goal_history', {
+      goalId: 'g1',
+      limit: 20,
+      offset: 0,
+    });
+    expect(goals.history).toHaveBeenCalledWith('u1', 'g1', {
+      limit: 20,
+      offset: 0,
+    });
   });
 });

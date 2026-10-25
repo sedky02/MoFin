@@ -1,6 +1,9 @@
 import { AccountType } from '@prisma/client';
 import { z } from 'zod';
-import { currencySchema, signedAmountStringSchema } from '../../../common/dto/common-fields';
+import {
+  currencySchema,
+  signedAmountStringSchema,
+} from '../../../common/dto/common-fields';
 import { paginationSchema } from '../../../common/dto/pagination';
 
 export const createAccountSchema = z.object({

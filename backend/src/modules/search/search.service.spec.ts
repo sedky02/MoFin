@@ -3,12 +3,23 @@ import { SearchService, transactionTotal } from './search.service';
 
 describe('SearchService.searchTransactions', () => {
   it('never returns deleted transactions', async () => {
-    const paginate = jest.fn(async () => ({ data: [], total: 0, limit: 20, offset: 0 }));
+    const paginate = jest.fn(async () => ({
+      data: [],
+      total: 0,
+      limit: 20,
+      offset: 0,
+    }));
     const prisma = { paginated: { transaction: { paginate } } };
-    const service = new SearchService(prisma as never, {} as never, {} as never);
+    const service = new SearchService(
+      prisma as never,
+      {} as never,
+      {} as never,
+    );
     await service.searchTransactions('u1', { limit: 20, offset: 0 } as never);
     expect(paginate).toHaveBeenCalledWith(
-      expect.objectContaining({ where: expect.objectContaining({ userId: 'u1', deletedAt: null }) }),
+      expect.objectContaining({
+        where: expect.objectContaining({ userId: 'u1', deletedAt: null }),
+      }),
     );
   });
 
@@ -17,15 +28,27 @@ describe('SearchService.searchTransactions', () => {
     const prisma = { paginated: { transaction: { paginate } } };
     const accountsService = { assertOwned: jest.fn(async () => ({})) };
     const categoriesService = { assertAvailable: jest.fn(async () => ({})) };
-    const service = new SearchService(prisma as never, accountsService as never, categoriesService as never);
+    const service = new SearchService(
+      prisma as never,
+      accountsService as never,
+      categoriesService as never,
+    );
     return { service, paginate };
   }
 
   it('returns the paginated shape — total reflects the full match count, not just this page', async () => {
-    const page = { data: Array.from({ length: 10 }, (_, i) => ({ id: `tx${i}` })), total: 25, limit: 10, offset: 0 };
+    const page = {
+      data: Array.from({ length: 10 }, (_, i) => ({ id: `tx${i}` })),
+      total: 25,
+      limit: 10,
+      offset: 0,
+    };
     const { service, paginate } = makeService(page);
 
-    const result = await service.searchTransactions('u1', { limit: 10, offset: 0 } as never);
+    const result = await service.searchTransactions('u1', {
+      limit: 10,
+      offset: 0,
+    } as never);
 
     expect(result).toBe(page);
     expect(result.data).toHaveLength(10);
@@ -40,26 +63,48 @@ describe('SearchService.searchTransactions', () => {
   });
 
   it('checks account ownership and category availability before querying', async () => {
-    const paginate = jest.fn(async () => ({ data: [], total: 0, limit: 20, offset: 0 }));
+    const paginate = jest.fn(async () => ({
+      data: [],
+      total: 0,
+      limit: 20,
+      offset: 0,
+    }));
     const prisma = { paginated: { transaction: { paginate } } };
     const accountsService = { assertOwned: jest.fn(async () => ({})) };
     const categoriesService = { assertAvailable: jest.fn(async () => ({})) };
-    const service = new SearchService(prisma as never, accountsService as never, categoriesService as never);
+    const service = new SearchService(
+      prisma as never,
+      accountsService as never,
+      categoriesService as never,
+    );
 
-    await service.searchTransactions('u1', { limit: 20, offset: 0, accountId: 'a1', categoryId: 'c1' } as never);
+    await service.searchTransactions('u1', {
+      limit: 20,
+      offset: 0,
+      accountId: 'a1',
+      categoryId: 'c1',
+    } as never);
 
     expect(accountsService.assertOwned).toHaveBeenCalledWith('u1', 'a1');
     expect(categoriesService.assertAvailable).toHaveBeenCalledWith('u1', 'c1');
   });
 
   it('includes each ledger leg with its account so results can name accounts', async () => {
-    const { service, paginate } = makeService({ data: [], total: 0, limit: 20, offset: 0 });
+    const { service, paginate } = makeService({
+      data: [],
+      total: 0,
+      limit: 20,
+      offset: 0,
+    });
 
     await service.searchTransactions('u1', { limit: 20, offset: 0 } as never);
 
     expect(paginate).toHaveBeenCalledWith(
       expect.objectContaining({
-        include: { items: { include: { category: true, account: true } }, category: true },
+        include: {
+          items: { include: { category: true, account: true } },
+          category: true,
+        },
       }),
     );
   });
@@ -67,21 +112,39 @@ describe('SearchService.searchTransactions', () => {
 
 describe('SearchService category filter', () => {
   function makeService() {
-    const paginate = jest.fn(async (_args: { where: Record<string, unknown> }) => ({ data: [], total: 0, limit: 20, offset: 0 }));
+    const paginate = jest.fn(
+      async (_args: { where: Record<string, unknown> }) => ({
+        data: [],
+        total: 0,
+        limit: 20,
+        offset: 0,
+      }),
+    );
     const prisma = { paginated: { transaction: { paginate } } };
     const accountsService = { assertOwned: jest.fn(async () => ({})) };
     const categoriesService = { assertAvailable: jest.fn(async () => ({})) };
-    const service = new SearchService(prisma as never, accountsService as never, categoriesService as never);
+    const service = new SearchService(
+      prisma as never,
+      accountsService as never,
+      categoriesService as never,
+    );
     return { service, paginate };
   }
 
   it("matches a split by one of its lines' categories as well as the transaction's own", async () => {
     const { service, paginate } = makeService();
 
-    await service.searchTransactions('u1', { limit: 20, offset: 0, categoryId: 'dining' } as never);
+    await service.searchTransactions('u1', {
+      limit: 20,
+      offset: 0,
+      categoryId: 'dining',
+    } as never);
 
     const { where } = paginate.mock.calls[0][0];
-    expect(where.OR).toEqual([{ categoryId: 'dining' }, { items: { some: { categoryId: 'dining' } } }]);
+    expect(where.OR).toEqual([
+      { categoryId: 'dining' },
+      { items: { some: { categoryId: 'dining' } } },
+    ]);
     // Not a top-level equality, which would miss every split (they carry no category of their own).
     expect(where).not.toHaveProperty('categoryId');
   });
@@ -89,11 +152,21 @@ describe('SearchService category filter', () => {
   it('keeps the account filter alongside the line-category match', async () => {
     const { service, paginate } = makeService();
 
-    await service.searchTransactions('u1', { limit: 20, offset: 0, categoryId: 'dining', accountId: 'a1' } as never);
+    await service.searchTransactions('u1', {
+      limit: 20,
+      offset: 0,
+      categoryId: 'dining',
+      accountId: 'a1',
+    } as never);
 
     const { where } = paginate.mock.calls[0][0];
-    expect(where.OR).toEqual([{ categoryId: 'dining' }, { items: { some: { categoryId: 'dining' } } }]);
-    expect(where.items).toEqual({ some: expect.objectContaining({ accountId: 'a1' }) });
+    expect(where.OR).toEqual([
+      { categoryId: 'dining' },
+      { items: { some: { categoryId: 'dining' } } },
+    ]);
+    expect(where.items).toEqual({
+      some: expect.objectContaining({ accountId: 'a1' }),
+    });
   });
 
   it('adds no category condition when no category is asked for', async () => {
@@ -111,9 +184,20 @@ describe('SearchService date range', () => {
   type DateFilter = { gte?: Date; lt?: Date; lte?: Date };
 
   function makeService() {
-    const paginate = jest.fn(async (_args: { where: { occurredAt?: DateFilter } }) => ({ data: [], total: 0, limit: 20, offset: 0 }));
+    const paginate = jest.fn(
+      async (_args: { where: { occurredAt?: DateFilter } }) => ({
+        data: [],
+        total: 0,
+        limit: 20,
+        offset: 0,
+      }),
+    );
     const prisma = { paginated: { transaction: { paginate } } };
-    const service = new SearchService(prisma as never, {} as never, {} as never);
+    const service = new SearchService(
+      prisma as never,
+      {} as never,
+      {} as never,
+    );
     return { service, paginate };
   }
 
@@ -129,12 +213,19 @@ describe('SearchService date range', () => {
 
   async function occurredAtFilter(range: { from?: string; to?: string }) {
     const { service, paginate } = makeService();
-    await service.searchTransactions('u1', { limit: 20, offset: 0, ...range } as never);
+    await service.searchTransactions('u1', {
+      limit: 20,
+      offset: 0,
+      ...range,
+    } as never);
     return paginate.mock.calls[0][0].where.occurredAt!;
   }
 
   it('from = to = one day returns that whole day', async () => {
-    const filter = await occurredAtFilter({ from: '2026-10-24', to: '2026-10-24' });
+    const filter = await occurredAtFilter({
+      from: '2026-10-24',
+      to: '2026-10-24',
+    });
 
     expect(matches(filter, '2026-10-24T00:00:00.000Z')).toBe(true);
     expect(matches(filter, '2026-10-24T12:00:00.000Z')).toBe(true);
@@ -153,7 +244,10 @@ describe('SearchService date range', () => {
   });
 
   it('keeps a datetime `to` as an inclusive instant', async () => {
-    const filter = await occurredAtFilter({ from: '2026-10-01T00:00:00.000Z', to: '2026-10-24T12:00:00.000Z' });
+    const filter = await occurredAtFilter({
+      from: '2026-10-01T00:00:00.000Z',
+      to: '2026-10-24T12:00:00.000Z',
+    });
 
     expect(matches(filter, '2026-10-24T12:00:00.000Z')).toBe(true);
     expect(matches(filter, '2026-10-24T12:00:00.001Z')).toBe(false);
@@ -167,15 +261,21 @@ describe('SearchService date range', () => {
 });
 
 describe('SearchService type, recurrence and sort', () => {
-  type FindManyArgs = { where: Record<string, unknown>; select?: unknown; include?: unknown };
+  type FindManyArgs = {
+    where: Record<string, unknown>;
+    select?: unknown;
+    include?: unknown;
+  };
 
   function makeService(matches: unknown[] = []) {
-    const paginate = jest.fn(async (_args: { where: Record<string, unknown>; orderBy: unknown }) => ({
-      data: [],
-      total: 0,
-      limit: 20,
-      offset: 0,
-    }));
+    const paginate = jest.fn(
+      async (_args: { where: Record<string, unknown>; orderBy: unknown }) => ({
+        data: [],
+        total: 0,
+        limit: 20,
+        offset: 0,
+      }),
+    );
     // First call ranks the matches (select), second loads the page (include).
     const findMany = jest.fn(async (args: FindManyArgs) => {
       if (args.select) return matches;
@@ -183,15 +283,31 @@ describe('SearchService type, recurrence and sort', () => {
       // Out of order on purpose: the page must come back in ranked order.
       return [...ids].reverse().map((id) => ({ id }));
     });
-    const prisma = { paginated: { transaction: { paginate } }, transaction: { findMany } };
-    const accountsService = { assertOwned: jest.fn(async (): Promise<unknown> => ({})) };
+    const prisma = {
+      paginated: { transaction: { paginate } },
+      transaction: { findMany },
+    };
+    const accountsService = {
+      assertOwned: jest.fn(async (): Promise<unknown> => ({})),
+    };
     const categoriesService = { assertAvailable: jest.fn(async () => ({})) };
-    const service = new SearchService(prisma as never, accountsService as never, categoriesService as never);
+    const service = new SearchService(
+      prisma as never,
+      accountsService as never,
+      categoriesService as never,
+    );
     return { service, paginate, findMany, accountsService };
   }
 
-  const leg = (direction: 'DEBIT' | 'CREDIT', amount: string) => ({ direction, amount: new Prisma.Decimal(amount) });
-  const match = (id: string, occurredAt: string, items: ReturnType<typeof leg>[]) => ({
+  const leg = (direction: 'DEBIT' | 'CREDIT', amount: string) => ({
+    direction,
+    amount: new Prisma.Decimal(amount),
+  });
+  const match = (
+    id: string,
+    occurredAt: string,
+    items: ReturnType<typeof leg>[],
+  ) => ({
     id,
     occurredAt: new Date(occurredAt),
     createdAt: new Date(occurredAt),
@@ -200,44 +316,87 @@ describe('SearchService type, recurrence and sort', () => {
 
   it('filters by transaction type', async () => {
     const { service, paginate } = makeService();
-    await service.searchTransactions('u1', { limit: 20, offset: 0, type: 'TRANSFER' } as never);
-    expect(paginate.mock.calls[0][0].where).toEqual(expect.objectContaining({ type: 'TRANSFER', deletedAt: null }));
+    await service.searchTransactions('u1', {
+      limit: 20,
+      offset: 0,
+      type: 'TRANSFER',
+    } as never);
+    expect(paginate.mock.calls[0][0].where).toEqual(
+      expect.objectContaining({ type: 'TRANSFER', deletedAt: null }),
+    );
   });
 
   it('treats a series root and its generated occurrences as recurring', async () => {
     const { service, paginate } = makeService();
-    await service.searchTransactions('u1', { limit: 20, offset: 0, recurrence: 'recurring', categoryId: 'rent' } as never);
+    await service.searchTransactions('u1', {
+      limit: 20,
+      offset: 0,
+      recurrence: 'recurring',
+      categoryId: 'rent',
+    } as never);
     const { where } = paginate.mock.calls[0][0];
-    expect(where.AND).toEqual([{ OR: [{ isRecurring: true }, { parentTransactionId: { not: null } }] }]);
+    expect(where.AND).toEqual([
+      { OR: [{ isRecurring: true }, { parentTransactionId: { not: null } }] },
+    ]);
     // The category match keeps its own OR.
-    expect(where.OR).toEqual([{ categoryId: 'rent' }, { items: { some: { categoryId: 'rent' } } }]);
+    expect(where.OR).toEqual([
+      { categoryId: 'rent' },
+      { items: { some: { categoryId: 'rent' } } },
+    ]);
     expect(where.deletedAt).toBeNull();
   });
 
   it('keeps one-off transactions to those outside any series', async () => {
     const { service, paginate } = makeService();
-    await service.searchTransactions('u1', { limit: 20, offset: 0, recurrence: 'one-off' } as never);
+    await service.searchTransactions('u1', {
+      limit: 20,
+      offset: 0,
+      recurrence: 'one-off',
+    } as never);
     const { where } = paginate.mock.calls[0][0];
-    expect(where).toEqual(expect.objectContaining({ isRecurring: false, parentTransactionId: null, deletedAt: null }));
+    expect(where).toEqual(
+      expect.objectContaining({
+        isRecurring: false,
+        parentTransactionId: null,
+        deletedAt: null,
+      }),
+    );
     expect(where).not.toHaveProperty('AND');
   });
 
   it('lists a series once, by its root, and never a deleted root', async () => {
     const { service, paginate } = makeService();
-    await service.searchTransactions('u1', { limit: 20, offset: 0, recurrence: 'series', accountId: 'dinar' } as never);
+    await service.searchTransactions('u1', {
+      limit: 20,
+      offset: 0,
+      recurrence: 'series',
+      accountId: 'dinar',
+    } as never);
     const { where } = paginate.mock.calls[0][0];
     expect(where).toEqual(
-      expect.objectContaining({ userId: 'u1', isRecurring: true, parentTransactionId: null, deletedAt: null }),
+      expect.objectContaining({
+        userId: 'u1',
+        isRecurring: true,
+        parentTransactionId: null,
+        deletedAt: null,
+      }),
     );
     // Not the roots-and-occurrences match of `recurring`.
     expect(where).not.toHaveProperty('AND');
     // Composes with the other filters.
-    expect(where.items).toEqual({ some: expect.objectContaining({ accountId: 'dinar' }) });
+    expect(where.items).toEqual({
+      some: expect.objectContaining({ accountId: 'dinar' }),
+    });
   });
 
   it('sorts active series first, soonest next occurrence first, then newest', async () => {
     const { service, paginate } = makeService();
-    await service.searchTransactions('u1', { limit: 20, offset: 0, recurrence: 'series', sort: 'next-occurrence' } as never);
+    await service.searchTransactions('u1', {
+      limit: 20,
+      offset: 0,
+      recurrence: 'series',
+      sort: 'next-occurrence',
+    } as never);
     expect(paginate.mock.calls[0][0].orderBy).toEqual([
       { recurringStatus: { sort: 'asc', nulls: 'last' } },
       { nextOccurrenceAt: { sort: 'asc', nulls: 'last' } },
@@ -258,9 +417,19 @@ describe('SearchService type, recurrence and sort', () => {
   it('sorts newest first by default and oldest first on request', async () => {
     const { service, paginate } = makeService();
     await service.searchTransactions('u1', { limit: 20, offset: 0 } as never);
-    await service.searchTransactions('u1', { limit: 20, offset: 0, sort: 'oldest' } as never);
-    expect(paginate.mock.calls[0][0].orderBy).toEqual([{ occurredAt: 'desc' }, { createdAt: 'desc' }]);
-    expect(paginate.mock.calls[1][0].orderBy).toEqual([{ occurredAt: 'asc' }, { createdAt: 'asc' }]);
+    await service.searchTransactions('u1', {
+      limit: 20,
+      offset: 0,
+      sort: 'oldest',
+    } as never);
+    expect(paginate.mock.calls[0][0].orderBy).toEqual([
+      { occurredAt: 'desc' },
+      { createdAt: 'desc' },
+    ]);
+    expect(paginate.mock.calls[1][0].orderBy).toEqual([
+      { occurredAt: 'asc' },
+      { createdAt: 'asc' },
+    ]);
   });
 
   const MATCHES = [
@@ -268,7 +437,10 @@ describe('SearchService type, recurrence and sort', () => {
     // A split: its total is both lines.
     match('groceries', '2026-10-02', [leg('DEBIT', '30'), leg('DEBIT', '25')]),
     // A transfer's legs carry the same amount; it moved 500, not 1000.
-    match('transfer', '2026-10-01', [leg('DEBIT', '500'), leg('CREDIT', '500')]),
+    match('transfer', '2026-10-01', [
+      leg('DEBIT', '500'),
+      leg('CREDIT', '500'),
+    ]),
     match('salary', '2026-09-30', [leg('CREDIT', '2000')]),
     // Same total as the coffee, older: comes after it either way.
     match('snack', '2026-09-01', [leg('DEBIT', '4.5')]),
@@ -284,33 +456,62 @@ describe('SearchService type, recurrence and sort', () => {
     } as never);
 
     expect(paginate).not.toHaveBeenCalled();
-    expect(result.data.map((tx) => tx.id)).toEqual(['salary', 'transfer', 'groceries', 'coffee', 'snack']);
+    expect(result.data.map((tx) => tx.id)).toEqual([
+      'salary',
+      'transfer',
+      'groceries',
+      'coffee',
+      'snack',
+    ]);
     expect(result.total).toBe(5);
     // The ranking query carries the same filters as the date-sorted one.
     expect(findMany.mock.calls[0][0].where).toEqual(
-      expect.objectContaining({ userId: 'u1', deletedAt: null, isRecurring: false }),
+      expect.objectContaining({
+        userId: 'u1',
+        deletedAt: null,
+        isRecurring: false,
+      }),
     );
   });
 
   it('sorts by amount low to high and loads only the requested page', async () => {
     const { service, findMany } = makeService(MATCHES);
-    const result = await service.searchTransactions('u1', { limit: 2, offset: 2, sort: 'amount-asc' } as never);
+    const result = await service.searchTransactions('u1', {
+      limit: 2,
+      offset: 2,
+      sort: 'amount-asc',
+    } as never);
 
-    expect(result).toEqual(expect.objectContaining({ total: 5, limit: 2, offset: 2 }));
+    expect(result).toEqual(
+      expect.objectContaining({ total: 5, limit: 2, offset: 2 }),
+    );
     // Low to high, the coffee and the snack tie at 4.5: newest (coffee) first.
     expect(result.data.map((tx) => tx.id)).toEqual(['groceries', 'transfer']);
     expect(findMany.mock.calls[1][0]).toEqual(
-      expect.objectContaining({ where: { id: { in: ['groceries', 'transfer'] } }, include: expect.anything() }),
+      expect.objectContaining({
+        where: { id: { in: ['groceries', 'transfer'] } },
+        include: expect.anything(),
+      }),
     );
   });
 
   it('accepts an archived account in the account filter (read check, not the write check)', async () => {
     const { service, paginate, accountsService } = makeService();
-    accountsService.assertOwned.mockResolvedValue({ id: 'old-savings', archivedAt: new Date() });
+    accountsService.assertOwned.mockResolvedValue({
+      id: 'old-savings',
+      archivedAt: new Date(),
+    });
 
-    await service.searchTransactions('u1', { limit: 20, offset: 0, accountId: 'old-savings' } as never);
+    await service.searchTransactions('u1', {
+      limit: 20,
+      offset: 0,
+      accountId: 'old-savings',
+    } as never);
 
-    expect(accountsService.assertOwned).toHaveBeenCalledWith('u1', 'old-savings');
+    expect(accountsService.assertOwned).toHaveBeenCalledWith(
+      'u1',
+      'old-savings',
+    );
     expect(paginate.mock.calls[0][0].where.items).toEqual({
       some: expect.objectContaining({ accountId: 'old-savings' }),
     });
@@ -331,7 +532,9 @@ describe('transactionTotal', () => {
       { direction: 'CREDIT', amount: d('500') },
     ];
     expect(transactionTotal(transfer).toString()).toBe('500');
-    expect(transactionTotal([{ direction: 'CREDIT', amount: d('2000') }]).toString()).toBe('2000');
+    expect(
+      transactionTotal([{ direction: 'CREDIT', amount: d('2000') }]).toString(),
+    ).toBe('2000');
     expect(transactionTotal([]).toString()).toBe('0');
   });
 });

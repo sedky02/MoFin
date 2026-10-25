@@ -6,4 +6,6 @@ export const parseTransactionIntentSchema = z.object({
   defaultAccountId: z.string().optional(),
   defaultCurrency: currencySchema.optional(),
 });
-export type ParseTransactionIntentDto = z.infer<typeof parseTransactionIntentSchema>;
+export type ParseTransactionIntentDto = z.infer<
+  typeof parseTransactionIntentSchema
+>;

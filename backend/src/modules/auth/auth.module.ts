@@ -10,9 +10,15 @@ import { PasswordResetService } from './password-reset.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 
 @Module({
-  imports: [PrismaModule, UsersModule, MailModule, PassportModule, JwtModule.register({})],
+  imports: [
+    PrismaModule,
+    UsersModule,
+    MailModule,
+    PassportModule,
+    JwtModule.register({}),
+  ],
   controllers: [AuthController],
   providers: [AuthService, PasswordResetService, JwtStrategy],
-  exports: [AuthService]
+  exports: [AuthService],
 })
 export class AuthModule {}

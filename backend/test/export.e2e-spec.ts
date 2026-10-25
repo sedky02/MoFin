@@ -27,7 +27,10 @@ const ISSUER = 'http://localhost:3000';
 const ENV = { JWT_ACCESS_SECRET: 'test-access-secret', OAUTH_ISSUER: ISSUER };
 const jwt = new JwtService();
 const token = (sub: string) =>
-  jwt.sign({ sub, email: `${sub}@example.com` }, { secret: ENV.JWT_ACCESS_SECRET, issuer: ISSUER, audience: WEB_AUDIENCE });
+  jwt.sign(
+    { sub, email: `${sub}@example.com` },
+    { secret: ENV.JWT_ACCESS_SECRET, issuer: ISSUER, audience: WEB_AUDIENCE },
+  );
 
 const D = (v: string) => new Prisma.Decimal(v);
 const at = (iso: string) => new Date(iso);
@@ -41,19 +44,82 @@ const users: Row[] = [
 ];
 
 const accounts: Row[] = [
-  { id: 'acc-wallet', userId: 'user-1', name: 'Wallet', type: 'CASH', currency: 'TND', archivedAt: null, createdAt: at('2026-01-01T00:00:00Z') },
-  { id: 'acc-old', userId: 'user-1', name: 'Old savings', type: 'SAVINGS', currency: 'TND', archivedAt: at('2026-09-01T00:00:00Z'), createdAt: at('2026-01-02T00:00:00Z') },
-  { id: 'acc-other', userId: 'user-2', name: 'Their bank', type: 'BANK', currency: 'EUR', archivedAt: null, createdAt: at('2026-01-01T00:00:00Z') },
+  {
+    id: 'acc-wallet',
+    userId: 'user-1',
+    name: 'Wallet',
+    type: 'CASH',
+    currency: 'TND',
+    archivedAt: null,
+    createdAt: at('2026-01-01T00:00:00Z'),
+  },
+  {
+    id: 'acc-old',
+    userId: 'user-1',
+    name: 'Old savings',
+    type: 'SAVINGS',
+    currency: 'TND',
+    archivedAt: at('2026-09-01T00:00:00Z'),
+    createdAt: at('2026-01-02T00:00:00Z'),
+  },
+  {
+    id: 'acc-other',
+    userId: 'user-2',
+    name: 'Their bank',
+    type: 'BANK',
+    currency: 'EUR',
+    archivedAt: null,
+    createdAt: at('2026-01-01T00:00:00Z'),
+  },
 ];
 
 const categories: Row[] = [
-  { id: 'cat-food', userId: null, name: 'Food', type: 'EXPENSE', color: null, icon: null },
-  { id: 'cat-mine', userId: 'user-1', name: 'Hobbies', type: 'EXPENSE', color: '#ff0000', icon: 'star' },
-  { id: 'cat-theirs', userId: 'user-2', name: 'Their secret category', type: 'EXPENSE', color: null, icon: null },
+  {
+    id: 'cat-food',
+    userId: null,
+    name: 'Food',
+    type: 'EXPENSE',
+    color: null,
+    icon: null,
+  },
+  {
+    id: 'cat-mine',
+    userId: 'user-1',
+    name: 'Hobbies',
+    type: 'EXPENSE',
+    color: '#ff0000',
+    icon: 'star',
+  },
+  {
+    id: 'cat-theirs',
+    userId: 'user-2',
+    name: 'Their secret category',
+    type: 'EXPENSE',
+    color: null,
+    icon: null,
+  },
 ];
 
-function item(id: string, accountId: string, accountName: string, direction: 'DEBIT' | 'CREDIT', amount: string, userId = 'user-1') {
-  return { id, userId, accountId, account: { name: accountName }, categoryId: null, category: null, direction, amount: D(amount), currency: 'TND', memo: null };
+function item(
+  id: string,
+  accountId: string,
+  accountName: string,
+  direction: 'DEBIT' | 'CREDIT',
+  amount: string,
+  userId = 'user-1',
+) {
+  return {
+    id,
+    userId,
+    accountId,
+    account: { name: accountName },
+    categoryId: null,
+    category: null,
+    direction,
+    amount: D(amount),
+    currency: 'TND',
+    memo: null,
+  };
 }
 
 function tx(fields: Row): Row {
@@ -101,7 +167,10 @@ const transactions: Row[] = [
     type: 'TRANSFER',
     description: 'Move to savings',
     occurredAt: at('2026-08-15T10:00:00Z'),
-    items: [item('i-3', 'acc-wallet', 'Wallet', 'DEBIT', '250.5'), item('i-4', 'acc-old', 'Old savings', 'CREDIT', '250.5')],
+    items: [
+      item('i-3', 'acc-wallet', 'Wallet', 'DEBIT', '250.5'),
+      item('i-4', 'acc-old', 'Old savings', 'CREDIT', '250.5'),
+    ],
   }),
   tx({
     id: 'tx-salary',
@@ -178,10 +247,18 @@ function matches(row: Row, where: Row = {}): boolean {
     return row[key] === value;
   });
 }
-const findMany = (rows: Row[]) => jest.fn(async ({ where }: { where?: Row } = {}) => rows.filter((r) => matches(r, where)));
+const findMany = (rows: Row[]) =>
+  jest.fn(async ({ where }: { where?: Row } = {}) =>
+    rows.filter((r) => matches(r, where)),
+  );
 
 const prismaStub = {
-  user: { findUnique: jest.fn(async ({ where }: { where: { id: string } }) => users.find((u) => u.id === where.id) ?? null) },
+  user: {
+    findUnique: jest.fn(
+      async ({ where }: { where: { id: string } }) =>
+        users.find((u) => u.id === where.id) ?? null,
+    ),
+  },
   account: { findMany: findMany(accounts) },
   category: { findMany: findMany(categories) },
   transaction: { findMany: findMany(transactions) },
@@ -234,21 +311,40 @@ describe('GET /export (e2e)', () => {
       const res = await get('?format=json', 'user-1');
       expect(res.status).toBe(200);
       expect(res.headers['content-type']).toMatch(/^application\/json/);
-      expect(res.headers['content-disposition']).toMatch(/^attachment; filename="mofin-export-\d{4}-\d{2}-\d{2}\.json"$/);
+      expect(res.headers['content-disposition']).toMatch(
+        /^attachment; filename="mofin-export-\d{4}-\d{2}-\d{2}\.json"$/,
+      );
 
       const doc = res.body;
-      expect(doc.user).toEqual({ email: 'amel@example.com', displayName: 'Amel' });
-      expect(doc.accounts.map((a: Row) => a.id).sort()).toEqual(['acc-old', 'acc-wallet']);
-      expect(doc.accounts.find((a: Row) => a.id === 'acc-old')).toEqual(
-        expect.objectContaining({ currency: 'TND', archivedAt: '2026-09-01T00:00:00.000Z' }),
-      );
-      expect(doc.categories.map((c: Row) => [c.id, c.isSystem]).sort()).toEqual([
-        ['cat-food', true],
-        ['cat-mine', false],
+      expect(doc.user).toEqual({
+        email: 'amel@example.com',
+        displayName: 'Amel',
+      });
+      expect(doc.accounts.map((a: Row) => a.id).sort()).toEqual([
+        'acc-old',
+        'acc-wallet',
       ]);
-      expect(doc.transactions.map((t: Row) => t.id).sort()).toEqual(['tx-groceries', 'tx-salary', 'tx-transfer']);
+      expect(doc.accounts.find((a: Row) => a.id === 'acc-old')).toEqual(
+        expect.objectContaining({
+          currency: 'TND',
+          archivedAt: '2026-09-01T00:00:00.000Z',
+        }),
+      );
+      expect(doc.categories.map((c: Row) => [c.id, c.isSystem]).sort()).toEqual(
+        [
+          ['cat-food', true],
+          ['cat-mine', false],
+        ],
+      );
+      expect(doc.transactions.map((t: Row) => t.id).sort()).toEqual([
+        'tx-groceries',
+        'tx-salary',
+        'tx-transfer',
+      ]);
       expect(doc.goals.map((g: Row) => g.id)).toEqual(['goal-mine']);
-      expect(JSON.stringify(doc)).not.toMatch(/user-2|tx-deleted|Their|"userId"/);
+      expect(JSON.stringify(doc)).not.toMatch(
+        /user-2|tx-deleted|Their|"userId"/,
+      );
     });
 
     it('keeps money exact and recurrence fields', async () => {
@@ -264,18 +360,34 @@ describe('GET /export (e2e)', () => {
           recurringToAccountId: 'acc-wallet',
         }),
       );
-      expect(salary.items[0]).toEqual(expect.objectContaining({ amount: '3200.125', direction: 'CREDIT', accountName: 'Wallet' }));
-      const groceries = doc.transactions.find((t: Row) => t.id === 'tx-groceries');
+      expect(salary.items[0]).toEqual(
+        expect.objectContaining({
+          amount: '3200.125',
+          direction: 'CREDIT',
+          accountName: 'Wallet',
+        }),
+      );
+      const groceries = doc.transactions.find(
+        (t: Row) => t.id === 'tx-groceries',
+      );
       expect(groceries.items[0].amount).toBe('12.345');
-      expect(doc.goals[0].instances[0]).toEqual(expect.objectContaining({ targetAmount: '5000.5', progressAmount: '2950.125' }));
+      expect(doc.goals[0].instances[0]).toEqual(
+        expect.objectContaining({
+          targetAmount: '5000.5',
+          progressAmount: '2950.125',
+        }),
+      );
     });
 
-    it("gives the other user only theirs", async () => {
+    it('gives the other user only theirs', async () => {
       const doc = (await get('?format=json', 'user-2')).body;
       expect(doc.transactions.map((t: Row) => t.id)).toEqual(['tx-theirs']);
       expect(doc.accounts.map((a: Row) => a.id)).toEqual(['acc-other']);
       expect(doc.goals.map((g: Row) => g.id)).toEqual(['goal-theirs']);
-      expect(doc.categories.map((c: Row) => c.id).sort()).toEqual(['cat-food', 'cat-theirs']);
+      expect(doc.categories.map((c: Row) => c.id).sort()).toEqual([
+        'cat-food',
+        'cat-theirs',
+      ]);
     });
   });
 
@@ -284,12 +396,16 @@ describe('GET /export (e2e)', () => {
       const res = await get('?format=csv', 'user-1').buffer(true);
       expect(res.status).toBe(200);
       expect(res.headers['content-type']).toBe('text/csv; charset=utf-8');
-      expect(res.headers['content-disposition']).toMatch(/^attachment; filename="mofin-export-\d{4}-\d{2}-\d{2}\.csv"$/);
+      expect(res.headers['content-disposition']).toMatch(
+        /^attachment; filename="mofin-export-\d{4}-\d{2}-\d{2}\.csv"$/,
+      );
 
       const text = res.text;
       expect(text.charCodeAt(0)).toBe(0xfeff);
       const lines = text.slice(1).trimEnd().split('\r\n');
-      expect(lines[0]).toBe('Date,Description,Type,Account,Category,Amount,Currency,Transaction ID');
+      expect(lines[0]).toBe(
+        'Date,Description,Type,Account,Category,Amount,Currency,Transaction ID',
+      );
       expect(lines.slice(1)).toEqual([
         '2026-10-02T10:00:00.000Z,"Groceries, ""bio"" market",EXPENSE,Wallet,Food,-12.345,TND,tx-groceries',
         '2026-08-15T10:00:00.000Z,Move to savings,TRANSFER,Wallet,,-250.5,TND,tx-transfer',
@@ -301,7 +417,8 @@ describe('GET /export (e2e)', () => {
   });
 
   it(`limits each user to ${EXPORT_THROTTLE.limit} exports an hour, without blocking others`, async () => {
-    for (let i = 0; i < EXPORT_THROTTLE.limit; i++) await get('?format=csv', 'user-3').expect(200);
+    for (let i = 0; i < EXPORT_THROTTLE.limit; i++)
+      await get('?format=csv', 'user-3').expect(200);
     const blocked = await get('?format=csv', 'user-3');
     expect(blocked.status).toBe(429);
     expect(Number(blocked.headers['retry-after'])).toBeGreaterThan(0);

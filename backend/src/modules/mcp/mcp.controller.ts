@@ -1,6 +1,20 @@
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { Controller, Delete, Get, HttpStatus, Post, Req, Res, UseGuards } from '@nestjs/common';
-import { ApiBody, ApiExcludeEndpoint, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  Controller,
+  Delete,
+  Get,
+  HttpStatus,
+  Post,
+  Req,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  ApiBody,
+  ApiExcludeEndpoint,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
@@ -78,7 +92,10 @@ export class McpController {
   private methodNotAllowed(res: Response): void {
     res.status(HttpStatus.METHOD_NOT_ALLOWED).json({
       jsonrpc: '2.0',
-      error: { code: -32000, message: 'Method not allowed. Use POST for MCP requests.' },
+      error: {
+        code: -32000,
+        message: 'Method not allowed. Use POST for MCP requests.',
+      },
       id: null,
     });
   }

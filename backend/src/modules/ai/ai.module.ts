@@ -7,6 +7,6 @@ import { AiService } from './ai.service';
   imports: [DraftTransactionsModule],
   controllers: [AiController],
   providers: [AiService],
-  exports: [AiService]
+  exports: [AiService],
 })
 export class AiModule {}

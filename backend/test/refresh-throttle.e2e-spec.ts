@@ -21,7 +21,10 @@ import { PasswordResetService } from '../src/modules/auth/password-reset.service
 describe('POST /auth/refresh rate limiting (e2e)', () => {
   let app: INestApplication<App>;
   const authService = {
-    refreshTokens: jest.fn(async (token: string) => ({ accessToken: `a-${token}`, refreshToken: `r-${token}` })),
+    refreshTokens: jest.fn(async (token: string) => ({
+      accessToken: `a-${token}`,
+      refreshToken: `r-${token}`,
+    })),
   };
 
   beforeEach(async () => {

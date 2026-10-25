@@ -15,8 +15,10 @@ export const REFRESH_THROTTLE = { limit: 5, ttl: 60_000 } as const;
  * key, and the throttler hashes the key again before storing it.
  */
 export function refreshTokenTracker(req: Record<string, unknown>): string {
-  const token = (req.body as { refreshToken?: unknown } | undefined)?.refreshToken;
-  if (typeof token === 'string' && token.length > 0) return `refresh:${sha256(token)}`;
+  const token = (req.body as { refreshToken?: unknown } | undefined)
+    ?.refreshToken;
+  if (typeof token === 'string' && token.length > 0)
+    return `refresh:${sha256(token)}`;
   return `ip:${String(req.ip)}`;
 }
 
@@ -32,7 +34,9 @@ export class RefreshThrottlerGuard extends ThrottlerGuard {
     return refreshTokenTracker(req);
   }
 
-  protected async handleRequest(requestProps: ThrottlerRequest): Promise<boolean> {
+  protected async handleRequest(
+    requestProps: ThrottlerRequest,
+  ): Promise<boolean> {
     return super.handleRequest({
       ...requestProps,
       limit: REFRESH_THROTTLE.limit,

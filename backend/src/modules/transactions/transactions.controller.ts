@@ -1,4 +1,14 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -11,7 +21,7 @@ import {
   UpdateRecurringTransactionDto,
   updateRecurringTransactionSchema,
   UpdateTransactionDto,
-  updateTransactionSchema
+  updateTransactionSchema,
 } from './dto/transactions.dto';
 import { TransactionsService } from './transactions.service';
 
@@ -26,12 +36,15 @@ export class TransactionsController {
   @ApiZodBody(createTransactionSchema)
   create(
     @CurrentUser() user: AuthenticatedUser,
-    @Body(new ZodValidationPipe(createTransactionSchema)) dto: CreateTransactionDto,
+    @Body(new ZodValidationPipe(createTransactionSchema))
+    dto: CreateTransactionDto,
   ) {
     return this.transactionsService.create(user.id, {
       ...dto,
       occurredAt: new Date(dto.occurredAt),
-      recurringEndDate: dto.recurringEndDate ? new Date(dto.recurringEndDate) : undefined,
+      recurringEndDate: dto.recurringEndDate
+        ? new Date(dto.recurringEndDate)
+        : undefined,
     });
   }
 
@@ -45,14 +58,21 @@ export class TransactionsController {
   update(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
-    @Body(new ZodValidationPipe(updateTransactionSchema)) dto: UpdateTransactionDto,
+    @Body(new ZodValidationPipe(updateTransactionSchema))
+    dto: UpdateTransactionDto,
   ) {
-    return this.transactionsService.update(user.id, id, { ...dto, occurredAt: new Date(dto.occurredAt) });
+    return this.transactionsService.update(user.id, id, {
+      ...dto,
+      occurredAt: new Date(dto.occurredAt),
+    });
   }
 
   @Delete(':id')
   @HttpCode(204)
-  async remove(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string): Promise<void> {
+  async remove(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+  ): Promise<void> {
     await this.transactionsService.remove(user.id, id);
   }
 
@@ -66,27 +86,41 @@ export class TransactionsController {
   updateRecurring(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
-    @Body(new ZodValidationPipe(updateRecurringTransactionSchema)) dto: UpdateRecurringTransactionDto,
+    @Body(new ZodValidationPipe(updateRecurringTransactionSchema))
+    dto: UpdateRecurringTransactionDto,
   ) {
     return this.transactionsService.updateRecurring(user.id, id, {
       ...dto,
       recurringEndDate:
-        dto.recurringEndDate === null ? null : dto.recurringEndDate ? new Date(dto.recurringEndDate) : undefined,
+        dto.recurringEndDate === null
+          ? null
+          : dto.recurringEndDate
+            ? new Date(dto.recurringEndDate)
+            : undefined,
     });
   }
 
   @Post(':id/recurring/pause')
-  pauseRecurring(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+  pauseRecurring(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
     return this.transactionsService.pauseRecurring(user.id, id);
   }
 
   @Post(':id/recurring/resume')
-  resumeRecurring(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+  resumeRecurring(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
     return this.transactionsService.resumeRecurring(user.id, id);
   }
 
   @Post(':id/recurring/cancel')
-  cancelRecurring(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+  cancelRecurring(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
     return this.transactionsService.cancelRecurring(user.id, id);
   }
 }

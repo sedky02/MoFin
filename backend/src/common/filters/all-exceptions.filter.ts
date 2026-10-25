@@ -1,4 +1,11 @@
-import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus, Logger } from '@nestjs/common';
+import {
+  ArgumentsHost,
+  Catch,
+  ExceptionFilter,
+  HttpException,
+  HttpStatus,
+  Logger,
+} from '@nestjs/common';
 import { Request, Response } from 'express';
 import { Sentry } from '../sentry';
 
@@ -24,20 +31,29 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const context = `${request.method} ${request.originalUrl ?? request.url}`;
     // Readiness probes flap during routine deploys/restarts; that's expected
     // operational noise, not an incident worth paging on.
-    const isHealthCheck = (request.originalUrl ?? request.url ?? '').startsWith('/health');
+    const isHealthCheck = (request.originalUrl ?? request.url ?? '').startsWith(
+      '/health',
+    );
 
     if (exception instanceof HttpException) {
       const status = exception.getStatus();
       if (status >= 500) {
-        this.logger.error(`${exception.message} during ${context}`, exception.stack);
+        this.logger.error(
+          `${exception.message} during ${context}`,
+          exception.stack,
+        );
         if (!isHealthCheck) Sentry.captureException(exception);
       }
       response.status(status).json(exception.getResponse());
       return;
     }
 
-    const error = exception instanceof Error ? exception : new Error(String(exception));
-    this.logger.error(`Unhandled exception during ${context}: ${error.message}`, error.stack);
+    const error =
+      exception instanceof Error ? exception : new Error(String(exception));
+    this.logger.error(
+      `Unhandled exception during ${context}: ${error.message}`,
+      error.stack,
+    );
     if (!isHealthCheck) Sentry.captureException(error);
     response.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,

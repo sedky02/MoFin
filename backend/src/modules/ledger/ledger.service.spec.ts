@@ -3,7 +3,12 @@ import { Prisma } from '@prisma/client';
 import { AccountsService } from '../accounts/accounts.service';
 import { LedgerService } from './ledger.service';
 
-type TestAccount = { id: string; currency: string; archivedAt?: Date | null; openingBalance?: string };
+type TestAccount = {
+  id: string;
+  currency: string;
+  archivedAt?: Date | null;
+  openingBalance?: string;
+};
 
 describe('LedgerService', () => {
   const account = (currency: string) => ({ id: `acc-${currency}`, currency });
@@ -11,25 +16,56 @@ describe('LedgerService', () => {
   // The real AccountsService over an in-memory account table, so the
   // archived/active rules are the ones the app actually runs. Every test
   // account belongs to user u1.
-  function makeService(accounts: Record<string, TestAccount>, groupedRows: unknown[] = []) {
-    const findFirst = jest.fn(async ({ where }: { where: { id: string; userId: string; archivedAt?: null } }) => {
-      const found = Object.values(accounts).find((a) => a.id === where.id && where.userId === 'u1');
-      if (!found) return null;
-      if ('archivedAt' in where && found.archivedAt) return null;
-      return found;
-    });
+  function makeService(
+    accounts: Record<string, TestAccount>,
+    groupedRows: unknown[] = [],
+  ) {
+    const findFirst = jest.fn(
+      async ({
+        where,
+      }: {
+        where: { id: string; userId: string; archivedAt?: null };
+      }) => {
+        const found = Object.values(accounts).find(
+          (a) => a.id === where.id && where.userId === 'u1',
+        );
+        if (!found) return null;
+        if ('archivedAt' in where && found.archivedAt) return null;
+        return found;
+      },
+    );
     // Mirrors the opening-balance query's where-clause: non-zero, optional id/currency.
-    const findMany = jest.fn(async ({ where }: { where: { userId: string; id?: string; currency?: string } }) =>
-      Object.values(accounts)
-        .filter((a) => where.userId === 'u1' && !new Prisma.Decimal(a.openingBalance ?? 0).isZero())
-        .filter((a) => (where.id ? a.id === where.id : true) && (where.currency ? a.currency === where.currency : true))
-        .map((a) => ({ id: a.id, currency: a.currency, openingBalance: new Prisma.Decimal(a.openingBalance!) })),
+    const findMany = jest.fn(
+      async ({
+        where,
+      }: {
+        where: { userId: string; id?: string; currency?: string };
+      }) =>
+        Object.values(accounts)
+          .filter(
+            (a) =>
+              where.userId === 'u1' &&
+              !new Prisma.Decimal(a.openingBalance ?? 0).isZero(),
+          )
+          .filter(
+            (a) =>
+              (where.id ? a.id === where.id : true) &&
+              (where.currency ? a.currency === where.currency : true),
+          )
+          .map((a) => ({
+            id: a.id,
+            currency: a.currency,
+            openingBalance: new Prisma.Decimal(a.openingBalance!),
+          })),
     );
     const prisma = {
       account: { findFirst, findMany },
       transactionItem: { groupBy: jest.fn(async () => groupedRows) },
     };
-    return new LedgerService(prisma as never, new AccountsService(prisma as never));
+    return new LedgerService(
+      prisma as never,
+      new AccountsService(prisma as never),
+    );
   }
 
   describe('buildEntriesForCommand', () => {
@@ -43,7 +79,11 @@ describe('LedgerService', () => {
         description: 'salary',
       });
       expect(entries).toHaveLength(1);
-      expect(entries[0]).toMatchObject({ accountId: 'acc-USD', direction: 'CREDIT', amount: '100' });
+      expect(entries[0]).toMatchObject({
+        accountId: 'acc-USD',
+        direction: 'CREDIT',
+        amount: '100',
+      });
     });
 
     it('creates a single DEBIT for EXPENSE', async () => {
@@ -60,7 +100,10 @@ describe('LedgerService', () => {
     });
 
     it('creates a balanced DEBIT + CREDIT pair for TRANSFER', async () => {
-      const service = makeService({ from: account('USD'), to: { id: 'acc-USD2', currency: 'USD' } });
+      const service = makeService({
+        from: account('USD'),
+        to: { id: 'acc-USD2', currency: 'USD' },
+      });
       const entries = await service.buildEntriesForCommand('u1', {
         type: 'TRANSFER',
         amount: '50',
@@ -87,8 +130,18 @@ describe('LedgerService', () => {
       });
       expect(entries).toHaveLength(2);
       expect(entries).toEqual([
-        expect.objectContaining({ accountId: 'acc-USD', direction: 'DEBIT', amount: '30', categoryId: 'cat-groceries' }),
-        expect.objectContaining({ accountId: 'acc-USD', direction: 'DEBIT', amount: '20', categoryId: 'cat-household' }),
+        expect.objectContaining({
+          accountId: 'acc-USD',
+          direction: 'DEBIT',
+          amount: '30',
+          categoryId: 'cat-groceries',
+        }),
+        expect.objectContaining({
+          accountId: 'acc-USD',
+          direction: 'DEBIT',
+          amount: '20',
+          categoryId: 'cat-household',
+        }),
       ]);
     });
 
@@ -123,7 +176,13 @@ describe('LedgerService', () => {
     });
 
     it('rejects an expense from an archived account', async () => {
-      const service = makeService({ old: { id: 'acc-old', currency: 'EUR', archivedAt: new Date('2026-09-01') } });
+      const service = makeService({
+        old: {
+          id: 'acc-old',
+          currency: 'EUR',
+          archivedAt: new Date('2026-09-01'),
+        },
+      });
       await expect(
         service.buildEntriesForCommand('u1', {
           type: 'EXPENSE',
@@ -138,7 +197,11 @@ describe('LedgerService', () => {
     it('rejects a transfer into an archived account', async () => {
       const service = makeService({
         from: account('EUR'),
-        old: { id: 'acc-old', currency: 'EUR', archivedAt: new Date('2026-09-01') },
+        old: {
+          id: 'acc-old',
+          currency: 'EUR',
+          archivedAt: new Date('2026-09-01'),
+        },
       });
       await expect(
         service.buildEntriesForCommand('u1', {
@@ -153,7 +216,10 @@ describe('LedgerService', () => {
     });
 
     it('rejects a cross-currency transfer (audit A3)', async () => {
-      const service = makeService({ from: account('USD'), to: { id: 'acc-EUR', currency: 'EUR' } });
+      const service = makeService({
+        from: account('USD'),
+        to: { id: 'acc-EUR', currency: 'EUR' },
+      });
       await expect(
         service.buildEntriesForCommand('u1', {
           type: 'TRANSFER',
@@ -171,20 +237,41 @@ describe('LedgerService', () => {
     it("leaves deleted transactions' lines out of the sum", async () => {
       const groupBy = jest.fn(async () => []);
       const prisma = {
-        account: { findFirst: jest.fn(async () => ({ id: 'a', currency: 'USD' })), findMany: jest.fn(async () => []) },
+        account: {
+          findFirst: jest.fn(async () => ({ id: 'a', currency: 'USD' })),
+          findMany: jest.fn(async () => []),
+        },
         transactionItem: { groupBy },
       };
-      const service = new LedgerService(prisma as never, new AccountsService(prisma as never));
+      const service = new LedgerService(
+        prisma as never,
+        new AccountsService(prisma as never),
+      );
       await service.getBalance('u1', { accountId: 'a' });
       expect(groupBy).toHaveBeenCalledWith(
-        expect.objectContaining({ where: expect.objectContaining({ userId: 'u1', transaction: { deletedAt: null } }) }),
+        expect.objectContaining({
+          where: expect.objectContaining({
+            userId: 'u1',
+            transaction: { deletedAt: null },
+          }),
+        }),
       );
     });
 
     it('adds CREDITs and subtracts DEBITs from grouped DB rows', async () => {
       const rows = [
-        { accountId: 'a', currency: 'USD', direction: 'CREDIT', _sum: { amount: new Prisma.Decimal('100') } },
-        { accountId: 'a', currency: 'USD', direction: 'DEBIT', _sum: { amount: new Prisma.Decimal('30') } },
+        {
+          accountId: 'a',
+          currency: 'USD',
+          direction: 'CREDIT',
+          _sum: { amount: new Prisma.Decimal('100') },
+        },
+        {
+          accountId: 'a',
+          currency: 'USD',
+          direction: 'DEBIT',
+          _sum: { amount: new Prisma.Decimal('30') },
+        },
       ];
       const service = makeService({ a: { id: 'a', currency: 'USD' } }, rows);
       const result = await service.getBalance('u1', { accountId: 'a' });
@@ -193,8 +280,18 @@ describe('LedgerService', () => {
 
     it('keys by accountId:currency when no single account is requested', async () => {
       const rows = [
-        { accountId: 'a', currency: 'USD', direction: 'CREDIT', _sum: { amount: new Prisma.Decimal('50') } },
-        { accountId: 'b', currency: 'EUR', direction: 'DEBIT', _sum: { amount: new Prisma.Decimal('10') } },
+        {
+          accountId: 'a',
+          currency: 'USD',
+          direction: 'CREDIT',
+          _sum: { amount: new Prisma.Decimal('50') },
+        },
+        {
+          accountId: 'b',
+          currency: 'EUR',
+          direction: 'DEBIT',
+          _sum: { amount: new Prisma.Decimal('10') },
+        },
       ];
       const service = makeService({}, rows);
       const result = await service.getBalance('u1', {});
@@ -208,44 +305,95 @@ describe('LedgerService', () => {
 
     it('returns the real balance of an archived account', async () => {
       const rows = [
-        { accountId: 'acc-old', currency: 'EUR', direction: 'CREDIT', _sum: { amount: new Prisma.Decimal('800.00') } },
+        {
+          accountId: 'acc-old',
+          currency: 'EUR',
+          direction: 'CREDIT',
+          _sum: { amount: new Prisma.Decimal('800.00') },
+        },
       ];
-      const service = makeService({ old: { id: 'acc-old', currency: 'EUR', archivedAt: new Date('2026-09-01') } }, rows);
+      const service = makeService(
+        {
+          old: {
+            id: 'acc-old',
+            currency: 'EUR',
+            archivedAt: new Date('2026-09-01'),
+          },
+        },
+        rows,
+      );
       const result = await service.getBalance('u1', { accountId: 'acc-old' });
       expect(result).toEqual([{ key: 'EUR', balance: '800' }]);
     });
 
     it("404s for an account that isn't the user's", async () => {
       const service = makeService({ a: { id: 'a', currency: 'USD' } });
-      await expect(service.getBalance('someone-else', { accountId: 'a' })).rejects.toBeInstanceOf(NotFoundException);
+      await expect(
+        service.getBalance('someone-else', { accountId: 'a' }),
+      ).rejects.toBeInstanceOf(NotFoundException);
     });
 
     it('starts an account from its opening balance', async () => {
-      const rows = [{ accountId: 'a', currency: 'USD', direction: 'DEBIT', _sum: { amount: new Prisma.Decimal('200') } }];
-      const service = makeService({ a: { id: 'a', currency: 'USD', openingBalance: '5000' } }, rows);
-      await expect(service.getBalance('u1', { accountId: 'a' })).resolves.toEqual([{ key: 'USD', balance: '4800' }]);
+      const rows = [
+        {
+          accountId: 'a',
+          currency: 'USD',
+          direction: 'DEBIT',
+          _sum: { amount: new Prisma.Decimal('200') },
+        },
+      ];
+      const service = makeService(
+        { a: { id: 'a', currency: 'USD', openingBalance: '5000' } },
+        rows,
+      );
+      await expect(
+        service.getBalance('u1', { accountId: 'a' }),
+      ).resolves.toEqual([{ key: 'USD', balance: '4800' }]);
     });
 
     it('shows an opening balance for an account with no entries yet', async () => {
-      const service = makeService({ a: { id: 'a', currency: 'USD', openingBalance: '5000' } });
-      await expect(service.getBalance('u1', { accountId: 'a' })).resolves.toEqual([{ key: 'USD', balance: '5000' }]);
+      const service = makeService({
+        a: { id: 'a', currency: 'USD', openingBalance: '5000' },
+      });
+      await expect(
+        service.getBalance('u1', { accountId: 'a' }),
+      ).resolves.toEqual([{ key: 'USD', balance: '5000' }]);
     });
 
     it('keeps a negative opening balance (a credit account) negative', async () => {
-      const service = makeService({ card: { id: 'card', currency: 'TND', openingBalance: '-1250.500' } });
-      await expect(service.getBalance('u1', { accountId: 'card' })).resolves.toEqual([{ key: 'TND', balance: '-1250.5' }]);
+      const service = makeService({
+        card: { id: 'card', currency: 'TND', openingBalance: '-1250.500' },
+      });
+      await expect(
+        service.getBalance('u1', { accountId: 'card' }),
+      ).resolves.toEqual([{ key: 'TND', balance: '-1250.5' }]);
     });
 
     it("adds each opening balance to its own account's currency only", async () => {
       const rows = [
-        { accountId: 'a', currency: 'USD', direction: 'CREDIT', _sum: { amount: new Prisma.Decimal('50') } },
-        { accountId: 'b', currency: 'EUR', direction: 'DEBIT', _sum: { amount: new Prisma.Decimal('10') } },
+        {
+          accountId: 'a',
+          currency: 'USD',
+          direction: 'CREDIT',
+          _sum: { amount: new Prisma.Decimal('50') },
+        },
+        {
+          accountId: 'b',
+          currency: 'EUR',
+          direction: 'DEBIT',
+          _sum: { amount: new Prisma.Decimal('10') },
+        },
       ];
       const service = makeService(
         {
           a: { id: 'a', currency: 'USD', openingBalance: '1000' },
           b: { id: 'b', currency: 'EUR', openingBalance: '300' },
-          old: { id: 'old', currency: 'EUR', archivedAt: new Date('2026-09-01'), openingBalance: '25' },
+          old: {
+            id: 'old',
+            currency: 'EUR',
+            archivedAt: new Date('2026-09-01'),
+            openingBalance: '25',
+          },
         },
         rows,
       );
@@ -259,7 +407,6 @@ describe('LedgerService', () => {
           { key: 'old:EUR', balance: '25' },
         ]),
       );
-
     });
 
     it('asks only for opening balances in the requested currency', async () => {
@@ -267,11 +414,20 @@ describe('LedgerService', () => {
         a: { id: 'a', currency: 'USD', openingBalance: '1000' },
         b: { id: 'b', currency: 'EUR', openingBalance: '300' },
       });
-      await expect(service.getBalance('u1', { currency: 'EUR' })).resolves.toEqual([{ key: 'b:EUR', balance: '300' }]);
+      await expect(
+        service.getBalance('u1', { currency: 'EUR' }),
+      ).resolves.toEqual([{ key: 'b:EUR', balance: '300' }]);
     });
 
     it('treats a group with no matching rows (null _sum) as zero', async () => {
-      const rows = [{ accountId: 'a', currency: 'USD', direction: 'CREDIT', _sum: { amount: null } }];
+      const rows = [
+        {
+          accountId: 'a',
+          currency: 'USD',
+          direction: 'CREDIT',
+          _sum: { amount: null },
+        },
+      ];
       const service = makeService({ a: { id: 'a', currency: 'USD' } }, rows);
       const result = await service.getBalance('u1', { accountId: 'a' });
       expect(result).toEqual([{ key: 'USD', balance: '0' }]);

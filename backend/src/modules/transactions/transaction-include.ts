@@ -8,5 +8,5 @@ import { Prisma } from '@prisma/client';
  */
 export const TRANSACTION_INCLUDE = {
   items: { include: { category: true, account: true } },
-  category: true
+  category: true,
 } satisfies Prisma.TransactionInclude;

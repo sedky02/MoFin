@@ -22,7 +22,10 @@ import { WEB_AUDIENCE } from './auth.constants';
 // short-circuit evaluation on `!user?.passwordHash` skips the ~100ms compare
 // entirely for unknown emails / Google-only accounts, a measurable timing
 // side-channel for account enumeration (audit SEC-XX).
-const DUMMY_PASSWORD_HASH = bcrypt.hashSync(randomBytes(32).toString('hex'), 12);
+const DUMMY_PASSWORD_HASH = bcrypt.hashSync(
+  randomBytes(32).toString('hex'),
+  12,
+);
 
 // How long a just-rotated refresh token still gets its successor back
 // instead of counting as reuse (B-22).
@@ -52,15 +55,24 @@ export class AuthService {
     const existing = await this.usersService.findByEmail(dto.email);
     if (!existing) {
       try {
-        await this.usersService.createUser({ email: dto.email, displayName: dto.displayName, passwordHash });
+        await this.usersService.createUser({
+          email: dto.email,
+          displayName: dto.displayName,
+          passwordHash,
+        });
       } catch (err) {
         // A concurrent registration of the same new email lost the race and
         // hit the unique constraint — still not a signal worth exposing.
-        const isDuplicate = err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002';
+        const isDuplicate =
+          err instanceof Prisma.PrismaClientKnownRequestError &&
+          err.code === 'P2002';
         if (!isDuplicate) throw err;
       }
     }
-    return { message: 'If this email can be used, your account has been created. Please log in.' };
+    return {
+      message:
+        'If this email can be used, your account has been created. Please log in.',
+    };
   }
 
   async login(dto: LoginDto) {
@@ -68,11 +80,18 @@ export class AuthService {
     // No `&&`/early-return short-circuit before this — bcrypt.compare must run
     // unconditionally (against a dummy hash when there's no real one) so a
     // nonexistent email doesn't respond measurably faster than a real one.
-    const passwordMatches = await bcrypt.compare(dto.password, user?.passwordHash ?? DUMMY_PASSWORD_HASH);
+    const passwordMatches = await bcrypt.compare(
+      dto.password,
+      user?.passwordHash ?? DUMMY_PASSWORD_HASH,
+    );
     if (!user?.passwordHash || !passwordMatches) {
       throw new UnauthorizedException('Invalid credentials');
     }
-    return this.issueTokens(user.id, user.email, randomBytes(16).toString('hex'));
+    return this.issueTokens(
+      user.id,
+      user.email,
+      randomBytes(16).toString('hex'),
+    );
   }
 
   /**
@@ -90,7 +109,9 @@ export class AuthService {
    * here and checked against the stored hash without ever storing it.
    */
   async refreshTokens(refreshToken: string) {
-    const stored = await this.prisma.refreshToken.findUnique({ where: { tokenHash: sha256(refreshToken) } });
+    const stored = await this.prisma.refreshToken.findUnique({
+      where: { tokenHash: sha256(refreshToken) },
+    });
     if (!stored) throw new UnauthorizedException('Invalid refresh token');
 
     const successor = this.successorOf(refreshToken);
@@ -108,7 +129,9 @@ export class AuthService {
       throw new UnauthorizedException('Refresh token expired');
     }
 
-    const user = await this.prisma.user.findUnique({ where: { id: stored.userId } });
+    const user = await this.prisma.user.findUnique({
+      where: { id: stored.userId },
+    });
     if (!user) throw new UnauthorizedException('Invalid refresh token');
 
     // Claim the token and create its successor in one step, so two concurrent
@@ -119,18 +142,26 @@ export class AuthService {
         data: { revokedAt: new Date(), rotatedToId: sha256(successor) },
       });
       if (count === 0) return false;
-      await tx.refreshToken.create({ data: this.refreshTokenRow(successor, user.id, stored.familyId) });
+      await tx.refreshToken.create({
+        data: this.refreshTokenRow(successor, user.id, stored.familyId),
+      });
       return true;
     });
     if (!claimed) {
       // A concurrent refresh with the same token won: hand out its successor.
-      const current = await this.prisma.refreshToken.findUnique({ where: { id: stored.id } });
-      const retried = current && (await this.reissueRecentRotation(current, successor));
+      const current = await this.prisma.refreshToken.findUnique({
+        where: { id: stored.id },
+      });
+      const retried =
+        current && (await this.reissueRecentRotation(current, successor));
       if (retried) return retried;
       throw new UnauthorizedException('Invalid refresh token');
     }
 
-    return { accessToken: await this.signAccessToken(user.id, user.email), refreshToken: successor };
+    return {
+      accessToken: await this.signAccessToken(user.id, user.email),
+      refreshToken: successor,
+    };
   }
 
   /**
@@ -145,16 +176,30 @@ export class AuthService {
     successor: string,
   ) {
     if (!stored.revokedAt || !stored.rotatedToId) return null;
-    if (Date.now() - stored.revokedAt.getTime() > ROTATION_GRACE_MS) return null;
+    if (Date.now() - stored.revokedAt.getTime() > ROTATION_GRACE_MS)
+      return null;
     if (stored.rotatedToId !== sha256(successor)) return null;
 
-    const next = await this.prisma.refreshToken.findUnique({ where: { tokenHash: stored.rotatedToId } });
-    if (!next || next.revokedAt || next.rotatedToId || next.expiresAt < new Date()) return null;
+    const next = await this.prisma.refreshToken.findUnique({
+      where: { tokenHash: stored.rotatedToId },
+    });
+    if (
+      !next ||
+      next.revokedAt ||
+      next.rotatedToId ||
+      next.expiresAt < new Date()
+    )
+      return null;
 
-    const user = await this.prisma.user.findUnique({ where: { id: next.userId } });
+    const user = await this.prisma.user.findUnique({
+      where: { id: next.userId },
+    });
     if (!user) return null;
 
-    return { accessToken: await this.signAccessToken(user.id, user.email), refreshToken: successor };
+    return {
+      accessToken: await this.signAccessToken(user.id, user.email),
+      refreshToken: successor,
+    };
   }
 
   /**
@@ -163,14 +208,19 @@ export class AuthService {
    * be given the same successor. Login tokens stay random.
    */
   private successorOf(refreshToken: string): string {
-    return createHmac('sha256', this.config.getOrThrow<string>('REFRESH_TOKEN_SECRET'))
+    return createHmac(
+      'sha256',
+      this.config.getOrThrow<string>('REFRESH_TOKEN_SECRET'),
+    )
       .update(refreshToken)
       .digest('base64url');
   }
 
   /** Revokes every refresh token in the presented token's family. */
   async logout(refreshToken: string): Promise<void> {
-    const stored = await this.prisma.refreshToken.findUnique({ where: { tokenHash: sha256(refreshToken) } });
+    const stored = await this.prisma.refreshToken.findUnique({
+      where: { tokenHash: sha256(refreshToken) },
+    });
     if (!stored) return;
     await this.prisma.refreshToken.updateMany({
       where: { familyId: stored.familyId, revokedAt: null },
@@ -191,32 +241,49 @@ export class AuthService {
    * A wrong current password is a 400 with a field error rather than a 401:
    * the session itself is fine, and the BFF reads a 401 as "session over".
    */
-  async changePassword(userId: string, dto: ChangePasswordDto): Promise<{ message: string }> {
+  async changePassword(
+    userId: string,
+    dto: ChangePasswordDto,
+  ): Promise<{ message: string }> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new UnauthorizedException();
-    if (!user.passwordHash) throw new BadRequestException(GOOGLE_ONLY_PASSWORD_MESSAGE);
+    if (!user.passwordHash)
+      throw new BadRequestException(GOOGLE_ONLY_PASSWORD_MESSAGE);
 
     if (!(await bcrypt.compare(dto.currentPassword, user.passwordHash))) {
       throw fieldError('currentPassword', 'The current password is incorrect.');
     }
     if (dto.newPassword === dto.currentPassword) {
-      throw fieldError('newPassword', 'Choose a password different from the current one.');
+      throw fieldError(
+        'newPassword',
+        'Choose a password different from the current one.',
+      );
     }
 
     const passwordHash = await bcrypt.hash(dto.newPassword, 12);
     const current = dto.refreshToken
-      ? await this.prisma.refreshToken.findUnique({ where: { tokenHash: sha256(dto.refreshToken) } })
+      ? await this.prisma.refreshToken.findUnique({
+          where: { tokenHash: sha256(dto.refreshToken) },
+        })
       : null;
-    const keepFamilyId = current?.userId === userId ? current.familyId : undefined;
+    const keepFamilyId =
+      current?.userId === userId ? current.familyId : undefined;
     const now = new Date();
 
     await this.prisma.$transaction(async (tx) => {
       await tx.user.update({ where: { id: userId }, data: { passwordHash } });
       await tx.refreshToken.updateMany({
-        where: { userId, revokedAt: null, ...(keepFamilyId ? { familyId: { not: keepFamilyId } } : {}) },
+        where: {
+          userId,
+          revokedAt: null,
+          ...(keepFamilyId ? { familyId: { not: keepFamilyId } } : {}),
+        },
         data: { revokedAt: now },
       });
-      await tx.passwordResetToken.updateMany({ where: { userId, usedAt: null }, data: { usedAt: now } });
+      await tx.passwordResetToken.updateMany({
+        where: { userId, usedAt: null },
+        data: { usedAt: now },
+      });
     });
 
     return { message: 'Password changed.' };
@@ -276,8 +343,11 @@ export class AuthService {
       throw new UnauthorizedException('Google code exchange failed');
     }
 
-    const { id_token: idToken } = (await tokenRes.json()) as { id_token?: string };
-    if (!idToken) throw new UnauthorizedException('Google response missing id_token');
+    const { id_token: idToken } = (await tokenRes.json()) as {
+      id_token?: string;
+    };
+    if (!idToken)
+      throw new UnauthorizedException('Google response missing id_token');
 
     const claims = decodeJwtPayload(idToken);
     const validIssuers = ['accounts.google.com', 'https://accounts.google.com'];
@@ -295,18 +365,26 @@ export class AuthService {
 
     const googleId = String(claims.sub);
     const email = String(claims.email).trim().toLowerCase();
-    const displayName = typeof claims.name === 'string' ? claims.name : undefined;
+    const displayName =
+      typeof claims.name === 'string' ? claims.name : undefined;
 
     // Link by googleId, else by existing email, else create a passwordless user.
     let user = await this.prisma.user.findUnique({ where: { googleId } });
     if (!user) {
       const byEmail = await this.prisma.user.findUnique({ where: { email } });
       user = byEmail
-        ? await this.prisma.user.update({ where: { id: byEmail.id }, data: { googleId } })
+        ? await this.prisma.user.update({
+            where: { id: byEmail.id },
+            data: { googleId },
+          })
         : await this.usersService.createUser({ email, googleId, displayName });
     }
 
-    return this.issueTokens(user.id, user.email, randomBytes(16).toString('hex'));
+    return this.issueTokens(
+      user.id,
+      user.email,
+      randomBytes(16).toString('hex'),
+    );
   }
 
   /**
@@ -319,12 +397,16 @@ export class AuthService {
   private async issueTokens(userId: string, email: string, familyId: string) {
     const accessToken = await this.signAccessToken(userId, email);
     const refreshToken = randomBytes(32).toString('base64url');
-    await this.prisma.refreshToken.create({ data: this.refreshTokenRow(refreshToken, userId, familyId) });
+    await this.prisma.refreshToken.create({
+      data: this.refreshTokenRow(refreshToken, userId, familyId),
+    });
     return { accessToken, refreshToken };
   }
 
   private signAccessToken(userId: string, email: string): Promise<string> {
-    const issuer = this.config.getOrThrow<string>('OAUTH_ISSUER').replace(/\/$/, '');
+    const issuer = this.config
+      .getOrThrow<string>('OAUTH_ISSUER')
+      .replace(/\/$/, '');
     return this.jwtService.signAsync(
       { sub: userId, email },
       {
@@ -336,8 +418,14 @@ export class AuthService {
     );
   }
 
-  private refreshTokenRow(refreshToken: string, userId: string, familyId: string) {
-    const refreshTtlMs = parseDurationMs(this.config.get<string>('JWT_REFRESH_TTL', '30d'));
+  private refreshTokenRow(
+    refreshToken: string,
+    userId: string,
+    familyId: string,
+  ) {
+    const refreshTtlMs = parseDurationMs(
+      this.config.get<string>('JWT_REFRESH_TTL', '30d'),
+    );
     return {
       tokenHash: sha256(refreshToken),
       userId,
@@ -349,7 +437,10 @@ export class AuthService {
 
 /** A 400 shaped like ZodValidationPipe's, so the form shows it on `path`. */
 function fieldError(path: string, message: string): BadRequestException {
-  return new BadRequestException({ message: 'Validation failed', errors: [{ path, message }] });
+  return new BadRequestException({
+    message: 'Validation failed',
+    errors: [{ path, message }],
+  });
 }
 
 /** Decode (without signature verification) the payload of a JWT. */

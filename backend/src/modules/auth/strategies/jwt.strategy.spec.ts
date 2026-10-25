@@ -15,34 +15,41 @@ describe('JwtStrategy MCP token isolation', () => {
 
   function configFor(secret: string) {
     return {
-      getOrThrow: (key: string) => (key === 'OAUTH_ISSUER' ? ISSUER : secret)
+      getOrThrow: (key: string) => (key === 'OAUTH_ISSUER' ? ISSUER : secret),
     } as unknown as ConfigService;
   }
 
   it('rejects an MCP-minted token (different secret + audience) at the verifier level', () => {
-    const mcpToken = jwt.sign({ sub: 'user-1', email: 'a@b.com', scope: 'mcp' }, MCP_SECRET, {
-      issuer: ISSUER,
-      audience: `${ISSUER}/api/v1/mcp`,
-      expiresIn: '15m'
-    });
+    const mcpToken = jwt.sign(
+      { sub: 'user-1', email: 'a@b.com', scope: 'mcp' },
+      MCP_SECRET,
+      {
+        issuer: ISSUER,
+        audience: `${ISSUER}/api/v1/mcp`,
+        expiresIn: '15m',
+      },
+    );
 
     expect(() =>
-      jwt.verify(mcpToken, WEB_SECRET, { issuer: ISSUER, audience: 'mofin-web' })
+      jwt.verify(mcpToken, WEB_SECRET, {
+        issuer: ISSUER,
+        audience: 'mofin-web',
+      }),
     ).toThrow();
   });
 
   it('validate() rejects a payload carrying an MCP scope even if it somehow verifies', () => {
     const strategy = new JwtStrategy(configFor(WEB_SECRET));
-    expect(() => strategy.validate({ sub: 'user-1', email: 'a@b.com', scope: 'mcp' })).toThrow(
-      UnauthorizedException
-    );
+    expect(() =>
+      strategy.validate({ sub: 'user-1', email: 'a@b.com', scope: 'mcp' }),
+    ).toThrow(UnauthorizedException);
   });
 
   it('validate() accepts a scopeless first-party payload', () => {
     const strategy = new JwtStrategy(configFor(WEB_SECRET));
     expect(strategy.validate({ sub: 'user-1', email: 'a@b.com' })).toEqual({
       id: 'user-1',
-      email: 'a@b.com'
+      email: 'a@b.com',
     });
   });
 });

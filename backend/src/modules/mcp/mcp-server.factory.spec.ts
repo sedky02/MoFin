@@ -10,7 +10,9 @@ describe('MCP tool registration', () => {
   });
 
   it('every tool schema exposes a usable raw shape', () => {
-    for (const name of Object.keys(mcpToolSchemas) as Array<keyof typeof mcpToolSchemas>) {
+    for (const name of Object.keys(mcpToolSchemas) as Array<
+      keyof typeof mcpToolSchemas
+    >) {
       expect(typeof mcpToolSchemas[name].shape).toBe('object');
     }
   });
@@ -19,7 +21,11 @@ describe('MCP tool registration', () => {
     const factory = new McpServerFactory({ dispatch: jest.fn() } as never);
     const server = factory.create('user-1');
     // McpServer keeps registered tools internally; presence of the map confirms wiring.
-    const registered = (server as unknown as { _registeredTools: Record<string, unknown> })._registeredTools;
-    expect(Object.keys(registered).sort()).toEqual(MCP_TOOLS.map((t) => t.name).sort());
+    const registered = (
+      server as unknown as { _registeredTools: Record<string, unknown> }
+    )._registeredTools;
+    expect(Object.keys(registered).sort()).toEqual(
+      MCP_TOOLS.map((t) => t.name).sort(),
+    );
   });
 });

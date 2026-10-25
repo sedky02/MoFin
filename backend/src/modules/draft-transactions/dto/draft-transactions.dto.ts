@@ -1,6 +1,10 @@
 import { DraftStatus, TransactionType } from '@prisma/client';
 import { z } from 'zod';
-import { amountStringSchema, currencySchema, dateStringSchema } from '../../../common/dto/common-fields';
+import {
+  amountStringSchema,
+  currencySchema,
+  dateStringSchema,
+} from '../../../common/dto/common-fields';
 import { paginationSchema } from '../../../common/dto/pagination';
 
 /**
@@ -18,14 +22,18 @@ export const parsedDraftTransactionSchema = z.object({
   toAccountId: z.string().optional(),
   categoryId: z.string().optional(),
 });
-export type ParsedDraftTransaction = z.infer<typeof parsedDraftTransactionSchema>;
+export type ParsedDraftTransaction = z.infer<
+  typeof parsedDraftTransactionSchema
+>;
 
 export const createDraftTransactionSchema = z.object({
   rawInput: z.string().min(1),
   parsedData: parsedDraftTransactionSchema,
   confidenceScore: z.number().min(0).max(1),
 });
-export type CreateDraftTransactionDto = z.infer<typeof createDraftTransactionSchema>;
+export type CreateDraftTransactionDto = z.infer<
+  typeof createDraftTransactionSchema
+>;
 
 export const approveDraftSchema = z.preprocess(
   (value) => value ?? {},

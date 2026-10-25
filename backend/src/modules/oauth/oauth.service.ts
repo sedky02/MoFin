@@ -38,7 +38,8 @@ export class OAuthService {
   /** Canonical MCP resource URL, used as the access-token audience. */
   get resourceUri(): string {
     return (
-      this.config.get<string>('OAUTH_RESOURCE_URI') ?? `${this.issuer}/api/v1/mcp`
+      this.config.get<string>('OAUTH_RESOURCE_URI') ??
+      `${this.issuer}/api/v1/mcp`
     );
   }
 
@@ -119,15 +120,22 @@ export class OAuthService {
   // --- Authorization endpoint helpers ---
 
   async getClientOrThrow(clientId: string) {
-    const client = await this.prisma.oAuthClient.findUnique({ where: { clientId } });
+    const client = await this.prisma.oAuthClient.findUnique({
+      where: { clientId },
+    });
     if (!client) throw new BadRequestException('unknown client_id');
     return client;
   }
 
   /** Exact-string match against the registered set — no prefix/wildcard matching. */
-  assertRedirectUriRegistered(client: { redirectUris: string[] }, redirectUri: string) {
+  assertRedirectUriRegistered(
+    client: { redirectUris: string[] },
+    redirectUri: string,
+  ) {
     if (!client.redirectUris.includes(redirectUri)) {
-      throw new BadRequestException('redirect_uri does not match a registered URI');
+      throw new BadRequestException(
+        'redirect_uri does not match a registered URI',
+      );
     }
   }
 
@@ -181,9 +189,12 @@ export class OAuthService {
         where: { userId, clientId, revokedAt: null },
         data: { revokedAt: new Date() },
       }),
-      this.prisma.authorizationCode.deleteMany({ where: { userId, clientId, usedAt: null } }),
+      this.prisma.authorizationCode.deleteMany({
+        where: { userId, clientId, usedAt: null },
+      }),
     ]);
-    if (grant.count === 0) throw new NotFoundException(`No connected app ${clientId}`);
+    if (grant.count === 0)
+      throw new NotFoundException(`No connected app ${clientId}`);
   }
 
   /**
@@ -192,7 +203,9 @@ export class OAuthService {
    * its whole rotation family with it.
    */
   async revokeToken(token: string) {
-    const stored = await this.prisma.oAuthRefreshToken.findUnique({ where: { tokenHash: sha256(token) } });
+    const stored = await this.prisma.oAuthRefreshToken.findUnique({
+      where: { tokenHash: sha256(token) },
+    });
     if (!stored) return;
     await this.prisma.oAuthRefreshToken.updateMany({
       where: { familyId: stored.familyId, revokedAt: null },
@@ -204,7 +217,10 @@ export class OAuthService {
    * Issue a single-use authorization code. The raw code is returned to the caller
    * (placed in the redirect); only its hash is persisted.
    */
-  async issueAuthorizationCode(userId: string, q: AuthorizeQueryDto): Promise<string> {
+  async issueAuthorizationCode(
+    userId: string,
+    q: AuthorizeQueryDto,
+  ): Promise<string> {
     const rawCode = randomBytes(32).toString('base64url');
     const ttl = this.config.getOrThrow<number>('OAUTH_AUTH_CODE_TTL');
     await this.prisma.authorizationCode.create({
@@ -244,22 +260,42 @@ export class OAuthService {
 
     if (!record || claim.count === 0) {
       // Either unknown or already used → reject (replay defense).
-      throw new BadRequestException({ error: 'invalid_grant', error_description: 'code invalid or already used' });
+      throw new BadRequestException({
+        error: 'invalid_grant',
+        error_description: 'code invalid or already used',
+      });
     }
     if (record.expiresAt < new Date()) {
-      throw new BadRequestException({ error: 'invalid_grant', error_description: 'code expired' });
+      throw new BadRequestException({
+        error: 'invalid_grant',
+        error_description: 'code expired',
+      });
     }
-    if (record.clientId !== params.clientId || record.redirectUri !== params.redirectUri) {
-      throw new BadRequestException({ error: 'invalid_grant', error_description: 'client/redirect mismatch' });
+    if (
+      record.clientId !== params.clientId ||
+      record.redirectUri !== params.redirectUri
+    ) {
+      throw new BadRequestException({
+        error: 'invalid_grant',
+        error_description: 'client/redirect mismatch',
+      });
     }
 
     // PKCE: BASE64URL(SHA256(verifier)) must equal the stored challenge.
     const expected = base64urlSha256(params.codeVerifier);
-    if (record.codeChallengeMethod !== 'S256' || expected !== record.codeChallenge) {
-      throw new BadRequestException({ error: 'invalid_grant', error_description: 'PKCE verification failed' });
+    if (
+      record.codeChallengeMethod !== 'S256' ||
+      expected !== record.codeChallenge
+    ) {
+      throw new BadRequestException({
+        error: 'invalid_grant',
+        error_description: 'PKCE verification failed',
+      });
     }
 
-    const user = await this.prisma.user.findUnique({ where: { id: record.userId } });
+    const user = await this.prisma.user.findUnique({
+      where: { id: record.userId },
+    });
     if (!user) throw new BadRequestException({ error: 'invalid_grant' });
 
     return this.mintTokens({
@@ -277,9 +313,14 @@ export class OAuthService {
     clientId: string;
   }): Promise<OAuthTokenResponse> {
     const tokenHash = sha256(params.refreshToken);
-    const stored = await this.prisma.oAuthRefreshToken.findUnique({ where: { tokenHash } });
+    const stored = await this.prisma.oAuthRefreshToken.findUnique({
+      where: { tokenHash },
+    });
     if (!stored) {
-      throw new BadRequestException({ error: 'invalid_grant', error_description: 'unknown refresh token' });
+      throw new BadRequestException({
+        error: 'invalid_grant',
+        error_description: 'unknown refresh token',
+      });
     }
 
     // Reuse detection: a revoked or already-rotated token signals theft →
@@ -289,13 +330,21 @@ export class OAuthService {
         where: { familyId: stored.familyId, revokedAt: null },
         data: { revokedAt: new Date() },
       });
-      throw new BadRequestException({ error: 'invalid_grant', error_description: 'refresh token reuse detected' });
+      throw new BadRequestException({
+        error: 'invalid_grant',
+        error_description: 'refresh token reuse detected',
+      });
     }
     if (stored.expiresAt < new Date() || stored.clientId !== params.clientId) {
-      throw new BadRequestException({ error: 'invalid_grant', error_description: 'refresh token invalid' });
+      throw new BadRequestException({
+        error: 'invalid_grant',
+        error_description: 'refresh token invalid',
+      });
     }
 
-    const user = await this.prisma.user.findUnique({ where: { id: stored.userId } });
+    const user = await this.prisma.user.findUnique({
+      where: { id: stored.userId },
+    });
     if (!user) throw new BadRequestException({ error: 'invalid_grant' });
 
     const next = await this.mintTokens({
@@ -412,13 +461,17 @@ export class OAuthService {
   }
 
   /** Resolve a live session cookie value to the user, or null. */
-  async resolveSession(cookieValue: string | undefined): Promise<{ id: string; email: string } | null> {
+  async resolveSession(
+    cookieValue: string | undefined,
+  ): Promise<{ id: string; email: string } | null> {
     if (!cookieValue) return null;
     const session = await this.prisma.authSession.findUnique({
       where: { sessionToken: sha256(cookieValue) },
     });
     if (!session || session.expiresAt < new Date()) return null;
-    const user = await this.prisma.user.findUnique({ where: { id: session.userId } });
+    const user = await this.prisma.user.findUnique({
+      where: { id: session.userId },
+    });
     return user ? { id: user.id, email: user.email } : null;
   }
 }

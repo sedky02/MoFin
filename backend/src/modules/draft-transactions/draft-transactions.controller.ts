@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -28,7 +37,8 @@ export class DraftTransactionsController {
   @ApiZodBody(createDraftTransactionSchema)
   create(
     @CurrentUser() user: AuthenticatedUser,
-    @Body(new ZodValidationPipe(createDraftTransactionSchema)) dto: CreateDraftTransactionDto,
+    @Body(new ZodValidationPipe(createDraftTransactionSchema))
+    dto: CreateDraftTransactionDto,
   ) {
     return this.draftsService.create(user.id, dto);
   }

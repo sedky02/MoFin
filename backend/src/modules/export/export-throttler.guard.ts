@@ -25,7 +25,9 @@ export class ExportThrottlerGuard extends ThrottlerGuard {
     return exportTracker(req);
   }
 
-  protected async handleRequest(requestProps: ThrottlerRequest): Promise<boolean> {
+  protected async handleRequest(
+    requestProps: ThrottlerRequest,
+  ): Promise<boolean> {
     return super.handleRequest({
       ...requestProps,
       limit: EXPORT_THROTTLE.limit,

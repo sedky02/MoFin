@@ -1,7 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
-import { CreateAccountDto, ListAccountsQueryDto, UpdateAccountDto } from './dto/accounts.dto';
+import {
+  CreateAccountDto,
+  ListAccountsQueryDto,
+  UpdateAccountDto,
+} from './dto/accounts.dto';
 
 // Undefined stays undefined: create falls back to the column's 0, update leaves it as is.
 function toDecimal(amount: string | undefined): Prisma.Decimal | undefined {
@@ -19,7 +23,7 @@ export class AccountsService {
         userId,
         openingBalance: toDecimal(dto.openingBalance),
         metadata: dto.metadata as Prisma.InputJsonValue | undefined,
-      }
+      },
     });
   }
 
@@ -34,7 +38,7 @@ export class AccountsService {
       where: { userId, ...archivedFilter },
       orderBy: { createdAt: 'desc' },
       limit: query.limit,
-      offset: query.offset
+      offset: query.offset,
     });
   }
 
@@ -43,7 +47,9 @@ export class AccountsService {
    * pass: their ledger entries are kept and their balance is still real money.
    */
   async assertOwned(userId: string, accountId: string) {
-    const account = await this.prisma.account.findFirst({ where: { id: accountId, userId } });
+    const account = await this.prisma.account.findFirst({
+      where: { id: accountId, userId },
+    });
     if (!account) throw new NotFoundException(`Account ${accountId} not found`);
     return account;
   }
@@ -54,7 +60,9 @@ export class AccountsService {
    * the same way an account the user doesn't own does.
    */
   async assertActive(userId: string, accountId: string) {
-    const account = await this.prisma.account.findFirst({ where: { id: accountId, userId, archivedAt: null } });
+    const account = await this.prisma.account.findFirst({
+      where: { id: accountId, userId, archivedAt: null },
+    });
     if (!account) throw new NotFoundException(`Account ${accountId} not found`);
     return account;
   }
@@ -67,20 +75,27 @@ export class AccountsService {
         ...dto,
         openingBalance: toDecimal(dto.openingBalance),
         metadata: dto.metadata as Prisma.InputJsonValue | undefined,
-      }
+      },
     });
   }
 
   async archive(userId: string, accountId: string) {
     await this.assertActive(userId, accountId);
-    return this.prisma.account.update({ where: { id: accountId }, data: { archivedAt: new Date() } });
+    return this.prisma.account.update({
+      where: { id: accountId },
+      data: { archivedAt: new Date() },
+    });
   }
 
   async restore(userId: string, accountId: string) {
     const account = await this.prisma.account.findFirst({
       where: { id: accountId, userId, archivedAt: { not: null } },
     });
-    if (!account) throw new NotFoundException(`Archived account ${accountId} not found`);
-    return this.prisma.account.update({ where: { id: accountId }, data: { archivedAt: null } });
+    if (!account)
+      throw new NotFoundException(`Archived account ${accountId} not found`);
+    return this.prisma.account.update({
+      where: { id: accountId },
+      data: { archivedAt: null },
+    });
   }
 }

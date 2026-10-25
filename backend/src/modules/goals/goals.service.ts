@@ -1,10 +1,26 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { Goal, GoalInstance, GoalRecurrenceUnit, GoalStatus, GoalType, Prisma, TransactionType } from '@prisma/client';
-import { inclusiveUpperBound, lowerBound } from '../../common/utils/date-bounds';
+import {
+  Goal,
+  GoalInstance,
+  GoalRecurrenceUnit,
+  GoalStatus,
+  GoalType,
+  Prisma,
+  TransactionType,
+} from '@prisma/client';
+import {
+  inclusiveUpperBound,
+  lowerBound,
+} from '../../common/utils/date-bounds';
 import { PrismaService } from '../../database/prisma.service';
 import { AccountsService } from '../accounts/accounts.service';
-import { CreateGoalDto, GoalHistoryQueryDto, ListGoalsQueryDto, UpdateGoalDto } from './dto/goals.dto';
+import {
+  CreateGoalDto,
+  GoalHistoryQueryDto,
+  ListGoalsQueryDto,
+  UpdateGoalDto,
+} from './dto/goals.dto';
 
 // UTC throughout (matching AnalyticsService.getMonthlySummary) — a
 // local-server-time constructor here would put a transaction at 23:30 on the
@@ -15,7 +31,9 @@ function startOfMonth(date: Date): Date {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
 }
 function endOfMonth(date: Date): Date {
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0, 23, 59, 59, 999));
+  return new Date(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0, 23, 59, 59, 999),
+  );
 }
 function startOfYear(date: Date): Date {
   return new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
@@ -25,7 +43,10 @@ function endOfYear(date: Date): Date {
 }
 
 /** Resolves the calendar-aligned [start, end] bounds of the period containing `anchor`. */
-export function resolvePeriodBounds(anchor: Date, unit: GoalRecurrenceUnit): [Date, Date] {
+export function resolvePeriodBounds(
+  anchor: Date,
+  unit: GoalRecurrenceUnit,
+): [Date, Date] {
   return unit === GoalRecurrenceUnit.MONTH
     ? [startOfMonth(anchor), endOfMonth(anchor)]
     : [startOfYear(anchor), endOfYear(anchor)];
@@ -43,8 +64,13 @@ export type GoalProgressSource = 'LIVE' | 'ENDED' | 'PERIOD_END';
  * `periodEnd`, while a sticky ACHIEVED is stamped during the period, so an
  * ACHIEVED row with `computedAt <= periodEnd` is achieved but still open.
  */
-export function isOpenInstance(instance: Pick<GoalInstance, 'status' | 'computedAt' | 'periodEnd'>): boolean {
-  return instance.status === GoalStatus.IN_PROGRESS || instance.computedAt <= instance.periodEnd;
+export function isOpenInstance(
+  instance: Pick<GoalInstance, 'status' | 'computedAt' | 'periodEnd'>,
+): boolean {
+  return (
+    instance.status === GoalStatus.IN_PROGRESS ||
+    instance.computedAt <= instance.periodEnd
+  );
 }
 
 /** Prisma filter matching `isOpenInstance`, optionally for one goal. */
@@ -54,7 +80,10 @@ function openInstancesOf(
 ): Prisma.GoalInstanceWhereInput {
   return {
     ...(goalId ? { goalId } : {}),
-    OR: [{ status: GoalStatus.IN_PROGRESS }, { computedAt: { lte: periodEndField } }],
+    OR: [
+      { status: GoalStatus.IN_PROGRESS },
+      { computedAt: { lte: periodEndField } },
+    ],
   };
 }
 
@@ -73,12 +102,18 @@ export class GoalsService {
   ) {}
 
   async create(userId: string, dto: CreateGoalDto) {
-    const account = await this.accountsService.assertActive(userId, dto.accountId);
+    const account = await this.accountsService.assertActive(
+      userId,
+      dto.accountId,
+    );
 
     let periodStart: Date;
     let periodEnd: Date;
     if (dto.isRecurring) {
-      [periodStart, periodEnd] = resolvePeriodBounds(new Date(dto.periodStart), dto.recurrenceUnit!);
+      [periodStart, periodEnd] = resolvePeriodBounds(
+        new Date(dto.periodStart),
+        dto.recurrenceUnit!,
+      );
     } else {
       // Stored inclusively like a recurring period's end (23:59:59.999), so a
       // date-only end date counts its whole last day and the goal only
@@ -129,7 +164,9 @@ export class GoalsService {
     // Prisma limitation for $allModels extension methods) — the include
     // itself is still applied at the DB level, this only restores the type.
     const data = await Promise.all(
-      page.data.map((goal) => this.withLiveProgress(goal as Goal & { instances: GoalInstance[] }))
+      page.data.map((goal) =>
+        this.withLiveProgress(goal as Goal & { instances: GoalInstance[] }),
+      ),
     );
     return { ...page, data };
   }
@@ -137,7 +174,9 @@ export class GoalsService {
   // Deliberately does NOT exclude archived goals — stopping a goal should not make its
   // history/details inaccessible, only remove it from the default active list.
   async assertOwned(userId: string, goalId: string) {
-    const goal = await this.prisma.goal.findFirst({ where: { id: goalId, userId } });
+    const goal = await this.prisma.goal.findFirst({
+      where: { id: goalId, userId },
+    });
     if (!goal) throw new NotFoundException(`Goal ${goalId} not found`);
     return goal;
   }
@@ -167,8 +206,13 @@ export class GoalsService {
     const now = new Date();
     const data = await Promise.all(
       page.data.map(async (instance) => {
-        if (!isOpenInstance(instance)) return { ...instance, progressSource: 'PERIOD_END' as GoalProgressSource };
-        if (goal.archivedAt) return { ...instance, progressSource: 'ENDED' as GoalProgressSource };
+        if (!isOpenInstance(instance))
+          return {
+            ...instance,
+            progressSource: 'PERIOD_END' as GoalProgressSource,
+          };
+        if (goal.archivedAt)
+          return { ...instance, progressSource: 'ENDED' as GoalProgressSource };
         const live = await this.liveInstance(goal, instance, now);
         return { ...live, progressSource: 'LIVE' as GoalProgressSource };
       }),
@@ -178,7 +222,10 @@ export class GoalsService {
 
   async update(userId: string, goalId: string, dto: UpdateGoalDto) {
     const goal = await this.assertOwned(userId, goalId);
-    const targetAmount = dto.targetAmount !== undefined ? new Prisma.Decimal(dto.targetAmount) : undefined;
+    const targetAmount =
+      dto.targetAmount !== undefined
+        ? new Prisma.Decimal(dto.targetAmount)
+        : undefined;
 
     return this.prisma.$transaction(async (tx) => {
       const updated = await tx.goal.update({
@@ -186,15 +233,28 @@ export class GoalsService {
         data: { name: dto.name, targetAmount },
       });
       if (targetAmount !== undefined) {
-        const open = { goalId: goal.id, OR: [{ status: GoalStatus.IN_PROGRESS }, { periodEnd: { gte: new Date() } }] };
+        const open = {
+          goalId: goal.id,
+          OR: [
+            { status: GoalStatus.IN_PROGRESS },
+            { periodEnd: { gte: new Date() } },
+          ],
+        };
         // Raising the target of a goal already achieved this period means it
         // hasn't reached the new one yet: drop the sticky ACHIEVED so it is
         // judged against the new target. Lowering it keeps the achievement.
         await tx.goalInstance.updateMany({
-          where: { ...open, status: GoalStatus.ACHIEVED, targetAmount: { lt: targetAmount } },
+          where: {
+            ...open,
+            status: GoalStatus.ACHIEVED,
+            targetAmount: { lt: targetAmount },
+          },
           data: { status: GoalStatus.IN_PROGRESS },
         });
-        await tx.goalInstance.updateMany({ where: open, data: { targetAmount } });
+        await tx.goalInstance.updateMany({
+          where: open,
+          data: { targetAmount },
+        });
       }
       return updated;
     });
@@ -212,18 +272,38 @@ export class GoalsService {
     const now = new Date();
 
     return this.prisma.$transaction(async (tx) => {
-      const open = await tx.goalInstance.findMany({ where: openInstancesOf(goal.id, tx.goalInstance.fields.periodEnd) });
+      const open = await tx.goalInstance.findMany({
+        where: openInstancesOf(goal.id, tx.goalInstance.fields.periodEnd),
+      });
       for (const instance of open) {
         if (now < instance.periodStart) continue; // hasn't started, nothing to freeze
         const periodEnded = now > instance.periodEnd;
-        const progressAmount = await this.computeProgressAmount(goal, instance.periodStart, instance.periodEnd, now);
-        let status = this.evaluateStatus(goal.type, progressAmount, instance.targetAmount, periodEnded, instance.status);
+        const progressAmount = await this.computeProgressAmount(
+          goal,
+          instance.periodStart,
+          instance.periodEnd,
+          now,
+        );
+        let status = this.evaluateStatus(
+          goal.type,
+          progressAmount,
+          instance.targetAmount,
+          periodEnded,
+          instance.status,
+        );
         // An expense cap is only judged when its period ends, so ending a goal
         // that's over its cap leaves it unjudged rather than recording FAILED.
-        if (!periodEnded && status === GoalStatus.FAILED) status = instance.status;
-        await tx.goalInstance.update({ where: { id: instance.id }, data: { progressAmount, status, computedAt: now } });
+        if (!periodEnded && status === GoalStatus.FAILED)
+          status = instance.status;
+        await tx.goalInstance.update({
+          where: { id: instance.id },
+          data: { progressAmount, status, computedAt: now },
+        });
       }
-      return tx.goal.update({ where: { id: goal.id }, data: { archivedAt: now } });
+      return tx.goal.update({
+        where: { id: goal.id },
+        data: { archivedAt: now },
+      });
     });
   }
 
@@ -234,7 +314,9 @@ export class GoalsService {
    * hadn't started by then, or starts today anyway, is reused as the fresh one.
    */
   async restore(userId: string, goalId: string) {
-    const goal = await this.prisma.goal.findFirst({ where: { id: goalId, userId, archivedAt: { not: null } } });
+    const goal = await this.prisma.goal.findFirst({
+      where: { id: goalId, userId, archivedAt: { not: null } },
+    });
     if (!goal) throw new NotFoundException(`Archived goal ${goalId} not found`);
     const endedAt = goal.archivedAt!;
     const now = new Date();
@@ -249,19 +331,35 @@ export class GoalsService {
       let reused = false;
       for (const instance of open) {
         if (instance.periodStart >= endedAt || instance.periodStart >= today) {
-          const periodStart = instance.periodStart > today ? instance.periodStart : today;
-          await tx.goalInstance.update({ where: { id: instance.id }, data: { periodStart } });
+          const periodStart =
+            instance.periodStart > today ? instance.periodStart : today;
+          await tx.goalInstance.update({
+            where: { id: instance.id },
+            data: { periodStart },
+          });
           reused = true;
           continue;
         }
-        const periodEnd = instance.periodEnd < endedAt ? instance.periodEnd : endedAt;
+        const periodEnd =
+          instance.periodEnd < endedAt ? instance.periodEnd : endedAt;
         // Goals ended before ending froze their progress have no snapshot;
         // take their progress as of the moment they were ended.
         const progressAmount =
           instance.computedAt >= endedAt
             ? instance.progressAmount
-            : await this.computeProgressAmount(goal, instance.periodStart, periodEnd, periodEnd);
-        const status = this.evaluateStatus(goal.type, progressAmount, instance.targetAmount, true, instance.status);
+            : await this.computeProgressAmount(
+                goal,
+                instance.periodStart,
+                periodEnd,
+                periodEnd,
+              );
+        const status = this.evaluateStatus(
+          goal.type,
+          progressAmount,
+          instance.targetAmount,
+          true,
+          instance.status,
+        );
         await tx.goalInstance.update({
           where: { id: instance.id },
           data: { periodEnd, progressAmount, status, computedAt: now },
@@ -269,16 +367,26 @@ export class GoalsService {
       }
 
       if (!reused) {
-        const periodEnd = goal.isRecurring ? resolvePeriodBounds(today, goal.recurrenceUnit!)[1] : goal.periodEnd!;
+        const periodEnd = goal.isRecurring
+          ? resolvePeriodBounds(today, goal.recurrenceUnit!)[1]
+          : goal.periodEnd!;
         // A fixed goal whose end date passed while it was ended has nothing left to track.
         if (periodEnd >= now) {
           await tx.goalInstance.create({
-            data: { goalId: goal.id, periodStart: today, periodEnd, targetAmount: goal.targetAmount },
+            data: {
+              goalId: goal.id,
+              periodStart: today,
+              periodEnd,
+              targetAmount: goal.targetAmount,
+            },
           });
         }
       }
 
-      return tx.goal.update({ where: { id: goal.id }, data: { archivedAt: null } });
+      return tx.goal.update({
+        where: { id: goal.id },
+        data: { archivedAt: null },
+      });
     });
   }
 
@@ -288,8 +396,12 @@ export class GoalsService {
    */
   private async withLiveProgress(goal: Goal & { instances: GoalInstance[] }) {
     const current = goal.instances[0];
-    if (!current || goal.archivedAt || !isOpenInstance(current)) return { ...goal, currentInstance: current ?? null };
-    return { ...goal, currentInstance: await this.liveInstance(goal, current, new Date()) };
+    if (!current || goal.archivedAt || !isOpenInstance(current))
+      return { ...goal, currentInstance: current ?? null };
+    return {
+      ...goal,
+      currentInstance: await this.liveInstance(goal, current, new Date()),
+    };
   }
 
   /**
@@ -302,9 +414,24 @@ export class GoalsService {
    * ends: going over shows FAILED, but nothing is stored, so deleting an
    * expense can bring the goal back under its cap.
    */
-  private async liveInstance(goal: Goal, instance: GoalInstance, now: Date): Promise<GoalInstance> {
-    const progressAmount = await this.computeProgressAmount(goal, instance.periodStart, instance.periodEnd, now);
-    const status = this.evaluateStatus(goal.type, progressAmount, instance.targetAmount, now >= instance.periodEnd, instance.status);
+  private async liveInstance(
+    goal: Goal,
+    instance: GoalInstance,
+    now: Date,
+  ): Promise<GoalInstance> {
+    const progressAmount = await this.computeProgressAmount(
+      goal,
+      instance.periodStart,
+      instance.periodEnd,
+      now,
+    );
+    const status = this.evaluateStatus(
+      goal.type,
+      progressAmount,
+      instance.targetAmount,
+      now >= instance.periodEnd,
+      instance.status,
+    );
     if (
       status === GoalStatus.ACHIEVED &&
       instance.status === GoalStatus.IN_PROGRESS &&
@@ -346,7 +473,11 @@ export class GoalsService {
       const [rows, account] = await Promise.all([
         this.prisma.transactionItem.groupBy({
           by: ['direction'],
-          where: { userId: goal.userId, accountId: goal.accountId, transaction: { occurredAt: { lte: boundary }, deletedAt: null } },
+          where: {
+            userId: goal.userId,
+            accountId: goal.accountId,
+            transaction: { occurredAt: { lte: boundary }, deletedAt: null },
+          },
           _sum: { amount: true },
         }),
         this.prisma.account.findFirst({
@@ -354,10 +485,15 @@ export class GoalsService {
           select: { openingBalance: true },
         }),
       ]);
-      return rows.reduce((sum, row) => {
-        const amount = row._sum.amount ?? new Prisma.Decimal(0);
-        return row.direction === 'CREDIT' ? sum.plus(amount) : sum.minus(amount);
-      }, account?.openingBalance ?? new Prisma.Decimal(0));
+      return rows.reduce(
+        (sum, row) => {
+          const amount = row._sum.amount ?? new Prisma.Decimal(0);
+          return row.direction === 'CREDIT'
+            ? sum.plus(amount)
+            : sum.minus(amount);
+        },
+        account?.openingBalance ?? new Prisma.Decimal(0),
+      );
     }
 
     // Matches transactions by their OWN type field, exactly like
@@ -369,7 +505,10 @@ export class GoalsService {
     // (audit DATA-XX), and ignored that a split item's own category has no
     // bearing on whether the item counts as income/expense — the parent
     // transaction's type already decides that for every one of its items.
-    const transactionType = goal.type === GoalType.INCOME ? TransactionType.INCOME : TransactionType.EXPENSE;
+    const transactionType =
+      goal.type === GoalType.INCOME
+        ? TransactionType.INCOME
+        : TransactionType.EXPENSE;
     const { _sum } = await this.prisma.transactionItem.aggregate({
       where: {
         userId: goal.userId,
@@ -424,7 +563,10 @@ export class GoalsService {
       where: {
         periodEnd: { lt: now },
         goal: { archivedAt: null },
-        ...openInstancesOf(undefined, this.prisma.goalInstance.fields.periodEnd),
+        ...openInstancesOf(
+          undefined,
+          this.prisma.goalInstance.fields.periodEnd,
+        ),
       },
       include: { goal: true },
     });
@@ -435,13 +577,20 @@ export class GoalsService {
         instance.periodEnd,
         now,
       );
-      const status = this.evaluateStatus(instance.goal.type, progressAmount, instance.targetAmount, true, instance.status);
+      const status = this.evaluateStatus(
+        instance.goal.type,
+        progressAmount,
+        instance.targetAmount,
+        true,
+        instance.status,
+      );
       await this.prisma.goalInstance.update({
         where: { id: instance.id },
         data: { progressAmount, status, computedAt: now },
       });
     }
-    if (expired.length) this.logger.log(`Finalized ${expired.length} expired goal instance(s)`);
+    if (expired.length)
+      this.logger.log(`Finalized ${expired.length} expired goal instance(s)`);
 
     const recurringGoals = await this.prisma.goal.findMany({
       where: { isRecurring: true, archivedAt: null },
@@ -452,15 +601,26 @@ export class GoalsService {
       const latest = goal.instances[0];
       if (latest && latest.periodEnd >= now) continue;
 
-      const anchor = latest ? new Date(latest.periodEnd.getTime() + 1) : goal.periodStart;
-      const [periodStart, periodEnd] = resolvePeriodBounds(anchor, goal.recurrenceUnit!);
+      const anchor = latest
+        ? new Date(latest.periodEnd.getTime() + 1)
+        : goal.periodStart;
+      const [periodStart, periodEnd] = resolvePeriodBounds(
+        anchor,
+        goal.recurrenceUnit!,
+      );
       await this.prisma.goalInstance.upsert({
         where: { goalId_periodStart: { goalId: goal.id, periodStart } },
-        create: { goalId: goal.id, periodStart, periodEnd, targetAmount: goal.targetAmount },
+        create: {
+          goalId: goal.id,
+          periodStart,
+          periodEnd,
+          targetAmount: goal.targetAmount,
+        },
         update: {},
       });
       created += 1;
     }
-    if (created) this.logger.log(`Opened ${created} new recurring goal instance(s)`);
+    if (created)
+      this.logger.log(`Opened ${created} new recurring goal instance(s)`);
   }
 }

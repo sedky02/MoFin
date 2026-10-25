@@ -13,16 +13,22 @@ describe('OAuthService revocation', () => {
         oAuthGrant: { deleteMany: jest.fn(() => 'grant') },
         oAuthRefreshToken: { updateMany: jest.fn(() => 'tokens') },
         authorizationCode: { deleteMany: jest.fn(() => 'codes') },
-        $transaction: jest.fn(async () => [{ count: deletedGrants }, { count: 2 }, { count: 0 }]),
+        $transaction: jest.fn(async () => [
+          { count: deletedGrants },
+          { count: 2 },
+          { count: 0 },
+        ]),
       };
       return prisma;
     }
 
-    it('forgets consent, revokes the client\'s refresh tokens and drops unused codes, scoped to this user+client', async () => {
+    it("forgets consent, revokes the client's refresh tokens and drops unused codes, scoped to this user+client", async () => {
       const prisma = prismaWith(1);
       await makeService(prisma).revokeGrant('u1', 'client-a');
 
-      expect(prisma.oAuthGrant.deleteMany).toHaveBeenCalledWith({ where: { userId: 'u1', clientId: 'client-a' } });
+      expect(prisma.oAuthGrant.deleteMany).toHaveBeenCalledWith({
+        where: { userId: 'u1', clientId: 'client-a' },
+      });
       expect(prisma.oAuthRefreshToken.updateMany).toHaveBeenCalledWith({
         where: { userId: 'u1', clientId: 'client-a', revokedAt: null },
         data: { revokedAt: expect.any(Date) },
@@ -34,7 +40,9 @@ describe('OAuthService revocation', () => {
     });
 
     it('404s when the user has no such connected app', async () => {
-      await expect(makeService(prismaWith(0)).revokeGrant('u1', 'nope')).rejects.toBeInstanceOf(NotFoundException);
+      await expect(
+        makeService(prismaWith(0)).revokeGrant('u1', 'nope'),
+      ).rejects.toBeInstanceOf(NotFoundException);
     });
   });
 
@@ -48,7 +56,9 @@ describe('OAuthService revocation', () => {
       };
       await makeService(prisma).revokeToken('raw-token');
 
-      expect(prisma.oAuthRefreshToken.findUnique).toHaveBeenCalledWith({ where: { tokenHash: sha256('raw-token') } });
+      expect(prisma.oAuthRefreshToken.findUnique).toHaveBeenCalledWith({
+        where: { tokenHash: sha256('raw-token') },
+      });
       expect(prisma.oAuthRefreshToken.updateMany).toHaveBeenCalledWith({
         where: { familyId: 'fam1', revokedAt: null },
         data: { revokedAt: expect.any(Date) },
@@ -57,9 +67,14 @@ describe('OAuthService revocation', () => {
 
     it('silently succeeds for an unknown token without touching anything', async () => {
       const prisma = {
-        oAuthRefreshToken: { findUnique: jest.fn(async () => null), updateMany: jest.fn() },
+        oAuthRefreshToken: {
+          findUnique: jest.fn(async () => null),
+          updateMany: jest.fn(),
+        },
       };
-      await expect(makeService(prisma).revokeToken('garbage')).resolves.toBeUndefined();
+      await expect(
+        makeService(prisma).revokeToken('garbage'),
+      ).resolves.toBeUndefined();
       expect(prisma.oAuthRefreshToken.updateMany).not.toHaveBeenCalled();
     });
   });
@@ -73,8 +88,14 @@ describe('OAuthService revocation', () => {
             { clientId: 'b', scope: 'mcp' },
           ]),
         },
-        oAuthRefreshToken: { findMany: jest.fn(async () => [{ clientId: 'a' }]) },
-        oAuthClient: { findMany: jest.fn(async () => [{ clientId: 'a', clientName: 'Claude' }]) },
+        oAuthRefreshToken: {
+          findMany: jest.fn(async () => [{ clientId: 'a' }]),
+        },
+        oAuthClient: {
+          findMany: jest.fn(async () => [
+            { clientId: 'a', clientName: 'Claude' },
+          ]),
+        },
       };
       const result = await makeService(prisma).listGrants('u1');
 

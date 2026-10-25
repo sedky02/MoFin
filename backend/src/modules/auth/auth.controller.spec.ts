@@ -13,6 +13,8 @@ describe('AuthController.forgotPassword', () => {
 
     expect(known).toEqual({ message: FORGOT_PASSWORD_MESSAGE });
     expect(unknown).toEqual(known);
-    expect(passwordReset.requestResetInBackground).toHaveBeenCalledWith('a@b.com');
+    expect(passwordReset.requestResetInBackground).toHaveBeenCalledWith(
+      'a@b.com',
+    );
   });
 });
