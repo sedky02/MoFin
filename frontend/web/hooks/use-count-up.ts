@@ -15,6 +15,27 @@ const OMEGA = 16;
 const EPSILON = 0.005;
 const MAX_MS = 1600;
 
+function createStore(initial: number) {
+  const listeners = new Set<() => void>();
+  const store = {
+    position: initial,
+    velocity: 0,
+    getValue: () => store.position,
+    set(position: number, velocity: number) {
+      store.position = position;
+      store.velocity = velocity;
+      listeners.forEach((l) => l());
+    },
+    subscribe(listener: () => void) {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+  };
+  return store;
+}
+
 /**
  * Spring-eased count-up. Counts 0 → target on first mount, and afterwards glides from
  * the value currently on screen (carrying its velocity) to each new target — account or
@@ -31,34 +52,27 @@ export function useCountUp(target: number, opts: CountUpOpts = {}): number {
     window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
   const animate = enabled && !prefersReduced && Number.isFinite(target);
-  // Start at the real value so server-rendered HTML (and no-JS / reduced-motion
-  // clients) never show "$0.00"; the layout effect below rewinds to 0 before
-  // the first client paint when we are actually going to animate.
-  const [value, setValue] = React.useState(target);
-  // The on-screen value and its velocity survive re-targets, so an interrupted
-  // animation continues from where it is rather than jumping back to 0.
-  const position = React.useRef(target);
-  const velocity = React.useRef(0);
-  const mounted = React.useRef(false);
-  React.useLayoutEffect(() => {
-    if (mounted.current) return;
-    mounted.current = true;
-    if (animate) {
-      position.current = 0;
-      setValue(0);
-    }
-  }, [animate]);
+  // The on-screen value and its velocity live in a small external store, so they
+  // survive re-targets (an interrupted animation continues from where it is rather
+  // than jumping back to 0) and animation frames update React through the store's
+  // subscription instead of setState-in-effect. A client that is going to animate
+  // starts the store at 0; the server snapshot below is always the real value, so
+  // server-rendered HTML (and no-JS / reduced-motion clients) never shows "$0.00".
+  const [store] = React.useState(() => createStore(animate ? 0 : target));
+  const value = React.useSyncExternalStore(
+    store.subscribe,
+    store.getValue,
+    () => target,
+  );
 
   React.useEffect(() => {
     if (!animate) {
-      position.current = target;
-      velocity.current = 0;
-      setValue(target);
+      store.set(target, 0);
       return;
     }
 
-    const a = position.current - target; // distance still to cover
-    const b = velocity.current + OMEGA * a;
+    const a = store.position - target; // distance still to cover
+    const b = store.velocity + OMEGA * a;
     let raf = 0;
     const start = performance.now();
 
@@ -66,22 +80,17 @@ export function useCountUp(target: number, opts: CountUpOpts = {}): number {
       const t = (now - start) / 1000;
       const decay = Math.exp(-OMEGA * t);
       const offset = (a + b * t) * decay; // position - target
-      position.current = target + offset;
-      velocity.current = (b - OMEGA * (a + b * t)) * decay;
-
       if (Math.abs(offset) < EPSILON || now - start > MAX_MS) {
-        position.current = target;
-        velocity.current = 0;
-        setValue(target);
+        store.set(target, 0);
         return;
       }
-      setValue(position.current);
+      store.set(target + offset, (b - OMEGA * (a + b * t)) * decay);
       raf = requestAnimationFrame(tick);
     };
 
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [target, animate]);
+  }, [target, animate, store]);
 
   return value;
 }

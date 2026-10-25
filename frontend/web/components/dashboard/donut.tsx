@@ -9,6 +9,8 @@ export interface DonutSegment {
   color: string;
 }
 
+const subscribeNever = () => () => {};
+
 /**
  * Lightweight hand-rolled SVG donut (no charting dependency). Animates each arc
  * in on mount via stroke-dashoffset.
@@ -26,8 +28,13 @@ export function Donut({
   center?: React.ReactNode;
   ariaLabel?: string;
 }) {
-  const [mounted, setMounted] = React.useState(false);
-  React.useEffect(() => setMounted(true), []);
+  // false on the server and during hydration, true once on the client, so the
+  // arcs start collapsed and then transition in.
+  const mounted = React.useSyncExternalStore(
+    subscribeNever,
+    () => true,
+    () => false,
+  );
 
   const radius = (size - thickness) / 2;
   const circumference = 2 * Math.PI * radius;

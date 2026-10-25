@@ -30,20 +30,32 @@ function applyTheme(theme: Theme) {
   document.documentElement.style.colorScheme = theme;
 }
 
-export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = React.useState<Theme>("dark");
+const themeListeners = new Set<() => void>();
 
-  // Sync state from what the init script already applied.
-  React.useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY) as Theme | null;
-    setThemeState(stored ?? "dark");
-  }, []);
+function subscribeTheme(listener: () => void) {
+  themeListeners.add(listener);
+  return () => {
+    themeListeners.delete(listener);
+  };
+}
+
+function readTheme(): Theme {
+  return (localStorage.getItem(STORAGE_KEY) as Theme | null) ?? "dark";
+}
+
+export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  // Reads what the init script already applied; "dark" on the server.
+  const theme = React.useSyncExternalStore(
+    subscribeTheme,
+    readTheme,
+    () => "dark" as Theme,
+  );
 
   // React Compiler memoizes these automatically — no manual useCallback/useMemo.
   const setTheme = (t: Theme) => {
-    setThemeState(t);
     localStorage.setItem(STORAGE_KEY, t);
     applyTheme(t);
+    themeListeners.forEach((l) => l());
   };
 
   const toggle = () => setTheme(theme === "dark" ? "light" : "dark");
