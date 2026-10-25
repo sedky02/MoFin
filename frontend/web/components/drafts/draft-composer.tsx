@@ -136,7 +136,7 @@ export function DraftComposer() {
               key={ex}
               type="button"
               onClick={() => setInput(ex)}
-              className="rounded-full border border-border bg-background px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+              className="inline-flex items-center rounded-full border border-border bg-background px-2.5 py-1 pointer-coarse:min-h-11 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
             >
               {ex}
             </button>
