@@ -62,7 +62,7 @@ npm ci
 npm run dev
 ```
 
-The web app has no required variables. It falls back to `BACKEND_URL=http://localhost:3000/api/v1`. To override a value, create `frontend/web/.env.local` (see the environment table).
+Copy `frontend/web/.env.example` to `frontend/web/.env.local`. The web app has no required variables in development; it falls back to `BACKEND_URL=http://localhost:3000/api/v1`.
 
 ## Demo account
 
@@ -119,7 +119,7 @@ docs/                  demo GIF
 
 ## Environment variables
 
-Defaults and examples are in `backend/.env.example`. Values marked "open PR" are not on `main` yet.
+Defaults and examples are in `backend/.env.example`.
 
 | Name | App | Required | Purpose |
 | --- | --- | --- | --- |
@@ -137,15 +137,15 @@ Defaults and examples are in `backend/.env.example`. Values marked "open PR" are
 | `PASSWORD_RESET_TTL` | backend | no | Reset link lifetime (`30m`). |
 | `MAIL_CAPTURE_DIR` | backend | no | Development and test only. Writes emails as JSON files for the E2E suite. |
 | `SENTRY_DSN` | backend | no | Error reporting. |
-| `BFF_SHARED_SECRET` | backend, web | open PR #128 | Shared secret that lets the API trust the client IP header sent by the BFF. Used for rate limiting. |
-| `DEMO_PASSWORD` | backend | open PR #130 | Overrides the demo user's password in the seed. |
-| `ALLOW_DEMO_SEED` | backend | open PR #130 | Set to `true` to allow the demo seed in production. |
-| `COOKIE_SECURE` | web | open PR #133 | Controls the `Secure` flag on auth cookies. Needed when serving over plain HTTP in Docker. |
+| `BFF_SHARED_SECRET` | backend, web | production | Shared secret that lets the API trust the client IP header sent by the BFF. Used for rate limiting. |
+| `DEMO_PASSWORD` | backend | no | Overrides the demo user's password in the seed. |
+| `ALLOW_DEMO_SEED` | backend | no | Set to `true` to allow the demo seed in production. |
+| `COOKIE_SECURE` | web | no | Controls the `Secure` flag on auth cookies. Needed when serving over plain HTTP in Docker. |
 | `BACKEND_URL` | web | no | API base URL (default `http://localhost:3000/api/v1`). |
 | `NEXT_PUBLIC_MCP_URL` | web | no | MCP URL shown on the Connect page. |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_AUTH_URL`, `GOOGLE_REDIRECT_URI`, `GOOGLE_SCOPES` | web | no | Google sign-in redirect. |
 | `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_DSN` | web | no | Error reporting. |
-| `API_PORT`, `WEB_PORT` | Docker | open PR #133 | Host ports for the Compose stack. |
+| `API_PORT`, `WEB_PORT` | Docker | no | Host ports for the Compose stack. |
 
 ## Testing
 

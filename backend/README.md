@@ -7,7 +7,7 @@ NestJS modular monolith with Prisma and PostgreSQL. Setup, architecture and envi
 ```bash
 npm run start:dev    # applies migrations, then starts with watch on :3000
 npm run build
-npm run start:prod   # applies migrations, then runs dist/main.js
+npm run build && npx prisma migrate deploy && node dist/src/main.js
 npm test             # Jest unit tests
 npm run test:e2e     # e2e tests; some need E2E_DATABASE_URL
 npm run lint
