@@ -226,7 +226,7 @@ describe('GoalsService', () => {
       const update = jest.fn(async () => ({}));
       const aggregate = jest.fn(async () => ({ _sum: { amount: new Prisma.Decimal('40') } }));
       const prisma = {
-        goalInstance: { findMany, update },
+        goalInstance: { findMany, update, fields: { periodEnd: {} } },
         goal: { findMany: jest.fn(async () => []) },
         transactionItem: { aggregate },
       };
@@ -344,9 +344,11 @@ describe('GoalsService', () => {
     it('clears archivedAt on an archived goal owned by the user', async () => {
       const prisma = {
         goal: {
-          findFirst: jest.fn(async () => ({ id: 'g1', userId: 'u1', archivedAt: new Date() })),
+          findFirst: jest.fn(async () => ({ id: 'g1', userId: 'u1', archivedAt: new Date(), isRecurring: false, periodEnd: new Date(0) })),
           update: jest.fn(async () => ({ id: 'g1', archivedAt: null })),
         },
+        goalInstance: { findMany: jest.fn(async () => []), fields: { periodEnd: {} } },
+        $transaction: async (fn: (tx: unknown) => unknown) => fn(prisma),
       };
       const service = new GoalsService(prisma as never, {} as never);
 
@@ -379,7 +381,7 @@ describe('GoalsService', () => {
       const result = await service.history('u1', 'g1', { limit: 1, offset: 0 });
 
       expect(prisma.goal.findFirst).toHaveBeenCalledWith({ where: { id: 'g1', userId: 'u1' } });
-      expect(result).toBe(page);
+      expect(result).toEqual({ ...page, data: [{ id: 'gi1', progressSource: 'PERIOD_END' }] });
       expect(result.total).toBe(15);
       expect(paginate).toHaveBeenCalledWith(
         expect.objectContaining({ where: { goalId: 'g1' }, limit: 1, offset: 0 }),
