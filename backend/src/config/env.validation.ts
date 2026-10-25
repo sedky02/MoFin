@@ -25,6 +25,11 @@ const envSchema = z.object({
   // affects tokens rotated in the 30 s before the change.
   REFRESH_TOKEN_SECRET: secretSchema,
   PORT: z.coerce.number().int().positive().default(3000),
+  // Shared with the web BFF, which sends it with the client IP it saw so the
+  // rate limiter keys on the real client instead of the BFF (see
+  // trusted-client-ip.middleware.ts). Required in production; when unset,
+  // the client IP comes from `trust proxy` alone.
+  BFF_SHARED_SECRET: secretSchema.optional(),
 
   // --- OAuth 2.1 authorization server (MCP custom connector) ---
   // Public base URL of THIS backend. Must exactly match the `iss` claim and the
@@ -68,6 +73,13 @@ const envSchema = z.object({
   MAIL_CAPTURE_DIR: z.string().min(1).optional(),
   PASSWORD_RESET_TTL: z.string().regex(/^\d+(s|m|h|d)$/, 'Use a duration such as 30m').default('30m'),
 }).superRefine((env, ctx) => {
+  if (env.NODE_ENV === 'production' && !env.BFF_SHARED_SECRET) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['BFF_SHARED_SECRET'],
+      message: 'BFF_SHARED_SECRET is required in production',
+    });
+  }
   if (env.NODE_ENV === 'production' && env.MAIL_CAPTURE_DIR) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
