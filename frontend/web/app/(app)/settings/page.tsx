@@ -29,6 +29,7 @@ import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import type { ConnectedApp } from "@/lib/types";
 import { handleApiError } from "@/lib/form-errors";
+import { SecurityCard } from "@/components/settings/security-card";
 
 const schema = z.object({
   displayName: z.string().trim().max(80, "Keep it under 80 characters.").optional(),
@@ -231,6 +232,8 @@ export default function SettingsPage() {
           </ul>
         )}
       </Card>
+
+      <SecurityCard user={user} isLoading={isLoading} />
 
       <ConfirmDialog
         open={!!toDisconnect}
