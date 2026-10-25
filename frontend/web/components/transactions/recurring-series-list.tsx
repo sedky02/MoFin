@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MoneyAmount } from "@/components/common/money-amount";
 import { EmptyState, ErrorState, SkeletonRows } from "@/components/common/states";
-import { RecurringSeriesActions } from "@/components/transactions/recurring-panel";
+import { RecurringSeriesActions, SeriesPausedNote } from "@/components/transactions/recurring-panel";
 import { useAccounts } from "@/hooks/useAccounts";
 import { useSearchPage, type SearchParams } from "@/hooks/useSearch";
 import { multiply } from "@/lib/decimal";
@@ -19,12 +19,14 @@ import {
   seriesAmount,
   seriesIntervalLabel,
   seriesIsActive,
+  seriesIsOpen,
   seriesNextOccurrence,
+  seriesPausedLabel,
 } from "@/lib/recurring-series";
 import type { Account, Transaction } from "@/lib/types";
 
-// Each series once, by its root (deleted roots never come back), active ones
-// first by their next date.
+// Each series once, by its root (deleted roots never come back): active ones
+// first by their next date, then paused, then cancelled.
 const SERIES_QUERY: SearchParams = { recurrence: "series", sort: "next-occurrence" };
 const PAGE_SIZE = 25;
 
@@ -88,7 +90,9 @@ export function RecurringSeriesList() {
 
 function SeriesRow({ tx, accountsById }: { tx: Transaction; accountsById?: ReadonlyMap<string, Account> }) {
   const active = seriesIsActive(tx);
+  const open = seriesIsOpen(tx);
   const next = seriesNextOccurrence(tx);
+  const pausedLabel = seriesPausedLabel(tx);
   const accountLabel = seriesAccountLabel(tx, accountsById);
   const amount = seriesAmount(tx);
 
@@ -106,10 +110,11 @@ function SeriesRow({ tx, accountsById }: { tx: Transaction; accountsById?: Reado
           <Badge variant={active ? "secondary" : "outline"} className="gap-1">
             <Repeat className="size-3" aria-hidden="true" />
             {seriesIntervalLabel(tx)}
-            {active ? "" : " · Cancelled"}
+            {open ? "" : " · Cancelled"}
           </Badge>
           {next && <span className="tabular">Next on {formatDate(next)}</span>}
-          {active && tx.recurringEndDate && (
+          {pausedLabel && <SeriesPausedNote label={pausedLabel} />}
+          {open && tx.recurringEndDate && (
             <>
               <span aria-hidden>·</span>
               <span className="tabular">Ends {formatDate(tx.recurringEndDate)}</span>
@@ -134,7 +139,7 @@ function SeriesRow({ tx, accountsById }: { tx: Transaction; accountsById?: Reado
         colorBySign={tx.type !== "TRANSFER"}
         className="text-right text-sm font-semibold"
       />
-      {active && <RecurringSeriesActions tx={tx} className="col-span-2 sm:col-span-1 sm:justify-end" />}
+      {open && <RecurringSeriesActions tx={tx} className="col-span-2 sm:col-span-1 sm:justify-end" />}
     </li>
   );
 }

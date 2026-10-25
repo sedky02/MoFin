@@ -1,8 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { useForm } from "react-hook-form";
-import { Repeat } from "lucide-react";
+import { useForm, useWatch } from "react-hook-form";
+import { PauseCircle, Repeat } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -41,6 +41,8 @@ import { useAccounts } from "@/hooks/useAccounts";
 import { useCategories } from "@/hooks/useCategories";
 import {
   useCancelRecurringTransaction,
+  usePauseRecurringTransaction,
+  useResumeRecurringTransaction,
   useUpdateRecurringTransaction,
 } from "@/hooks/useTransactions";
 import { formatDate, parseMoneyInput } from "@/lib/format";
@@ -49,56 +51,86 @@ import {
   buildRecurringUpdate,
   recurringEndDateToIso,
   recurringFormValues,
+  seriesAccountOptions,
   type RecurringFormValues,
 } from "@/lib/recurring-edit";
+import {
+  seriesIntervalLabel,
+  seriesIsActive,
+  seriesIsOpen,
+  seriesIsPaused,
+  seriesNextOccurrence,
+  seriesPausedLabel,
+} from "@/lib/recurring-series";
 import type { Transaction } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 /**
- * Shown on the root transaction of a recurring series. Displays cadence +
- * next occurrence, and lets the user edit the template (future occurrences
- * only) or cancel the series (stops future generation; nothing already
- * generated is touched).
+ * Shown on the root transaction of a recurring series. Displays cadence and
+ * the next occurrence (or why it's paused), and lets the user edit the
+ * template (future occurrences only), pause or resume it, or cancel the series
+ * (stops future generation; nothing already generated is touched).
  */
 export function RecurringPanel({ tx }: { tx: Transaction }) {
-  const isCancelled = tx.recurringStatus === "CANCELLED";
+  const next = seriesNextOccurrence(tx);
+  const pausedLabel = seriesPausedLabel(tx);
 
   return (
     <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border pt-4">
-      <Badge variant={isCancelled ? "outline" : "secondary"} className="gap-1">
+      <Badge variant={seriesIsActive(tx) ? "secondary" : "outline"} className="gap-1">
         <Repeat className="size-3" />
-        {tx.recurringInterval === "YEARLY" ? "Yearly" : "Monthly"}
-        {isCancelled && " · Cancelled"}
+        {seriesIntervalLabel(tx)}
+        {tx.recurringStatus === "CANCELLED" && " · Cancelled"}
       </Badge>
-      {!isCancelled && tx.nextOccurrenceAt && (
-        <span className="text-xs text-muted-foreground">
-          Next on {formatDate(tx.nextOccurrenceAt)}
-        </span>
-      )}
+      {next && <span className="text-xs text-muted-foreground">Next on {formatDate(next)}</span>}
+      {pausedLabel && <SeriesPausedNote label={pausedLabel} />}
 
-      {!isCancelled && <RecurringSeriesActions tx={tx} className="ml-auto" />}
+      {seriesIsOpen(tx) && <RecurringSeriesActions tx={tx} className="ml-auto" />}
     </div>
   );
 }
 
+/** "Paused", or "Paused: <why it couldn't post>", in place of a series' next date. */
+export function SeriesPausedNote({ label, className }: { label: string; className?: string }) {
+  return (
+    <span className={cn("inline-flex items-center gap-1 text-xs font-medium text-warning", className)}>
+      <PauseCircle className="size-3 shrink-0" aria-hidden="true" />
+      {label}
+    </span>
+  );
+}
+
 /**
- * "Edit series" and "Cancel series" for an active series root, shared by the
- * root's detail page and the Recurring list. Cancelling stops the series and
- * keeps every transaction, the root included; deleting the root is separate.
+ * "Edit series", "Pause series" (or "Resume series" once paused) and "Cancel
+ * series" for a series root that isn't cancelled, shared by the root's detail
+ * page and the Recurring list. Cancelling stops the series and keeps every
+ * transaction, the root included; deleting the root is separate. Resuming
+ * skips what fell due while paused, and the API refuses (the toast says why)
+ * while the series still can't post.
  */
 export function RecurringSeriesActions({ tx, className }: { tx: Transaction; className?: string }) {
   const [editOpen, setEditOpen] = React.useState(false);
   const { data: accounts } = useAccounts();
   const { data: categories } = useCategories();
   const updateMut = useUpdateRecurringTransaction(tx.id);
+  const pauseMut = usePauseRecurringTransaction(tx.id);
+  const resumeMut = useResumeRecurringTransaction(tx.id);
   const cancelMut = useCancelRecurringTransaction(tx.id);
+  const paused = seriesIsPaused(tx);
 
-  const accountList = accounts ?? [];
   const relevantCategories = (categories ?? []).filter((c) => c.type === tx.type);
 
   // What the dialog opened with; only fields that differ from it are sent.
   const [initial, setInitial] = React.useState(() => recurringFormValues(tx));
   const form = useForm<RecurringFormValues>({ defaultValues: initial });
+
+  // Only accounts the series can post to: its currency, and for a transfer
+  // not the account on the other side.
+  const fromValue = useWatch({ control: form.control, name: "fromAccountId" });
+  const toValue = useWatch({ control: form.control, name: "toAccountId" });
+  const isTransfer = tx.type === "TRANSFER";
+  const fromOptions = seriesAccountOptions(accounts ?? [], tx.currency, isTransfer ? toValue : undefined);
+  const toOptions = seriesAccountOptions(accounts ?? [], tx.currency, isTransfer ? fromValue : undefined);
 
   function handleOpenChange(open: boolean) {
     if (open) {
@@ -144,7 +176,12 @@ export function RecurringSeriesActions({ tx, className }: { tx: Transaction; cla
   }
 
   return (
-    <div className={cn("flex gap-2", className)}>
+    <div className={cn("flex flex-wrap gap-2", className)}>
+      {paused && (
+        <Button type="button" size="sm" disabled={resumeMut.isPending} onClick={() => resumeMut.mutate()}>
+          Resume series
+        </Button>
+      )}
       <Dialog open={editOpen} onOpenChange={handleOpenChange}>
         <DialogTrigger asChild>
           <Button type="button" variant="outline" size="sm">
@@ -200,7 +237,7 @@ export function RecurringSeriesActions({ tx, className }: { tx: Transaction; cla
                       <FormLabel>{tx.type === "TRANSFER" ? "From account" : "Account"}</FormLabel>
                       <FormControl>
                         <AccountSelect
-                          accounts={accountList}
+                          accounts={fromOptions}
                           value={field.value}
                           onChange={field.onChange}
                         />
@@ -219,7 +256,7 @@ export function RecurringSeriesActions({ tx, className }: { tx: Transaction; cla
                       <FormLabel>{tx.type === "TRANSFER" ? "To account" : "Account"}</FormLabel>
                       <FormControl>
                         <AccountSelect
-                          accounts={accountList}
+                          accounts={toOptions}
                           value={field.value}
                           onChange={field.onChange}
                         />
@@ -304,6 +341,18 @@ export function RecurringSeriesActions({ tx, className }: { tx: Transaction; cla
           </Form>
         </DialogContent>
       </Dialog>
+
+      {!paused && (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={pauseMut.isPending}
+          onClick={() => pauseMut.mutate()}
+        >
+          Pause series
+        </Button>
+      )}
 
       <AlertDialog>
         <AlertDialogTrigger asChild>

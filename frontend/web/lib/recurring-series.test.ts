@@ -4,7 +4,9 @@ import {
   seriesAmount,
   seriesIntervalLabel,
   seriesIsActive,
+  seriesIsOpen,
   seriesNextOccurrence,
+  seriesPausedLabel,
 } from "@/lib/recurring-series";
 import type { Account, LedgerItem, Transaction } from "@/lib/types";
 
@@ -80,6 +82,33 @@ describe("seriesNextOccurrence", () => {
 
   it("is nothing for an ended series", () => {
     expect(seriesNextOccurrence(root({ recurringStatus: "CANCELLED", nextOccurrenceAt: null }))).toBeUndefined();
+  });
+});
+
+describe("a paused series", () => {
+  it("shows why it stopped instead of a next date that has already passed", () => {
+    const paused = root({
+      recurringStatus: "PAUSED",
+      recurringError: "Account Savings is archived",
+      nextOccurrenceAt: "2026-08-05T09:00:00.000Z",
+    });
+    expect(seriesNextOccurrence(paused)).toBeUndefined();
+    expect(seriesPausedLabel(paused)).toBe("Paused: Account Savings is archived");
+  });
+
+  it("reads plain Paused when the user paused it", () => {
+    expect(seriesPausedLabel(root({ recurringStatus: "PAUSED", recurringError: null }))).toBe("Paused");
+  });
+
+  it("has no paused label otherwise", () => {
+    expect(seriesPausedLabel(root())).toBeUndefined();
+    expect(seriesPausedLabel(root({ recurringStatus: "CANCELLED", recurringError: "stale" }))).toBeUndefined();
+  });
+
+  it("is still open to edits and actions, unlike a cancelled one", () => {
+    expect(seriesIsOpen(root({ recurringStatus: "PAUSED" }))).toBe(true);
+    expect(seriesIsOpen(root())).toBe(true);
+    expect(seriesIsOpen(root({ recurringStatus: "CANCELLED" }))).toBe(false);
   });
 });
 
