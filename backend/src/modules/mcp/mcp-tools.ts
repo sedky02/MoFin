@@ -20,7 +20,9 @@ export const MCP_TOOLS: ReadonlyArray<{ name: McpToolName; title: string; descri
   {
     name: 'get_balance',
     title: 'Get balance',
-    description: 'Compute account/currency balances from the ledger entries.',
+    description:
+      "Compute account/currency balances: each account's opening balance plus its ledger entries. " +
+      'Opening balances are never income and never appear in transactions or monthly summaries.',
   },
   {
     name: 'get_monthly_summary',
