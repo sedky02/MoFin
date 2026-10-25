@@ -242,12 +242,51 @@ export function moneyInputHint(raw: string, currency?: string, locale?: string):
  * Field text after pasting `pasted` over the `start`..`end` selection of
  * `current`. Clear pastes are normalised straight away ("1.234,56" -> "1234.56");
  * ambiguous or unreadable ones are kept as pasted so the hint / validation can
- * speak to them.
+ * speak to them. `signed` keeps one leading minus, for fields that take negatives.
  */
-export function pasteMoneyText(current: string, start: number, end: number, pasted: string): string {
+export function pasteMoneyText(
+  current: string,
+  start: number,
+  end: number,
+  pasted: string,
+  signed = false,
+): string {
   const next = current.slice(0, start) + pasted + current.slice(end);
-  const parsed = interpretMoneyText(next);
-  return parsed && !parsed.ambiguous ? parsed.value : next;
+  const { negative, rest } = signed ? splitSign(next) : { negative: false, rest: next };
+  const parsed = interpretMoneyText(rest);
+  return parsed && !parsed.ambiguous ? withSign(negative, parsed.value) : next;
+}
+
+/**
+ * One leading minus ("-", or the typographic "−") split off money text, so a
+ * field that may go below zero can read the rest with the usual rules.
+ */
+function splitSign(raw: string): { negative: boolean; rest: string } {
+  const match = /^\s*[-−]/.exec(raw);
+  return match ? { negative: true, rest: raw.slice(match[0].length) } : { negative: false, rest: raw };
+}
+
+/** "-" + value, except for zero: "-0" reads as "0". */
+function withSign(negative: boolean, value: string): string {
+  return negative && !new Decimal(value).isZero() ? `-${value}` : value;
+}
+
+/**
+ * `normalizeMoneyTyping` for a field that may go below zero (an account's
+ * opening balance on a credit account): one leading minus is kept
+ * ("-1.234,50" -> "-1234.5"); a minus anywhere else makes it unreadable.
+ */
+export function normalizeSignedMoneyTyping(raw: string): string | null {
+  const { negative, rest } = splitSign(raw);
+  const value = normalizeMoneyTyping(rest);
+  return value === null ? null : withSign(negative, value);
+}
+
+/** `moneyInputHint` for a field that may go below zero ("-1,234" -> "= -1,234.00"). */
+export function signedMoneyInputHint(raw: string, currency?: string, locale?: string): string | null {
+  const { negative, rest } = splitSign(raw);
+  const hint = moneyInputHint(rest, currency, locale);
+  return hint && negative ? hint.replace(/^= /, "= -") : hint;
 }
 
 /**

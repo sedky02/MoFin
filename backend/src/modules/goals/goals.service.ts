@@ -31,6 +31,38 @@ export function resolvePeriodBounds(anchor: Date, unit: GoalRecurrenceUnit): [Da
     : [startOfYear(anchor), endOfYear(anchor)];
 }
 
+/**
+ * Where a history row's progress comes from: computed just now for the open
+ * period, frozen when the goal was ended, or recorded when its period ended.
+ */
+export type GoalProgressSource = 'LIVE' | 'ENDED' | 'PERIOD_END';
+
+/**
+ * Whether an instance's period is still open, i.e. not yet judged. Finalizing
+ * (rollover, or restoring an ended goal) always stamps `computedAt` after
+ * `periodEnd`, while a sticky ACHIEVED is stamped during the period, so an
+ * ACHIEVED row with `computedAt <= periodEnd` is achieved but still open.
+ */
+export function isOpenInstance(instance: Pick<GoalInstance, 'status' | 'computedAt' | 'periodEnd'>): boolean {
+  return instance.status === GoalStatus.IN_PROGRESS || instance.computedAt <= instance.periodEnd;
+}
+
+/** Prisma filter matching `isOpenInstance`, optionally for one goal. */
+function openInstancesOf(
+  goalId: string | undefined,
+  periodEndField: Prisma.FieldRef<'GoalInstance', 'DateTime'>,
+): Prisma.GoalInstanceWhereInput {
+  return {
+    ...(goalId ? { goalId } : {}),
+    OR: [{ status: GoalStatus.IN_PROGRESS }, { computedAt: { lte: periodEndField } }],
+  };
+}
+
+/** 00:00 UTC of the day `now` falls on. */
+function startOfDay(now: Date): Date {
+  return lowerBound(now.toISOString().slice(0, 10));
+}
+
 @Injectable()
 export class GoalsService {
   private readonly logger = new Logger(GoalsService.name);
@@ -119,14 +151,29 @@ export class GoalsService {
     return this.withLiveProgress(goal);
   }
 
+  /**
+   * Finished periods show what was recorded when they ended and are never
+   * recomputed, so editing an old transaction can't rewrite a past result. The
+   * open period gets the same live progress as the goal card.
+   */
   async history(userId: string, goalId: string, query: GoalHistoryQueryDto) {
-    await this.assertOwned(userId, goalId);
-    return this.prisma.paginated.goalInstance.paginate({
+    const goal = await this.assertOwned(userId, goalId);
+    const page = await this.prisma.paginated.goalInstance.paginate({
       where: { goalId },
       orderBy: { periodStart: 'desc' },
       limit: query.limit,
       offset: query.offset,
     });
+    const now = new Date();
+    const data = await Promise.all(
+      page.data.map(async (instance) => {
+        if (!isOpenInstance(instance)) return { ...instance, progressSource: 'PERIOD_END' as GoalProgressSource };
+        if (goal.archivedAt) return { ...instance, progressSource: 'ENDED' as GoalProgressSource };
+        const live = await this.liveInstance(goal, instance, now);
+        return { ...live, progressSource: 'LIVE' as GoalProgressSource };
+      }),
+    );
+    return { ...page, data };
   }
 
   async update(userId: string, goalId: string, dto: UpdateGoalDto) {
@@ -139,36 +186,138 @@ export class GoalsService {
         data: { name: dto.name, targetAmount },
       });
       if (targetAmount !== undefined) {
+        const open = { goalId: goal.id, OR: [{ status: GoalStatus.IN_PROGRESS }, { periodEnd: { gte: new Date() } }] };
+        // Raising the target of a goal already achieved this period means it
+        // hasn't reached the new one yet: drop the sticky ACHIEVED so it is
+        // judged against the new target. Lowering it keeps the achievement.
         await tx.goalInstance.updateMany({
-          where: { goalId: goal.id, status: GoalStatus.IN_PROGRESS },
-          data: { targetAmount },
+          where: { ...open, status: GoalStatus.ACHIEVED, targetAmount: { lt: targetAmount } },
+          data: { status: GoalStatus.IN_PROGRESS },
         });
+        await tx.goalInstance.updateMany({ where: open, data: { targetAmount } });
       }
       return updated;
     });
   }
 
+  /**
+   * Ending a goal freezes it: the open period keeps the progress it had at this
+   * moment, and nothing recomputes, rolls over or finalizes it while it's ended
+   * (see `restore` for what happens to that period afterwards). A period that
+   * had already ended but wasn't finalized yet is finalized here, as the
+   * rollover would have.
+   */
   async archive(userId: string, goalId: string) {
     const goal = await this.assertOwned(userId, goalId);
-    return this.prisma.goal.update({ where: { id: goal.id }, data: { archivedAt: new Date() } });
+    const now = new Date();
+
+    return this.prisma.$transaction(async (tx) => {
+      const open = await tx.goalInstance.findMany({ where: openInstancesOf(goal.id, tx.goalInstance.fields.periodEnd) });
+      for (const instance of open) {
+        if (now < instance.periodStart) continue; // hasn't started, nothing to freeze
+        const periodEnded = now > instance.periodEnd;
+        const progressAmount = await this.computeProgressAmount(goal, instance.periodStart, instance.periodEnd, now);
+        let status = this.evaluateStatus(goal.type, progressAmount, instance.targetAmount, periodEnded, instance.status);
+        // An expense cap is only judged when its period ends, so ending a goal
+        // that's over its cap leaves it unjudged rather than recording FAILED.
+        if (!periodEnded && status === GoalStatus.FAILED) status = instance.status;
+        await tx.goalInstance.update({ where: { id: instance.id }, data: { progressAmount, status, computedAt: now } });
+      }
+      return tx.goal.update({ where: { id: goal.id }, data: { archivedAt: now } });
+    });
   }
 
-  /** Reverses `archive`. Recurring goals resume; the daily rollover catches missed periods up gradually. */
+  /**
+   * Reverses `archive` by starting a fresh period from today; the time the goal
+   * spent ended is never backfilled. The period that was open when it was ended
+   * closes on that day and is judged on the progress frozen then. A period that
+   * hadn't started by then, or starts today anyway, is reused as the fresh one.
+   */
   async restore(userId: string, goalId: string) {
     const goal = await this.prisma.goal.findFirst({ where: { id: goalId, userId, archivedAt: { not: null } } });
     if (!goal) throw new NotFoundException(`Archived goal ${goalId} not found`);
-    return this.prisma.goal.update({ where: { id: goal.id }, data: { archivedAt: null } });
+    const endedAt = goal.archivedAt!;
+    const now = new Date();
+    const today = startOfDay(now);
+
+    return this.prisma.$transaction(async (tx) => {
+      const open = await tx.goalInstance.findMany({
+        where: openInstancesOf(goal.id, tx.goalInstance.fields.periodEnd),
+        orderBy: { periodStart: 'asc' },
+      });
+
+      let reused = false;
+      for (const instance of open) {
+        if (instance.periodStart >= endedAt || instance.periodStart >= today) {
+          const periodStart = instance.periodStart > today ? instance.periodStart : today;
+          await tx.goalInstance.update({ where: { id: instance.id }, data: { periodStart } });
+          reused = true;
+          continue;
+        }
+        const periodEnd = instance.periodEnd < endedAt ? instance.periodEnd : endedAt;
+        // Goals ended before ending froze their progress have no snapshot;
+        // take their progress as of the moment they were ended.
+        const progressAmount =
+          instance.computedAt >= endedAt
+            ? instance.progressAmount
+            : await this.computeProgressAmount(goal, instance.periodStart, periodEnd, periodEnd);
+        const status = this.evaluateStatus(goal.type, progressAmount, instance.targetAmount, true, instance.status);
+        await tx.goalInstance.update({
+          where: { id: instance.id },
+          data: { periodEnd, progressAmount, status, computedAt: now },
+        });
+      }
+
+      if (!reused) {
+        const periodEnd = goal.isRecurring ? resolvePeriodBounds(today, goal.recurrenceUnit!)[1] : goal.periodEnd!;
+        // A fixed goal whose end date passed while it was ended has nothing left to track.
+        if (periodEnd >= now) {
+          await tx.goalInstance.create({
+            data: { goalId: goal.id, periodStart: today, periodEnd, targetAmount: goal.targetAmount },
+          });
+        }
+      }
+
+      return tx.goal.update({ where: { id: goal.id }, data: { archivedAt: null } });
+    });
   }
 
-  /** Recomputes the live progress/status of a goal's current open instance without persisting it. */
+  /**
+   * Live progress for the open period, so the card matches the history. An
+   * ended goal shows what was frozen when it was ended.
+   */
   private async withLiveProgress(goal: Goal & { instances: GoalInstance[] }) {
     const current = goal.instances[0];
-    if (!current || current.status !== GoalStatus.IN_PROGRESS) return { ...goal, currentInstance: current ?? null };
+    if (!current || goal.archivedAt || !isOpenInstance(current)) return { ...goal, currentInstance: current ?? null };
+    return { ...goal, currentInstance: await this.liveInstance(goal, current, new Date()) };
+  }
 
-    const now = new Date();
-    const progressAmount = await this.computeProgressAmount(goal, current.periodStart, current.periodEnd, now);
-    const status = this.evaluateStatus(goal.type, progressAmount, current.targetAmount, now >= current.periodEnd, current.status);
-    return { ...goal, currentInstance: { ...current, progressAmount, status, computedAt: now } };
+  /**
+   * Computes an open instance's progress and status as of `now`.
+   *
+   * Reach goals (BALANCE/INCOME) keep ACHIEVED for the rest of the period: the
+   * first time it's observed it's stored on the instance (status ACHIEVED,
+   * `computedAt` inside the period), so a later dip doesn't undo it and the
+   * rollover finalizes it as ACHIEVED. Expense caps stay live until the period
+   * ends: going over shows FAILED, but nothing is stored, so deleting an
+   * expense can bring the goal back under its cap.
+   */
+  private async liveInstance(goal: Goal, instance: GoalInstance, now: Date): Promise<GoalInstance> {
+    const progressAmount = await this.computeProgressAmount(goal, instance.periodStart, instance.periodEnd, now);
+    const status = this.evaluateStatus(goal.type, progressAmount, instance.targetAmount, now >= instance.periodEnd, instance.status);
+    if (
+      status === GoalStatus.ACHIEVED &&
+      instance.status === GoalStatus.IN_PROGRESS &&
+      goal.type !== GoalType.EXPENSE &&
+      now >= instance.periodStart
+    ) {
+      // Conditional on IN_PROGRESS so concurrent reads store it once.
+      await this.prisma.goalInstance.updateMany({
+        where: { id: instance.id, status: GoalStatus.IN_PROGRESS },
+        data: { status, progressAmount, computedAt: now },
+      });
+    }
+    return { ...instance, progressAmount, status, computedAt: now };
   }
 
   async computeProgressAmount(
@@ -191,15 +340,24 @@ export class GoalsService {
       // monthly summary already keys off occurredAt, so a back-dated entry
       // (catching up on a receipt from last month) must land in the same
       // period on both surfaces instead of disagreeing (audit DATA-XX).
-      const rows = await this.prisma.transactionItem.groupBy({
-        by: ['direction'],
-        where: { userId: goal.userId, accountId: goal.accountId, transaction: { occurredAt: { lte: boundary }, deletedAt: null } },
-        _sum: { amount: true },
-      });
+      //
+      // The account's opening balance is the starting point: it's what the
+      // account held before its first entry, so it counts at any boundary.
+      const [rows, account] = await Promise.all([
+        this.prisma.transactionItem.groupBy({
+          by: ['direction'],
+          where: { userId: goal.userId, accountId: goal.accountId, transaction: { occurredAt: { lte: boundary }, deletedAt: null } },
+          _sum: { amount: true },
+        }),
+        this.prisma.account.findFirst({
+          where: { id: goal.accountId, userId: goal.userId },
+          select: { openingBalance: true },
+        }),
+      ]);
       return rows.reduce((sum, row) => {
         const amount = row._sum.amount ?? new Prisma.Decimal(0);
         return row.direction === 'CREDIT' ? sum.plus(amount) : sum.minus(amount);
-      }, new Prisma.Decimal(0));
+      }, account?.openingBalance ?? new Prisma.Decimal(0));
     }
 
     // Matches transactions by their OWN type field, exactly like
@@ -259,8 +417,15 @@ export class GoalsService {
   async rolloverExpiredInstances() {
     const now = new Date();
 
+    // Ended goals are frozen and skipped. An instance achieved during its
+    // period is still open (see `isOpenInstance`) and is finalized here too,
+    // recording its end-of-period progress while staying ACHIEVED.
     const expired = await this.prisma.goalInstance.findMany({
-      where: { periodEnd: { lt: now }, status: GoalStatus.IN_PROGRESS },
+      where: {
+        periodEnd: { lt: now },
+        goal: { archivedAt: null },
+        ...openInstancesOf(undefined, this.prisma.goalInstance.fields.periodEnd),
+      },
       include: { goal: true },
     });
     for (const instance of expired) {

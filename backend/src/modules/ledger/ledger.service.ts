@@ -13,7 +13,7 @@ type Db = Prisma.TransactionClient;
  *
  * INCOME and EXPENSE are single-sided (no contra/equity account); only TRANSFER
  * produces a balanced debit+credit pair. Balances are always derived from these
- * entries, never stored.
+ * entries plus the account's opening balance, never stored.
  */
 @Injectable()
 export class LedgerService {
@@ -131,7 +131,23 @@ export class LedgerService {
       _sum: { amount: true },
     });
 
+    // Each account starts from its opening balance (in the account's own
+    // currency), so an account with one and no entries yet still shows it.
+    const openings = await this.prisma.account.findMany({
+      where: {
+        userId,
+        openingBalance: { not: 0 },
+        ...(query.accountId ? { id: query.accountId } : {}),
+        ...(query.currency ? { currency: query.currency } : {}),
+      },
+      select: { id: true, currency: true, openingBalance: true },
+    });
+
     const balances = new Map<string, Prisma.Decimal>();
+    for (const opening of openings) {
+      const key = query.accountId ? opening.currency : `${opening.id}:${opening.currency}`;
+      balances.set(key, (balances.get(key) ?? new Prisma.Decimal(0)).plus(opening.openingBalance));
+    }
     for (const row of rows) {
       const key = query.accountId ? row.currency : `${row.accountId}:${row.currency}`;
       const current = balances.get(key) ?? new Prisma.Decimal(0);

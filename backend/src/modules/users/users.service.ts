@@ -2,14 +2,26 @@ import { BadRequestException, Injectable, NotFoundException, UnauthorizedExcepti
 import { Prisma } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../database/prisma.service';
+import { DEFAULT_CATEGORIES } from '../categories/default-categories';
 import { CreateUserInput, DeleteAccountDto, UpdateProfileDto } from './dto/users.dto';
 
 @Injectable()
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
 
+  /**
+   * Creates the user with the default categories in the same nested write, so
+   * both land or neither does. Only a brand-new user row gets them, which keeps
+   * this idempotent: a repeated registration never reaches here (or fails on
+   * the unique email before anything is written).
+   */
   createUser(input: CreateUserInput) {
-    return this.prisma.user.create({ data: input });
+    return this.prisma.user.create({
+      data: {
+        ...input,
+        categories: { createMany: { data: [...DEFAULT_CATEGORIES] } },
+      },
+    });
   }
 
   findByEmail(email: string) {

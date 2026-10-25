@@ -39,7 +39,7 @@ export interface SearchInitial extends SearchParams {
   page?: number;
 }
 
-export function SearchView({ initial }: { initial: SearchInitial }) {
+export function SearchView({ initial, active = true }: { initial: SearchInitial; active?: boolean }) {
   const router = useRouter();
   const pathname = usePathname();
   // Archived accounts too: their history is still filterable, and rows name them.
@@ -113,7 +113,9 @@ export function SearchView({ initial }: { initial: SearchInitial }) {
   }, [filterKey]);
 
   // Sync filters → URL so refresh / share / back works.
+  // Paused while the list is hidden, so it doesn't overwrite another view's URL.
   React.useEffect(() => {
+    if (!active) return;
     const params = new URLSearchParams();
     if (debouncedQ) params.set("q", debouncedQ);
     if (categoryId) params.set("categoryId", categoryId);
@@ -144,6 +146,7 @@ export function SearchView({ initial }: { initial: SearchInitial }) {
     page,
     pathname,
     router,
+    active,
   ]);
 
   const { data, isLoading, isFetching, isError, refetch } = useSearchPage(

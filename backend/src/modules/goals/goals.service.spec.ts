@@ -62,17 +62,20 @@ describe('GoalsService', () => {
 
   describe('computeProgressAmount', () => {
     // BALANCE nets CREDIT/DEBIT via a DB groupBy instead of loading every row.
-    function makeServiceWithGroupedRows(rows: unknown[]) {
+    function makeServiceWithGroupedRows(rows: unknown[], openingBalance = '0') {
       const groupBy = jest.fn((_args: unknown) => Promise.resolve(rows));
-      const prisma = { transactionItem: { groupBy } };
-      return { service: new GoalsService(prisma as never, {} as never), groupBy };
+      const findFirst = jest.fn((_args: unknown) => Promise.resolve({ openingBalance: new Prisma.Decimal(openingBalance) }));
+      const prisma = { transactionItem: { groupBy }, account: { findFirst } };
+      return { service: new GoalsService(prisma as never, {} as never), groupBy, findFirst };
     }
 
-    // INCOME/EXPENSE just need a total, via a DB aggregate.
+    // INCOME/EXPENSE just need a total, via a DB aggregate. `account` is there
+    // to show an opening balance is never read for them.
     function makeServiceWithAggregate(sum: Prisma.Decimal | null) {
       const aggregate = jest.fn((_args: unknown) => Promise.resolve({ _sum: { amount: sum } }));
-      const prisma = { transactionItem: { aggregate } };
-      return { service: new GoalsService(prisma as never, {} as never), aggregate };
+      const findFirst = jest.fn((_args: unknown) => Promise.resolve({ openingBalance: new Prisma.Decimal('5000') }));
+      const prisma = { transactionItem: { aggregate }, account: { findFirst } };
+      return { service: new GoalsService(prisma as never, {} as never), aggregate, findFirst };
     }
 
     it('BALANCE nets CREDIT/DEBIT from grouped DB rows, up to the boundary regardless of periodStart', async () => {
@@ -111,6 +114,44 @@ describe('GoalsService', () => {
         new Date('2026-01-15'),
       );
       expect(result.toString()).toBe('0');
+    });
+
+    it("BALANCE starts from the account's opening balance", async () => {
+      const rows = [{ direction: 'DEBIT', _sum: { amount: new Prisma.Decimal('200') } }];
+      const { service, findFirst } = makeServiceWithGroupedRows(rows, '5000');
+      const result = await service.computeProgressAmount(
+        { type: GoalType.BALANCE, accountId: 'a1', userId: 'u1' },
+        new Date('2026-01-01'),
+        new Date('2026-01-31'),
+        new Date('2026-01-15'),
+      );
+      expect(result.toString()).toBe('4800');
+      expect(findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'a1', userId: 'u1' } }));
+    });
+
+    it('BALANCE counts the opening balance even before any entry', async () => {
+      const { service } = makeServiceWithGroupedRows([], '5000');
+      const result = await service.computeProgressAmount(
+        { type: GoalType.BALANCE, accountId: 'a1', userId: 'u1' },
+        new Date('2026-01-01'),
+        new Date('2026-01-31'),
+        new Date('2026-01-01'),
+      );
+      expect(result.toString()).toBe('5000');
+    });
+
+    it("INCOME and EXPENSE leave the account's opening balance out", async () => {
+      for (const type of [GoalType.INCOME, GoalType.EXPENSE]) {
+        const { service, findFirst } = makeServiceWithAggregate(null);
+        const result = await service.computeProgressAmount(
+          { type, accountId: 'a1', userId: 'u1' },
+          new Date('2026-01-01'),
+          new Date('2026-01-31'),
+          new Date('2026-01-15'),
+        );
+        expect(result.toString()).toBe('0');
+        expect(findFirst).not.toHaveBeenCalled();
+      }
     });
 
     it('INCOME sums matching items within the period via a DB aggregate', async () => {
@@ -226,7 +267,7 @@ describe('GoalsService', () => {
       const update = jest.fn(async () => ({}));
       const aggregate = jest.fn(async () => ({ _sum: { amount: new Prisma.Decimal('40') } }));
       const prisma = {
-        goalInstance: { findMany, update },
+        goalInstance: { findMany, update, fields: { periodEnd: {} } },
         goal: { findMany: jest.fn(async () => []) },
         transactionItem: { aggregate },
       };
@@ -344,9 +385,11 @@ describe('GoalsService', () => {
     it('clears archivedAt on an archived goal owned by the user', async () => {
       const prisma = {
         goal: {
-          findFirst: jest.fn(async () => ({ id: 'g1', userId: 'u1', archivedAt: new Date() })),
+          findFirst: jest.fn(async () => ({ id: 'g1', userId: 'u1', archivedAt: new Date(), isRecurring: false, periodEnd: new Date(0) })),
           update: jest.fn(async () => ({ id: 'g1', archivedAt: null })),
         },
+        goalInstance: { findMany: jest.fn(async () => []), fields: { periodEnd: {} } },
+        $transaction: async (fn: (tx: unknown) => unknown) => fn(prisma),
       };
       const service = new GoalsService(prisma as never, {} as never);
 
@@ -379,7 +422,7 @@ describe('GoalsService', () => {
       const result = await service.history('u1', 'g1', { limit: 1, offset: 0 });
 
       expect(prisma.goal.findFirst).toHaveBeenCalledWith({ where: { id: 'g1', userId: 'u1' } });
-      expect(result).toBe(page);
+      expect(result).toEqual({ ...page, data: [{ id: 'gi1', progressSource: 'PERIOD_END' }] });
       expect(result.total).toBe(15);
       expect(paginate).toHaveBeenCalledWith(
         expect.objectContaining({ where: { goalId: 'g1' }, limit: 1, offset: 0 }),

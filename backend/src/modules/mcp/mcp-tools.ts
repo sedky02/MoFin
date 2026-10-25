@@ -20,7 +20,9 @@ export const MCP_TOOLS: ReadonlyArray<{ name: McpToolName; title: string; descri
   {
     name: 'get_balance',
     title: 'Get balance',
-    description: 'Compute account/currency balances from the ledger entries.',
+    description:
+      "Compute account/currency balances: each account's opening balance plus its ledger entries. " +
+      'Opening balances are never income and never appear in transactions or monthly summaries.',
   },
   {
     name: 'get_monthly_summary',
@@ -48,6 +50,7 @@ export const MCP_TOOLS: ReadonlyArray<{ name: McpToolName; title: string; descri
   {
     name: 'get_goal_history',
     title: 'Get goal history',
-    description: "Get a goal's past period instances (targetAmount, progressAmount, status) for historical tracking.",
+    description:
+      "Get a goal's periods, newest first (targetAmount, progressAmount, status, progressSource). progressSource is LIVE for the open period, PERIOD_END for a finished period's recorded result, and ENDED for progress frozen when the goal was ended.",
   },
 ] as const;

@@ -1,8 +1,8 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { type QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { accountKeys, ledgerKeys } from "@/lib/query-keys";
+import { accountKeys, analyticsKeys, goalKeys, ledgerKeys } from "@/lib/query-keys";
 import { STALE } from "@/lib/query-client";
 import type { Account, AccountType, Paginated } from "@/lib/types";
 import { toast } from "sonner";
@@ -31,10 +31,24 @@ export function useAccounts(status: AccountListStatus = "active", enabled = true
   });
 }
 
+/**
+ * An opening balance is part of the account's balance, so creating or editing
+ * an account can move every balance view: cards, hero totals, the balance
+ * chart and Balance goals.
+ */
+function invalidateBalances(queryClient: QueryClient) {
+  queryClient.invalidateQueries({ queryKey: accountKeys.all });
+  queryClient.invalidateQueries({ queryKey: ledgerKeys.all });
+  queryClient.invalidateQueries({ queryKey: analyticsKeys.all });
+  queryClient.invalidateQueries({ queryKey: goalKeys.all });
+}
+
 export interface CreateAccountInput {
   name: string;
   type: AccountType;
   currency: string;
+  /** Decimal string; omitted means 0. */
+  openingBalance?: string;
   metadata?: Record<string, unknown>;
 }
 
@@ -43,7 +57,7 @@ export function useCreateAccount() {
   return useMutation({
     mutationFn: (input: CreateAccountInput) => api.post<Account>("/accounts", input),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: accountKeys.all });
+      invalidateBalances(queryClient);
       toast.success("Account created.");
     },
     onError: (err) => handleApiError(err, { fallback: "Could not create account." }),
@@ -54,6 +68,7 @@ export interface UpdateAccountInput {
   id: string;
   name?: string;
   type?: AccountType;
+  openingBalance?: string;
   metadata?: Record<string, unknown>;
 }
 
@@ -63,7 +78,7 @@ export function useUpdateAccount() {
     mutationFn: ({ id, ...body }: UpdateAccountInput) =>
       api.patch<Account>(`/accounts/${id}`, body),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: accountKeys.all });
+      invalidateBalances(queryClient);
       toast.success("Account updated.");
     },
     onError: (err) => handleApiError(err, { fallback: "Could not update account." }),

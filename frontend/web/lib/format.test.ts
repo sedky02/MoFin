@@ -6,9 +6,11 @@ import {
   moneyInputHint,
   moneyInputPrefix,
   normalizeMoneyTyping,
+  normalizeSignedMoneyTyping,
   parseMoneyInput,
   pasteMoneyText,
   pickPrimaryCurrency,
+  signedMoneyInputHint,
 } from "@/lib/format";
 
 /** What a money field ends up holding after blur: normalise, then tidy. */
@@ -137,6 +139,44 @@ describe("parseMoneyInput", () => {
     for (const raw of ["", "0", "0,00", "-5", "abc", "1.2.3"]) {
       expect(parseMoneyInput(raw)).toBeNull();
     }
+  });
+});
+
+describe("signed money text (opening balance)", () => {
+  it("keeps one leading minus and reads the rest as usual", () => {
+    expect(normalizeSignedMoneyTyping("-1.234,50")).toBe("-1234.5");
+    expect(normalizeSignedMoneyTyping(" −250")).toBe("-250");
+    expect(normalizeSignedMoneyTyping("5000")).toBe("5000");
+    expect(normalizeSignedMoneyTyping("1,250.500")).toBe("1250.5");
+  });
+
+  it("reads zero as zero, signed or not", () => {
+    expect(normalizeSignedMoneyTyping("0")).toBe("0");
+    expect(normalizeSignedMoneyTyping("-0,00")).toBe("0");
+  });
+
+  it("rejects a minus anywhere but the front, and malformed text", () => {
+    for (const raw of ["--5", "5-", "1-2", "-", "abc", "-1,2,3"]) {
+      expect(normalizeSignedMoneyTyping(raw)).toBeNull();
+    }
+  });
+
+  it("tidies to the currency's decimals, sign kept", () => {
+    expect(formatMoneyInput(normalizeSignedMoneyTyping("-1250,5")!, "TND")).toBe("-1250.500");
+    expect(formatMoneyInput(normalizeSignedMoneyTyping("5000")!, "USD")).toBe("5000.00");
+  });
+
+  it("hints the signed reading when it isn't obvious", () => {
+    expect(signedMoneyInputHint("-1,234", "USD", "en-US")).toBe("= -1,234.00");
+    expect(signedMoneyInputHint("1,234", "USD", "en-US")).toBe("= 1,234.00");
+    expect(signedMoneyInputHint("-12.5", "USD", "en-US")).toBeNull();
+  });
+
+  it("keeps the minus on a signed paste only", () => {
+    expect(pasteMoneyText("", 0, 0, "-1.234,56", true)).toBe("-1234.56");
+    expect(pasteMoneyText("-", 1, 1, "250", true)).toBe("-250");
+    // Unsigned fields still refuse it: kept as pasted for validation to flag.
+    expect(pasteMoneyText("", 0, 0, "-1.234,56")).toBe("-1.234,56");
   });
 });
 
