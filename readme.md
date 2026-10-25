@@ -58,12 +58,11 @@ Web (http://localhost:3001):
 
 ```bash
 cd frontend/web
-cp .env.example .env.local
 npm ci
 npm run dev
 ```
 
-The web app falls back to `BACKEND_URL=http://localhost:3000/api/v1`, so it also runs without a `.env.local`.
+The web app has no required variables. It falls back to `BACKEND_URL=http://localhost:3000/api/v1`. To override a value, create `frontend/web/.env.local` (see the environment table).
 
 ## Demo account
 
