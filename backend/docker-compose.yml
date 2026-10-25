@@ -1,3 +1,6 @@
+# Postgres only, published on localhost:5432, for running the API and web app
+# with npm during development (matches backend/.env.example's DATABASE_URL).
+# To run the whole stack in containers, use the repo-root docker-compose.yml.
 services:
   postgres:
     image: postgres:16-alpine
