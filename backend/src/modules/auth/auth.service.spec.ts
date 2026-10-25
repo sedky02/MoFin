@@ -1,10 +1,15 @@
 import { GatewayTimeoutException, ServiceUnavailableException, UnauthorizedException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
+import { sha256 } from '../../common/utils/hash';
 import { AuthService } from './auth.service';
 
 describe('AuthService refresh token rotation', () => {
   const FUTURE = new Date(Date.now() + 60_000);
   const user = { id: 'u1', email: 'a@b.com' };
+  const config = {
+    getOrThrow: (key: string) => (key === 'OAUTH_ISSUER' ? 'http://localhost:3000' : `${key}-secret`),
+    get: (key: string, fallback: string) => fallback,
+  };
 
   function makeService(overrides: {
     stored?: unknown;
@@ -13,18 +18,15 @@ describe('AuthService refresh token rotation', () => {
     const refreshToken = {
       findUnique: jest.fn(async () => overrides.stored ?? null),
       update: jest.fn(async () => ({})),
-      updateMany: jest.fn(async () => ({ count: 0 })),
+      updateMany: jest.fn(async () => ({ count: 1 })),
       create: jest.fn(async () => ({})),
     };
     const prisma = {
       refreshToken,
       user: { findUnique: jest.fn(async () => (overrides.findUser === undefined ? user : overrides.findUser)) },
+      $transaction: jest.fn(async (run: (tx: unknown) => unknown): Promise<unknown> => run(prisma)),
     };
     const jwtService = { signAsync: jest.fn(async () => 'access-jwt') };
-    const config = {
-      getOrThrow: (key: string) => (key === 'OAUTH_ISSUER' ? 'http://localhost:3000' : `${key}-secret`),
-      get: (key: string, fallback: string) => fallback,
-    };
     const service = new AuthService(prisma as never, {} as never, jwtService as never, config as never);
     return { service, prisma };
   }
@@ -41,9 +43,10 @@ describe('AuthService refresh token rotation', () => {
     const result = await service.refreshTokens('old-token');
 
     expect(result.accessToken).toBe('access-jwt');
-    expect(prisma.refreshToken.update).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { id: 'rt1' }, data: expect.objectContaining({ revokedAt: expect.any(Date) }) }),
-    );
+    expect(prisma.refreshToken.updateMany).toHaveBeenCalledWith({
+      where: { id: 'rt1', revokedAt: null, rotatedToId: null },
+      data: { revokedAt: expect.any(Date), rotatedToId: sha256(result.refreshToken) },
+    });
     expect(prisma.refreshToken.create).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ userId: 'u1', familyId: 'fam1' }) }),
     );
@@ -96,6 +99,150 @@ describe('AuthService refresh token rotation', () => {
     const { service, prisma } = makeService({ stored: null });
     await service.logout('unknown-token');
     expect(prisma.refreshToken.updateMany).not.toHaveBeenCalled();
+  });
+});
+
+describe('AuthService refresh grace window', () => {
+  type Row = {
+    id: string;
+    tokenHash: string;
+    userId: string;
+    familyId: string;
+    revokedAt: Date | null;
+    rotatedToId: string | null;
+    expiresAt: Date;
+  };
+  const user = { id: 'u1', email: 'a@b.com' };
+  const config = {
+    getOrThrow: (key: string) => (key === 'OAUTH_ISSUER' ? 'http://localhost:3000' : `${key}-secret`),
+    get: (key: string, fallback: string) => fallback,
+  };
+
+  /** A minimal in-memory RefreshToken table, enough to run real rotations. */
+  function makeStore() {
+    const rows: Row[] = [];
+    const matches = (row: Row, where: Partial<Row>) =>
+      Object.entries(where).every(([key, value]) => row[key as keyof Row] === value);
+    const refreshToken = {
+      findUnique: jest.fn(async ({ where }: { where: Partial<Row> }) => {
+        const row = rows.find((r) => matches(r, where));
+        return row ? { ...row } : null;
+      }),
+      updateMany: jest.fn(async ({ where, data }: { where: Partial<Row>; data: Partial<Row> }) => {
+        const hit = rows.filter((r) => matches(r, where));
+        hit.forEach((r) => Object.assign(r, data));
+        return { count: hit.length };
+      }),
+      create: jest.fn(async ({ data }: { data: Omit<Row, 'id' | 'revokedAt' | 'rotatedToId'> }) => {
+        const row = { id: `rt${rows.length + 1}`, revokedAt: null, rotatedToId: null, ...data };
+        rows.push(row);
+        return row;
+      }),
+    };
+    const prisma = {
+      refreshToken,
+      user: { findUnique: jest.fn(async () => user) },
+      $transaction: jest.fn(async (run: (tx: unknown) => unknown): Promise<unknown> => run(prisma)),
+    };
+    const jwtService = { signAsync: jest.fn(async () => 'access-jwt') };
+    const service = new AuthService(prisma as never, {} as never, jwtService as never, config as never);
+    const login = async () => {
+      const { refreshToken: token } = await service['issueTokens'](user.id, user.email, 'fam1');
+      return token;
+    };
+    const row = (token: string) => rows.find((r) => r.tokenHash === sha256(token))!;
+    return { service, prisma, rows, login, row };
+  }
+
+  afterEach(() => jest.useRealTimers());
+
+  it('gives a token rotated less than 30 s ago the same successor, without revoking the family', async () => {
+    const { service, rows, login } = makeStore();
+    const r0 = await login();
+    const first = await service.refreshTokens(r0);
+
+    const again = await service.refreshTokens(r0);
+
+    expect(again.refreshToken).toBe(first.refreshToken);
+    expect(again.accessToken).toBe('access-jwt');
+    expect(rows).toHaveLength(2);
+    expect(rows.find((r) => r.tokenHash === sha256(first.refreshToken))?.revokedAt).toBeNull();
+  });
+
+  it('keeps rotating normally from the successor after a retry', async () => {
+    const { service, login } = makeStore();
+    const r0 = await login();
+    const r1 = (await service.refreshTokens(r0)).refreshToken;
+    await service.refreshTokens(r0);
+
+    const r2 = (await service.refreshTokens(r1)).refreshToken;
+
+    expect(r2).not.toBe(r1);
+    expect(r2).not.toBe(r0);
+  });
+
+  it('treats a token rotated more than 30 s ago as reuse and revokes the family', async () => {
+    jest.useFakeTimers({ now: new Date('2026-10-25T10:00:00Z') });
+    const { service, login, row } = makeStore();
+    const r0 = await login();
+    const r1 = (await service.refreshTokens(r0)).refreshToken;
+
+    jest.setSystemTime(new Date('2026-10-25T10:00:31Z'));
+
+    await expect(service.refreshTokens(r0)).rejects.toThrow('Refresh token reuse detected');
+    expect(row(r1).revokedAt).not.toBeNull();
+  });
+
+  it('treats a recent rotation as reuse once its successor has rotated too', async () => {
+    const { service, login, row } = makeStore();
+    const r0 = await login();
+    const r1 = (await service.refreshTokens(r0)).refreshToken;
+    const r2 = (await service.refreshTokens(r1)).refreshToken;
+
+    await expect(service.refreshTokens(r0)).rejects.toThrow('Refresh token reuse detected');
+    expect(row(r2).revokedAt).not.toBeNull();
+  });
+
+  it('does not bring a session back after logout', async () => {
+    const { service, login } = makeStore();
+    const r0 = await login();
+    const r1 = (await service.refreshTokens(r0)).refreshToken;
+    await service.logout(r1);
+
+    await expect(service.refreshTokens(r0)).rejects.toThrow('Refresh token reuse detected');
+  });
+
+  it('treats a recent rotation to a random (pre-HMAC) successor as reuse', async () => {
+    const { service, login, row } = makeStore();
+    const r0 = await login();
+    Object.assign(row(r0), { revokedAt: new Date(), rotatedToId: sha256('some-random-successor') });
+
+    await expect(service.refreshTokens(r0)).rejects.toThrow('Refresh token reuse detected');
+  });
+
+  it('hands the winner\'s successor to a refresh that lost a race on the same token', async () => {
+    const { service, prisma, login } = makeStore();
+    const r0 = await login();
+    // Both requests read the token before either claims it.
+    const unrotated = await prisma.refreshToken.findUnique({ where: { tokenHash: sha256(r0) } });
+    prisma.refreshToken.findUnique.mockResolvedValueOnce(unrotated).mockResolvedValueOnce(unrotated);
+
+    const [a, b] = await Promise.all([service.refreshTokens(r0), service.refreshTokens(r0)]);
+
+    expect(a.refreshToken).toBe(b.refreshToken);
+    expect(prisma.refreshToken.create).toHaveBeenCalledTimes(2); // login + one rotation
+  });
+
+  it('derives a different successor with a different REFRESH_TOKEN_SECRET', async () => {
+    const { service, login } = makeStore();
+    const r0 = await login();
+    const viaDefault = service['successorOf'](r0);
+    const other = new AuthService({} as never, {} as never, {} as never, {
+      ...config,
+      getOrThrow: () => 'another-refresh-token-key-of-32-chars',
+    } as never);
+
+    expect(other['successorOf'](r0)).not.toBe(viaDefault);
   });
 });
 
