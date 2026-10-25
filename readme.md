@@ -1,79 +1,181 @@
 # MoFin
 
-MoFin — AI-native personal finance system for tracking, analyzing, and managing your money through structured data and natural language.
+A personal finance app with a ledger-first backend and an MCP server, so AI assistants can draft transactions that you approve.
 
----
+<!--
+Demo GIF placeholder. To record it:
+1. Start the stack (see "Quick start") and sign in as the demo user.
+2. Record 20-30 seconds at about 1280x720 with a screen recorder such as Peek, LICEcap or ScreenToGif:
+   dashboard -> add a transaction -> open Goals -> approve an AI draft.
+3. Keep it under 5 MB (reduce the frame rate to 10-12 fps if needed) and save it as docs/demo.gif.
+-->
+![MoFin demo](docs/demo.gif)
 
-## Overview
+## Features
 
-MoFin is a personal finance operating system designed to go beyond traditional expense trackers. It combines a structured financial ledger with AI-driven automation and MCP integration, allowing users to manage their finances using natural language through AI assistants like ChatGPT, Gemini, and Claude.
+- **Accounts.** Multi-currency accounts, opening balance, archive.
+- **Transactions.** Income, expense and transfer. Split across categories, edit, soft delete with undo. Recurring series that you can pause and resume. A series that cannot post is paused with the reason shown.
+- **Categories.** Default categories for new users. Archive instead of delete.
+- **Goals.** Balance, income and expense goals. Recurring periods and a history of finished periods.
+- **Dashboard.** Balance chart, monthly summary and a category donut.
+- **Search and filters.** Full transaction search with date, account, category and type filters.
+- **AI drafts.** AI assistants connect over MCP and create drafts. You review and approve each one.
+- **Account tools.** Data export (JSON and CSV), account deletion, password reset, change password, sign out everywhere.
+- **Sign-in.** Email and password, or Google.
+- **Quality.** Rate limiting, and accessibility work (axe checks in the E2E suite, touch targets, chart text alternatives).
 
-The goal is simple:
+## Quick start (Docker)
 
-> You talk to AI → your finances get updated safely and correctly.
+You need Docker with Compose. From the repository root:
 
----
+```bash
+docker compose up --build
+```
 
-## Key Features
+Then open http://localhost:3001 and sign in with the [demo account](#demo-account).
 
-### Core Finance System
-- Multi-account support (cash, bank, savings, etc.)
-- Income, expense, and transfer tracking
-- Category-based organization
-- Transaction history with full audit trail
+- `docker compose down -v` stops everything and deletes the database. The next start seeds it again.
+- Change the host ports with `API_PORT` and `WEB_PORT` (defaults 3000 and 3001).
+- The root `.env.example` has demo-only defaults. A `.env` file is optional.
 
-### AI-Native Experience
-- Natural language expense tracking
-- AI-powered transaction parsing
-- Draft-based validation system for safety
-- Structured conversion from text → financial data
+## Run without Docker
 
-### Safety Layer
-- Draft transactions before confirmation
-- User approval required before committing financial data
-- Immutable ledger design
+You need Node.js 20.9 or newer and a PostgreSQL 16 database. The backend ships a Compose file that starts only Postgres on port 5432.
 
-### Analytics & Insights
-- Monthly income and expense reports
-- Category-based spending analysis
-- Savings rate tracking
-- Financial history visualization
+Backend (API on http://localhost:3000, Swagger UI at `/docs` in development):
 
-### MCP Integration
-- Exposes tools for AI agents
-- Compatible with ChatGPT, Gemini, Claude, and MCP clients
-- Secure API-based financial operations
+```bash
+cd backend
+docker compose up -d            # PostgreSQL only
+cp .env.example .env
+npm ci
+npx prisma migrate deploy
+npx prisma db seed              # optional demo data
+npm run start:dev
+```
 
----
+Web (http://localhost:3001):
+
+```bash
+cd frontend/web
+npm ci
+npm run dev
+```
+
+Copy `frontend/web/.env.example` to `frontend/web/.env.local`. The web app has no required variables in development; it falls back to `BACKEND_URL=http://localhost:3000/api/v1`.
+
+## Demo account
+
+The seed creates a user with four accounts (USD and EUR), about three months of generated transactions and three goals.
+
+| Email | Password |
+| --- | --- |
+| `demo@mofin.app` | `DemoPassw0rd!` |
+
+The seed is idempotent. `npx prisma db seed -- --reset` recreates the demo data. It refuses to run in production unless `ALLOW_DEMO_SEED=true`.
 
 ## Architecture
 
-MoFin is built as a modular monolith backend with a clear separation of concerns.
+```mermaid
+flowchart LR
+    Browser["Browser"] -->|"httpOnly cookies"| BFF["Next.js app<br/>BFF proxy"]
+    BFF -->|"Bearer token + client IP header"| API["NestJS API<br/>modular monolith"]
+    API --> DB[("PostgreSQL")]
 
-### Backend
-- NestJS (TypeScript)
-- PostgreSQL (primary database)
-- Prisma ORM
-- Redis + BullMQ (queues & caching)
+    AI["AI assistant<br/>(Claude, ...)"] -->|"OAuth 2.1"| OAuth["OAuth server"]
+    AI -->|"MCP tools"| MCP["MCP server"]
+    OAuth --> API
+    MCP --> API
 
-### AI Layer
-- AI module for natural language parsing
-- Draft transaction generation system
+    subgraph API_internals["Inside the API"]
+        Draft["Draft transaction"] -->|"user approves"| Tx["Transaction"]
+        Tx --> Ledger["Ledger entries<br/>(TransactionItem)"]
+    end
+    API --- API_internals
+```
 
-### MCP Layer
-- Tool-based API for AI agents
-- Controlled access to financial operations
-- Safe execution through service layer only
+Key design decisions:
 
----
+- **Ledger-first.** Balances are never stored. They are computed from ledger entries (`TransactionItem`) with SQL aggregation, so they cannot drift from the transactions.
+- **Backend for frontend (BFF).** The browser never sees a token. The Next.js app keeps the access and refresh tokens in httpOnly cookies and forwards API calls through `app/api/backend/[...path]`. Auth routes live under `app/api/auth/*`. Refresh tokens rotate, and reuse of an old token is detected.
+- **Draft safety.** AI assistants cannot create real transactions. They create drafts. The flow is draft, approval, transaction, ledger entries.
+- **Modular monolith.** One deployable NestJS app split into modules (accounts, transactions, ledger, goals, search, mcp, oauth and others). Modules call each other through services, so a module can be split out later.
+- **MCP with OAuth 2.1.** The MCP server (`backend/src/modules/mcp/`) sits behind an OAuth 2.1 authorization server (`backend/src/modules/oauth/`). MCP tokens use a separate signing secret from web tokens.
+- **UI only on the web side.** The web app has no business logic of its own. Money is handled as decimals, not floats.
 
-## Core Concept: Draft Transactions
+## Project structure
 
-MoFin introduces a safety-first financial model:
+```text
+backend/               NestJS API, Prisma schema and migrations
+  src/modules/         accounts, auth, categories, draft-transactions, export,
+                       goals, ledger, mcp, oauth, search, transactions, users, ...
+  prisma/              schema.prisma and migrations
+  test/                e2e tests
+frontend/web/          Next.js app (UI and BFF)
+  app/                 routes, including app/api/backend and app/api/auth
+  e2e/                 Playwright tests
+docs/                  demo GIF
+```
 
-1. User or AI submits input
-2. System creates a **draft transaction**
-3. User reviews and approves
-4. Final transaction is recorded in the ledger
+## Environment variables
 
-This prevents incorrect or hallucinated financial data from being saved.
+Defaults and examples are in `backend/.env.example`.
+
+| Name | App | Required | Purpose |
+| --- | --- | --- | --- |
+| `DATABASE_URL` | backend | yes | PostgreSQL connection string. |
+| `JWT_ACCESS_SECRET` | backend | yes | Signs web access tokens. Placeholder values are rejected at startup. |
+| `JWT_MCP_SECRET` | backend | yes | Signs MCP and OAuth access tokens. Must differ from `JWT_ACCESS_SECRET`. |
+| `REFRESH_TOKEN_SECRET` | backend | yes | Derives rotated refresh tokens. Any random value of 32 or more characters. |
+| `JWT_ACCESS_TTL`, `JWT_REFRESH_TTL` | backend | no | Token lifetimes (`15m`, `30d`). |
+| `PORT` | backend | no | API port (3000). |
+| `OAUTH_ISSUER` | backend | yes | Public base URL of the API. Must match the token issuer. |
+| `OAUTH_RESOURCE_URI` | backend | no | MCP resource URL. Defaults to `${OAUTH_ISSUER}/api/v1/mcp`. |
+| `WEB_URL` | backend | yes | Web app URL, used by the OAuth login bridge and email links. |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_TOKEN_URL` | backend | no | Google sign-in. Without them `/auth/google` returns 503. |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | backend | no | Outgoing email for password reset. Without `SMTP_HOST`, emails are logged outside production. |
+| `PASSWORD_RESET_TTL` | backend | no | Reset link lifetime (`30m`). |
+| `MAIL_CAPTURE_DIR` | backend | no | Development and test only. Writes emails as JSON files for the E2E suite. |
+| `SENTRY_DSN` | backend | no | Error reporting. |
+| `BFF_SHARED_SECRET` | backend, web | production | Shared secret that lets the API trust the client IP header sent by the BFF. Used for rate limiting. |
+| `DEMO_PASSWORD` | backend | no | Overrides the demo user's password in the seed. |
+| `ALLOW_DEMO_SEED` | backend | no | Set to `true` to allow the demo seed in production. |
+| `COOKIE_SECURE` | web | no | Controls the `Secure` flag on auth cookies. Needed when serving over plain HTTP in Docker. |
+| `BACKEND_URL` | web | no | API base URL (default `http://localhost:3000/api/v1`). |
+| `NEXT_PUBLIC_MCP_URL` | web | no | MCP URL shown on the Connect page. |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_AUTH_URL`, `GOOGLE_REDIRECT_URI`, `GOOGLE_SCOPES` | web | no | Google sign-in redirect. |
+| `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_DSN` | web | no | Error reporting. |
+| `API_PORT`, `WEB_PORT` | Docker | no | Host ports for the Compose stack. |
+
+## Testing
+
+Backend (`cd backend`):
+
+```bash
+npm test             # Jest unit tests
+npm run test:e2e     # e2e tests; some need E2E_DATABASE_URL
+npm run lint
+```
+
+Web (`cd frontend/web`):
+
+```bash
+npm test             # Vitest
+npm run lint
+npx playwright install chromium   # once
+npm run e2e:seed                  # creates the fixture user
+npx playwright test               # needs the backend on :3000 and the web app on :3001
+```
+
+## Security
+
+- Tokens live in httpOnly cookies. The browser never handles them.
+- Refresh tokens rotate on use, and reuse of a rotated token is detected.
+- Rate limits apply per email, per token and per user. They are keyed on the real client IP, which the BFF passes in a header protected by a shared secret.
+- A global auth guard makes every route private unless it is marked `@Public()`.
+- Startup validation rejects placeholder secrets.
+- A gitleaks scan of the full history is clean.
+
+## License
+
+All rights reserved.
