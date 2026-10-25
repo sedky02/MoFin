@@ -52,16 +52,17 @@ export class LogMailSender extends MailSender {
     super();
   }
 
-  async send(message: MailMessage): Promise<void> {
+  send(message: MailMessage): Promise<void> {
     if (this.includeBody) {
       this.logger.log(
         `Email (not sent, no SMTP configured) to ${message.to}: ${message.subject}\n${message.text}`,
       );
-      return;
+      return Promise.resolve();
     }
     this.logger.warn(
       `Email "${message.subject}" was not sent: SMTP is not configured`,
     );
+    return Promise.resolve();
   }
 }
 

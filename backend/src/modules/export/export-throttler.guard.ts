@@ -21,8 +21,8 @@ export function exportTracker(req: Record<string, unknown>): string {
  */
 @Injectable()
 export class ExportThrottlerGuard extends ThrottlerGuard {
-  protected async getTracker(req: Record<string, unknown>): Promise<string> {
-    return exportTracker(req);
+  protected getTracker(req: Record<string, unknown>): Promise<string> {
+    return Promise.resolve(exportTracker(req));
   }
 
   protected async handleRequest(

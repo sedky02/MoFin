@@ -30,8 +30,8 @@ export function refreshTokenTracker(req: Record<string, unknown>): string {
  */
 @Injectable()
 export class RefreshThrottlerGuard extends ThrottlerGuard {
-  protected async getTracker(req: Record<string, unknown>): Promise<string> {
-    return refreshTokenTracker(req);
+  protected getTracker(req: Record<string, unknown>): Promise<string> {
+    return Promise.resolve(refreshTokenTracker(req));
   }
 
   protected async handleRequest(

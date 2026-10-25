@@ -80,7 +80,7 @@ export class OAuthController {
             res,
             redirectUri,
             'invalid_request',
-            String(req.query.state ?? ''),
+            typeof req.query.state === 'string' ? req.query.state : '',
           );
         }
       }

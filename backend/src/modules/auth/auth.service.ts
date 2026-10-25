@@ -356,15 +356,17 @@ export class AuthService {
       !validIssuers.includes(String(claims.iss)) ||
       typeof claims.exp !== 'number' ||
       claims.exp * 1000 < Date.now() ||
+      typeof claims.sub !== 'string' ||
       !claims.sub ||
+      typeof claims.email !== 'string' ||
       !claims.email ||
       claims.email_verified !== true
     ) {
       throw new UnauthorizedException('Invalid Google identity token');
     }
 
-    const googleId = String(claims.sub);
-    const email = String(claims.email).trim().toLowerCase();
+    const googleId = claims.sub;
+    const email = claims.email.trim().toLowerCase();
     const displayName =
       typeof claims.name === 'string' ? claims.name : undefined;
 
@@ -448,7 +450,9 @@ function decodeJwtPayload(token: string): Record<string, unknown> {
   const parts = token.split('.');
   if (parts.length < 2) throw new UnauthorizedException('Malformed id_token');
   try {
-    return JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
+    return JSON.parse(
+      Buffer.from(parts[1], 'base64url').toString('utf8'),
+    ) as Record<string, unknown>;
   } catch {
     throw new UnauthorizedException('Malformed id_token');
   }

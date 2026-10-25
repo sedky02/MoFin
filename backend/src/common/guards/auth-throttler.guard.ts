@@ -52,8 +52,8 @@ export class AuthThrottlerGuard extends ThrottlerGuard {
     return AUTH_THROTTLE;
   }
 
-  protected async getTracker(req: Record<string, unknown>): Promise<string> {
-    return authTracker(req);
+  protected getTracker(req: Record<string, unknown>): Promise<string> {
+    return Promise.resolve(authTracker(req));
   }
 
   protected async handleRequest(
@@ -99,8 +99,8 @@ export class ChangePasswordThrottlerGuard extends AuthThrottlerGuard {
     return CHANGE_PASSWORD_THROTTLE;
   }
 
-  protected async getTracker(req: Record<string, unknown>): Promise<string> {
-    return userTracker(req);
+  protected getTracker(req: Record<string, unknown>): Promise<string> {
+    return Promise.resolve(userTracker(req));
   }
 }
 

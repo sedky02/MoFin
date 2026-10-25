@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { LedgerDirection, Prisma, TransactionType } from '@prisma/client';
+import { Prisma, TransactionType } from '@prisma/client';
 import {
   DomainEvents,
   TransactionChangedEvent,
