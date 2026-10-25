@@ -144,12 +144,19 @@ async function handle(req: Request, ctx: Ctx): Promise<Response> {
   return res;
 }
 
-// Stream the upstream response straight back to the client.
+// Upstream headers the browser needs. Content-Disposition makes a download
+// (the data export) save under the backend's filename instead of rendering.
+const PASSTHROUGH_HEADERS = ["content-type", "content-disposition"];
+
+// Stream the upstream response straight back to the client. Bodiless
+// statuses must get a null body, or the Response constructor throws.
 async function passthrough(upstream: Response, requestId: string): Promise<NextResponse> {
-  const bodyText = await upstream.text();
-  const res = new NextResponse(bodyText || null, { status: upstream.status });
-  const ct = upstream.headers.get("content-type");
-  if (ct) res.headers.set("content-type", ct);
+  const bodiless = upstream.status === 204 || upstream.status === 304;
+  const res = new NextResponse(bodiless ? null : upstream.body, { status: upstream.status });
+  for (const name of PASSTHROUGH_HEADERS) {
+    const value = upstream.headers.get(name);
+    if (value) res.headers.set(name, value);
+  }
   // Lets a report from the user reference this id to find the matching
   // backend log line without needing DB/timestamp correlation.
   res.headers.set("x-request-id", requestId);
