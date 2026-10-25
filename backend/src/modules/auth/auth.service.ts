@@ -238,7 +238,7 @@ export class AuthService {
       const byEmail = await this.prisma.user.findUnique({ where: { email } });
       user = byEmail
         ? await this.prisma.user.update({ where: { id: byEmail.id }, data: { googleId } })
-        : await this.prisma.user.create({ data: { email, googleId, displayName } });
+        : await this.usersService.createUser({ email, googleId, displayName });
     }
 
     return this.issueTokens(user.id, user.email, randomBytes(16).toString('hex'));
