@@ -16,7 +16,7 @@ type Tx = {
   description: string;
   isRecurring: boolean;
   parentTransactionId?: string | null;
-  recurringStatus?: "ACTIVE" | "CANCELLED" | null;
+  recurringStatus?: "ACTIVE" | "PAUSED" | "CANCELLED" | null;
   nextOccurrenceAt?: string | null;
   deletedAt?: string | null;
 };
@@ -95,9 +95,10 @@ test("the Recurring view lists every series once, with its next date", async ({ 
   expect(series.every((t) => !t.deletedAt)).toBe(true);
   const rent = series.find((t) => t.description === RENT);
   expect(rent, `fixture series "${RENT}" not found: run \`npm run e2e:seed\``).toBeTruthy();
-  // Active series come first.
-  const firstCancelled = series.findIndex((t) => t.recurringStatus !== "ACTIVE");
-  if (firstCancelled >= 0) expect(series.slice(firstCancelled).every((t) => t.recurringStatus !== "ACTIVE")).toBe(true);
+  // Active series come first, then paused ones, then cancelled.
+  const rank = { ACTIVE: 0, PAUSED: 1, CANCELLED: 2 };
+  const ranks = series.map((t) => rank[t.recurringStatus ?? "CANCELLED"]);
+  expect(ranks).toEqual([...ranks].sort((a, b) => a - b));
 
   // Reached from the list's tab, and kept in the URL.
   await page.goto("/transactions");
@@ -119,6 +120,11 @@ test("the Recurring view lists every series once, with its next date", async ({ 
     if (t.recurringStatus === "ACTIVE" && t.nextOccurrenceAt) {
       await expect(row).toContainText(`Next on ${shownDate(t.nextOccurrenceAt)}`);
       await expect(row.getByRole("button", { name: "Cancel series" })).toBeVisible();
+    } else if (t.recurringStatus === "PAUSED") {
+      // B-13: why it's paused, never a next date that has already passed.
+      await expect(row).toContainText("Paused");
+      await expect(row).not.toContainText("Next on");
+      await expect(row.getByRole("button", { name: "Resume series" })).toBeVisible();
     } else {
       await expect(row).toContainText("Cancelled");
       await expect(row).not.toContainText("Next on");
