@@ -111,7 +111,10 @@ export function GoalCard({
             <span className="text-muted-foreground"> / </span>
             <MoneyAmount amount={goal.targetAmount} currency={currency} className="text-muted-foreground" />
           </span>
-          {instance && <GoalStatusBadge status={instance.status} />}
+          {/* An ended goal's open period was frozen unjudged; "In progress" would be wrong there. */}
+          {instance && !(goal.archivedAt && instance.status === "IN_PROGRESS") && (
+            <GoalStatusBadge status={instance.status} />
+          )}
         </div>
         <GoalProgressBar ratio={ratio} overTarget={overTarget} />
         <p className="truncate text-xs text-muted-foreground" data-testid="goal-scope">

@@ -14,6 +14,7 @@ import { SkeletonRows, EmptyState, ErrorState } from "@/components/common/states
 import { formatPeriodDate } from "@/lib/format";
 import { History } from "lucide-react";
 import { useGoalHistory } from "@/hooks/useGoals";
+import { goalProgressSourceLabel } from "@/lib/goal-scope";
 import type { Account, Goal } from "@/lib/types";
 
 export function GoalHistoryDialog({
@@ -35,7 +36,10 @@ export function GoalHistoryDialog({
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{goal?.name} — history</DialogTitle>
-          <DialogDescription>Every past period this goal has tracked, oldest last.</DialogDescription>
+          <DialogDescription>
+            Newest first. Finished periods keep the result recorded when they ended; editing an old
+            transaction only changes the current period.
+          </DialogDescription>
         </DialogHeader>
 
         {isLoading ? (
@@ -43,7 +47,7 @@ export function GoalHistoryDialog({
         ) : isError ? (
           <ErrorState description="Couldn't load this goal's history." onRetry={() => refetch()} />
         ) : !data || data.length === 0 ? (
-          <EmptyState icon={History} title="No periods yet" description="This goal hasn't completed a period." />
+          <EmptyState icon={History} title="No periods yet" description="This goal hasn't tracked a period yet." />
         ) : (
           <div className="max-h-[60vh] overflow-y-auto">
             <Table>
@@ -56,9 +60,12 @@ export function GoalHistoryDialog({
               </TableHeader>
               <TableBody>
                 {data.map((instance) => (
-                  <TableRow key={instance.id}>
+                  <TableRow key={instance.id} data-testid="goal-history-row">
                     <TableCell className="whitespace-nowrap text-sm">
                       {formatPeriodDate(instance.periodStart)} – {formatPeriodDate(instance.periodEnd)}
+                      <span className="block text-xs text-muted-foreground" data-testid="goal-history-source">
+                        {goalProgressSourceLabel(instance.progressSource)}
+                      </span>
                     </TableCell>
                     <TableCell className="whitespace-nowrap text-sm">
                       <MoneyAmount amount={instance.progressAmount} currency={currency} />

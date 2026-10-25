@@ -155,7 +155,7 @@ export default function GoalsPage() {
         open={!!toStop}
         onOpenChange={(o) => !o && setToStop(undefined)}
         title={`End "${toStop?.name}"?`}
-        description="This stops tracking progress and moves it to the Ended tab. Its period history is preserved, and you can restore it later."
+        description="Stops tracking and moves it to the Ended tab, with its progress as it is now. Its history is kept. You can restore it later; it restarts from that day."
         confirmLabel="End goal"
         onConfirm={confirmStop}
       />

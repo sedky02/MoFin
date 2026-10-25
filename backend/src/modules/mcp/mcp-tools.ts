@@ -50,6 +50,7 @@ export const MCP_TOOLS: ReadonlyArray<{ name: McpToolName; title: string; descri
   {
     name: 'get_goal_history',
     title: 'Get goal history',
-    description: "Get a goal's past period instances (targetAmount, progressAmount, status) for historical tracking.",
+    description:
+      "Get a goal's periods, newest first (targetAmount, progressAmount, status, progressSource). progressSource is LIVE for the open period, PERIOD_END for a finished period's recorded result, and ENDED for progress frozen when the goal was ended.",
   },
 ] as const;
