@@ -36,7 +36,7 @@ export function CategoryChips({
             aria-checked={selected}
             onClick={() => onChange(selected ? undefined : c.id)}
             className={cn(
-              "flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm transition-colors",
+              "flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm pointer-coarse:min-h-11 transition-colors",
               selected
                 ? "bg-foreground text-background"
                 : "bg-background/70 text-muted-foreground hover:text-foreground",
@@ -50,7 +50,7 @@ export function CategoryChips({
       <button
         type="button"
         onClick={onCreate}
-        className="flex shrink-0 items-center gap-1 rounded-full border border-dashed border-border px-3.5 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+        className="flex shrink-0 items-center gap-1 rounded-full pointer-coarse:min-h-11 border border-dashed border-border px-3.5 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
       >
         <Plus className="size-3.5" />
         New

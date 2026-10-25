@@ -55,7 +55,7 @@ export function TypeSwitcher({
             disabled={disabled && !selected}
             onClick={() => !disabled && onChange(opt.value)}
             className={cn(
-              "flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all",
+              "flex items-center justify-center gap-2 rounded-lg px-3 py-2 pointer-coarse:min-h-11 text-sm font-medium transition-all",
               selected
                 ? "bg-card shadow-sm"
                 : "text-muted-foreground hover:text-foreground disabled:pointer-events-none disabled:opacity-50",
