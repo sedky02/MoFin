@@ -23,23 +23,14 @@ import { GoogleButton } from "@/components/common/google-button";
 import { ApiClientError } from "@/lib/api";
 import { handleApiError } from "@/lib/form-errors";
 import { cn } from "@/lib/utils";
+import { MIN_PASSWORD_LENGTH, scorePassword } from "@/lib/password-strength";
 
 const registerSchema = z.object({
   email: z.string().email("Enter a valid email address."),
-  password: z.string().min(8, "Use at least 8 characters."),
+  password: z.string().min(MIN_PASSWORD_LENGTH,"Use at least 8 characters."),
   displayName: z.string().trim().max(80).optional(),
 });
 type RegisterValues = z.infer<typeof registerSchema>;
-
-function scorePassword(pw: string): number {
-  let score = 0;
-  if (pw.length >= 8) score++;
-  if (pw.length >= 12) score++;
-  if (/[A-Z]/.test(pw) && /[a-z]/.test(pw)) score++;
-  if (/\d/.test(pw)) score++;
-  if (/[^A-Za-z0-9]/.test(pw)) score++;
-  return Math.min(score, 4);
-}
 
 const STRENGTH = [
   { label: "Too short", cls: "bg-destructive" },
@@ -56,11 +47,14 @@ export default function RegisterPage() {
   const form = useForm<RegisterValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: { email: "", password: "", displayName: "" },
-    mode: "onChange",
+    // Validate on blur, then on every change once a field was touched, so the
+    // alert isn't announced while the user is still typing the first time.
+    mode: "onTouched",
   });
 
   const password = form.watch("password");
   const strength = scorePassword(password ?? "");
+  const passwordError = form.formState.errors.password;
 
   async function action() {
     setRateLimited(false);
@@ -93,6 +87,7 @@ export default function RegisterPage() {
       const mcpAuthorize = params.get("mcp_authorize");
       const loginUrl = new URL("/login", window.location.origin);
       loginUrl.searchParams.set("registered", "1");
+      loginUrl.searchParams.set("email", values.email);
       if (mcpAuthorize) loginUrl.searchParams.set("mcp_authorize", mcpAuthorize);
       const next = params.get("next");
       if (next) loginUrl.searchParams.set("next", next);
@@ -179,7 +174,9 @@ export default function RegisterPage() {
                     {...field}
                   />
                 </FormControl>
-                <FormDescription>Use at least 8 characters.</FormDescription>
+                {!passwordError && (
+                  <FormDescription>Use at least 8 characters.</FormDescription>
+                )}
                 {/* Strength indicator */}
                 <div className="mt-1.5 flex items-center gap-2">
                   <div className="flex h-1.5 flex-1 gap-1">

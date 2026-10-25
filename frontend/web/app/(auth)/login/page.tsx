@@ -55,6 +55,12 @@ export default function LoginPage() {
     defaultValues: { email: "", password: "" },
   });
 
+  // Carried over from /register (the password never is). Only fills an empty field.
+  const prefillEmail = params.get("email");
+  React.useEffect(() => {
+    if (prefillEmail && !form.getValues("email")) form.setValue("email", prefillEmail);
+  }, [prefillEmail, form]);
+
   // Submitted via <form action> so useFormStatus drives the button's pending state.
   async function action() {
     setRateLimited(false);
@@ -117,7 +123,7 @@ export default function LoginPage() {
           className="mb-5 flex items-start gap-2.5 rounded-lg border border-success/30 bg-success/10 px-3.5 py-3 text-sm text-success"
         >
           <CheckCircle2 className="mt-0.5 size-4 shrink-0" />
-          <span>If that email can be used, your account has been created. Sign in below.</span>
+          <span>If that email can be used, your account has been created. Sign in with the password you just chose.</span>
         </div>
       )}
 
@@ -188,7 +194,6 @@ export default function LoginPage() {
                 <FormControl>
                   <PasswordInput
                     autoComplete="current-password"
-                    placeholder="••••••••"
                     {...field}
                   />
                 </FormControl>
