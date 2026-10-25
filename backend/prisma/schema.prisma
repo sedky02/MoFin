@@ -40,8 +40,11 @@ enum RecurringInterval {
   YEARLY
 }
 
+// Declaration order is the sort order the Recurring view relies on: active
+// series first, then paused, then cancelled.
 enum RecurringStatus {
   ACTIVE
+  PAUSED
   CANCELLED
 }
 
@@ -156,6 +159,12 @@ model Transaction {
   recurringFromAccount   Account?           @relation("RecurringFromAccount", fields: [recurringFromAccountId], references: [id], onDelete: Restrict)
   recurringToAccountId   String?
   recurringToAccount     Account?           @relation("RecurringToAccount", fields: [recurringToAccountId], references: [id], onDelete: Restrict)
+  // Set when the cron paused the series because an occurrence couldn't be
+  // posted (an archived account, a currency mismatch...): the reason, in words
+  // for the user, and when it happened. A manual pause leaves the reason empty.
+  // Resuming clears both.
+  recurringError         String?
+  lastFailedAt           DateTime?
 
   // Soft delete. Transactions are the user's own records, so they can be edited
   // (items are rewritten in place) and deleted. A deleted transaction keeps its
