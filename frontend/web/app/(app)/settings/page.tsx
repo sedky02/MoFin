@@ -22,6 +22,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/common/page-header";
 import { SubmitButton } from "@/components/common/submit-button";
 import { ThemeToggle } from "@/components/shell/theme-toggle";
+import { DeleteAccountCard } from "@/components/settings/delete-account-card";
 import { useUser, useUpdateUser } from "@/hooks/useUser";
 import { useAccounts } from "@/hooks/useAccounts";
 import { useConnectedApps, useDisconnectApp } from "@/hooks/useConnectedApps";
@@ -103,7 +104,7 @@ export default function SettingsPage() {
       <Card className="border-0 p-6 shadow-sm">
         <h2 className="text-sm font-semibold">Profile</h2>
         <p className="mb-5 text-xs text-muted-foreground">
-          Your email is used to sign in and can&apos;t be changed here.
+          Your sign-in email. Changing it isn&apos;t supported yet.
         </p>
 
         {isLoading ? (
@@ -255,6 +256,8 @@ export default function SettingsPage() {
         </div>
         <ThemeToggle />
       </Card>
+
+      <DeleteAccountCard user={user} isLoading={isLoading} />
     </div>
   );
 }
