@@ -138,7 +138,11 @@ export function useResumeRecurringTransaction(id: string) {
       invalidateSeries(queryClient);
       toast.success("Recurring transaction resumed.");
     },
-    onError: (err) => handleApiError(err, { fallback: "Could not resume recurring transaction." }),
+    onError: (err) => {
+      // A refused resume records why on the series, which the panel then shows.
+      invalidateSeries(queryClient);
+      handleApiError(err, { fallback: "Could not resume recurring transaction." });
+    },
   });
 }
 

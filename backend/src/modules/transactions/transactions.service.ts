@@ -408,7 +408,15 @@ export class TransactionsService {
       throw new BadRequestException('Only a paused recurring series can be resumed');
     }
     const problem = await this.findSeriesProblem(userId, root);
-    if (problem) throw new BadRequestException(problem);
+    if (problem) {
+      // Kept on the series too, so the panel says why it's still paused (a
+      // manual pause has no reason until the user tries to resume it).
+      await this.prisma.transaction.updateMany({
+        where: { id: root.id, userId, deletedAt: null, recurringStatus: RecurringStatus.PAUSED },
+        data: { recurringError: problem },
+      });
+      throw new BadRequestException(problem);
+    }
 
     const anchorDay = root.occurredAt.getUTCDate();
     const interval = root.recurringInterval!;

@@ -729,10 +729,15 @@ describe('TransactionsService paused series', () => {
     beforeEach(() => jest.useFakeTimers({ now: new Date('2026-10-25T12:00:00Z') }));
     afterEach(() => jest.useRealTimers());
 
-    it('400s with the reason while the series still cannot post, and stays paused', async () => {
+    it('400s with the reason while the series still cannot post, and stays paused showing it', async () => {
       const { service, prisma } = setup(paused);
       await expect(service.resumeRecurring('u1', 'r1')).rejects.toThrow('Account Savings is archived');
-      expect(prisma.transaction.updateMany).not.toHaveBeenCalled();
+      // Only the reason is written: still paused, cursor untouched.
+      expect(prisma.transaction.updateMany).toHaveBeenCalledTimes(1);
+      expect(prisma.transaction.updateMany).toHaveBeenCalledWith({
+        where: { id: 'r1', userId: 'u1', deletedAt: null, recurringStatus: RecurringStatus.PAUSED },
+        data: { recurringError: 'Account Savings is archived' },
+      });
     });
 
     it('clears the reason and picks up from the first occurrence on or after today, without backfilling', async () => {
