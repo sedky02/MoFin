@@ -63,6 +63,8 @@ test.describe("settings security card", () => {
 
     // Sign out everywhere, this browser included.
     await page.goto("/settings");
+    // A click on the server-rendered button before hydration does nothing.
+    await page.waitForLoadState("networkidle");
     await page.getByRole("button", { name: "Sign out everywhere" }).click();
     const dialog = page.getByRole("alertdialog", { name: "Sign out everywhere?" });
     await expect(dialog).toBeVisible();
