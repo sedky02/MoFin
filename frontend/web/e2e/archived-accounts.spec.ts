@@ -98,6 +98,8 @@ test.describe("archived accounts", () => {
     await context.addCookies([{ name: "mofin-active-account", value: "all", url: baseURL! }]);
     await page.addInitScript(() => localStorage.setItem("mofin-active-account", "all"));
     await page.goto("/dashboard");
+    // A click on the server-rendered switcher before hydration does nothing.
+    await page.waitForLoadState("networkidle");
 
     const switcher = page.getByRole("radiogroup", { name: "Currency" });
     const hero = page.locator("div.rounded-hero").filter({ has: switcher });
