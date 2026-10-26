@@ -23,7 +23,7 @@ const geist = Geist({
 });
 
 export const metadata: Metadata = {
-  title: { default: "MoFin — clarity for your money", template: "%s · MoFin" },
+  title: { default: "MoFin", template: "%s · MoFin" },
   description:
     "MoFin is an AI-native personal finance app. Talk to it; it keeps a precise, ledger-first record.",
 };
