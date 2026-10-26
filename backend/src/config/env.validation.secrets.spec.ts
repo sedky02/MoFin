@@ -2,7 +2,11 @@ import { validateEnv } from './env.validation';
 
 // Regression tests for SEC-02: placeholder or weak signing secrets must stop
 // the app from booting.
-const SECRET_KEYS = ['JWT_ACCESS_SECRET', 'JWT_MCP_SECRET', 'REFRESH_TOKEN_SECRET'] as const;
+const SECRET_KEYS = [
+  'JWT_ACCESS_SECRET',
+  'JWT_MCP_SECRET',
+  'REFRESH_TOKEN_SECRET',
+] as const;
 
 const strong = (seed: string) => `${seed}-4fA9xQ2LmZ8vTn7KdW3pYb6RcJ1hUe5G`;
 

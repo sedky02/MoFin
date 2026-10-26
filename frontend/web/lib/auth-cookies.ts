@@ -21,11 +21,24 @@ export const BACKEND_TIMEOUT_MS = 8_000;
 function baseCookieOptions(maxAge: number) {
   return {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: secureCookies(),
     sameSite: "lax" as const,
     path: "/",
     maxAge,
   };
+}
+
+/**
+ * Whether auth cookies carry the Secure flag: on in production, off in dev.
+ * COOKIE_SECURE="false" turns it off for a production build served over plain
+ * http (the docker compose demo on http://localhost, where some browsers drop
+ * Secure cookies); COOKIE_SECURE="true" forces it on.
+ */
+export function secureCookies(): boolean {
+  const override = process.env.COOKIE_SECURE?.trim().toLowerCase();
+  if (override === "true") return true;
+  if (override === "false") return false;
+  return process.env.NODE_ENV === "production";
 }
 
 /** Set both auth cookies on a NextResponse so they reach the browser. */

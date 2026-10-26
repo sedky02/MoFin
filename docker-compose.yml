@@ -1,0 +1,79 @@
+# The whole MoFin stack for a local demo: Postgres, the API and the web app.
+#
+#   cp .env.example .env      # optional: every value below has a demo default
+#   docker compose up --build
+#
+# Then open http://localhost:3001 and sign in with the demo account.
+# The defaults are for local demos only; never reuse them for a real deployment.
+# For Postgres alone (running the apps with npm), see backend/docker-compose.yml.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-mofin}
+    # Not published on the host: only the backend talks to it, and this keeps
+    # the stack clear of a Postgres already listening on 5432.
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-mofin}?schema=public
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-local-demo-only-jwt-access-key-7f3c9a1e5b2d4806}
+      JWT_MCP_SECRET: ${JWT_MCP_SECRET:-local-demo-only-jwt-mcp-key-4b8e2d6a0c9f1e37}
+      REFRESH_TOKEN_SECRET: ${REFRESH_TOKEN_SECRET:-local-demo-only-refresh-key-9d1f5c3a7e2b8064}
+      BFF_SHARED_SECRET: ${BFF_SHARED_SECRET:-local-demo-only-bff-shared-key-2a6c8e0f4b7d1935}
+      OAUTH_ISSUER: ${OAUTH_ISSUER:-http://localhost:3000}
+      WEB_URL: ${WEB_URL:-http://localhost:3001}
+      # Applies migrations, then creates the demo account if it doesn't exist
+      # yet. The seed refuses NODE_ENV=production without ALLOW_DEMO_SEED=true.
+      SEED_DEMO: ${SEED_DEMO:-true}
+      ALLOW_DEMO_SEED: ${ALLOW_DEMO_SEED:-true}
+      DEMO_PASSWORD: ${DEMO_PASSWORD:-}
+    ports:
+      - '${API_PORT:-3000}:3000'
+    healthcheck:
+      test: ['CMD', 'node', '-e', "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      start_period: 60s
+      retries: 5
+
+  web:
+    build:
+      context: ./frontend/web
+      args:
+        # Inlined into the browser bundle at build time: rebuild after changing.
+        NEXT_PUBLIC_MCP_URL: ${NEXT_PUBLIC_MCP_URL:-http://localhost:3000/api/v1/mcp}
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      # Server-side only: the BFF reaches the API over the compose network.
+      BACKEND_URL: http://backend:3000/api/v1
+      BFF_SHARED_SECRET: ${BFF_SHARED_SECRET:-local-demo-only-bff-shared-key-2a6c8e0f4b7d1935}
+      # The demo is served over plain http://localhost, where some browsers drop
+      # Secure cookies. Set to true (or remove) behind HTTPS.
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+    ports:
+      - '${WEB_PORT:-3001}:3001'
+
+volumes:
+  pgdata:

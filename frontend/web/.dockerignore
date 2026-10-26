@@ -1,0 +1,23 @@
+# Keep the build context small and free of local state and secrets.
+node_modules
+.next
+out
+build
+coverage
+.env
+.env.*
+*.tsbuildinfo
+next-env.d.ts
+.vercel
+.vscode
+.idea
+.git
+# e2e state: credentials, screenshots, reports
+e2e/.auth
+e2e/.shots
+playwright-report
+test-results
+blob-report
+.mail-outbox
+Dockerfile
+.dockerignore

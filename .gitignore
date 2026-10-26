@@ -1,3 +1,4 @@
-learnings.txt
-notes.txt
 .ux/
+
+# Local settings for the root docker-compose.yml (see .env.example)
+.env

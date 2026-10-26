@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 let cookieValue: string | undefined = "tok";
 vi.mock("next/headers", () => ({
   cookies: async () => ({ get: () => (cookieValue ? { value: cookieValue } : undefined) }),
+  // serverGet also reads the incoming request headers to forward the client IP.
+  headers: async () => new Headers(),
 }));
 
 import { serverGet, ServerPrefetchError } from "@/lib/server-api";

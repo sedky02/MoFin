@@ -1,0 +1,18 @@
+# Keep the build context small and free of local state and secrets.
+node_modules
+dist
+coverage
+.env
+.env.*
+!.env.example
+.mail-outbox
+*.log
+*.tsbuildinfo
+.vscode
+.idea
+.git
+Dockerfile
+.dockerignore
+docker-compose.yml
+learnings.txt
+notes.txt

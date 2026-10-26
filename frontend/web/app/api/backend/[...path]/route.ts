@@ -8,6 +8,7 @@ import {
   REFRESH_MAX_AGE,
   refreshUnavailableResponse,
   requestRefresh,
+  secureCookies,
   type BackendTokens,
   type RefreshOutcome,
 } from "@/lib/auth-cookies";
@@ -163,7 +164,7 @@ async function passthrough(upstream: Response, requestId: string): Promise<NextR
 }
 
 function applyTokenCookies(res: NextResponse, tokens: BackendTokens) {
-  const secure = process.env.NODE_ENV === "production";
+  const secure = secureCookies();
   res.cookies.set(ACCESS_COOKIE, tokens.accessToken, {
     httpOnly: true,
     secure,
@@ -185,7 +186,7 @@ function clearedUnauthorized(): NextResponse {
     { statusCode: 401, message: "Session expired." },
     { status: 401 },
   );
-  const secure = process.env.NODE_ENV === "production";
+  const secure = secureCookies();
   res.cookies.set(ACCESS_COOKIE, "", { httpOnly: true, secure, sameSite: "lax", path: "/", maxAge: 0 });
   res.cookies.set(REFRESH_COOKIE, "", { httpOnly: true, secure, sameSite: "lax", path: "/", maxAge: 0 });
   return res;
