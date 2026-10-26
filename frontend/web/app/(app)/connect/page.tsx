@@ -183,13 +183,22 @@ export default function ConnectPage() {
                 </div>
               </div>
 
+              {user?.isDemo && (
+                <p role="status" className="mb-6 rounded-xl border border-border bg-accent px-4 py-3 text-sm text-accent-foreground">
+                  Connecting an AI app isn&apos;t available in the demo. Create your own account to connect Claude,
+                  ChatGPT or Gemini to your data.
+                </p>
+              )}
+
               <div className="space-y-7">
                 {/* Primary CTA */}
                 {active === "claude" && (
                   <Button size="lg" className="w-full" asChild>
                     <a
-                      href={claudeDeepLink || undefined}
-                      aria-disabled={!claudeDeepLink}
+                      // The demo can't connect an app (the backend refuses it), so
+                      // don't send the visitor off to Claude for nothing.
+                      href={(!user?.isDemo && claudeDeepLink) || undefined}
+                      aria-disabled={user?.isDemo || !claudeDeepLink}
                       target="_blank"
                       rel="noopener noreferrer"
                     >
@@ -234,7 +243,7 @@ export default function ConnectPage() {
                     No manual tokens — when {activeClient?.label ?? "the client"} connects,
                     it redirects you here to sign in as{" "}
                     <span className="font-medium text-foreground">
-                      {user?.email ?? "your account"}
+                      {user?.isDemo ? "your account" : (user?.email ?? "your account")}
                     </span>{" "}
                     and approve access. You can disconnect it any time under{" "}
                     <Link href="/settings" className="font-medium text-primary-text underline-offset-4 hover:underline">

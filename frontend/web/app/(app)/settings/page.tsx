@@ -118,7 +118,14 @@ export default function SettingsPage() {
             <form action={action} className="space-y-5">
               <div className="space-y-2">
                 <Label htmlFor="settings-email">Email</Label>
-                <Input id="settings-email" value={user?.email ?? ""} readOnly disabled className="bg-muted/50" />
+                <Input
+                  id="settings-email"
+                  // A demo's address is a generated placeholder; say what it is instead.
+                  value={user?.isDemo ? "Temporary demo account" : (user?.email ?? "")}
+                  readOnly
+                  disabled
+                  className="bg-muted/50"
+                />
               </div>
 
               <FormField

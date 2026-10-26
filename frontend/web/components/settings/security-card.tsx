@@ -47,6 +47,11 @@ export function SecurityCard({ user, isLoading }: { user?: User; isLoading: bool
       <h2 className="text-sm font-semibold">Security</h2>
       {isLoading ? (
         <Skeleton className="mt-4 h-40 w-full" />
+      ) : user?.isDemo ? (
+        <p className="text-xs text-muted-foreground">
+          The demo has no password, and its one session ends with the demo. Create your own account to set a
+          password and manage where you&apos;re signed in.
+        </p>
       ) : user?.hasPassword === false ? (
         <p className="mb-5 text-xs text-muted-foreground">
           You sign in with Google, so there&apos;s no MoFin password to change. Your Google account&apos;s own
@@ -60,8 +65,12 @@ export function SecurityCard({ user, isLoading }: { user?: User; isLoading: bool
           <ChangePasswordForm email={user?.email ?? ""} />
         </>
       )}
-      <Separator className="my-6" />
-      <SignOutEverywhere />
+      {!user?.isDemo && (
+        <>
+          <Separator className="my-6" />
+          <SignOutEverywhere />
+        </>
+      )}
     </Card>
   );
 }

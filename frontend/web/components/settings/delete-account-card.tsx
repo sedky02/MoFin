@@ -62,6 +62,18 @@ type DeleteValues = z.infer<ReturnType<typeof deleteSchema>>;
 export function DeleteAccountCard({ user, isLoading }: { user?: User; isLoading: boolean }) {
   const [open, setOpen] = React.useState(false);
 
+  // Nothing to delete by hand: the demo and its sample data go when it ends.
+  if (user?.isDemo) {
+    return (
+      <Card className="mt-6 border-0 p-6 shadow-sm">
+        <h2 className="text-sm font-semibold">Delete account</h2>
+        <p className="mt-2 text-xs text-muted-foreground">
+          This demo and everything in it are deleted automatically when it ends.
+        </p>
+      </Card>
+    );
+  }
+
   return (
     <Card className="mt-6 border border-destructive/30 p-6 shadow-sm">
       <div className="text-xs text-muted-foreground">
