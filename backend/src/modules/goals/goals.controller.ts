@@ -1,4 +1,14 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -37,7 +47,8 @@ export class GoalsController {
   @ApiZodQuery(listGoalsQuerySchema)
   list(
     @CurrentUser() user: AuthenticatedUser,
-    @Query(new ZodValidationPipe(listGoalsQuerySchema)) query: ListGoalsQueryDto,
+    @Query(new ZodValidationPipe(listGoalsQuerySchema))
+    query: ListGoalsQueryDto,
   ) {
     return this.goalsService.list(user.id, query);
   }
@@ -52,7 +63,8 @@ export class GoalsController {
   history(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
-    @Query(new ZodValidationPipe(goalHistoryQuerySchema)) query: GoalHistoryQueryDto,
+    @Query(new ZodValidationPipe(goalHistoryQuerySchema))
+    query: GoalHistoryQueryDto,
   ) {
     return this.goalsService.history(user.id, id, query);
   }

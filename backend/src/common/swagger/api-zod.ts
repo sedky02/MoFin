@@ -18,9 +18,12 @@ const toJsonSchema = zodToJsonSchema as unknown as (
 ) => Record<string, unknown>;
 
 function toOpenApi(schema: ZodSchema): SchemaObject {
-  const json = toJsonSchema(schema, { target: 'openApi3', $refStrategy: 'none' });
+  const json = toJsonSchema(schema, {
+    target: 'openApi3',
+    $refStrategy: 'none',
+  });
   delete json.$schema;
-  return json as SchemaObject;
+  return json;
 }
 
 export function ApiZodBody(schema: ZodSchema): MethodDecorator {

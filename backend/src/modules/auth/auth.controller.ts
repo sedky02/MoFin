@@ -1,4 +1,12 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -15,7 +23,10 @@ import { ApiZodBody } from '../../common/swagger/api-zod';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import { AuthenticatedUser } from '../../common/types/authenticated-user';
 import { AuthService } from './auth.service';
-import { FORGOT_PASSWORD_MESSAGE, PasswordResetService } from './password-reset.service';
+import {
+  FORGOT_PASSWORD_MESSAGE,
+  PasswordResetService,
+} from './password-reset.service';
 import {
   ChangePasswordDto,
   ForgotPasswordDto,
@@ -70,7 +81,9 @@ export class AuthController {
   @UseGuards(RefreshThrottlerGuard)
   @Post('refresh')
   @ApiZodBody(refreshTokenSchema)
-  refresh(@Body(new ZodValidationPipe(refreshTokenSchema)) dto: RefreshTokenDto) {
+  refresh(
+    @Body(new ZodValidationPipe(refreshTokenSchema)) dto: RefreshTokenDto,
+  ) {
     return this.authService.refreshTokens(dto.refreshToken);
   }
 
@@ -88,7 +101,9 @@ export class AuthController {
   @Post('password/forgot')
   @HttpCode(HttpStatus.ACCEPTED)
   @ApiZodBody(forgotPasswordSchema)
-  forgotPassword(@Body(new ZodValidationPipe(forgotPasswordSchema)) dto: ForgotPasswordDto) {
+  forgotPassword(
+    @Body(new ZodValidationPipe(forgotPasswordSchema)) dto: ForgotPasswordDto,
+  ) {
     this.passwordResetService.requestResetInBackground(dto.email);
     return { message: FORGOT_PASSWORD_MESSAGE };
   }
@@ -99,7 +114,9 @@ export class AuthController {
   @Post('password/reset')
   @HttpCode(HttpStatus.OK)
   @ApiZodBody(resetPasswordSchema)
-  resetPassword(@Body(new ZodValidationPipe(resetPasswordSchema)) dto: ResetPasswordDto) {
+  resetPassword(
+    @Body(new ZodValidationPipe(resetPasswordSchema)) dto: ResetPasswordDto,
+  ) {
     return this.passwordResetService.resetPassword(dto.token, dto.password);
   }
 

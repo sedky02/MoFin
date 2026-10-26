@@ -38,7 +38,9 @@ describe('Credential route rate limiting (e2e)', () => {
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
-      imports: [ThrottlerModule.forRoot([{ ttl: 60_000, limit: GLOBAL_LIMIT }])],
+      imports: [
+        ThrottlerModule.forRoot([{ ttl: 60_000, limit: GLOBAL_LIMIT }]),
+      ],
       controllers: [AuthController],
       providers: [
         { provide: APP_GUARD, useClass: ThrottlerGuard },
@@ -59,13 +61,31 @@ describe('Credential route rate limiting (e2e)', () => {
   });
 
   const post = (path: string, body: object, ip = '203.0.113.7') =>
-    request(app.getHttpServer()).post(`/api/v1/auth/${path}`).set('X-Forwarded-For', ip).send(body);
+    request(app.getHttpServer())
+      .post(`/api/v1/auth/${path}`)
+      .set('X-Forwarded-For', ip)
+      .send(body);
 
   // Each route keyed on the submitted email + IP.
   describe.each([
-    { path: 'login', ok: 201, limit: AUTH_THROTTLE.limit, body: (email: string) => ({ email, password: 'whatever' }) },
-    { path: 'register', ok: 201, limit: AUTH_THROTTLE.limit, body: (email: string) => ({ email, password: 'long-enough' }) },
-    { path: 'password/forgot', ok: 202, limit: FORGOT_PASSWORD_THROTTLE.limit, body: (email: string) => ({ email }) },
+    {
+      path: 'login',
+      ok: 201,
+      limit: AUTH_THROTTLE.limit,
+      body: (email: string) => ({ email, password: 'whatever' }),
+    },
+    {
+      path: 'register',
+      ok: 201,
+      limit: AUTH_THROTTLE.limit,
+      body: (email: string) => ({ email, password: 'long-enough' }),
+    },
+    {
+      path: 'password/forgot',
+      ok: 202,
+      limit: FORGOT_PASSWORD_THROTTLE.limit,
+      body: (email: string) => ({ email }),
+    },
   ])('POST /auth/$path', ({ path, ok, limit, body }) => {
     it('does not throttle 10 requests for 10 different emails from one IP', async () => {
       for (let i = 0; i < 10; i++) {
@@ -88,7 +108,10 @@ describe('Credential route rate limiting (e2e)', () => {
 
     it('treats differently cased / padded spellings of one email as the same bucket', async () => {
       for (let i = 0; i < limit; i++) {
-        await post(path, body(i % 2 ? 'Case@Example.com' : ' case@example.com ')).expect(ok);
+        await post(
+          path,
+          body(i % 2 ? 'Case@Example.com' : ' case@example.com '),
+        ).expect(ok);
       }
       await post(path, body('CASE@EXAMPLE.COM')).expect(429);
     });
@@ -96,7 +119,8 @@ describe('Credential route rate limiting (e2e)', () => {
 
   // Reset takes a token, not an email, so it's keyed on (a hash of) the token.
   describe('POST /auth/password/reset', () => {
-    const reset = (token: string, ip?: string) => post('password/reset', { token, password: 'new-password' }, ip);
+    const reset = (token: string, ip?: string) =>
+      post('password/reset', { token, password: 'new-password' }, ip);
 
     it('does not throttle 10 resets with different tokens from one IP', async () => {
       for (let i = 0; i < 10; i++) {
@@ -125,20 +149,34 @@ describe('Credential route rate limiting (e2e)', () => {
 
   it('keeps the global per-IP baseline as a backstop', async () => {
     for (let i = 0; i < GLOBAL_LIMIT; i++) {
-      await post('login', { email: `bulk${i}@example.com`, password: 'x' }).expect(201);
+      await post('login', {
+        email: `bulk${i}@example.com`,
+        password: 'x',
+      }).expect(201);
     }
-    await post('login', { email: 'one-more@example.com', password: 'x' }).expect(429);
+    await post('login', {
+      email: 'one-more@example.com',
+      password: 'x',
+    }).expect(429);
   });
 
   it('caps password/forgot per IP across different emails, with Retry-After', async () => {
     for (let i = 0; i < FORGOT_PASSWORD_IP_THROTTLE.limit; i++) {
-      await post('password/forgot', { email: `user${i}@example.test` }).expect(202);
+      await post('password/forgot', { email: `user${i}@example.test` }).expect(
+        202,
+      );
     }
-    const res = await post('password/forgot', { email: 'one-more@example.test' });
+    const res = await post('password/forgot', {
+      email: 'one-more@example.test',
+    });
     expect(res.status).toBe(429);
     expect(Number(res.headers['retry-after'])).toBeGreaterThan(0);
 
     // Another IP is unaffected.
-    await post('password/forgot', { email: 'one-more@example.test' }, '198.51.100.20').expect(202);
+    await post(
+      'password/forgot',
+      { email: 'one-more@example.test' },
+      '198.51.100.20',
+    ).expect(202);
   });
 });

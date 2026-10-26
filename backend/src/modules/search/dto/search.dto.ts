@@ -1,5 +1,8 @@
 import { z } from 'zod';
-import { amountStringSchema, dateStringSchema } from '../../../common/dto/common-fields';
+import {
+  amountStringSchema,
+  dateStringSchema,
+} from '../../../common/dto/common-fields';
 import { paginationSchema } from '../../../common/dto/pagination';
 
 export const searchTransactionsSchema = paginationSchema.extend({
@@ -16,6 +19,8 @@ export const searchTransactionsSchema = paginationSchema.extend({
   recurrence: z.enum(['recurring', 'one-off', 'series']).optional(),
   // Amount sorts compare the transaction total as stored, across currencies.
   // `next-occurrence` puts active series first, soonest next date first; anything else follows, newest first.
-  sort: z.enum(['newest', 'oldest', 'amount-desc', 'amount-asc', 'next-occurrence']).optional(),
+  sort: z
+    .enum(['newest', 'oldest', 'amount-desc', 'amount-asc', 'next-occurrence'])
+    .optional(),
 });
 export type SearchTransactionsDto = z.infer<typeof searchTransactionsSchema>;

@@ -24,17 +24,31 @@ export class AnalyticsController {
   @ApiZodQuery(monthlySummaryQuerySchema)
   monthlySummary(
     @CurrentUser() user: AuthenticatedUser,
-    @Query(new ZodValidationPipe(monthlySummaryQuerySchema)) query: MonthlySummaryQueryDto,
+    @Query(new ZodValidationPipe(monthlySummaryQuerySchema))
+    query: MonthlySummaryQueryDto,
   ) {
-    return this.analyticsService.getMonthlySummary(user.id, query.year, query.month, query.refresh, query.accountId, query.currency);
+    return this.analyticsService.getMonthlySummary(
+      user.id,
+      query.year,
+      query.month,
+      query.refresh,
+      query.accountId,
+      query.currency,
+    );
   }
 
   @Get('monthly-series')
   @ApiZodQuery(monthlySeriesQuerySchema)
   monthlySeries(
     @CurrentUser() user: AuthenticatedUser,
-    @Query(new ZodValidationPipe(monthlySeriesQuerySchema)) query: MonthlySeriesQueryDto,
+    @Query(new ZodValidationPipe(monthlySeriesQuerySchema))
+    query: MonthlySeriesQueryDto,
   ) {
-    return this.analyticsService.getMonthlySeries(user.id, query.months, query.currency, query.accountId);
+    return this.analyticsService.getMonthlySeries(
+      user.id,
+      query.months,
+      query.currency,
+      query.accountId,
+    );
   }
 }

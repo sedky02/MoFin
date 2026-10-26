@@ -2,7 +2,9 @@ import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { currentUserFromContext } from './current-user.decorator';
 
 function contextWith(request: Record<string, unknown>): ExecutionContext {
-  return { switchToHttp: () => ({ getRequest: () => request }) } as unknown as ExecutionContext;
+  return {
+    switchToHttp: () => ({ getRequest: () => request }),
+  } as unknown as ExecutionContext;
 }
 
 describe('currentUserFromContext', () => {
@@ -18,6 +20,8 @@ describe('currentUserFromContext', () => {
     ['an empty id', { user: { id: '', email: 'a@example.com' } }],
     ['a non-string id', { user: { id: 42, email: 'a@example.com' } }],
   ])('throws 401 with %s', (_label, request) => {
-    expect(() => currentUserFromContext(contextWith(request))).toThrow(UnauthorizedException);
+    expect(() => currentUserFromContext(contextWith(request))).toThrow(
+      UnauthorizedException,
+    );
   });
 });

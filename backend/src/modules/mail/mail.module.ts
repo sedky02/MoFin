@@ -1,7 +1,11 @@
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { MailSender } from './mail-sender';
-import { FileCaptureMailSender, LogMailSender, SmtpMailSender } from './mail-senders';
+import {
+  FileCaptureMailSender,
+  LogMailSender,
+  SmtpMailSender,
+} from './mail-senders';
 
 /**
  * Picks the concrete sender from configuration, in this order:
@@ -29,7 +33,13 @@ export function createMailSender(config: ConfigService): MailSender {
 }
 
 @Module({
-  providers: [{ provide: MailSender, useFactory: createMailSender, inject: [ConfigService] }],
+  providers: [
+    {
+      provide: MailSender,
+      useFactory: createMailSender,
+      inject: [ConfigService],
+    },
+  ],
   exports: [MailSender],
 })
 export class MailModule {}

@@ -11,14 +11,20 @@ describe('HealthController', () => {
   });
 
   it('ready() reports ok when a query succeeds', async () => {
-    const prisma = { $queryRaw: jest.fn().mockResolvedValue([{ '?column?': 1 }]) } as unknown as PrismaService;
+    const prisma = {
+      $queryRaw: jest.fn().mockResolvedValue([{ '?column?': 1 }]),
+    } as unknown as PrismaService;
     const controller = new HealthController(prisma);
     await expect(controller.ready()).resolves.toEqual({ status: 'ok' });
   });
 
   it('ready() throws 503 when the database is unreachable', async () => {
-    const prisma = { $queryRaw: jest.fn().mockRejectedValue(new Error('connection refused')) } as unknown as PrismaService;
+    const prisma = {
+      $queryRaw: jest.fn().mockRejectedValue(new Error('connection refused')),
+    } as unknown as PrismaService;
     const controller = new HealthController(prisma);
-    await expect(controller.ready()).rejects.toBeInstanceOf(ServiceUnavailableException);
+    await expect(controller.ready()).rejects.toBeInstanceOf(
+      ServiceUnavailableException,
+    );
   });
 });

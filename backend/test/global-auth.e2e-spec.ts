@@ -9,8 +9,18 @@
  * Uses stub services and an in-memory config, so it needs no database and
  * runs with a plain `npm run test:e2e -- global-auth`.
  */
-import { Controller, Get, INestApplication, RequestMethod, UseGuards } from '@nestjs/common';
-import { GUARDS_METADATA, METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants';
+import {
+  Controller,
+  Get,
+  INestApplication,
+  RequestMethod,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  GUARDS_METADATA,
+  METHOD_METADATA,
+  PATH_METADATA,
+} from '@nestjs/common/constants';
 import { ConfigService } from '@nestjs/config';
 import { APP_GUARD, Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
@@ -22,8 +32,14 @@ import { join, relative } from 'path';
 import * as request from 'supertest';
 import { App } from 'supertest/types';
 import { CurrentUser } from '../src/common/decorators/current-user.decorator';
-import { IS_PUBLIC_KEY, Public } from '../src/common/decorators/public.decorator';
-import { GlobalJwtAuthGuard, JwtAuthGuard } from '../src/common/guards/jwt-auth.guard';
+import {
+  IS_PUBLIC_KEY,
+  Public,
+} from '../src/common/decorators/public.decorator';
+import {
+  GlobalJwtAuthGuard,
+  JwtAuthGuard,
+} from '../src/common/guards/jwt-auth.guard';
 import { OAuthMcpAuthGuard } from '../src/common/guards/oauth-mcp-auth.guard';
 import { AuthenticatedUser } from '../src/common/types/authenticated-user';
 import { PrismaService } from '../src/database/prisma.service';
@@ -50,11 +66,18 @@ const ENV = {
 
 const jwt = new JwtService();
 const webToken = (sub = 'user-1') =>
-  jwt.sign({ sub, email: `${sub}@example.com` }, { secret: ENV.JWT_ACCESS_SECRET, issuer: ISSUER, audience: WEB_AUDIENCE });
+  jwt.sign(
+    { sub, email: `${sub}@example.com` },
+    { secret: ENV.JWT_ACCESS_SECRET, issuer: ISSUER, audience: WEB_AUDIENCE },
+  );
 const mcpToken = (sub = 'user-1') =>
   jwt.sign(
     { sub, email: `${sub}@example.com`, scope: 'mcp' },
-    { secret: ENV.JWT_MCP_SECRET, issuer: ISSUER, audience: `${ISSUER}/api/v1/mcp` },
+    {
+      secret: ENV.JWT_MCP_SECRET,
+      issuer: ISSUER,
+      audience: `${ISSUER}/api/v1/mcp`,
+    },
   );
 
 /** Stands in for a user-scoped service: records the userId it was asked for. */
@@ -92,14 +115,27 @@ class PublicClassController {
   }
 }
 
-async function start(moduleRef: Awaited<ReturnType<ReturnType<typeof Test.createTestingModule>['compile']>>) {
+async function start(
+  moduleRef: Awaited<
+    ReturnType<ReturnType<typeof Test.createTestingModule>['compile']>
+  >,
+) {
   const nestApp = moduleRef.createNestApplication<NestExpressApplication>();
   nestApp.set('trust proxy', 1);
   nestApp.setGlobalPrefix('api/v1', {
     exclude: [
-      { path: '.well-known/oauth-protected-resource', method: RequestMethod.GET },
-      { path: '.well-known/oauth-protected-resource/(.*)', method: RequestMethod.GET },
-      { path: '.well-known/oauth-authorization-server', method: RequestMethod.GET },
+      {
+        path: '.well-known/oauth-protected-resource',
+        method: RequestMethod.GET,
+      },
+      {
+        path: '.well-known/oauth-protected-resource/(.*)',
+        method: RequestMethod.GET,
+      },
+      {
+        path: '.well-known/oauth-authorization-server',
+        method: RequestMethod.GET,
+      },
       { path: 'health', method: RequestMethod.GET },
       { path: 'health/(.*)', method: RequestMethod.GET },
     ],
@@ -115,7 +151,9 @@ describe('CurrentUser on a route without any guard (e2e)', () => {
 
   beforeAll(async () => {
     // No global JWT guard here: the route forgot its guard and nothing else catches it.
-    const moduleRef = await Test.createTestingModule({ controllers: [ForgotGuardController] }).compile();
+    const moduleRef = await Test.createTestingModule({
+      controllers: [ForgotGuardController],
+    }).compile();
     app = await start(moduleRef);
   });
 
@@ -135,9 +173,15 @@ describe('Global web JWT guard (e2e)', () => {
   const authService = {
     login: jest.fn(async () => ({ accessToken: 'a', refreshToken: 'r' })),
     register: jest.fn(async () => ({ accessToken: 'a', refreshToken: 'r' })),
-    refreshTokens: jest.fn(async () => ({ accessToken: 'a', refreshToken: 'r' })),
+    refreshTokens: jest.fn(async () => ({
+      accessToken: 'a',
+      refreshToken: 'r',
+    })),
     logout: jest.fn(async () => ({ success: true })),
-    loginWithGoogle: jest.fn(async () => ({ accessToken: 'a', refreshToken: 'r' })),
+    loginWithGoogle: jest.fn(async () => ({
+      accessToken: 'a',
+      refreshToken: 'r',
+    })),
   };
   const passwordResetService = {
     requestResetInBackground: jest.fn(),
@@ -146,7 +190,9 @@ describe('Global web JWT guard (e2e)', () => {
   const oauthService = {
     issuer: ISSUER,
     authorizationServerMetadata: jest.fn(() => ({ issuer: ISSUER })),
-    protectedResourceMetadata: jest.fn(() => ({ resource: `${ISSUER}/api/v1/mcp` })),
+    protectedResourceMetadata: jest.fn(() => ({
+      resource: `${ISSUER}/api/v1/mcp`,
+    })),
     revokeToken: jest.fn(async () => undefined),
     listGrants: jest.fn(async (userId: string) => [{ userId }]),
     resolveSession: jest.fn(async () => null),
@@ -198,13 +244,21 @@ describe('Global web JWT guard (e2e)', () => {
     });
 
     it('is closed with a bad or MCP token', async () => {
-      await http().get('/api/v1/unannotated').auth('not-a-jwt', { type: 'bearer' }).expect(401);
-      await http().get('/api/v1/unannotated').auth(mcpToken(), { type: 'bearer' }).expect(401);
+      await http()
+        .get('/api/v1/unannotated')
+        .auth('not-a-jwt', { type: 'bearer' })
+        .expect(401);
+      await http()
+        .get('/api/v1/unannotated')
+        .auth(mcpToken(), { type: 'bearer' })
+        .expect(401);
       expect(scopedService.listFor).not.toHaveBeenCalled();
     });
 
     it('serves the caller with a web token, scoped to their id', async () => {
-      const res = await http().get('/api/v1/unannotated').auth(webToken('user-7'), { type: 'bearer' });
+      const res = await http()
+        .get('/api/v1/unannotated')
+        .auth(webToken('user-7'), { type: 'bearer' });
       expect(res.status).toBe(200);
       expect(res.body).toEqual({ userId: 'user-7' });
     });
@@ -217,25 +271,51 @@ describe('Global web JWT guard (e2e)', () => {
 
     it('does not cancel an explicit JwtAuthGuard on one of its methods', async () => {
       await http().get('/api/v1/public-class/guarded').expect(401);
-      await http().get('/api/v1/public-class/guarded').auth(webToken(), { type: 'bearer' }).expect(200);
+      await http()
+        .get('/api/v1/public-class/guarded')
+        .auth(webToken(), { type: 'bearer' })
+        .expect(200);
     });
   });
 
   describe('real public routes reach their handlers without a token', () => {
     it.each([
-      ['login', { email: 'a@example.com', password: 'whatever' }, 201, () => authService.login],
-      ['register', { email: 'a@example.com', password: 'long-enough' }, 201, () => authService.register],
+      [
+        'login',
+        { email: 'a@example.com', password: 'whatever' },
+        201,
+        () => authService.login,
+      ],
+      [
+        'register',
+        { email: 'a@example.com', password: 'long-enough' },
+        201,
+        () => authService.register,
+      ],
       ['refresh', { refreshToken: 'r' }, 201, () => authService.refreshTokens],
       ['logout', { refreshToken: 'r' }, 201, () => authService.logout],
-      ['password/forgot', { email: 'a@example.com' }, 202, () => passwordResetService.requestResetInBackground],
-      ['password/reset', { token: 't', password: 'new-password' }, 200, () => passwordResetService.resetPassword],
+      [
+        'password/forgot',
+        { email: 'a@example.com' },
+        202,
+        () => passwordResetService.requestResetInBackground,
+      ],
+      [
+        'password/reset',
+        { token: 't', password: 'new-password' },
+        200,
+        () => passwordResetService.resetPassword,
+      ],
     ])('POST /auth/%s', async (path, body, status, handler) => {
       await http().post(`/api/v1/auth/${path}`).send(body).expect(status);
       expect(handler()).toHaveBeenCalled();
     });
 
     it('POST /oauth/revoke', async () => {
-      await http().post('/api/v1/oauth/revoke').send({ token: 'x' }).expect(200);
+      await http()
+        .post('/api/v1/oauth/revoke')
+        .send({ token: 'x' })
+        .expect(200);
       expect(oauthService.revokeToken).toHaveBeenCalledWith('x');
     });
 
@@ -245,12 +325,13 @@ describe('Global web JWT guard (e2e)', () => {
       expect(res.type).toBe('text/html');
     });
 
-    it.each(['oauth-authorization-server', 'oauth-protected-resource', 'oauth-protected-resource/api/v1/mcp'])(
-      'GET /.well-known/%s',
-      async (path) => {
-        await http().get(`/.well-known/${path}`).expect(200);
-      },
-    );
+    it.each([
+      'oauth-authorization-server',
+      'oauth-protected-resource',
+      'oauth-protected-resource/api/v1/mcp',
+    ])('GET /.well-known/%s', async (path) => {
+      await http().get(`/.well-known/${path}`).expect(200);
+    });
 
     it.each(['/health', '/health/ready'])('GET %s', async (path) => {
       await http().get(path).expect(200, { status: 'ok' });
@@ -268,7 +349,10 @@ describe('Global web JWT guard (e2e)', () => {
 
     it('GET /oauth/grants needs a web token', async () => {
       await http().get('/api/v1/oauth/grants').expect(401);
-      await http().get('/api/v1/oauth/grants').auth(webToken('user-4'), { type: 'bearer' }).expect(200);
+      await http()
+        .get('/api/v1/oauth/grants')
+        .auth(webToken('user-4'), { type: 'bearer' })
+        .expect(200);
       expect(oauthService.listGrants).toHaveBeenCalledWith('user-4');
     });
   });
@@ -281,11 +365,17 @@ describe('Global web JWT guard (e2e)', () => {
     });
 
     it('rejects a web token', async () => {
-      await http().get('/api/v1/mcp').auth(webToken(), { type: 'bearer' }).expect(401);
+      await http()
+        .get('/api/v1/mcp')
+        .auth(webToken(), { type: 'bearer' })
+        .expect(401);
     });
 
     it('lets an MCP token through to the handler', async () => {
-      await http().get('/api/v1/mcp').auth(mcpToken(), { type: 'bearer' }).expect(405);
+      await http()
+        .get('/api/v1/mcp')
+        .auth(mcpToken(), { type: 'bearer' })
+        .expect(405);
     });
   });
 });
@@ -332,22 +422,49 @@ describe('Public routes across every controller', () => {
 
   function routes() {
     const reflector = new Reflector();
-    const found: { route: string; isPublic: boolean; controller: Function; file: string }[] = [];
+    const found: {
+      route: string;
+      isPublic: boolean;
+      controller: Function;
+      file: string;
+    }[] = [];
     for (const file of controllerFiles(srcRoot)) {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const exports = require(file) as Record<string, unknown>;
       for (const controller of Object.values(exports)) {
-        if (typeof controller !== 'function' || Reflect.getMetadata(PATH_METADATA, controller) === undefined) continue;
-        const base = String(Reflect.getMetadata(PATH_METADATA, controller)).replace(/^\/|\/$/g, '');
+        if (
+          typeof controller !== 'function' ||
+          Reflect.getMetadata(PATH_METADATA, controller) === undefined
+        )
+          continue;
+        const base = String(
+          Reflect.getMetadata(PATH_METADATA, controller),
+        ).replace(/^\/|\/$/g, '');
         for (const name of Object.getOwnPropertyNames(controller.prototype)) {
-          const handler = (controller.prototype as Record<string, unknown>)[name];
+          const handler = (controller.prototype as Record<string, unknown>)[
+            name
+          ];
           if (typeof handler !== 'function' || name === 'constructor') continue;
-          const method = Reflect.getMetadata(METHOD_METADATA, handler) as RequestMethod | undefined;
+          const method = Reflect.getMetadata(METHOD_METADATA, handler) as
+            | RequestMethod
+            | undefined;
           if (method === undefined) continue;
-          const sub = String(Reflect.getMetadata(PATH_METADATA, handler)).replace(/^\/|\/$/g, '');
-          const path = ['', base, sub].filter((p, i) => i === 0 || p).join('/') || '/';
-          const isPublic = reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [handler, controller]) === true;
-          found.push({ route: `${RequestMethod[method]} ${path}`, isPublic, controller, file: relative(srcRoot, file) });
+          const sub = String(
+            Reflect.getMetadata(PATH_METADATA, handler),
+          ).replace(/^\/|\/$/g, '');
+          const path =
+            ['', base, sub].filter((p, i) => i === 0 || p).join('/') || '/';
+          const isPublic =
+            reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
+              handler,
+              controller,
+            ]) === true;
+          found.push({
+            route: `${RequestMethod[method]} ${path}`,
+            isPublic,
+            controller,
+            file: relative(srcRoot, file),
+          });
         }
       }
     }
@@ -365,12 +482,24 @@ describe('Public routes across every controller', () => {
     const protectedRoutes = routes().filter((r) => !r.isPublic);
     // Spot-check the user-scoped families; the exact list above already pins the rest.
     expect(protectedRoutes.map((r) => r.route)).toEqual(
-      expect.arrayContaining(['GET /auth/me', 'POST /auth/password/change', 'POST /auth/sessions/revoke-all', 'DELETE /users/me', 'GET /oauth/grants', 'DELETE /oauth/grants/:clientId', 'GET /accounts', 'POST /transactions']),
+      expect.arrayContaining([
+        'GET /auth/me',
+        'POST /auth/password/change',
+        'POST /auth/sessions/revoke-all',
+        'DELETE /users/me',
+        'GET /oauth/grants',
+        'DELETE /oauth/grants/:clientId',
+        'GET /accounts',
+        'POST /transactions',
+      ]),
     );
   });
 
   it('keeps OAuthMcpAuthGuard on the public MCP routes', () => {
-    const guards = Reflect.getMetadata(GUARDS_METADATA, McpController) as unknown[];
+    const guards = Reflect.getMetadata(
+      GUARDS_METADATA,
+      McpController,
+    ) as unknown[];
     expect(guards).toContain(OAuthMcpAuthGuard);
   });
 

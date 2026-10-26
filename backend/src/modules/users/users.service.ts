@@ -1,9 +1,18 @@
-import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../database/prisma.service';
 import { DEFAULT_CATEGORIES } from '../categories/default-categories';
-import { CreateUserInput, DeleteAccountDto, UpdateProfileDto } from './dto/users.dto';
+import {
+  CreateUserInput,
+  DeleteAccountDto,
+  UpdateProfileDto,
+} from './dto/users.dto';
 
 @Injectable()
 export class UsersService {
@@ -31,7 +40,15 @@ export class UsersService {
   async getProfile(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, email: true, displayName: true, settings: true, createdAt: true, updatedAt: true, passwordHash: true }
+      select: {
+        id: true,
+        email: true,
+        displayName: true,
+        settings: true,
+        createdAt: true,
+        updatedAt: true,
+        passwordHash: true,
+      },
     });
     if (!user) throw new NotFoundException('User not found');
     return withHasPassword(user);
@@ -40,8 +57,18 @@ export class UsersService {
   async updateProfile(userId: string, dto: UpdateProfileDto) {
     const user = await this.prisma.user.update({
       where: { id: userId },
-      data: { ...dto, settings: dto.settings as Prisma.InputJsonValue | undefined },
-      select: { id: true, email: true, displayName: true, settings: true, updatedAt: true, passwordHash: true }
+      data: {
+        ...dto,
+        settings: dto.settings as Prisma.InputJsonValue | undefined,
+      },
+      select: {
+        id: true,
+        email: true,
+        displayName: true,
+        settings: true,
+        updatedAt: true,
+        passwordHash: true,
+      },
     });
     return withHasPassword(user);
   }
@@ -73,14 +100,27 @@ export class UsersService {
     if (!user) throw new UnauthorizedException();
 
     if (user.passwordHash) {
-      if (!dto.password) throw fieldError('password', 'Enter your password to confirm.');
+      if (!dto.password)
+        throw fieldError('password', 'Enter your password to confirm.');
       if (!(await bcrypt.compare(dto.password, user.passwordHash))) {
         throw fieldError('password', 'The password is incorrect.');
       }
-    } else if (dto.confirmEmail?.trim().toLowerCase() !== user.email.toLowerCase()) {
+    } else if (
+      dto.confirmEmail?.trim().toLowerCase() !== user.email.toLowerCase()
+    ) {
       throw fieldError('confirmEmail', "Type your account's email to confirm.");
     }
 
+    await this.deleteUserData(userId);
+  }
+
+  /**
+   * Clears every user-owned table, children before parents, then the user
+   * row, in one transaction (see `deleteAccount` for why the order matters).
+   * No proof of intent here: callers check it first. The demo seed uses this
+   * to reset its account.
+   */
+  async deleteUserData(userId: string): Promise<void> {
     await this.prisma.$transaction(async (tx) => {
       const mine = { userId };
       // Ledger first: items reference accounts (RESTRICT) and transactions.
@@ -119,5 +159,8 @@ function withHasPassword<T extends { passwordHash: string | null }>(user: T) {
 
 /** A 400 shaped like the validation pipe's, so the web form shows it on the field. */
 function fieldError(path: string, message: string): BadRequestException {
-  return new BadRequestException({ message: 'Validation failed', errors: [{ path, message }] });
+  return new BadRequestException({
+    message: 'Validation failed',
+    errors: [{ path, message }],
+  });
 }

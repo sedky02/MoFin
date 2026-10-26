@@ -1,4 +1,10 @@
-import { Controller, Get, Query, StreamableFile, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Query,
+  StreamableFile,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiProduces, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';

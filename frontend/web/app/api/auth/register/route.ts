@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { BACKEND_TIMEOUT_MS, BACKEND_URL, forwardedForHeader } from "@/lib/auth-cookies";
+import { bffHeaders } from "@/lib/bff-headers";
+import { BACKEND_TIMEOUT_MS, BACKEND_URL } from "@/lib/auth-cookies";
 
 //export const dynamic = "force-dynamic";
 
@@ -16,7 +17,7 @@ export async function POST(req: Request) {
   try {
     upstream = await fetch(`${BACKEND_URL}/auth/register`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", ...forwardedForHeader(req) },
+      headers: { "Content-Type": "application/json", ...bffHeaders(req) },
       body: JSON.stringify({
         email: body.email,
         password: body.password,

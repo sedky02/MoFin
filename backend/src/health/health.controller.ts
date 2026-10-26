@@ -1,4 +1,10 @@
-import { Controller, Get, HttpCode, HttpStatus, ServiceUnavailableException } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { Public } from '../common/decorators/public.decorator';
 import { PrismaService } from '../database/prisma.service';
 

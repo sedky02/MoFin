@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { connection } from "next/server";
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
 import { getQueryClient } from "@/lib/query-client";
-import { serverGet } from "@/lib/server-api";
+import { serverGet, ServerPrefetchError } from "@/lib/server-api";
 import {
   accountKeys,
   ledgerKeys,
@@ -30,6 +30,7 @@ import type {
   User,
 } from "@/lib/types";
 import { DashboardBody } from "@/components/dashboard/dashboard-body";
+import { DashboardUnavailable } from "@/components/dashboard/dashboard-unavailable";
 import { Skeleton } from "@/components/ui/skeleton";
 
 // Static shell. The dynamic, user-specific dashboard streams in via <Suspense>
@@ -45,6 +46,16 @@ export default function DashboardPage() {
 
 // Async Server Component performing the (dynamic) server-side prefetch.
 async function DashboardContent() {
+  try {
+    return await loadDashboard();
+  } catch (err) {
+    // Say which way the prefetch failed; anything else still reaches error.tsx.
+    if (err instanceof ServerPrefetchError) return <DashboardUnavailable kind={err.kind} />;
+    throw err;
+  }
+}
+
+async function loadDashboard() {
   const queryClient = getQueryClient();
 
   // Reading the current time requires a request-data source first under
@@ -63,8 +74,8 @@ async function DashboardContent() {
 
   // First round: who the user is and which accounts they have decide the scope.
   const [user, accountsPage] = await Promise.all([
-    serverGet<User>("/users/me"),
-    serverGet<Paginated<Account>>("/accounts", { status: "active", limit: 100, offset: 0 }),
+    serverGet<User>("/users/me", undefined, { throwOnUnauthorized: true }),
+    serverGet<Paginated<Account>>("/accounts", { status: "active", limit: 100, offset: 0 }, { throwOnUnauthorized: true }),
   ]);
   const accounts = accountsPage?.data ?? [];
   const activeAccount = resolveActiveAccount(stored, accounts, user?.settings?.mainAccountId);

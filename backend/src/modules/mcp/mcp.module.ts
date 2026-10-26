@@ -22,6 +22,6 @@ import { McpService } from './mcp.service';
     GoalsModule,
   ],
   controllers: [McpController],
-  providers: [McpService, McpServerFactory, OAuthMcpAuthGuard]
+  providers: [McpService, McpServerFactory, OAuthMcpAuthGuard],
 })
 export class McpModule {}

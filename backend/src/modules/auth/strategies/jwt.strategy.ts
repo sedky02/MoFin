@@ -25,13 +25,15 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       ignoreExpiration: false,
       secretOrKey: config.getOrThrow<string>('JWT_ACCESS_SECRET'),
       issuer: config.getOrThrow<string>('OAUTH_ISSUER').replace(/\/$/, ''),
-      audience: WEB_AUDIENCE
+      audience: WEB_AUDIENCE,
     });
   }
 
   validate(payload: JwtPayload): AuthenticatedUser {
     if (payload.scope) {
-      throw new UnauthorizedException('MCP-scoped token cannot be used for web sessions');
+      throw new UnauthorizedException(
+        'MCP-scoped token cannot be used for web sessions',
+      );
     }
     return { id: payload.sub, email: payload.email };
   }

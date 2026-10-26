@@ -1,6 +1,10 @@
 import { RecurringInterval, TransactionType } from '@prisma/client';
 import { z } from 'zod';
-import { amountStringSchema, currencySchema, dateStringSchema } from '../../../common/dto/common-fields';
+import {
+  amountStringSchema,
+  currencySchema,
+  dateStringSchema,
+} from '../../../common/dto/common-fields';
 
 // A single split line within a transaction's total amount, INCOME/EXPENSE only.
 // `items` is optional — omitting it (or sending exactly one) is the plain,
@@ -10,7 +14,9 @@ export const transactionItemInputSchema = z.object({
   categoryId: z.string().optional(),
   memo: z.string().optional(),
 });
-export type TransactionItemInputDto = z.infer<typeof transactionItemInputSchema>;
+export type TransactionItemInputDto = z.infer<
+  typeof transactionItemInputSchema
+>;
 
 /**
  * Shape validation only. Cross-field business rules (which account is required
@@ -65,7 +71,11 @@ export type UpdateTransactionDto = z.infer<typeof updateTransactionSchema>;
 
 export type UpdateTransactionCommand = Omit<
   CreateTransactionCommand,
-  'draftId' | 'isRecurring' | 'recurringInterval' | 'recurringEndDate' | 'parentTransactionId'
+  | 'draftId'
+  | 'isRecurring'
+  | 'recurringInterval'
+  | 'recurringEndDate'
+  | 'parentTransactionId'
 >;
 
 /**
@@ -82,7 +92,9 @@ export const updateRecurringTransactionSchema = z.object({
   recurringInterval: z.nativeEnum(RecurringInterval).optional(),
   recurringEndDate: dateStringSchema.nullable().optional(),
 });
-export type UpdateRecurringTransactionDto = z.infer<typeof updateRecurringTransactionSchema>;
+export type UpdateRecurringTransactionDto = z.infer<
+  typeof updateRecurringTransactionSchema
+>;
 
 export interface UpdateRecurringTransactionCommand {
   description?: string;

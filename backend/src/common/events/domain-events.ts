@@ -5,7 +5,7 @@ export const DomainEvents = {
   // An existing transaction was edited, deleted or restored.
   TransactionChanged: 'transaction.changed',
   LedgerEntriesCreated: 'ledger.entries-created',
-  AnalyticsRefreshRequested: 'analytics.refresh-requested'
+  AnalyticsRefreshRequested: 'analytics.refresh-requested',
 } as const;
 
 export interface DraftCreatedEvent {

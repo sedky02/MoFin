@@ -6,7 +6,10 @@ import { ApiZodBody } from '../../common/swagger/api-zod';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import { AuthenticatedUser } from '../../common/types/authenticated-user';
 import { AiService } from './ai.service';
-import { ParseTransactionIntentDto, parseTransactionIntentSchema } from './dto/ai.dto';
+import {
+  ParseTransactionIntentDto,
+  parseTransactionIntentSchema,
+} from './dto/ai.dto';
 
 @ApiTags('ai')
 @ApiBearerAuth('jwt')
@@ -19,7 +22,8 @@ export class AiController {
   @ApiZodBody(parseTransactionIntentSchema)
   parse(
     @CurrentUser() user: AuthenticatedUser,
-    @Body(new ZodValidationPipe(parseTransactionIntentSchema)) dto: ParseTransactionIntentDto,
+    @Body(new ZodValidationPipe(parseTransactionIntentSchema))
+    dto: ParseTransactionIntentDto,
   ) {
     return this.aiService.createDraftFromNaturalLanguage(user.id, dto);
   }

@@ -9,9 +9,9 @@ import { reportError } from "@/lib/error-reporting";
  * dashboard's server prefetch. A genuine backend outage must surface as an
  * error, not as a confident, wrong "$0.00" dashboard — see serverGet.
  *
- * In production Next.js replaces a Server Component error's message with a
- * generic one plus a digest, so a "timed out" vs "unreachable" distinction
- * can't be read here — the copy covers both.
+ * The dashboard page now catches ServerPrefetchError itself and renders
+ * DashboardUnavailable per failure kind, so this is the generic fallback for
+ * anything else. A Server Component error loses its message in production.
  */
 export default function DashboardError({ error, unstable_retry }: { error: Error; unstable_retry: () => void }) {
   React.useEffect(() => reportError(error, { boundary: "dashboard" }), [error]);

@@ -4,7 +4,11 @@ import { McpToolName } from './dto/mcp.dto';
  * Single source of MCP tool metadata. `name` MUST match a key in `mcpToolSchemas`
  * (the Zod schema map) — that schema becomes the tool's MCP inputSchema.
  */
-export const MCP_TOOLS: ReadonlyArray<{ name: McpToolName; title: string; description: string }> = [
+export const MCP_TOOLS: ReadonlyArray<{
+  name: McpToolName;
+  title: string;
+  description: string;
+}> = [
   {
     name: 'create_draft_transaction',
     title: 'Create draft transaction',
@@ -40,12 +44,14 @@ export const MCP_TOOLS: ReadonlyArray<{ name: McpToolName; title: string; descri
   {
     name: 'list_goals',
     title: 'List goals',
-    description: "List the user's active goals with their current period's live progress and status.",
+    description:
+      "List the user's active goals with their current period's live progress and status.",
   },
   {
     name: 'get_goal',
     title: 'Get goal',
-    description: 'Get a single goal with its current period live progress and status.',
+    description:
+      'Get a single goal with its current period live progress and status.',
   },
   {
     name: 'get_goal_history',

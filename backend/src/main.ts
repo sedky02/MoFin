@@ -5,6 +5,7 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module';
+import { trustedClientIpMiddleware } from './common/middleware/trusted-client-ip.middleware';
 import { initSentry } from './common/sentry';
 
 // Sentry.init must run before anything that could throw, so it's the very
@@ -15,22 +16,36 @@ initSentry(process.env.SENTRY_DSN);
 async function bootstrap() {
   // bufferLogs queues Nest's own startup logs until app.useLogger(...) below
   // swaps in the pino-backed logger, so nothing is lost/duplicated.
-  const app = await NestFactory.create<NestExpressApplication>(AppModule, { bufferLogs: true });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    bufferLogs: true,
+  });
   app.useLogger(app.get(Logger));
-  // The BFF (Next.js) is the only thing that ever calls this backend directly,
-  // so there is exactly one hop between us and the real client. Trusting it
-  // lets Express (and ThrottlerGuard's default req.ip tracker) read the real
-  // client IP from X-Forwarded-For instead of seeing the BFF's IP for every
-  // request from every user (SEC-XX).
+  const config = app.get(ConfigService);
+  // The BFF (Next.js) is the only thing that ever calls this backend directly.
+  // Trusting one hop makes req.ip the address that hop forwarded, which is the
+  // real client locally. Behind Vercel's edge that hop is the BFF itself, so
+  // the BFF also sends the client IP it saw, vouched for by
+  // BFF_SHARED_SECRET; this middleware runs before every guard and makes that
+  // IP req.ip for the throttlers (B-103).
   app.set('trust proxy', 1);
+  app.use(trustedClientIpMiddleware(config.get<string>('BFF_SHARED_SECRET')));
   // OAuth discovery documents (RFC 8414 / RFC 9728) must live at the origin root,
   // so they are excluded from the `api/v1` prefix. The authorize/token/register
   // endpoints stay under the prefix — claude.ai reads their URLs from the metadata.
   app.setGlobalPrefix('api/v1', {
     exclude: [
-      { path: '.well-known/oauth-protected-resource', method: RequestMethod.GET },
-      { path: '.well-known/oauth-protected-resource/(.*)', method: RequestMethod.GET },
-      { path: '.well-known/oauth-authorization-server', method: RequestMethod.GET },
+      {
+        path: '.well-known/oauth-protected-resource',
+        method: RequestMethod.GET,
+      },
+      {
+        path: '.well-known/oauth-protected-resource/(.*)',
+        method: RequestMethod.GET,
+      },
+      {
+        path: '.well-known/oauth-authorization-server',
+        method: RequestMethod.GET,
+      },
       // Infra liveness/readiness probes expect an unversioned, well-known path.
       { path: 'health', method: RequestMethod.GET },
       { path: 'health/(.*)', method: RequestMethod.GET },
@@ -45,12 +60,14 @@ async function bootstrap() {
     .setTitle('MoFin API')
     .setDescription('AI-native personal finance backend')
     .setVersion('0.1.0')
-    .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'jwt')
+    .addBearerAuth(
+      { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
+      'jwt',
+    )
     .build();
   const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('docs', app, document);
 
-  const config = app.get(ConfigService);
   await app.listen(config.get<number>('PORT', 3000));
 }
 

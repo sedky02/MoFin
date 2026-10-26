@@ -13,7 +13,10 @@ export const FORGOT_PASSWORD_THROTTLE = { limit: 5, ttl: 15 * 60_000 } as const;
  * the route's @Throttle. The per-email limit alone would let one IP send
  * reset emails to any number of addresses.
  */
-export const FORGOT_PASSWORD_IP_THROTTLE = { limit: 20, ttl: 15 * 60_000 } as const;
+export const FORGOT_PASSWORD_IP_THROTTLE = {
+  limit: 20,
+  ttl: 15 * 60_000,
+} as const;
 
 /**
  * Throttle key for the credential routes:
@@ -23,11 +26,17 @@ export const FORGOT_PASSWORD_IP_THROTTLE = { limit: 20, ttl: 15 * 60_000 } as co
  *   password), so the bucket follows the token rather than whoever shares
  *   the IP. The raw token is never part of the key;
  * - the IP alone otherwise.
+ *
+ * `req.ip` is the client IP the BFF vouched for when it sent one (see
+ * trusted-client-ip.middleware.ts), so every tracker here keys on the real
+ * client rather than the BFF.
  */
 export function authTracker(req: Record<string, unknown>): string {
   const body = req.body as { email?: unknown; token?: unknown } | undefined;
-  if (typeof body?.email === 'string') return `${String(req.ip)}:${body.email.trim().toLowerCase()}`;
-  if (typeof body?.token === 'string' && body.token.length > 0) return `reset:${sha256(body.token)}`;
+  if (typeof body?.email === 'string')
+    return `${String(req.ip)}:${body.email.trim().toLowerCase()}`;
+  if (typeof body?.token === 'string' && body.token.length > 0)
+    return `reset:${sha256(body.token)}`;
   return `ip:${String(req.ip)}`;
 }
 
@@ -47,13 +56,20 @@ export class AuthThrottlerGuard extends ThrottlerGuard {
     return AUTH_THROTTLE;
   }
 
-  protected async getTracker(req: Record<string, unknown>): Promise<string> {
-    return authTracker(req);
+  protected getTracker(req: Record<string, unknown>): Promise<string> {
+    return Promise.resolve(authTracker(req));
   }
 
-  protected async handleRequest(requestProps: ThrottlerRequest): Promise<boolean> {
+  protected async handleRequest(
+    requestProps: ThrottlerRequest,
+  ): Promise<boolean> {
     const { limit, ttl } = this.throttle();
-    return super.handleRequest({ ...requestProps, limit, ttl, blockDuration: ttl });
+    return super.handleRequest({
+      ...requestProps,
+      limit,
+      ttl,
+      blockDuration: ttl,
+    });
   }
 }
 
@@ -87,8 +103,8 @@ export class ChangePasswordThrottlerGuard extends AuthThrottlerGuard {
     return CHANGE_PASSWORD_THROTTLE;
   }
 
-  protected async getTracker(req: Record<string, unknown>): Promise<string> {
-    return userTracker(req);
+  protected getTracker(req: Record<string, unknown>): Promise<string> {
+    return Promise.resolve(userTracker(req));
   }
 }
 

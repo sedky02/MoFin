@@ -5,7 +5,10 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { ApiZodQuery } from '../../common/swagger/api-zod';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import { AuthenticatedUser } from '../../common/types/authenticated-user';
-import { SearchTransactionsDto, searchTransactionsSchema } from './dto/search.dto';
+import {
+  SearchTransactionsDto,
+  searchTransactionsSchema,
+} from './dto/search.dto';
 import { SearchService } from './search.service';
 
 @ApiTags('search')
@@ -19,7 +22,8 @@ export class SearchController {
   @ApiZodQuery(searchTransactionsSchema)
   transactions(
     @CurrentUser() user: AuthenticatedUser,
-    @Query(new ZodValidationPipe(searchTransactionsSchema)) query: SearchTransactionsDto,
+    @Query(new ZodValidationPipe(searchTransactionsSchema))
+    query: SearchTransactionsDto,
   ) {
     return this.searchService.searchTransactions(user.id, query);
   }

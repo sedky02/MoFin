@@ -1,8 +1,13 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { customLogLevel, customProps, genReqId } from './pino-options';
 
-function makeReq(headers: Record<string, string | string[] | undefined> = {}, user?: { id?: string }) {
-  return { headers, user } as unknown as IncomingMessage & { user?: { id?: string } };
+function makeReq(
+  headers: Record<string, string | string[] | undefined> = {},
+  user?: { id?: string },
+) {
+  return { headers, user } as unknown as IncomingMessage & {
+    user?: { id?: string };
+  };
 }
 
 describe('genReqId', () => {
@@ -11,7 +16,9 @@ describe('genReqId', () => {
   });
 
   it('takes the first value when the header repeats', () => {
-    expect(genReqId(makeReq({ 'x-request-id': ['first', 'second'] }))).toBe('first');
+    expect(genReqId(makeReq({ 'x-request-id': ['first', 'second'] }))).toBe(
+      'first',
+    );
   });
 
   it('generates a fresh id when the header is absent', () => {
@@ -22,7 +29,9 @@ describe('genReqId', () => {
 
 describe('customProps', () => {
   it('includes userId once the request has an authenticated user', () => {
-    expect(customProps(makeReq({}, { id: 'user-1' }))).toEqual({ userId: 'user-1' });
+    expect(customProps(makeReq({}, { id: 'user-1' }))).toEqual({
+      userId: 'user-1',
+    });
   });
 
   it('is empty for an unauthenticated request', () => {

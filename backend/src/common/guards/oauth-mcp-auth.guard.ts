@@ -1,4 +1,9 @@
-import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Request, Response } from 'express';
@@ -28,7 +33,8 @@ export class OAuthMcpAuthGuard implements CanActivate {
     const bearer = request.header('authorization')?.replace(/^Bearer\s+/i, '');
 
     try {
-      if (!bearer) throw new UnauthorizedException('Missing OAuth access token');
+      if (!bearer)
+        throw new UnauthorizedException('Missing OAuth access token');
       request.user = await this.validateOAuthToken(bearer);
       return true;
     } catch {
@@ -38,8 +44,11 @@ export class OAuthMcpAuthGuard implements CanActivate {
   }
 
   private async validateOAuthToken(token: string) {
-    const issuer = this.config.getOrThrow<string>('OAUTH_ISSUER').replace(/\/$/, '');
-    const audience = this.config.get<string>('OAUTH_RESOURCE_URI') ?? `${issuer}/api/v1/mcp`;
+    const issuer = this.config
+      .getOrThrow<string>('OAUTH_ISSUER')
+      .replace(/\/$/, '');
+    const audience =
+      this.config.get<string>('OAUTH_RESOURCE_URI') ?? `${issuer}/api/v1/mcp`;
 
     const payload = await this.jwt.verifyAsync<{
       sub: string;
@@ -64,7 +73,9 @@ export class OAuthMcpAuthGuard implements CanActivate {
    * the OAuth flow.
    */
   private writeChallenge(context: ExecutionContext): void {
-    const issuer = this.config.getOrThrow<string>('OAUTH_ISSUER').replace(/\/$/, '');
+    const issuer = this.config
+      .getOrThrow<string>('OAUTH_ISSUER')
+      .replace(/\/$/, '');
     const metadataUrl = `${issuer}/.well-known/oauth-protected-resource`;
     const res = context.switchToHttp().getResponse<Response>();
     res.setHeader(

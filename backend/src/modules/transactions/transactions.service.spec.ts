@@ -1,13 +1,31 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { RecurringInterval, RecurringStatus, TransactionType } from '@prisma/client';
-import { computeNextOccurrence, firstOccurrenceOnOrAfter, isPastEndDate, TransactionsService } from './transactions.service';
-import { CreateTransactionCommand, UpdateTransactionCommand } from './dto/transactions.dto';
+import {
+  RecurringInterval,
+  RecurringStatus,
+  TransactionType,
+} from '@prisma/client';
+import {
+  computeNextOccurrence,
+  firstOccurrenceOnOrAfter,
+  isPastEndDate,
+  TransactionsService,
+} from './transactions.service';
+import {
+  CreateTransactionCommand,
+  UpdateTransactionCommand,
+} from './dto/transactions.dto';
 import { CategoriesService } from '../categories/categories.service';
 
 describe('TransactionsService.validateCommand', () => {
   // The cross-field rules run synchronously before any dependency is touched,
   // so bare stubs are enough to exercise them.
-  const service = new TransactionsService({} as never, {} as never, {} as never, {} as never, {} as never);
+  const service = new TransactionsService(
+    {} as never,
+    {} as never,
+    {} as never,
+    {} as never,
+    {} as never,
+  );
 
   const base: CreateTransactionCommand = {
     type: TransactionType.EXPENSE,
@@ -19,21 +37,41 @@ describe('TransactionsService.validateCommand', () => {
   };
 
   const expectReject = (command: CreateTransactionCommand) =>
-    expect(service.create('u1', command)).rejects.toBeInstanceOf(BadRequestException);
+    expect(service.create('u1', command)).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
 
-  it('rejects non-positive amounts', () => expectReject({ ...base, amount: '0' }));
+  it('rejects non-positive amounts', () =>
+    expectReject({ ...base, amount: '0' }));
 
   it('rejects INCOME without toAccountId', () =>
-    expectReject({ ...base, type: TransactionType.INCOME, fromAccountId: undefined }));
+    expectReject({
+      ...base,
+      type: TransactionType.INCOME,
+      fromAccountId: undefined,
+    }));
 
   it('rejects EXPENSE without fromAccountId', () =>
-    expectReject({ ...base, type: TransactionType.EXPENSE, fromAccountId: undefined }));
+    expectReject({
+      ...base,
+      type: TransactionType.EXPENSE,
+      fromAccountId: undefined,
+    }));
 
   it('rejects TRANSFER missing an account', () =>
-    expectReject({ ...base, type: TransactionType.TRANSFER, toAccountId: undefined }));
+    expectReject({
+      ...base,
+      type: TransactionType.TRANSFER,
+      toAccountId: undefined,
+    }));
 
   it('rejects TRANSFER between identical accounts', () =>
-    expectReject({ ...base, type: TransactionType.TRANSFER, fromAccountId: 'a', toAccountId: 'a' }));
+    expectReject({
+      ...base,
+      type: TransactionType.TRANSFER,
+      fromAccountId: 'a',
+      toAccountId: 'a',
+    }));
 
   it('rejects TRANSFER split into multiple items', () =>
     expectReject({
@@ -48,25 +86,34 @@ describe('TransactionsService.validateCommand', () => {
     expectReject({ ...base, items: [{ amount: '10' }, { amount: '0' }] }));
 
   it("rejects split items that don't add up to the transaction total", () =>
-    expectReject({ ...base, amount: '10', items: [{ amount: '4' }, { amount: '5' }] }));
+    expectReject({
+      ...base,
+      amount: '10',
+      items: [{ amount: '4' }, { amount: '5' }],
+    }));
 
   it('rejects a split that also carries a top-level category', async () => {
     const result = service.create('u1', {
       ...base,
       categoryId: 'groceries',
-      items: [
-        { amount: '4', categoryId: 'groceries' },
-        { amount: '6' },
-      ],
+      items: [{ amount: '4', categoryId: 'groceries' }, { amount: '6' }],
     });
     await expect(result).rejects.toBeInstanceOf(BadRequestException);
-    await expect(result).rejects.toThrow('A split transaction cannot have its own category');
+    await expect(result).rejects.toThrow(
+      'A split transaction cannot have its own category',
+    );
   });
 
   it('still accepts a top-level category on a single-item transaction', async () => {
     // Gets past validation and fails later, on the bare categories stub, not with the split error.
-    const result = service.create('u1', { ...base, categoryId: 'groceries', items: [{ amount: '10' }] });
-    await expect(result).rejects.not.toThrow('A split transaction cannot have its own category');
+    const result = service.create('u1', {
+      ...base,
+      categoryId: 'groceries',
+      items: [{ amount: '10' }],
+    });
+    await expect(result).rejects.not.toThrow(
+      'A split transaction cannot have its own category',
+    );
   });
 
   it('rejects recurring transactions with split items', () =>
@@ -91,8 +138,16 @@ describe('TransactionsService.validateCommand', () => {
 });
 
 describe('TransactionsService category type', () => {
-  const categories: Record<string, { id: string; userId: string | null; name: string; type: string }> = {
-    groceries: { id: 'groceries', userId: null, name: 'Groceries', type: 'EXPENSE' },
+  const categories: Record<
+    string,
+    { id: string; userId: string | null; name: string; type: string }
+  > = {
+    groceries: {
+      id: 'groceries',
+      userId: null,
+      name: 'Groceries',
+      type: 'EXPENSE',
+    },
     salary: { id: 'salary', userId: 'u1', name: 'Salary', type: 'INCOME' },
   };
 
@@ -101,7 +156,10 @@ describe('TransactionsService category type', () => {
   function makeService() {
     const prisma = {
       category: {
-        findFirst: jest.fn(async ({ where }: { where: { id: string } }) => categories[where.id] ?? null),
+        findFirst: jest.fn(
+          async ({ where }: { where: { id: string } }) =>
+            categories[where.id] ?? null,
+        ),
       },
     };
     const ledgerService = { buildEntriesForCommand: jest.fn(async () => []) };
@@ -128,7 +186,9 @@ describe('TransactionsService category type', () => {
     const { service, ledgerService } = makeService();
     const result = service.create('u1', { ...income, categoryId: 'groceries' });
     await expect(result).rejects.toBeInstanceOf(BadRequestException);
-    await expect(result).rejects.toThrow('"Groceries" is an expense category and cannot be used on an income transaction');
+    await expect(result).rejects.toThrow(
+      '"Groceries" is an expense category and cannot be used on an income transaction',
+    );
     expect(ledgerService.buildEntriesForCommand).not.toHaveBeenCalled();
   });
 
@@ -164,7 +224,9 @@ describe('TransactionsService category type', () => {
     const { service, ledgerService } = makeService();
     // Past the category checks the stubbed prisma has no $transaction, so this
     // fails afterwards; reaching the ledger is what proves the category passed.
-    await service.create('u1', { ...income, categoryId: 'salary' }).catch(() => undefined);
+    await service
+      .create('u1', { ...income, categoryId: 'salary' })
+      .catch(() => undefined);
     expect(ledgerService.buildEntriesForCommand).toHaveBeenCalled();
   });
 
@@ -183,7 +245,10 @@ describe('TransactionsService category type', () => {
     const update = jest.fn();
     const prisma = {
       category: {
-        findFirst: jest.fn(async ({ where }: { where: { id: string } }) => categories[where.id] ?? null),
+        findFirst: jest.fn(
+          async ({ where }: { where: { id: string } }) =>
+            categories[where.id] ?? null,
+        ),
       },
       transaction: { findFirst: jest.fn(async () => root), update },
     };
@@ -191,12 +256,15 @@ describe('TransactionsService category type', () => {
       prisma as never,
       {} as never,
       new CategoriesService(prisma as never),
-      { assertOwned: jest.fn(async () => ({})), assertActive: jest.fn(async () => ({})) } as never,
+      {
+        assertOwned: jest.fn(async () => ({})),
+        assertActive: jest.fn(async () => ({})),
+      } as never,
       {} as never,
     );
-    await expect(service.updateRecurring('u1', 'r1', { categoryId: 'groceries' })).rejects.toBeInstanceOf(
-      BadRequestException,
-    );
+    await expect(
+      service.updateRecurring('u1', 'r1', { categoryId: 'groceries' }),
+    ).rejects.toBeInstanceOf(BadRequestException);
     expect(update).not.toHaveBeenCalled();
   });
 });
@@ -207,22 +275,38 @@ describe('computeNextOccurrence', () => {
   // date below is built with Date.UTC and every anchorDay comes from
   // getUTCDate(), mirroring the real callers.
   it('advances by one month, keeping the anchor day', () => {
-    const next = computeNextOccurrence(15, new Date(Date.UTC(2026, 0, 15)), RecurringInterval.MONTHLY);
+    const next = computeNextOccurrence(
+      15,
+      new Date(Date.UTC(2026, 0, 15)),
+      RecurringInterval.MONTHLY,
+    );
     expect(next).toEqual(new Date(Date.UTC(2026, 1, 15)));
   });
 
   it('clamps to the last day of a shorter month', () => {
-    const next = computeNextOccurrence(31, new Date(Date.UTC(2026, 0, 31)), RecurringInterval.MONTHLY);
+    const next = computeNextOccurrence(
+      31,
+      new Date(Date.UTC(2026, 0, 31)),
+      RecurringInterval.MONTHLY,
+    );
     expect(next).toEqual(new Date(Date.UTC(2026, 1, 28)));
   });
 
   it('recovers the anchor day once the target month is long enough again', () => {
-    const next = computeNextOccurrence(31, new Date(Date.UTC(2026, 1, 28)), RecurringInterval.MONTHLY);
+    const next = computeNextOccurrence(
+      31,
+      new Date(Date.UTC(2026, 1, 28)),
+      RecurringInterval.MONTHLY,
+    );
     expect(next).toEqual(new Date(Date.UTC(2026, 2, 31)));
   });
 
   it('advances by one year for YEARLY, clamping Feb 29 in a non-leap year', () => {
-    const next = computeNextOccurrence(29, new Date(Date.UTC(2024, 1, 29)), RecurringInterval.YEARLY);
+    const next = computeNextOccurrence(
+      29,
+      new Date(Date.UTC(2024, 1, 29)),
+      RecurringInterval.YEARLY,
+    );
     expect(next).toEqual(new Date(Date.UTC(2025, 1, 28)));
   });
 
@@ -231,7 +315,11 @@ describe('computeNextOccurrence', () => {
     // 31st and land on Feb 28th — not silently roll to Feb 1st because the
     // server happens to run in a timezone ahead of UTC.
     const lateOnThe31st = new Date(Date.UTC(2026, 0, 31, 23, 30));
-    const next = computeNextOccurrence(lateOnThe31st.getUTCDate(), lateOnThe31st, RecurringInterval.MONTHLY);
+    const next = computeNextOccurrence(
+      lateOnThe31st.getUTCDate(),
+      lateOnThe31st,
+      RecurringInterval.MONTHLY,
+    );
     expect(next).toEqual(new Date(Date.UTC(2026, 1, 28, 23, 30)));
   });
 });
@@ -271,33 +359,65 @@ describe('TransactionsService recurring end date', () => {
     const db = {
       transaction: {
         create: jest.fn(async () => ({ id: 'r1' })),
-        findUniqueOrThrow: jest.fn(async () => ({ id: 'r1', occurredAt: createdOn, items: [] })),
+        findUniqueOrThrow: jest.fn(async () => ({
+          id: 'r1',
+          occurredAt: createdOn,
+          items: [],
+        })),
       },
     };
-    const prisma = { $transaction: jest.fn(async (fn: (t: typeof db) => unknown) => fn(db)) };
-    const ledger = { buildEntriesForCommand: jest.fn(async () => []), createEntries: jest.fn(async () => undefined) };
+    const prisma = {
+      $transaction: jest.fn(async (fn: (t: typeof db) => unknown) => fn(db)),
+    };
+    const ledger = {
+      buildEntriesForCommand: jest.fn(async () => []),
+      createEntries: jest.fn(async () => undefined),
+    };
     const categories = { assertAssignable: jest.fn(async () => undefined) };
-    const service = new TransactionsService(prisma as never, ledger as never, categories as never, {} as never, { emit: jest.fn() } as never);
-    const written = () => (db.transaction.create.mock.calls[0] as unknown as [{ data: Record<string, unknown> }])[0].data;
+    const service = new TransactionsService(
+      prisma as never,
+      ledger as never,
+      categories as never,
+      {} as never,
+      { emit: jest.fn() } as never,
+    );
+    const written = () =>
+      (
+        db.transaction.create.mock.calls[0] as unknown as [
+          { data: Record<string, unknown> },
+        ]
+      )[0].data;
     return { service, written };
   }
 
   it('starts a series ended when its end date falls before the first next occurrence', async () => {
     const { service, written } = setupCreate();
-    await service.create('u1', { ...rent, recurringEndDate: new Date('2026-10-30T00:00:00Z') });
-    expect(written()).toMatchObject({ recurringStatus: RecurringStatus.CANCELLED, nextOccurrenceAt: null });
+    await service.create('u1', {
+      ...rent,
+      recurringEndDate: new Date('2026-10-30T00:00:00Z'),
+    });
+    expect(written()).toMatchObject({
+      recurringStatus: RecurringStatus.CANCELLED,
+      nextOccurrenceAt: null,
+    });
   });
 
   it('keeps a series active when the end date is exactly the first next occurrence', async () => {
     const { service, written } = setupCreate();
     await service.create('u1', { ...rent, recurringEndDate: firstNext });
-    expect(written()).toMatchObject({ recurringStatus: RecurringStatus.ACTIVE, nextOccurrenceAt: firstNext });
+    expect(written()).toMatchObject({
+      recurringStatus: RecurringStatus.ACTIVE,
+      nextOccurrenceAt: firstNext,
+    });
   });
 
   it('keeps an open-ended series active', async () => {
     const { service, written } = setupCreate();
     await service.create('u1', rent);
-    expect(written()).toMatchObject({ recurringStatus: RecurringStatus.ACTIVE, nextOccurrenceAt: firstNext });
+    expect(written()).toMatchObject({
+      recurringStatus: RecurringStatus.ACTIVE,
+      nextOccurrenceAt: firstNext,
+    });
   });
 
   const root = {
@@ -320,16 +440,35 @@ describe('TransactionsService recurring end date', () => {
 
   function setupUpdate(found: unknown = root) {
     const update = jest.fn(async () => ({}));
-    const prisma = { transaction: { findFirst: jest.fn(async () => found), update } };
-    const accounts = { assertOwned: jest.fn(async () => ({ name: 'Checking', currency: 'USD', archivedAt: null })) };
-    const service = new TransactionsService(prisma as never, {} as never, {} as never, accounts as never, {} as never);
-    const written = () => (update.mock.calls[0] as unknown as [{ data: Record<string, unknown> }])[0].data;
+    const prisma = {
+      transaction: { findFirst: jest.fn(async () => found), update },
+    };
+    const accounts = {
+      assertOwned: jest.fn(async () => ({
+        name: 'Checking',
+        currency: 'USD',
+        archivedAt: null,
+      })),
+    };
+    const service = new TransactionsService(
+      prisma as never,
+      {} as never,
+      {} as never,
+      accounts as never,
+      {} as never,
+    );
+    const written = () =>
+      (
+        update.mock.calls[0] as unknown as [{ data: Record<string, unknown> }]
+      )[0].data;
     return { service, update, written };
   }
 
   it('ends the series when an edit moves the end date before the next occurrence', async () => {
     const { service, written } = setupUpdate();
-    await service.updateRecurring('u1', 'r1', { recurringEndDate: new Date('2026-10-30T00:00:00Z') });
+    await service.updateRecurring('u1', 'r1', {
+      recurringEndDate: new Date('2026-10-30T00:00:00Z'),
+    });
     expect(written()).toMatchObject({
       recurringEndDate: new Date('2026-10-30T00:00:00Z'),
       recurringStatus: RecurringStatus.CANCELLED,
@@ -345,28 +484,47 @@ describe('TransactionsService recurring end date', () => {
   });
 
   it('ends the series when an interval change pushes the next occurrence past the stored end date', async () => {
-    const { service, written } = setupUpdate({ ...root, recurringEndDate: new Date('2027-01-31T00:00:00Z') });
-    await service.updateRecurring('u1', 'r1', { recurringInterval: RecurringInterval.YEARLY });
-    expect(written()).toMatchObject({ recurringStatus: RecurringStatus.CANCELLED, nextOccurrenceAt: null });
+    const { service, written } = setupUpdate({
+      ...root,
+      recurringEndDate: new Date('2027-01-31T00:00:00Z'),
+    });
+    await service.updateRecurring('u1', 'r1', {
+      recurringInterval: RecurringInterval.YEARLY,
+    });
+    expect(written()).toMatchObject({
+      recurringStatus: RecurringStatus.CANCELLED,
+      nextOccurrenceAt: null,
+    });
   });
 
   it('leaves the series running when the end date is cleared or untouched', async () => {
     const cleared = setupUpdate();
-    await cleared.service.updateRecurring('u1', 'r1', { recurringEndDate: null });
-    expect(cleared.written()).toMatchObject({ recurringEndDate: null, nextOccurrenceAt: firstNext });
+    await cleared.service.updateRecurring('u1', 'r1', {
+      recurringEndDate: null,
+    });
+    expect(cleared.written()).toMatchObject({
+      recurringEndDate: null,
+      nextOccurrenceAt: firstNext,
+    });
     expect(cleared.written()).not.toHaveProperty('recurringStatus');
 
     const untouched = setupUpdate();
-    await untouched.service.updateRecurring('u1', 'r1', { description: 'Rent (new flat)' });
+    await untouched.service.updateRecurring('u1', 'r1', {
+      description: 'Rent (new flat)',
+    });
     expect(untouched.written()).toMatchObject({ nextOccurrenceAt: firstNext });
     expect(untouched.written()).not.toHaveProperty('recurringStatus');
   });
 
   it('refuses to edit an ended series, so a later end date does not bring it back', async () => {
-    const { service, update } = setupUpdate({ ...root, recurringStatus: RecurringStatus.CANCELLED, nextOccurrenceAt: null });
-    await expect(service.updateRecurring('u1', 'r1', { recurringEndDate: null })).rejects.toThrow(
-      'Cannot edit a cancelled recurring series',
-    );
+    const { service, update } = setupUpdate({
+      ...root,
+      recurringStatus: RecurringStatus.CANCELLED,
+      nextOccurrenceAt: null,
+    });
+    await expect(
+      service.updateRecurring('u1', 'r1', { recurringEndDate: null }),
+    ).rejects.toThrow('Cannot edit a cancelled recurring series');
     expect(update).not.toHaveBeenCalled();
   });
 });
@@ -392,7 +550,15 @@ describe('TransactionsService edit, delete and restore', () => {
     occurredAt: new Date('2026-04-02T09:00:00Z'),
     fromAccountId: 'a1',
   };
-  const entries = [{ accountId: 'a1', direction: 'DEBIT', amount: '45.50', currency: 'USD', memo: 'Groceries (fixed)' }];
+  const entries = [
+    {
+      accountId: 'a1',
+      direction: 'DEBIT',
+      amount: '45.50',
+      currency: 'USD',
+      memo: 'Groceries (fixed)',
+    },
+  ];
 
   function setup(overrides: { found?: unknown; claimed?: number } = {}) {
     // The re-read returns whatever the claim wrote, like the database would.
@@ -403,25 +569,42 @@ describe('TransactionsService edit, delete and restore', () => {
           written = args.data;
           return { count: overrides.claimed ?? 1 };
         }),
-        findUniqueOrThrow: jest.fn(async () => ({ ...existing, ...written, items: [] })),
+        findUniqueOrThrow: jest.fn(async () => ({
+          ...existing,
+          ...written,
+          items: [],
+        })),
       },
       transactionItem: { deleteMany: jest.fn(async () => ({ count: 1 })) },
     };
     const prisma = {
       transaction: {
-        findFirst: jest.fn(async () => ('found' in overrides ? overrides.found : existing)),
+        findFirst: jest.fn(async () =>
+          'found' in overrides ? overrides.found : existing,
+        ),
         updateMany: jest.fn(async () => ({ count: overrides.claimed ?? 1 })),
       },
       $transaction: jest.fn(async (fn: (t: typeof db) => unknown) => fn(db)),
     };
-    const ledger = { buildEntriesForCommand: jest.fn(async () => entries), createEntries: jest.fn(async () => undefined) };
+    const ledger = {
+      buildEntriesForCommand: jest.fn(async () => entries),
+      createEntries: jest.fn(async () => undefined),
+    };
     const categories = { assertAssignable: jest.fn(async () => undefined) };
     const events = { emit: jest.fn() };
-    const service = new TransactionsService(prisma as never, ledger as never, categories as never, {} as never, events as never);
+    const service = new TransactionsService(
+      prisma as never,
+      ledger as never,
+      categories as never,
+      {} as never,
+      events as never,
+    );
     const changedMonths = () =>
       events.emit.mock.calls
         .filter((c) => c[0] === 'transaction.changed')
-        .map((c) => (c[1] as { occurredAt: Date }).occurredAt.toISOString().slice(0, 7));
+        .map((c) =>
+          (c[1] as { occurredAt: Date }).occurredAt.toISOString().slice(0, 7),
+        );
     return { service, db, prisma, ledger, categories, events, changedMonths };
   }
 
@@ -442,15 +625,28 @@ describe('TransactionsService edit, delete and restore', () => {
           occurredAt: edit.occurredAt,
         },
       });
-      expect(db.transactionItem.deleteMany).toHaveBeenCalledWith({ where: { transactionId: 't1', userId: 'u1' } });
-      expect(ledger.createEntries).toHaveBeenCalledWith(db, 'u1', 't1', entries);
+      expect(db.transactionItem.deleteMany).toHaveBeenCalledWith({
+        where: { transactionId: 't1', userId: 'u1' },
+      });
+      expect(ledger.createEntries).toHaveBeenCalledWith(
+        db,
+        'u1',
+        't1',
+        entries,
+      );
     });
 
     it('validates the new values like create does, before touching anything', async () => {
       const { service, prisma, ledger } = setup();
-      await expect(service.update('u1', 't1', { ...edit, amount: '0' })).rejects.toBeInstanceOf(BadRequestException);
       await expect(
-        service.update('u1', 't1', { ...edit, categoryId: 'c1', items: [{ amount: '20' }, { amount: '25.50' }] }),
+        service.update('u1', 't1', { ...edit, amount: '0' }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      await expect(
+        service.update('u1', 't1', {
+          ...edit,
+          categoryId: 'c1',
+          items: [{ amount: '20' }, { amount: '25.50' }],
+        }),
       ).rejects.toThrow('A split transaction cannot have its own category');
       expect(ledger.buildEntriesForCommand).not.toHaveBeenCalled();
       expect(prisma.$transaction).not.toHaveBeenCalled();
@@ -458,8 +654,16 @@ describe('TransactionsService edit, delete and restore', () => {
 
     it('checks the categories against the new type', async () => {
       const { service, categories } = setup();
-      await service.update('u1', 't1', { ...edit, categoryId: 'c2', items: undefined });
-      expect(categories.assertAssignable).toHaveBeenCalledWith('u1', TransactionType.EXPENSE, 'c2');
+      await service.update('u1', 't1', {
+        ...edit,
+        categoryId: 'c2',
+        items: undefined,
+      });
+      expect(categories.assertAssignable).toHaveBeenCalledWith(
+        'u1',
+        TransactionType.EXPENSE,
+        'c2',
+      );
     });
 
     it('clears cached summaries for the month it left and the month it moved to', async () => {
@@ -468,17 +672,26 @@ describe('TransactionsService edit, delete and restore', () => {
       expect(moved.changedMonths()).toEqual(['2026-03', '2026-04']);
 
       const sameMonth = setup();
-      await sameMonth.service.update('u1', 't1', { ...edit, occurredAt: new Date('2026-03-20T09:00:00Z') });
+      await sameMonth.service.update('u1', 't1', {
+        ...edit,
+        occurredAt: new Date('2026-03-20T09:00:00Z'),
+      });
       expect(sameMonth.changedMonths()).toEqual(['2026-03']);
     });
 
     it('404s for an unknown, foreign or deleted transaction, and when a delete wins the race', async () => {
       const missing = setup({ found: null });
-      await expect(missing.service.update('u1', 'nope', edit)).rejects.toThrow('not found');
-      expect(missing.prisma.transaction.findFirst).toHaveBeenCalledWith({ where: { id: 'nope', userId: 'u1', deletedAt: null } });
+      await expect(missing.service.update('u1', 'nope', edit)).rejects.toThrow(
+        'not found',
+      );
+      expect(missing.prisma.transaction.findFirst).toHaveBeenCalledWith({
+        where: { id: 'nope', userId: 'u1', deletedAt: null },
+      });
 
       const raced = setup({ claimed: 0 });
-      await expect(raced.service.update('u1', 't1', edit)).rejects.toThrow('not found');
+      await expect(raced.service.update('u1', 't1', edit)).rejects.toThrow(
+        'not found',
+      );
       expect(raced.db.transactionItem.deleteMany).not.toHaveBeenCalled();
     });
 
@@ -486,21 +699,35 @@ describe('TransactionsService edit, delete and restore', () => {
       const root = { ...existing, isRecurring: true };
       const typeChange = setup({ found: root });
       await expect(
-        typeChange.service.update('u1', 't1', { ...edit, type: TransactionType.INCOME, toAccountId: 'a1' }),
+        typeChange.service.update('u1', 't1', {
+          ...edit,
+          type: TransactionType.INCOME,
+          toAccountId: 'a1',
+        }),
       ).rejects.toThrow("can't change type");
       const currencyChange = setup({ found: root });
-      await expect(currencyChange.service.update('u1', 't1', { ...edit, currency: 'EUR' })).rejects.toThrow(
-        "can't change currency",
-      );
+      await expect(
+        currencyChange.service.update('u1', 't1', { ...edit, currency: 'EUR' }),
+      ).rejects.toThrow("can't change currency");
       const split = setup({ found: root });
       await expect(
-        split.service.update('u1', 't1', { ...edit, items: [{ amount: '20' }, { amount: '25.50' }] }),
+        split.service.update('u1', 't1', {
+          ...edit,
+          items: [{ amount: '20' }, { amount: '25.50' }],
+        }),
       ).rejects.toThrow("can't be split");
 
       // A generated occurrence is an ordinary record: it can change type.
-      const occurrence = setup({ found: { ...root, parentTransactionId: 'root' } });
+      const occurrence = setup({
+        found: { ...root, parentTransactionId: 'root' },
+      });
       await expect(
-        occurrence.service.update('u1', 't1', { ...edit, type: TransactionType.INCOME, fromAccountId: undefined, toAccountId: 'a1' }),
+        occurrence.service.update('u1', 't1', {
+          ...edit,
+          type: TransactionType.INCOME,
+          fromAccountId: undefined,
+          toAccountId: 'a1',
+        }),
       ).resolves.toBeDefined();
     });
   });
@@ -518,11 +745,15 @@ describe('TransactionsService edit, delete and restore', () => {
 
     it('404s for an unknown, foreign or already deleted transaction', async () => {
       const missing = setup({ found: null });
-      await expect(missing.service.remove('u1', 'nope')).rejects.toThrow('not found');
+      await expect(missing.service.remove('u1', 'nope')).rejects.toThrow(
+        'not found',
+      );
       expect(missing.prisma.transaction.updateMany).not.toHaveBeenCalled();
 
       const raced = setup({ claimed: 0 });
-      await expect(raced.service.remove('u1', 't1')).rejects.toThrow('not found');
+      await expect(raced.service.remove('u1', 't1')).rejects.toThrow(
+        'not found',
+      );
       expect(raced.changedMonths()).toEqual([]);
     });
   });
@@ -541,7 +772,9 @@ describe('TransactionsService edit, delete and restore', () => {
 
     it("404s when there's no deleted transaction of this user with that id", async () => {
       const { service } = setup({ claimed: 0 });
-      await expect(service.restore('u1', 't1')).rejects.toThrow('Deleted transaction not found');
+      await expect(service.restore('u1', 't1')).rejects.toThrow(
+        'Deleted transaction not found',
+      );
     });
   });
 });
@@ -549,7 +782,13 @@ describe('TransactionsService edit, delete and restore', () => {
 describe('TransactionsService.getById', () => {
   function setup(found: unknown) {
     const prisma = { transaction: { findFirst: jest.fn(async () => found) } };
-    const service = new TransactionsService(prisma as never, {} as never, {} as never, {} as never, {} as never);
+    const service = new TransactionsService(
+      prisma as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+    );
     return { service, prisma };
   }
 
@@ -559,7 +798,10 @@ describe('TransactionsService.getById', () => {
 
     expect(prisma.transaction.findFirst).toHaveBeenCalledWith({
       where: { id: 't1', userId: 'u1', deletedAt: null },
-      include: { items: { include: { category: true, account: true } }, category: true },
+      include: {
+        items: { include: { category: true, account: true } },
+        category: true,
+      },
     });
   });
 
@@ -573,29 +815,64 @@ describe('firstOccurrenceOnOrAfter', () => {
   it('steps the cursor forward to the first occurrence on or after the day', () => {
     const from = new Date('2026-08-31T09:00:00Z');
     expect(
-      firstOccurrenceOnOrAfter(31, from, RecurringInterval.MONTHLY, new Date('2026-10-25T00:00:00Z')).toISOString(),
+      firstOccurrenceOnOrAfter(
+        31,
+        from,
+        RecurringInterval.MONTHLY,
+        new Date('2026-10-25T00:00:00Z'),
+      ).toISOString(),
     ).toBe('2026-10-31T09:00:00.000Z');
   });
 
   it('keeps an occurrence that falls on the day itself', () => {
     const from = new Date('2026-08-25T09:00:00Z');
     expect(
-      firstOccurrenceOnOrAfter(25, from, RecurringInterval.MONTHLY, new Date('2026-10-25T00:00:00Z')).toISOString(),
+      firstOccurrenceOnOrAfter(
+        25,
+        from,
+        RecurringInterval.MONTHLY,
+        new Date('2026-10-25T00:00:00Z'),
+      ).toISOString(),
     ).toBe('2026-10-25T09:00:00.000Z');
   });
 
   it('leaves a cursor that is already ahead where it is', () => {
     const from = new Date('2026-12-01T09:00:00Z');
-    expect(firstOccurrenceOnOrAfter(1, from, RecurringInterval.MONTHLY, new Date('2026-10-25T00:00:00Z'))).toBe(from);
+    expect(
+      firstOccurrenceOnOrAfter(
+        1,
+        from,
+        RecurringInterval.MONTHLY,
+        new Date('2026-10-25T00:00:00Z'),
+      ),
+    ).toBe(from);
   });
 });
 
 describe('TransactionsService paused series', () => {
-  const accounts: Record<string, { id: string; name: string; currency: string; archivedAt: Date | null }> = {
-    checking: { id: 'checking', name: 'Main checking', currency: 'USD', archivedAt: null },
-    savings: { id: 'savings', name: 'Savings', currency: 'USD', archivedAt: new Date('2026-10-01T00:00:00Z') },
+  const accounts: Record<
+    string,
+    { id: string; name: string; currency: string; archivedAt: Date | null }
+  > = {
+    checking: {
+      id: 'checking',
+      name: 'Main checking',
+      currency: 'USD',
+      archivedAt: null,
+    },
+    savings: {
+      id: 'savings',
+      name: 'Savings',
+      currency: 'USD',
+      archivedAt: new Date('2026-10-01T00:00:00Z'),
+    },
     dinar: { id: 'dinar', name: 'Dinar', currency: 'TND', archivedAt: null },
-    emergency: { id: 'emergency', name: 'Emergency fund', currency: 'USD', archivedAt: null },
+    emergency: {
+      id: 'emergency',
+      name: 'Emergency fund',
+      currency: 'USD',
+      archivedAt: null,
+    },
   };
 
   const root = {
@@ -638,7 +915,8 @@ describe('TransactionsService paused series', () => {
     };
     const accountsService = {
       assertOwned: jest.fn(async (_userId: string, id: string) => {
-        if (!accounts[id]) throw new NotFoundException(`Account ${id} not found`);
+        if (!accounts[id])
+          throw new NotFoundException(`Account ${id} not found`);
         return accounts[id];
       }),
     };
@@ -656,20 +934,36 @@ describe('TransactionsService paused series', () => {
   describe('updateRecurring', () => {
     it('400s with a field error when the new account is in another currency', async () => {
       const { service, prisma } = setup();
-      const result = service.updateRecurring('u1', 'r1', { fromAccountId: 'dinar' });
+      const result = service.updateRecurring('u1', 'r1', {
+        fromAccountId: 'dinar',
+      });
       await expect(result).rejects.toBeInstanceOf(BadRequestException);
       await expect(result).rejects.toMatchObject({
         response: {
-          errors: [{ path: 'fromAccountId', message: 'Account Dinar is in TND, but the series is in USD' }],
+          errors: [
+            {
+              path: 'fromAccountId',
+              message: 'Account Dinar is in TND, but the series is in USD',
+            },
+          ],
         },
       });
       expect(prisma.transaction.update).not.toHaveBeenCalled();
     });
 
     it('400s with a field error when the account it posts from is archived, even if untouched', async () => {
-      const { service, prisma } = setup({ ...root, recurringFromAccountId: 'savings' });
-      await expect(service.updateRecurring('u1', 'r1', { description: 'Gym (new)' })).rejects.toMatchObject({
-        response: { errors: [{ path: 'fromAccountId', message: 'Account Savings is archived' }] },
+      const { service, prisma } = setup({
+        ...root,
+        recurringFromAccountId: 'savings',
+      });
+      await expect(
+        service.updateRecurring('u1', 'r1', { description: 'Gym (new)' }),
+      ).rejects.toMatchObject({
+        response: {
+          errors: [
+            { path: 'fromAccountId', message: 'Account Savings is archived' },
+          ],
+        },
       });
       expect(prisma.transaction.update).not.toHaveBeenCalled();
     });
@@ -682,24 +976,41 @@ describe('TransactionsService paused series', () => {
         recurringToAccountId: 'emergency',
       };
       const { service, prisma } = setup(transfer);
-      await expect(service.updateRecurring('u1', 'r1', { toAccountId: 'checking' })).rejects.toMatchObject({
-        response: { errors: [{ path: 'toAccountId', message: 'Choose a different account from the one it transfers from' }] },
+      await expect(
+        service.updateRecurring('u1', 'r1', { toAccountId: 'checking' }),
+      ).rejects.toMatchObject({
+        response: {
+          errors: [
+            {
+              path: 'toAccountId',
+              message:
+                'Choose a different account from the one it transfers from',
+            },
+          ],
+        },
       });
       expect(prisma.transaction.update).not.toHaveBeenCalled();
     });
 
     it('still 404s for an account that is not the user’s', async () => {
       const { service } = setup();
-      await expect(service.updateRecurring('u1', 'r1', { fromAccountId: 'someone-elses' })).rejects.toBeInstanceOf(
-        NotFoundException,
-      );
+      await expect(
+        service.updateRecurring('u1', 'r1', { fromAccountId: 'someone-elses' }),
+      ).rejects.toBeInstanceOf(NotFoundException);
     });
 
     it('drops the stale reason when an edit fixes a series the cron paused, which stays paused', async () => {
       const { service, prisma } = setup(paused);
       await service.updateRecurring('u1', 'r1', { fromAccountId: 'checking' });
-      const data = (prisma.transaction.update.mock.calls[0] as unknown as [{ data: Record<string, unknown> }])[0].data;
-      expect(data).toMatchObject({ recurringFromAccountId: 'checking', recurringError: null });
+      const data = (
+        prisma.transaction.update.mock.calls[0] as unknown as [
+          { data: Record<string, unknown> },
+        ]
+      )[0].data;
+      expect(data).toMatchObject({
+        recurringFromAccountId: 'checking',
+        recurringError: null,
+      });
       expect(data).not.toHaveProperty('recurringStatus');
     });
   });
@@ -709,42 +1020,68 @@ describe('TransactionsService paused series', () => {
       const { service, prisma } = setup();
       await service.pauseRecurring('u1', 'r1');
       expect(prisma.transaction.updateMany).toHaveBeenCalledWith({
-        where: { id: 'r1', userId: 'u1', deletedAt: null, recurringStatus: RecurringStatus.ACTIVE },
+        where: {
+          id: 'r1',
+          userId: 'u1',
+          deletedAt: null,
+          recurringStatus: RecurringStatus.ACTIVE,
+        },
         data: { recurringStatus: RecurringStatus.PAUSED, recurringError: null },
       });
       // getById re-reads with the full scalar set, recurringError and lastFailedAt included.
       expect(prisma.transaction.findFirst).toHaveBeenLastCalledWith(
-        expect.objectContaining({ where: { id: 'r1', userId: 'u1', deletedAt: null } }),
+        expect.objectContaining({
+          where: { id: 'r1', userId: 'u1', deletedAt: null },
+        }),
       );
     });
 
     it('400s for a series that is not active', async () => {
       const { service, prisma } = setup(paused);
-      await expect(service.pauseRecurring('u1', 'r1')).rejects.toThrow('Only an active recurring series can be paused');
+      await expect(service.pauseRecurring('u1', 'r1')).rejects.toThrow(
+        'Only an active recurring series can be paused',
+      );
       expect(prisma.transaction.updateMany).not.toHaveBeenCalled();
     });
   });
 
   describe('resumeRecurring', () => {
-    beforeEach(() => jest.useFakeTimers({ now: new Date('2026-10-25T12:00:00Z') }));
+    beforeEach(() =>
+      jest.useFakeTimers({ now: new Date('2026-10-25T12:00:00Z') }),
+    );
     afterEach(() => jest.useRealTimers());
 
     it('400s with the reason while the series still cannot post, and stays paused showing it', async () => {
       const { service, prisma } = setup(paused);
-      await expect(service.resumeRecurring('u1', 'r1')).rejects.toThrow('Account Savings is archived');
+      await expect(service.resumeRecurring('u1', 'r1')).rejects.toThrow(
+        'Account Savings is archived',
+      );
       // Only the reason is written: still paused, cursor untouched.
       expect(prisma.transaction.updateMany).toHaveBeenCalledTimes(1);
       expect(prisma.transaction.updateMany).toHaveBeenCalledWith({
-        where: { id: 'r1', userId: 'u1', deletedAt: null, recurringStatus: RecurringStatus.PAUSED },
+        where: {
+          id: 'r1',
+          userId: 'u1',
+          deletedAt: null,
+          recurringStatus: RecurringStatus.PAUSED,
+        },
         data: { recurringError: 'Account Savings is archived' },
       });
     });
 
     it('clears the reason and picks up from the first occurrence on or after today, without backfilling', async () => {
-      const { service, prisma } = setup({ ...paused, recurringFromAccountId: 'checking' });
+      const { service, prisma } = setup({
+        ...paused,
+        recurringFromAccountId: 'checking',
+      });
       await service.resumeRecurring('u1', 'r1');
       expect(prisma.transaction.updateMany).toHaveBeenCalledWith({
-        where: { id: 'r1', userId: 'u1', deletedAt: null, recurringStatus: RecurringStatus.PAUSED },
+        where: {
+          id: 'r1',
+          userId: 'u1',
+          deletedAt: null,
+          recurringStatus: RecurringStatus.PAUSED,
+        },
         data: {
           recurringError: null,
           lastFailedAt: null,
@@ -764,19 +1101,29 @@ describe('TransactionsService paused series', () => {
       await service.resumeRecurring('u1', 'r1');
       expect(prisma.transaction.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({ recurringStatus: RecurringStatus.CANCELLED, nextOccurrenceAt: null }),
+          data: expect.objectContaining({
+            recurringStatus: RecurringStatus.CANCELLED,
+            nextOccurrenceAt: null,
+          }),
         }),
       );
     });
 
     it('400s for a series that is not paused', async () => {
       const { service } = setup();
-      await expect(service.resumeRecurring('u1', 'r1')).rejects.toThrow('Only a paused recurring series can be resumed');
+      await expect(service.resumeRecurring('u1', 'r1')).rejects.toThrow(
+        'Only a paused recurring series can be resumed',
+      );
     });
 
     it('400s when a cancel won the race', async () => {
-      const { service } = setup({ ...paused, recurringFromAccountId: 'checking' }, 0);
-      await expect(service.resumeRecurring('u1', 'r1')).rejects.toBeInstanceOf(BadRequestException);
+      const { service } = setup(
+        { ...paused, recurringFromAccountId: 'checking' },
+        0,
+      );
+      await expect(service.resumeRecurring('u1', 'r1')).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
     });
   });
 
@@ -791,21 +1138,29 @@ describe('TransactionsService paused series', () => {
 
     it('is null for a series that can post', async () => {
       const { service } = setup();
-      await expect(service.findSeriesProblem('u1', template)).resolves.toBeNull();
+      await expect(
+        service.findSeriesProblem('u1', template),
+      ).resolves.toBeNull();
     });
 
     it('names an archived account', async () => {
       const { service } = setup();
-      await expect(service.findSeriesProblem('u1', { ...template, recurringFromAccountId: 'savings' })).resolves.toBe(
-        'Account Savings is archived',
-      );
+      await expect(
+        service.findSeriesProblem('u1', {
+          ...template,
+          recurringFromAccountId: 'savings',
+        }),
+      ).resolves.toBe('Account Savings is archived');
     });
 
     it('names an account in another currency', async () => {
       const { service } = setup();
-      await expect(service.findSeriesProblem('u1', { ...template, recurringFromAccountId: 'dinar' })).resolves.toBe(
-        'Account Dinar is in TND, but the series is in USD',
-      );
+      await expect(
+        service.findSeriesProblem('u1', {
+          ...template,
+          recurringFromAccountId: 'dinar',
+        }),
+      ).resolves.toBe('Account Dinar is in TND, but the series is in USD');
     });
 
     it('catches a transfer from and to the same account, and a missing account', async () => {
@@ -817,17 +1172,22 @@ describe('TransactionsService paused series', () => {
           recurringToAccountId: 'checking',
         }),
       ).resolves.toBe('The series transfers from and to the same account');
-      await expect(service.findSeriesProblem('u1', { ...template, recurringFromAccountId: 'gone' })).resolves.toBe(
-        'An account of this series no longer exists',
-      );
+      await expect(
+        service.findSeriesProblem('u1', {
+          ...template,
+          recurringFromAccountId: 'gone',
+        }),
+      ).resolves.toBe('An account of this series no longer exists');
     });
 
     it('turns a category that no longer fits into a reason', async () => {
       const { service, categories } = setup();
-      categories.assertAssignable.mockRejectedValueOnce(new NotFoundException('Category c1 not found'));
-      await expect(service.findSeriesProblem('u1', { ...template, categoryId: 'c1' })).resolves.toBe(
-        'The category of this series no longer exists',
+      categories.assertAssignable.mockRejectedValueOnce(
+        new NotFoundException('Category c1 not found'),
       );
+      await expect(
+        service.findSeriesProblem('u1', { ...template, categoryId: 'c1' }),
+      ).resolves.toBe('The category of this series no longer exists');
     });
   });
 });

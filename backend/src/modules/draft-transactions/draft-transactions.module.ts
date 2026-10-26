@@ -7,6 +7,6 @@ import { DraftTransactionsService } from './draft-transactions.service';
   imports: [TransactionsModule],
   controllers: [DraftTransactionsController],
   providers: [DraftTransactionsService],
-  exports: [DraftTransactionsService]
+  exports: [DraftTransactionsService],
 })
 export class DraftTransactionsModule {}

@@ -1,7 +1,16 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Prisma, TransactionType } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
-import { CreateCategoryDto, ListCategoriesQueryDto, UpdateCategoryDto } from './dto/categories.dto';
+import {
+  CreateCategoryDto,
+  ListCategoriesQueryDto,
+  UpdateCategoryDto,
+} from './dto/categories.dto';
 
 @Injectable()
 export class CategoriesService {
@@ -17,23 +26,37 @@ export class CategoriesService {
    * live edit/delete buttons that then 404'd against `update`/`remove`'s
    * ownership check (audit DATA-XX).
    */
-  private toResponse<T extends { userId: string | null }>(category: T): T & { isSystem: boolean } {
+  private toResponse<T extends { userId: string | null }>(
+    category: T,
+  ): T & { isSystem: boolean } {
     return { ...category, isSystem: category.userId === null };
   }
 
   async create(userId: string, dto: CreateCategoryDto) {
     try {
-      const category = await this.prisma.category.create({ data: { ...dto, userId } });
+      const category = await this.prisma.category.create({
+        data: { ...dto, userId },
+      });
       return this.toResponse(category);
     } catch (err) {
       // The name is unique per user and type, archived categories included, so
       // point at the archived one instead of a bare "already exists".
-      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2002'
+      ) {
         const archived = await this.prisma.category.findFirst({
-          where: { userId, name: dto.name, type: dto.type, archivedAt: { not: null } },
+          where: {
+            userId,
+            name: dto.name,
+            type: dto.type,
+            archivedAt: { not: null },
+          },
         });
         if (archived) {
-          throw new ConflictException(`"${dto.name}" is archived. Restore it from your archived categories instead.`);
+          throw new ConflictException(
+            `"${dto.name}" is archived. Restore it from your archived categories instead.`,
+          );
         }
       }
       throw err;
@@ -51,9 +74,12 @@ export class CategoriesService {
       where: { OR: [{ userId }, { userId: null }], ...archivedFilter },
       orderBy: [{ type: 'asc' }, { name: 'asc' }],
       limit: query.limit,
-      offset: query.offset
+      offset: query.offset,
     });
-    return { ...page, data: page.data.map((category) => this.toResponse(category)) };
+    return {
+      ...page,
+      data: page.data.map((category) => this.toResponse(category)),
+    };
   }
 
   /**
@@ -64,9 +90,10 @@ export class CategoriesService {
   async assertAvailable(userId: string, categoryId?: string | null) {
     if (!categoryId) return null;
     const category = await this.prisma.category.findFirst({
-      where: { id: categoryId, OR: [{ userId }, { userId: null }] }
+      where: { id: categoryId, OR: [{ userId }, { userId: null }] },
     });
-    if (!category) throw new NotFoundException(`Category ${categoryId} not found`);
+    if (!category)
+      throw new NotFoundException(`Category ${categoryId} not found`);
     return category;
   }
 
@@ -77,7 +104,11 @@ export class CategoriesService {
    * after a type switch, which then skewed the per-category breakdowns.
    * Transfers move money between the user's own accounts and take no category.
    */
-  async assertAssignable(userId: string, transactionType: TransactionType, categoryId?: string | null) {
+  async assertAssignable(
+    userId: string,
+    transactionType: TransactionType,
+    categoryId?: string | null,
+  ) {
     if (!categoryId) return null;
     if (transactionType === TransactionType.TRANSFER) {
       throw new BadRequestException('Transfers cannot have a category');
@@ -92,14 +123,20 @@ export class CategoriesService {
   }
 
   private async assertOwned(userId: string, categoryId: string) {
-    const category = await this.prisma.category.findFirst({ where: { id: categoryId, userId } });
-    if (!category) throw new NotFoundException(`Category ${categoryId} not found`);
+    const category = await this.prisma.category.findFirst({
+      where: { id: categoryId, userId },
+    });
+    if (!category)
+      throw new NotFoundException(`Category ${categoryId} not found`);
     return category;
   }
 
   async update(userId: string, categoryId: string, dto: UpdateCategoryDto) {
     await this.assertOwned(userId, categoryId);
-    const updated = await this.prisma.category.update({ where: { id: categoryId }, data: dto });
+    const updated = await this.prisma.category.update({
+      where: { id: categoryId },
+      data: dto,
+    });
     return this.toResponse(updated);
   }
 
@@ -117,7 +154,10 @@ export class CategoriesService {
   private async countUsage(categoryId: string) {
     const [transactions, budgets] = await Promise.all([
       this.prisma.transaction.count({
-        where: { deletedAt: null, OR: [{ categoryId }, { items: { some: { categoryId } } }] },
+        where: {
+          deletedAt: null,
+          OR: [{ categoryId }, { items: { some: { categoryId } } }],
+        },
       }),
       this.prisma.budget.count({ where: { categoryId } }),
     ]);
@@ -127,7 +167,10 @@ export class CategoriesService {
   async archive(userId: string, categoryId: string) {
     const category = await this.assertOwned(userId, categoryId);
     if (category.archivedAt) return this.toResponse(category);
-    const archived = await this.prisma.category.update({ where: { id: categoryId }, data: { archivedAt: new Date() } });
+    const archived = await this.prisma.category.update({
+      where: { id: categoryId },
+      data: { archivedAt: new Date() },
+    });
     return this.toResponse(archived);
   }
 
@@ -135,8 +178,12 @@ export class CategoriesService {
     const category = await this.prisma.category.findFirst({
       where: { id: categoryId, userId, archivedAt: { not: null } },
     });
-    if (!category) throw new NotFoundException(`Archived category ${categoryId} not found`);
-    const restored = await this.prisma.category.update({ where: { id: categoryId }, data: { archivedAt: null } });
+    if (!category)
+      throw new NotFoundException(`Archived category ${categoryId} not found`);
+    const restored = await this.prisma.category.update({
+      where: { id: categoryId },
+      data: { archivedAt: null },
+    });
     return this.toResponse(restored);
   }
 

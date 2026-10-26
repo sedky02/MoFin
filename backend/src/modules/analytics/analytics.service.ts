@@ -1,28 +1,54 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { LedgerDirection, Prisma, TransactionType } from '@prisma/client';
-import { DomainEvents, TransactionChangedEvent, TransactionCreatedEvent } from '../../common/events/domain-events';
+import { Prisma, TransactionType } from '@prisma/client';
+import {
+  DomainEvents,
+  TransactionChangedEvent,
+  TransactionCreatedEvent,
+} from '../../common/events/domain-events';
 import { PrismaService } from '../../database/prisma.service';
 
 type MonthlySeries = {
   currency: string;
-  points: { month: string; income: string; expenses: string; balance: string }[];
+  points: {
+    month: string;
+    income: string;
+    expenses: string;
+    balance: string;
+  }[];
 };
 
 @Injectable()
 export class AnalyticsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getMonthlySummary(userId: string, year: number, month: number, refresh = false, accountId?: string, currency?: string) {
+  async getMonthlySummary(
+    userId: string,
+    year: number,
+    month: number,
+    refresh = false,
+    accountId?: string,
+    currency?: string,
+  ) {
     // Without an account to pin the currency, the totals would add different currencies
     // together (an archived account's activity still counts). The DTO checks this too;
     // repeated here so MCP, which validates only the raw shape, can't skip it.
     if (!accountId && !currency) {
-      throw new BadRequestException('currency is required when accountId is not given');
+      throw new BadRequestException(
+        'currency is required when accountId is not given',
+      );
     }
-    const cacheKey = this.monthlySummaryCacheKey(year, month, accountId, currency);
-    const cached = await this.prisma.analyticsCache.findUnique({ where: { userId_cacheKey: { userId, cacheKey } } });
-    if (cached && cached.expiresAt > new Date() && !refresh) return cached.payload;
+    const cacheKey = this.monthlySummaryCacheKey(
+      year,
+      month,
+      accountId,
+      currency,
+    );
+    const cached = await this.prisma.analyticsCache.findUnique({
+      where: { userId_cacheKey: { userId, cacheKey } },
+    });
+    if (cached && cached.expiresAt > new Date() && !refresh)
+      return cached.payload;
 
     const start = new Date(Date.UTC(year, month - 1, 1));
     const end = new Date(Date.UTC(year, month, 1));
@@ -36,7 +62,7 @@ export class AnalyticsService {
         // Currency is applied per item below, not here: the other currencies' activity is still reported.
         ...(accountId ? { items: { some: { accountId } } } : {}),
       },
-      include: { items: { include: { category: true } }, category: true }
+      include: { items: { include: { category: true } }, category: true },
     });
 
     // Currencies with any income/expense this month (within the account scope), so the UI can
@@ -44,12 +70,25 @@ export class AnalyticsService {
     const activeCurrencies = new Set<string>();
     let income = new Prisma.Decimal(0);
     let expenses = new Prisma.Decimal(0);
-    type CategoryTotals = Map<string, { name: string; color: string | null; amount: Prisma.Decimal }>;
+    type CategoryTotals = Map<
+      string,
+      { name: string; color: string | null; amount: Prisma.Decimal }
+    >;
     const categories: CategoryTotals = new Map();
     const incomeCategories: CategoryTotals = new Map();
-    const addToCategory = (target: CategoryTotals, key: string, name: string, color: string | null, amount: Prisma.Decimal) => {
+    const addToCategory = (
+      target: CategoryTotals,
+      key: string,
+      name: string,
+      color: string | null,
+      amount: Prisma.Decimal,
+    ) => {
       const existing = target.get(key);
-      target.set(key, { name, color, amount: (existing?.amount ?? new Prisma.Decimal(0)).plus(amount) });
+      target.set(key, {
+        name,
+        color,
+        amount: (existing?.amount ?? new Prisma.Decimal(0)).plus(amount),
+      });
     };
 
     // Split lines carry their own category, and a line left blank is "Uncategorized". Only an
@@ -57,22 +96,46 @@ export class AnalyticsService {
     // that shape keeps it. Splits saved before the top-level category was rejected may still
     // carry a stale one; it must not soak up their uncategorized lines.
     type SummaryTransaction = (typeof transactions)[number];
-    const addLine = (target: CategoryTotals, transaction: SummaryTransaction, item: SummaryTransaction['items'][number]) => {
+    const addLine = (
+      target: CategoryTotals,
+      transaction: SummaryTransaction,
+      item: SummaryTransaction['items'][number],
+    ) => {
       const unsplit = transaction.items.length <= 1;
       const category = item.category ?? (unsplit ? transaction.category : null);
-      const key = item.categoryId ?? (unsplit ? transaction.categoryId : null) ?? 'uncategorized';
-      addToCategory(target, key, category?.name ?? 'Uncategorized', category?.color ?? null, item.amount);
+      const key =
+        item.categoryId ??
+        (unsplit ? transaction.categoryId : null) ??
+        'uncategorized';
+      addToCategory(
+        target,
+        key,
+        category?.name ?? 'Uncategorized',
+        category?.color ?? null,
+        item.amount,
+      );
     };
 
     for (const transaction of transactions) {
       // INCOME/EXPENSE are single-sided, so filtering items down to `accountId` only matters
       // when it's set — otherwise it's every (single) item on the transaction either way.
-      const accountItems = transaction.items.filter((item) => !accountId || item.accountId === accountId);
-      if (transaction.type === TransactionType.INCOME || transaction.type === TransactionType.EXPENSE) {
-        for (const item of accountItems) if (item.currency) activeCurrencies.add(item.currency);
+      const accountItems = transaction.items.filter(
+        (item) => !accountId || item.accountId === accountId,
+      );
+      if (
+        transaction.type === TransactionType.INCOME ||
+        transaction.type === TransactionType.EXPENSE
+      ) {
+        for (const item of accountItems)
+          if (item.currency) activeCurrencies.add(item.currency);
       }
-      const items = accountItems.filter((item) => !currency || item.currency === currency);
-      const total = items.reduce((sum, item) => sum.plus(item.amount), new Prisma.Decimal(0));
+      const items = accountItems.filter(
+        (item) => !currency || item.currency === currency,
+      );
+      const total = items.reduce(
+        (sum, item) => sum.plus(item.amount),
+        new Prisma.Decimal(0),
+      );
       if (transaction.type === TransactionType.INCOME) {
         income = income.plus(total);
         for (const item of items) addLine(incomeCategories, transaction, item);
@@ -87,9 +150,11 @@ export class AnalyticsService {
       Array.from(source.values()).map(({ name, color, amount }) => ({
         category: name,
         color,
-        amount: amount.toString()
+        amount: amount.toString(),
       }));
-    const savingsRate = income.greaterThan(0) ? income.minus(expenses).div(income).toFixed(4) : '0';
+    const savingsRate = income.greaterThan(0)
+      ? income.minus(expenses).div(income).toFixed(4)
+      : '0';
     const payload = {
       year,
       month,
@@ -103,8 +168,17 @@ export class AnalyticsService {
 
     await this.prisma.analyticsCache.upsert({
       where: { userId_cacheKey: { userId, cacheKey } },
-      create: { userId, cacheKey, payload, expiresAt: new Date(Date.now() + 1000 * 60 * 15) },
-      update: { payload, computedAt: new Date(), expiresAt: new Date(Date.now() + 1000 * 60 * 15) }
+      create: {
+        userId,
+        cacheKey,
+        payload,
+        expiresAt: new Date(Date.now() + 1000 * 60 * 15),
+      },
+      update: {
+        payload,
+        computedAt: new Date(),
+        expiresAt: new Date(Date.now() + 1000 * 60 * 15),
+      },
     });
 
     return payload;
@@ -116,7 +190,12 @@ export class AnalyticsService {
    * the opening balances of the accounts in scope: they are what the accounts
    * held before their first entry. They never count as income.
    */
-  async getMonthlySeries(userId: string, months: number, currency: string, accountId?: string): Promise<MonthlySeries> {
+  async getMonthlySeries(
+    userId: string,
+    months: number,
+    currency: string,
+    accountId?: string,
+  ): Promise<MonthlySeries> {
     const [series, opening] = await Promise.all([
       this.getLedgerMonthlySeries(userId, months, currency, accountId),
       this.openingBalanceTotal(userId, currency, accountId),
@@ -136,7 +215,11 @@ export class AnalyticsService {
    * their ledger entries). Read fresh on every call rather than cached with the
    * series, so editing an account's opening balance shows up straight away.
    */
-  private async openingBalanceTotal(userId: string, currency: string, accountId?: string): Promise<Prisma.Decimal> {
+  private async openingBalanceTotal(
+    userId: string,
+    currency: string,
+    accountId?: string,
+  ): Promise<Prisma.Decimal> {
     const { _sum } = await this.prisma.account.aggregate({
       where: { userId, currency, ...(accountId ? { id: accountId } : {}) },
       _sum: { openingBalance: true },
@@ -158,15 +241,27 @@ export class AnalyticsService {
     accountId?: string,
   ): Promise<MonthlySeries> {
     const now = new Date();
-    const first = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - (months - 1), 1));
-    const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+    const first = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - (months - 1), 1),
+    );
+    const end = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1),
+    );
     const cacheKey = `monthly-series:v1:${months}:${currency}:${accountId ?? 'all'}:${now.getUTCFullYear()}-${now.getUTCMonth() + 1}`;
 
-    const cached = await this.prisma.analyticsCache.findUnique({ where: { userId_cacheKey: { userId, cacheKey } } });
-    if (cached && cached.expiresAt > new Date()) return cached.payload as unknown as MonthlySeries;
+    const cached = await this.prisma.analyticsCache.findUnique({
+      where: { userId_cacheKey: { userId, cacheKey } },
+    });
+    if (cached && cached.expiresAt > new Date())
+      return cached.payload as unknown as MonthlySeries;
 
     const rows = await this.prisma.$queryRaw<
-      { month: string; net: Prisma.Decimal | string; income: Prisma.Decimal | string; expenses: Prisma.Decimal | string }[]
+      {
+        month: string;
+        net: Prisma.Decimal | string;
+        income: Prisma.Decimal | string;
+        expenses: Prisma.Decimal | string;
+      }[]
     >(Prisma.sql`
       SELECT to_char(date_trunc('month', t."occurredAt"), 'YYYY-MM') AS month,
         SUM(CASE WHEN ti.direction = 'CREDIT' THEN ti.amount ELSE -ti.amount END) AS net,
@@ -184,16 +279,22 @@ export class AnalyticsService {
     `);
 
     const byMonth = new Map(rows.map((r) => [r.month, r]));
-    const key = (d: Date) => `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+    const key = (d: Date) =>
+      `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
     const firstKey = key(first);
 
     // Everything before the window is just an opening balance.
     let running = rows
       .filter((r) => r.month < firstKey)
-      .reduce((sum, r) => sum.plus(new Prisma.Decimal(String(r.net))), new Prisma.Decimal(0));
+      .reduce(
+        (sum, r) => sum.plus(new Prisma.Decimal(String(r.net))),
+        new Prisma.Decimal(0),
+      );
 
     const points = Array.from({ length: months }, (_, i) => {
-      const month = key(new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + i, 1)));
+      const month = key(
+        new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + i, 1)),
+      );
       const row = byMonth.get(month);
       running = running.plus(new Prisma.Decimal(String(row?.net ?? 0)));
       return {
@@ -216,14 +317,21 @@ export class AnalyticsService {
 
   // v3: payload gained `incomeBreakdown` — bump so pre-existing cache rows
   // (missing it) aren't served stale after this change deploys.
-  private monthlySummaryCacheKey(year: number, month: number, accountId?: string, currency?: string): string {
+  private monthlySummaryCacheKey(
+    year: number,
+    month: number,
+    accountId?: string,
+    currency?: string,
+  ): string {
     // Every variant starts with `<base>:` (except the bare base), which invalidation relies on.
     return `monthly-summary:v3:${year}:${month}${accountId ? `:${accountId}` : ''}${currency ? `:cur:${currency}` : ''}`;
   }
 
   @OnEvent(DomainEvents.TransactionCreated)
   @OnEvent(DomainEvents.TransactionChanged)
-  async invalidateOnTransaction(event: TransactionCreatedEvent | TransactionChangedEvent) {
+  async invalidateOnTransaction(
+    event: TransactionCreatedEvent | TransactionChangedEvent,
+  ) {
     const year = event.occurredAt.getUTCFullYear();
     const month = event.occurredAt.getUTCMonth() + 1;
     const base = this.monthlySummaryCacheKey(year, month);
@@ -240,7 +348,7 @@ export class AnalyticsService {
           // Any change can move every later month's closing balance, so drop all series.
           { cacheKey: { startsWith: 'monthly-series:' } },
         ],
-      }
+      },
     });
   }
 }

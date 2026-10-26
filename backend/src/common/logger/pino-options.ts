@@ -14,7 +14,10 @@ export function customProps(req: IncomingMessage): Record<string, unknown> {
   return user?.id ? { userId: user.id } : {};
 }
 
-export function customLogLevel(res: ServerResponse, err: Error | undefined): 'error' | 'warn' | 'info' {
+export function customLogLevel(
+  res: ServerResponse,
+  err: Error | undefined,
+): 'error' | 'warn' | 'info' {
   if (err || res.statusCode >= 500) return 'error';
   if (res.statusCode >= 400) return 'warn';
   return 'info';

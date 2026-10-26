@@ -57,7 +57,9 @@ export class LedgerService {
     }
 
     if (command.type === 'INCOME') {
-      return (command.items?.length ? command.items : [{ amount: command.amount }]).map((item) => ({
+      return (
+        command.items?.length ? command.items : [{ amount: command.amount }]
+      ).map((item) => ({
         accountId: command.toAccountId!,
         direction: 'CREDIT',
         amount: item.amount,
@@ -68,7 +70,9 @@ export class LedgerService {
     }
 
     if (command.type === 'EXPENSE') {
-      return (command.items?.length ? command.items : [{ amount: command.amount }]).map((item) => ({
+      return (
+        command.items?.length ? command.items : [{ amount: command.amount }]
+      ).map((item) => ({
         accountId: command.fromAccountId!,
         direction: 'DEBIT',
         amount: item.amount,
@@ -96,7 +100,12 @@ export class LedgerService {
     ];
   }
 
-  async createEntries(db: Db, userId: string, transactionId: string, entries: LedgerEntryInput[]): Promise<void> {
+  async createEntries(
+    db: Db,
+    userId: string,
+    transactionId: string,
+    entries: LedgerEntryInput[],
+  ): Promise<void> {
     await db.transactionItem.createMany({
       data: entries.map((entry) => ({
         userId,
@@ -112,7 +121,8 @@ export class LedgerService {
   }
 
   async getBalance(userId: string, query: GetBalanceQueryDto) {
-    if (query.accountId) await this.accountsService.assertOwned(userId, query.accountId);
+    if (query.accountId)
+      await this.accountsService.assertOwned(userId, query.accountId);
 
     const where = {
       userId,
@@ -145,17 +155,30 @@ export class LedgerService {
 
     const balances = new Map<string, Prisma.Decimal>();
     for (const opening of openings) {
-      const key = query.accountId ? opening.currency : `${opening.id}:${opening.currency}`;
-      balances.set(key, (balances.get(key) ?? new Prisma.Decimal(0)).plus(opening.openingBalance));
+      const key = query.accountId
+        ? opening.currency
+        : `${opening.id}:${opening.currency}`;
+      balances.set(
+        key,
+        (balances.get(key) ?? new Prisma.Decimal(0)).plus(
+          opening.openingBalance,
+        ),
+      );
     }
     for (const row of rows) {
-      const key = query.accountId ? row.currency : `${row.accountId}:${row.currency}`;
+      const key = query.accountId
+        ? row.currency
+        : `${row.accountId}:${row.currency}`;
       const current = balances.get(key) ?? new Prisma.Decimal(0);
       const sum = row._sum.amount ?? new Prisma.Decimal(0);
-      const signed = row.direction === LedgerDirection.CREDIT ? sum : sum.negated();
+      const signed =
+        row.direction === LedgerDirection.CREDIT ? sum : sum.negated();
       balances.set(key, current.plus(signed));
     }
 
-    return Array.from(balances.entries()).map(([key, balance]) => ({ key, balance: balance.toString() }));
+    return Array.from(balances.entries()).map(([key, balance]) => ({
+      key,
+      balance: balance.toString(),
+    }));
   }
 }

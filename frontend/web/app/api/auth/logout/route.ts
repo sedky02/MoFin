@@ -1,10 +1,11 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { BACKEND_TIMEOUT_MS, BACKEND_URL, REFRESH_COOKIE, clearAuthCookies } from "@/lib/auth-cookies";
+import { bffHeaders } from "@/lib/bff-headers";
 
 //export const dynamic = "force-dynamic";
 
-export async function POST() {
+export async function POST(req: Request) {
   const cookieStore = await cookies();
   const refreshToken = cookieStore.get(REFRESH_COOKIE)?.value;
 
@@ -14,7 +15,7 @@ export async function POST() {
     try {
       await fetch(`${BACKEND_URL}/auth/logout`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...bffHeaders(req) },
         body: JSON.stringify({ refreshToken }),
         cache: "no-store",
         signal: AbortSignal.timeout(BACKEND_TIMEOUT_MS),
