@@ -45,6 +45,10 @@ next-env.d.ts
 .vscode/mcp.json
 .mcp.json
 
+# logo design files (pages, runtime, uploads); only the official SVGs in assets/ are kept
+/public/MoFin-logo-concepts/*
+!/public/MoFin-logo-concepts/assets/
+
 # e2e (credentials, screenshots, reports)
 /e2e/.auth/
 /e2e/.shots/
