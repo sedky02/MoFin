@@ -111,6 +111,16 @@ export class UsersService {
       throw fieldError('confirmEmail', "Type your account's email to confirm.");
     }
 
+    await this.deleteUserData(userId);
+  }
+
+  /**
+   * Clears every user-owned table, children before parents, then the user
+   * row, in one transaction (see `deleteAccount` for why the order matters).
+   * No proof of intent here: callers check it first. The demo seed uses this
+   * to reset its account.
+   */
+  async deleteUserData(userId: string): Promise<void> {
     await this.prisma.$transaction(async (tx) => {
       const mine = { userId };
       // Ledger first: items reference accounts (RESTRICT) and transactions.

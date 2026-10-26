@@ -26,6 +26,10 @@ export const FORGOT_PASSWORD_IP_THROTTLE = {
  *   password), so the bucket follows the token rather than whoever shares
  *   the IP. The raw token is never part of the key;
  * - the IP alone otherwise.
+ *
+ * `req.ip` is the client IP the BFF vouched for when it sent one (see
+ * trusted-client-ip.middleware.ts), so every tracker here keys on the real
+ * client rather than the BFF.
  */
 export function authTracker(req: Record<string, unknown>): string {
   const body = req.body as { email?: unknown; token?: unknown } | undefined;

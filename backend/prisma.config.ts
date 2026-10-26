@@ -8,6 +8,10 @@ import { defineConfig, env } from 'prisma/config';
  */
 export default defineConfig({
   schema: 'prisma/schema.prisma',
+  migrations: {
+    // `npx prisma db seed` (add `-- --reset` to recreate): the demo account.
+    seed: 'ts-node prisma/seed.ts',
+  },
   datasource: {
     url: env('DATABASE_URL'),
   },

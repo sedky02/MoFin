@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { safeNextPath } from "@/lib/safe-next";
 import { loginErrorUrl, type LoginErrorCode } from "@/lib/auth-feedback";
 import { BACKEND_TIMEOUT_MS, BACKEND_URL, setAuthCookies, type BackendTokens } from "@/lib/auth-cookies";
+import { bffHeaders } from "@/lib/bff-headers";
 
 const STATE_COOKIE = "google_oauth";
 
@@ -43,7 +44,7 @@ export async function GET(req: Request) {
   try {
     upstream = await fetch(`${BACKEND_URL}/auth/google`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...bffHeaders(req) },
       body: JSON.stringify({ code, redirectUri }),
       cache: "no-store",
       signal: AbortSignal.timeout(BACKEND_TIMEOUT_MS),

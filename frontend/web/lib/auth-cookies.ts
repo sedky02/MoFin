@@ -2,6 +2,7 @@
 // Tokens live in httpOnly cookies; the browser never sees them. Secure flag follows
 // NODE_ENV (false in dev, true in prod).
 import { NextResponse } from "next/server";
+import { bffHeaders } from "@/lib/bff-headers";
 
 export const ACCESS_COOKIE = "access_token";
 export const REFRESH_COOKIE = "refresh_token";
@@ -16,17 +17,6 @@ export const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:3000/api
 // backend would otherwise cascade into every request handler waiting forever
 // (audit PERF-XX). Generous enough for a cold-starting backend after a long idle.
 export const BACKEND_TIMEOUT_MS = 8_000;
-
-/**
- * Relays the real client IP from the inbound request so the backend's rate
- * limiter (which trusts this one BFF hop) sees individual users instead of
- * this server's single IP — otherwise every login/register attempt across
- * every user looks like it came from one client.
- */
-export function forwardedForHeader(req: Request): HeadersInit {
-  const forwardedFor = req.headers.get("x-forwarded-for");
-  return forwardedFor ? { "x-forwarded-for": forwardedFor } : {};
-}
 
 function baseCookieOptions(maxAge: number) {
   return {
@@ -80,7 +70,7 @@ export async function requestRefresh(
   try {
     const res = await fetch(`${BACKEND_URL}/auth/refresh`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", ...(req ? forwardedForHeader(req) : {}) },
+      headers: { "Content-Type": "application/json", ...bffHeaders(req) },
       body: JSON.stringify({ refreshToken }),
       cache: "no-store",
       signal: AbortSignal.timeout(BACKEND_TIMEOUT_MS),

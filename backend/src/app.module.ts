@@ -38,8 +38,9 @@ import { UsersModule } from './modules/users/users.module';
     // B5) via AuthThrottlerGuard. 300/min accommodates a dashboard's normal
     // burst of parallel fetches (accounts, transactions, goals, analytics,
     // etc. firing on load/refetch) per real client IP — see main.ts's
-    // `trust proxy` setting, which is what makes "per real client IP" true
-    // instead of this counting the whole user base as one BFF client.
+    // `trust proxy` setting and trusted-client-ip.middleware.ts, which are
+    // what make "per real client IP" true instead of this counting the whole
+    // user base as one BFF client.
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 300 }]),
     AuthModule,
     UsersModule,

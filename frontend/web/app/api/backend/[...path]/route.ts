@@ -11,6 +11,7 @@ import {
   type BackendTokens,
   type RefreshOutcome,
 } from "@/lib/auth-cookies";
+import { bffHeaders } from "@/lib/bff-headers";
 
 //export const dynamic = "force-dynamic";
 
@@ -66,10 +67,8 @@ async function forward(
   const contentType = req.headers.get("content-type");
   if (contentType) headers.set("content-type", contentType);
   if (accessToken) headers.set("authorization", `Bearer ${accessToken}`);
-  // Relay the real client IP so the backend's rate limiter (which trusts this
-  // one BFF hop) sees individual users instead of this server's single IP.
-  const forwardedFor = req.headers.get("x-forwarded-for");
-  if (forwardedFor) headers.set("x-forwarded-for", forwardedFor);
+  // Lets the backend's rate limiter see the real client, not this server.
+  for (const [name, value] of Object.entries(bffHeaders(req))) headers.set(name, value);
   // Lets one request be traced across both processes' logs (audit OBS-01).
   headers.set("x-request-id", requestId);
 

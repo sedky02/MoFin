@@ -11,20 +11,24 @@ const secretSchema = z
     (value) => !/replace.?me|change.?me|secret|example/i.test(value),
     'Secret contains a placeholder/example value',
   );
-const envSchema = z
-  .object({
-    DATABASE_URL: z.string().url(),
-    JWT_ACCESS_SECRET: secretSchema,
-    // Separate signing key for MCP/OAuth access tokens so an MCP-scoped token is
-    // never even a candidate signature for the first-party web verifier (SEC-XX).
-    JWT_MCP_SECRET: secretSchema,
-    JWT_ACCESS_TTL: z.string().default('15m'),
-    JWT_REFRESH_TTL: z.string().default('30d'),
-    // Derives each rotated refresh token from the one it replaces, so a retry
-    // right after a rotation can get the same successor back. Changing it only
-    // affects tokens rotated in the 30 s before the change.
-    REFRESH_TOKEN_SECRET: secretSchema,
-    PORT: z.coerce.number().int().positive().default(3000),
+const envSchema = z.object({
+  DATABASE_URL: z.string().url(),
+  JWT_ACCESS_SECRET: secretSchema,
+  // Separate signing key for MCP/OAuth access tokens so an MCP-scoped token is
+  // never even a candidate signature for the first-party web verifier (SEC-XX).
+  JWT_MCP_SECRET: secretSchema,
+  JWT_ACCESS_TTL: z.string().default('15m'),
+  JWT_REFRESH_TTL: z.string().default('30d'),
+  // Derives each rotated refresh token from the one it replaces, so a retry
+  // right after a rotation can get the same successor back. Changing it only
+  // affects tokens rotated in the 30 s before the change.
+  REFRESH_TOKEN_SECRET: secretSchema,
+  PORT: z.coerce.number().int().positive().default(3000),
+  // Shared with the web BFF, which sends it with the client IP it saw so the
+  // rate limiter keys on the real client instead of the BFF (see
+  // trusted-client-ip.middleware.ts). Required in production; when unset,
+  // the client IP comes from `trust proxy` alone.
+  BFF_SHARED_SECRET: secretSchema.optional(),
 
     // --- OAuth 2.1 authorization server (MCP custom connector) ---
     // Public base URL of THIS backend. Must exactly match the `iss` claim and the
@@ -58,32 +62,35 @@ const envSchema = z
 
     NODE_ENV: z.string().optional(),
 
-    // --- Outgoing email (password reset) ---
-    // With SMTP_HOST unset, mail goes to a log-only sender instead (see MailModule).
-    SMTP_HOST: z.string().min(1).optional(),
-    SMTP_PORT: z.coerce.number().int().positive().default(587),
-    // "true" for implicit TLS (usually port 465); otherwise STARTTLS is used when offered.
-    SMTP_SECURE: z.enum(['true', 'false']).default('false'),
-    SMTP_USER: z.string().optional(),
-    SMTP_PASS: z.string().optional(),
-    MAIL_FROM: z.string().min(1).default('MoFin <no-reply@mofin.local>'),
-    // Development/test only: write every outgoing email as a JSON file in this
-    // directory so local end-to-end tests can read the reset link.
-    MAIL_CAPTURE_DIR: z.string().min(1).optional(),
-    PASSWORD_RESET_TTL: z
-      .string()
-      .regex(/^\d+(s|m|h|d)$/, 'Use a duration such as 30m')
-      .default('30m'),
-  })
-  .superRefine((env, ctx) => {
-    if (env.NODE_ENV === 'production' && env.MAIL_CAPTURE_DIR) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['MAIL_CAPTURE_DIR'],
-        message: 'MAIL_CAPTURE_DIR must not be set in production',
-      });
-    }
-  });
+  // --- Outgoing email (password reset) ---
+  // With SMTP_HOST unset, mail goes to a log-only sender instead (see MailModule).
+  SMTP_HOST: z.string().min(1).optional(),
+  SMTP_PORT: z.coerce.number().int().positive().default(587),
+  // "true" for implicit TLS (usually port 465); otherwise STARTTLS is used when offered.
+  SMTP_SECURE: z.enum(['true', 'false']).default('false'),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
+  MAIL_FROM: z.string().min(1).default('MoFin <no-reply@mofin.local>'),
+  // Development/test only: write every outgoing email as a JSON file in this
+  // directory so local end-to-end tests can read the reset link.
+  MAIL_CAPTURE_DIR: z.string().min(1).optional(),
+  PASSWORD_RESET_TTL: z.string().regex(/^\d+(s|m|h|d)$/, 'Use a duration such as 30m').default('30m'),
+}).superRefine((env, ctx) => {
+  if (env.NODE_ENV === 'production' && !env.BFF_SHARED_SECRET) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['BFF_SHARED_SECRET'],
+      message: 'BFF_SHARED_SECRET is required in production',
+    });
+  }
+  if (env.NODE_ENV === 'production' && env.MAIL_CAPTURE_DIR) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['MAIL_CAPTURE_DIR'],
+      message: 'MAIL_CAPTURE_DIR must not be set in production',
+    });
+  }
+});
 
 export type AppEnv = z.infer<typeof envSchema>;
 
