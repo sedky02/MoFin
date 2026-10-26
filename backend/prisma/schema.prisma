@@ -71,12 +71,17 @@ enum GoalStatus {
 }
 
 model User {
-  id                 String              @id @default(uuid())
-  email              String              @unique
+  id                 String               @id @default(uuid())
+  email              String               @unique
   passwordHash       String?
   displayName        String?
-  googleId           String?             @unique
-  settings           Json                @default("{}")
+  googleId           String?              @unique
+  settings           Json                 @default("{}")
+  /// A temporary "Try the demo" user: password-less, seeded with sample data,
+  /// deleted by DemoCleanupCron once expiresAt passes.
+  isDemo             Boolean              @default(false)
+  /// Only set on demo users.
+  expiresAt          DateTime?
   accounts           Account[]
   categories         Category[]
   transactions       Transaction[]
@@ -91,8 +96,12 @@ model User {
   oauthGrants        OAuthGrant[]
   authSessions       AuthSession[]
   passwordResets     PasswordResetToken[]
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+
+  // Demo cleanup selects isDemo && expiresAt < now; the active-demo cap counts
+  // isDemo && expiresAt > now.
+  @@index([isDemo, expiresAt])
 }
 
 model Account {
