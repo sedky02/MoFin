@@ -4,8 +4,15 @@ import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../database/prisma.service';
 import { AccountsService } from '../modules/accounts/accounts.service';
 import { CategoriesService } from '../modules/categories/categories.service';
-import { GoalsService, resolvePeriodBounds } from '../modules/goals/goals.service';
-import { computeNextOccurrence, isPastEndDate, TransactionsService } from '../modules/transactions/transactions.service';
+import {
+  GoalsService,
+  resolvePeriodBounds,
+} from '../modules/goals/goals.service';
+import {
+  computeNextOccurrence,
+  isPastEndDate,
+  TransactionsService,
+} from '../modules/transactions/transactions.service';
 import { UsersService } from '../modules/users/users.service';
 import {
   DEMO_DISPLAY_NAME,
@@ -53,7 +60,11 @@ export class DemoSeeder {
     private readonly goalsService: GoalsService,
   ) {}
 
-  async run({ plan, password, reset }: DemoSeedOptions): Promise<DemoSeedResult> {
+  async run({
+    plan,
+    password,
+    reset,
+  }: DemoSeedOptions): Promise<DemoSeedResult> {
     const existing = await this.usersService.findByEmail(DEMO_EMAIL);
     if (existing && !reset) return { status: 'exists', userId: existing.id };
     if (existing) await this.usersService.deleteUserData(existing.id);
@@ -61,15 +72,23 @@ export class DemoSeeder {
     // Same cost factor as AuthService, and the same default categories as a
     // registration, since createUser is the path registration takes.
     const passwordHash = await bcrypt.hash(password, 12);
-    const user = await this.usersService.createUser({ email: DEMO_EMAIL, displayName: DEMO_DISPLAY_NAME, passwordHash });
+    const user = await this.usersService.createUser({
+      email: DEMO_EMAIL,
+      displayName: DEMO_DISPLAY_NAME,
+      passwordHash,
+    });
 
     try {
       const ids = await this.createAccountsAndCategories(user.id, plan);
       for (const transaction of plan.transactions) {
-        await this.transactionsService.create(user.id, toCreateCommand(transaction, ids));
+        await this.transactionsService.create(
+          user.id,
+          toCreateCommand(transaction, ids),
+        );
       }
       let occurrences = 0;
-      for (const series of plan.recurring) occurrences += await this.createSeries(user.id, series, ids);
+      for (const series of plan.recurring)
+        occurrences += await this.createSeries(user.id, series, ids);
       for (const goal of plan.goals) {
         const created = await this.goalsService.create(user.id, {
           accountId: ids.accounts[goal.account],
@@ -81,7 +100,8 @@ export class DemoSeeder {
           periodStart: goal.periodStart,
           periodEnd: goal.periodEnd,
         });
-        if (created.isRecurring) await this.closePastPeriods(created.id, plan.now);
+        if (created.isRecurring)
+          await this.closePastPeriods(created.id, plan.now);
       }
 
       return {
@@ -89,7 +109,8 @@ export class DemoSeeder {
         userId: user.id,
         reset: Boolean(existing),
         accounts: plan.accounts.length,
-        transactions: plan.transactions.length + plan.recurring.length + occurrences,
+        transactions:
+          plan.transactions.length + plan.recurring.length + occurrences,
         goals: plan.goals.length,
         summary: summarizePlan(plan),
       };
@@ -100,7 +121,10 @@ export class DemoSeeder {
     }
   }
 
-  private async createAccountsAndCategories(userId: string, plan: DemoPlan): Promise<DemoIds> {
+  private async createAccountsAndCategories(
+    userId: string,
+    plan: DemoPlan,
+  ): Promise<DemoIds> {
     const accounts = {} as Record<DemoAccountKey, string>;
     for (const account of plan.accounts) {
       const created = await this.accountsService.create(userId, {
@@ -112,9 +136,12 @@ export class DemoSeeder {
       accounts[account.key] = created.id;
     }
 
-    for (const category of plan.extraCategories) await this.categoriesService.create(userId, category);
+    for (const category of plan.extraCategories)
+      await this.categoriesService.create(userId, category);
     const categories: Record<string, string> = {};
-    for (const category of await this.prisma.category.findMany({ where: { userId } })) {
+    for (const category of await this.prisma.category.findMany({
+      where: { userId },
+    })) {
       categories[category.name] = category.id;
     }
     return { accounts, categories };
@@ -125,7 +152,11 @@ export class DemoSeeder {
    * series' cursor in one transaction, the way RecurringTransactionsCron does,
    * so the series looks exactly like one the nightly job has been running.
    */
-  private async createSeries(userId: string, series: DemoRecurringPlan, ids: DemoIds): Promise<number> {
+  private async createSeries(
+    userId: string,
+    series: DemoRecurringPlan,
+    ids: DemoIds,
+  ): Promise<number> {
     const root = await this.transactionsService.create(userId, {
       ...toCreateCommand(series.root, ids),
       isRecurring: true,
@@ -137,14 +168,24 @@ export class DemoSeeder {
       await this.prisma.$transaction(async (db) => {
         await this.transactionsService.create(
           userId,
-          { ...toCreateCommand({ ...series.root, occurredAt }, ids), parentTransactionId: root.id },
+          {
+            ...toCreateCommand({ ...series.root, occurredAt }, ids),
+            parentTransactionId: root.id,
+          },
           db,
         );
-        const next = computeNextOccurrence(anchorDay, occurredAt, series.interval);
+        const next = computeNextOccurrence(
+          anchorDay,
+          occurredAt,
+          series.interval,
+        );
         await db.transaction.update({
           where: { id: root.id },
           data: isPastEndDate(next, root.recurringEndDate)
-            ? { recurringStatus: RecurringStatus.CANCELLED, nextOccurrenceAt: null }
+            ? {
+                recurringStatus: RecurringStatus.CANCELLED,
+                nextOccurrenceAt: null,
+              }
             : { nextOccurrenceAt: next },
         });
       });
@@ -167,15 +208,34 @@ export class DemoSeeder {
       const latest = goal.instances[0];
       if (!latest || latest.periodEnd >= now) return;
 
-      const progressAmount = await this.goalsService.computeProgressAmount(goal, latest.periodStart, latest.periodEnd, now);
-      const status = this.goalsService.evaluateStatus(goal.type, progressAmount, latest.targetAmount, true, latest.status);
+      const progressAmount = await this.goalsService.computeProgressAmount(
+        goal,
+        latest.periodStart,
+        latest.periodEnd,
+        now,
+      );
+      const status = this.goalsService.evaluateStatus(
+        goal.type,
+        progressAmount,
+        latest.targetAmount,
+        true,
+        latest.status,
+      );
       await this.prisma.goalInstance.update({
         where: { id: latest.id },
         data: { progressAmount, status, computedAt: now },
       });
-      const [periodStart, periodEnd] = resolvePeriodBounds(new Date(latest.periodEnd.getTime() + 1), goal.recurrenceUnit!);
+      const [periodStart, periodEnd] = resolvePeriodBounds(
+        new Date(latest.periodEnd.getTime() + 1),
+        goal.recurrenceUnit!,
+      );
       await this.prisma.goalInstance.create({
-        data: { goalId, periodStart, periodEnd, targetAmount: goal.targetAmount },
+        data: {
+          goalId,
+          periodStart,
+          periodEnd,
+          targetAmount: goal.targetAmount,
+        },
       });
     }
   }

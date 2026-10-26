@@ -1,4 +1,11 @@
-import { AccountType, CategoryType, GoalRecurrenceUnit, GoalType, RecurringInterval, TransactionType } from '@prisma/client';
+import {
+  AccountType,
+  CategoryType,
+  GoalRecurrenceUnit,
+  GoalType,
+  RecurringInterval,
+  TransactionType,
+} from '@prisma/client';
 import { computeNextOccurrence } from '../modules/transactions/transactions.service';
 import { CreateTransactionCommand } from '../modules/transactions/dto/transactions.dto';
 
@@ -75,11 +82,35 @@ export interface DemoPlan {
 }
 
 const ACCOUNTS: DemoAccountPlan[] = [
-  { key: 'checking', name: 'Everyday checking', type: AccountType.BANK, currency: 'USD', openingBalance: '2350.00' },
-  { key: 'savings', name: 'Savings', type: AccountType.SAVINGS, currency: 'USD', openingBalance: '5800.00' },
+  {
+    key: 'checking',
+    name: 'Everyday checking',
+    type: AccountType.BANK,
+    currency: 'USD',
+    openingBalance: '2350.00',
+  },
+  {
+    key: 'savings',
+    name: 'Savings',
+    type: AccountType.SAVINGS,
+    currency: 'USD',
+    openingBalance: '5800.00',
+  },
   // The enum has no credit type; a card is a bank account that starts in debt.
-  { key: 'card', name: 'Credit card', type: AccountType.BANK, currency: 'USD', openingBalance: '-420.00' },
-  { key: 'travel', name: 'Euro travel', type: AccountType.CASH, currency: 'EUR', openingBalance: '300.00' },
+  {
+    key: 'card',
+    name: 'Credit card',
+    type: AccountType.BANK,
+    currency: 'USD',
+    openingBalance: '-420.00',
+  },
+  {
+    key: 'travel',
+    name: 'Euro travel',
+    type: AccountType.CASH,
+    currency: 'EUR',
+    openingBalance: '300.00',
+  },
 ];
 
 const CARD_OPENING_DEBT_CENTS = 42000;
@@ -121,7 +152,8 @@ export function createRandom(seed: number) {
     t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
-  const int = (min: number, max: number) => min + Math.floor(next() * (max - min + 1));
+  const int = (min: number, max: number) =>
+    min + Math.floor(next() * (max - min + 1));
   return {
     next,
     int,
@@ -130,7 +162,8 @@ export function createRandom(seed: number) {
     distinct(count: number, min: number, max: number): number[] {
       const pool = Array.from({ length: max - min + 1 }, (_, i) => min + i);
       const chosen: number[] = [];
-      while (chosen.length < count && pool.length) chosen.push(pool.splice(int(0, pool.length - 1), 1)[0]);
+      while (chosen.length < count && pool.length)
+        chosen.push(pool.splice(int(0, pool.length - 1), 1)[0]);
       return chosen.sort((a, b) => a - b);
     },
   };
@@ -168,14 +201,23 @@ function ymd(day: Date): string {
 }
 
 function sameMonth(a: Date, b: Date): boolean {
-  return a.getUTCFullYear() === b.getUTCFullYear() && a.getUTCMonth() === b.getUTCMonth();
+  return (
+    a.getUTCFullYear() === b.getUTCFullYear() &&
+    a.getUTCMonth() === b.getUTCMonth()
+  );
 }
 
 export function buildDemoPlan(now: Date, seed = DEMO_SEED): DemoPlan {
   const random = createRandom(seed);
   const windowStart = utcDay(now.getUTCFullYear(), now.getUTCMonth() - 2, 1);
-  const today = utcDay(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
-  const months = [0, 1, 2].map((i) => utcDay(windowStart.getUTCFullYear(), windowStart.getUTCMonth() + i, 1));
+  const today = utcDay(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate(),
+  );
+  const months = [0, 1, 2].map((i) =>
+    utcDay(windowStart.getUTCFullYear(), windowStart.getUTCMonth() + i, 1),
+  );
 
   const transactions: DemoTransactionPlan[] = [];
   // Anything that would land after `now` (later today, or a day still to
@@ -190,10 +232,31 @@ export function buildDemoPlan(now: Date, seed = DEMO_SEED): DemoPlan {
     category: string,
     occurredAt: Date,
     currency = 'USD',
-  ) => add({ type: TransactionType.EXPENSE, description, amount: toAmount(cents), currency, occurredAt, from, category });
-  const visit = (merchants: readonly Merchant[], from: DemoAccountKey, category: string, day: Date, hours: [number, number]) => {
+  ) =>
+    add({
+      type: TransactionType.EXPENSE,
+      description,
+      amount: toAmount(cents),
+      currency,
+      occurredAt,
+      from,
+      category,
+    });
+  const visit = (
+    merchants: readonly Merchant[],
+    from: DemoAccountKey,
+    category: string,
+    day: Date,
+    hours: [number, number],
+  ) => {
     const [name, min, max] = random.pick(merchants);
-    expense(from, name, random.int(min, max), category, atTime(day, random.int(hours[0], hours[1]), random.int(0, 59)));
+    expense(
+      from,
+      name,
+      random.int(min, max),
+      category,
+      atTime(day, random.int(hours[0], hours[1]), random.int(0, 59)),
+    );
   };
 
   let invoice = 1041;
@@ -232,13 +295,43 @@ export function buildDemoPlan(now: Date, seed = DEMO_SEED): DemoPlan {
       });
     }
 
-    expense('checking', 'FitLife Gym', 3999, 'Subscriptions', atTime(day(2), 7));
+    expense(
+      'checking',
+      'FitLife Gym',
+      3999,
+      'Subscriptions',
+      atTime(day(2), 7),
+    );
     expense('checking', 'Netflix', 1549, 'Subscriptions', atTime(day(8), 4));
     expense('checking', 'Spotify', 1199, 'Subscriptions', atTime(day(14), 4));
-    expense('checking', 'Mobile phone plan', 4500, 'Subscriptions', atTime(day(18), 5));
-    expense('checking', 'City Power & Light', random.int(6800, 11800), 'Utilities', atTime(day(12), 5));
-    expense('checking', 'Fiber internet', 6000, 'Utilities', atTime(day(15), 5));
-    expense('checking', 'Water & sewer', random.int(3200, 4800), 'Utilities', atTime(day(22), 5));
+    expense(
+      'checking',
+      'Mobile phone plan',
+      4500,
+      'Subscriptions',
+      atTime(day(18), 5),
+    );
+    expense(
+      'checking',
+      'City Power & Light',
+      random.int(6800, 11800),
+      'Utilities',
+      atTime(day(12), 5),
+    );
+    expense(
+      'checking',
+      'Fiber internet',
+      6000,
+      'Utilities',
+      atTime(day(15), 5),
+    );
+    expense(
+      'checking',
+      'Water & sewer',
+      random.int(3200, 4800),
+      'Utilities',
+      atTime(day(22), 5),
+    );
 
     // The monthly bulk run, split between food and household supplies.
     const groceries = random.int(6000, 11000);
@@ -252,14 +345,23 @@ export function buildDemoPlan(now: Date, seed = DEMO_SEED): DemoPlan {
       from: 'card',
       items: [
         { amount: toAmount(groceries), category: 'Groceries' },
-        { amount: toAmount(household), category: 'Household', memo: 'Cleaning supplies and paper goods' },
+        {
+          amount: toAmount(household),
+          category: 'Household',
+          memo: 'Cleaning supplies and paper goods',
+        },
       ],
     });
 
     // A week in Paris in the middle month, paid from the euro cash.
     if (index === 1) {
       let spent = 0;
-      const spendEur = (description: string, cents: number, category: string, occurredAt: Date) => {
+      const spendEur = (
+        description: string,
+        cents: number,
+        category: string,
+        occurredAt: Date,
+      ) => {
         if (spent + cents > TRAVEL_BUDGET_CENTS) return;
         spent += cents;
         expense('travel', description, cents, category, occurredAt, 'EUR');
@@ -268,27 +370,63 @@ export function buildDemoPlan(now: Date, seed = DEMO_SEED): DemoPlan {
       for (let n = 12; n <= 17; n++) {
         for (const hour of random.distinct(random.int(1, 2), 8, 20)) {
           const [name, min, max] = random.pick(PARIS_DINING);
-          spendEur(name, random.int(min, max), 'Dining out', atTime(day(n), hour, random.int(0, 59)));
+          spendEur(
+            name,
+            random.int(min, max),
+            'Dining out',
+            atTime(day(n), hour, random.int(0, 59)),
+          );
         }
       }
-      spendEur('Carrefour City', random.int(1800, 3200), 'Groceries', atTime(day(14), 18));
+      spendEur(
+        'Carrefour City',
+        random.int(1800, 3200),
+        'Groceries',
+        atTime(day(14), 18),
+      );
       spendEur('Taxi to the airport', 2600, 'Transport', atTime(day(17), 6));
     }
   });
 
   // Weekly habits: groceries on the card, eating out and getting around from checking.
-  for (let weekStart = windowStart, week = 0; weekStart <= today; weekStart = addDays(weekStart, 7), week++) {
+  for (
+    let weekStart = windowStart, week = 0;
+    weekStart <= today;
+    weekStart = addDays(weekStart, 7), week++
+  ) {
     for (const offset of random.distinct(random.int(2, 3), 0, 6)) {
       visit(GROCERS, 'card', 'Groceries', addDays(weekStart, offset), [9, 19]);
     }
     for (const offset of random.distinct(random.int(1, 3), 0, 6)) {
-      visit(RESTAURANTS, 'checking', 'Dining out', addDays(weekStart, offset), [8, 21]);
+      visit(
+        RESTAURANTS,
+        'checking',
+        'Dining out',
+        addDays(weekStart, offset),
+        [8, 21],
+      );
     }
     for (const offset of random.distinct(random.int(0, 2), 0, 6)) {
-      expense('checking', 'Uber', random.int(900, 3400), 'Transport', atTime(addDays(weekStart, offset), random.int(7, 23), random.int(0, 59)));
+      expense(
+        'checking',
+        'Uber',
+        random.int(900, 3400),
+        'Transport',
+        atTime(
+          addDays(weekStart, offset),
+          random.int(7, 23),
+          random.int(0, 59),
+        ),
+      );
     }
     if (week % 2 === 0) {
-      expense('checking', 'Shell', random.int(3800, 6200), 'Transport', atTime(addDays(weekStart, random.int(0, 6)), 17, random.int(0, 59)));
+      expense(
+        'checking',
+        'Shell',
+        random.int(3800, 6200),
+        'Transport',
+        atTime(addDays(weekStart, random.int(0, 6)), 17, random.int(0, 59)),
+      );
     }
   }
 
@@ -299,7 +437,10 @@ export function buildDemoPlan(now: Date, seed = DEMO_SEED): DemoPlan {
       index === 0
         ? CARD_OPENING_DEBT_CENTS
         : transactions
-            .filter((t) => t.from === 'card' && sameMonth(t.occurredAt, months[index - 1]))
+            .filter(
+              (t) =>
+                t.from === 'card' && sameMonth(t.occurredAt, months[index - 1]),
+            )
             .reduce((sum, t) => sum + Math.round(Number(t.amount) * 100), 0);
     if (statementCents <= 0) return;
     add({
@@ -314,7 +455,9 @@ export function buildDemoPlan(now: Date, seed = DEMO_SEED): DemoPlan {
   });
 
   transactions.sort(
-    (a, b) => a.occurredAt.getTime() - b.occurredAt.getTime() || a.description.localeCompare(b.description),
+    (a, b) =>
+      a.occurredAt.getTime() - b.occurredAt.getTime() ||
+      a.description.localeCompare(b.description),
   );
 
   // Rent as a monthly series started on the first day of the window, with the
@@ -330,14 +473,26 @@ export function buildDemoPlan(now: Date, seed = DEMO_SEED): DemoPlan {
   };
   const occurrences: Date[] = [];
   for (
-    let next = computeNextOccurrence(rentRoot.occurredAt.getUTCDate(), rentRoot.occurredAt, RecurringInterval.MONTHLY);
+    let next = computeNextOccurrence(
+      rentRoot.occurredAt.getUTCDate(),
+      rentRoot.occurredAt,
+      RecurringInterval.MONTHLY,
+    );
     next <= now;
-    next = computeNextOccurrence(rentRoot.occurredAt.getUTCDate(), next, RecurringInterval.MONTHLY)
+    next = computeNextOccurrence(
+      rentRoot.occurredAt.getUTCDate(),
+      next,
+      RecurringInterval.MONTHLY,
+    )
   ) {
     occurrences.push(next);
   }
 
-  const goalEnd = utcDay(windowStart.getUTCFullYear(), windowStart.getUTCMonth() + 12, 0);
+  const goalEnd = utcDay(
+    windowStart.getUTCFullYear(),
+    windowStart.getUTCMonth() + 12,
+    0,
+  );
   const goals: DemoGoalPlan[] = [
     {
       name: 'Emergency fund',
@@ -375,10 +530,14 @@ export function buildDemoPlan(now: Date, seed = DEMO_SEED): DemoPlan {
   return {
     windowStart,
     now,
-    extraCategories: [{ name: 'Household', type: CategoryType.EXPENSE, color: '#a855f7' }],
+    extraCategories: [
+      { name: 'Household', type: CategoryType.EXPENSE, color: '#a855f7' },
+    ],
     accounts: ACCOUNTS.map((account) => ({ ...account })),
     transactions,
-    recurring: [{ root: rentRoot, interval: RecurringInterval.MONTHLY, occurrences }],
+    recurring: [
+      { root: rentRoot, interval: RecurringInterval.MONTHLY, occurrences },
+    ],
     goals,
   };
 }
@@ -389,7 +548,11 @@ export interface DemoIds {
   categories: Record<string, string>;
 }
 
-function idOf(ids: Record<string, string>, key: string | undefined, kind: string): string | undefined {
+function idOf(
+  ids: Record<string, string>,
+  key: string | undefined,
+  kind: string,
+): string | undefined {
   if (key === undefined) return undefined;
   const id = ids[key];
   if (!id) throw new Error(`Demo plan refers to an unknown ${kind}: ${key}`);
@@ -397,7 +560,10 @@ function idOf(ids: Record<string, string>, key: string | undefined, kind: string
 }
 
 /** The command TransactionsService.create takes for a planned transaction. */
-export function toCreateCommand(transaction: DemoTransactionPlan, ids: DemoIds): CreateTransactionCommand {
+export function toCreateCommand(
+  transaction: DemoTransactionPlan,
+  ids: DemoIds,
+): CreateTransactionCommand {
   return {
     type: transaction.type,
     description: transaction.description,
@@ -421,7 +587,9 @@ export function allPostings(plan: DemoPlan): DemoTransactionPlan[] {
     root,
     ...occurrences.map((occurredAt) => ({ ...root, occurredAt })),
   ]);
-  return [...plan.transactions, ...series].sort((a, b) => a.occurredAt.getTime() - b.occurredAt.getTime());
+  return [...plan.transactions, ...series].sort(
+    (a, b) => a.occurredAt.getTime() - b.occurredAt.getTime(),
+  );
 }
 
 /** Posting counts per account, category and month, for the seed's summary. */
@@ -429,13 +597,18 @@ export function summarizePlan(plan: DemoPlan) {
   const byAccount: Record<string, number> = {};
   const byCategory: Record<string, number> = {};
   const byMonth: Record<string, number> = {};
-  const bump = (counts: Record<string, number>, key: string) => (counts[key] = (counts[key] ?? 0) + 1);
-  const accountName = (key: DemoAccountKey) => plan.accounts.find((account) => account.key === key)!.name;
+  const bump = (counts: Record<string, number>, key: string) =>
+    (counts[key] = (counts[key] ?? 0) + 1);
+  const accountName = (key: DemoAccountKey) =>
+    plan.accounts.find((account) => account.key === key)!.name;
 
   const postings = allPostings(plan);
   for (const posting of postings) {
-    for (const key of new Set([posting.from, posting.to])) if (key) bump(byAccount, accountName(key));
-    const categories = posting.items?.map((item) => item.category) ?? [posting.category ?? 'Transfer'];
+    for (const key of new Set([posting.from, posting.to]))
+      if (key) bump(byAccount, accountName(key));
+    const categories = posting.items?.map((item) => item.category) ?? [
+      posting.category ?? 'Transfer',
+    ];
     for (const category of new Set(categories)) bump(byCategory, category);
     bump(byMonth, posting.occurredAt.toISOString().slice(0, 7));
   }
