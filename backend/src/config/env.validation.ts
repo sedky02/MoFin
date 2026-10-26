@@ -79,6 +79,16 @@ const envSchema = z
       .string()
       .regex(/^\d+(s|m|h|d)$/, 'Use a duration such as 30m')
       .default('30m'),
+
+    // --- "Try the demo" (temporary per-visitor demo users) ---
+    // Unset: on outside production, off in production until set to "true".
+    DEMO_ENABLED: z.enum(['true', 'false']).optional(),
+    // How long a demo user lives before DemoCleanupCron deletes it.
+    DEMO_TTL_HOURS: z.coerce.number().int().positive().max(168).default(24),
+    // Live demo users at once; further visitors get "demo is busy".
+    DEMO_MAX_ACTIVE: z.coerce.number().int().positive().default(200),
+    // AI drafts one demo user can create.
+    DEMO_AI_CAP: z.coerce.number().int().positive().default(30),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV === 'production' && !env.BFF_SHARED_SECRET) {

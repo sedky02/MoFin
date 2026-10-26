@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isDemoEmail } from '../../../common/utils/demo-identity';
 
 // Emails are normalized (trimmed + lowercased) so register and login always
 // agree — the email column is case-sensitive-unique, so without this a user who
@@ -10,7 +11,10 @@ const emailField = z.string().trim().toLowerCase().email();
 const newPasswordField = z.string().min(8);
 
 export const registerSchema = z.object({
-  email: emailField,
+  // Demo users are recognised by this domain alone, so nobody may register on it.
+  email: emailField.refine((email) => !isDemoEmail(email), {
+    message: 'Use your own email address',
+  }),
   password: newPasswordField,
   displayName: z.string().optional(),
 });

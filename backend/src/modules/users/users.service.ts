@@ -51,6 +51,9 @@ export class UsersService {
         createdAt: true,
         updatedAt: true,
         passwordHash: true,
+        // The web app shows a demo banner and disables what the demo blocks.
+        isDemo: true,
+        expiresAt: true,
       },
     });
     if (!user) throw new NotFoundException('User not found');

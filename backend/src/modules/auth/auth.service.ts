@@ -133,6 +133,9 @@ export class AuthService {
       where: { id: stored.userId },
     });
     if (!user) throw new UnauthorizedException('Invalid refresh token');
+    // Its data is about to be deleted; the access token it has dies on its own.
+    if (demoHasEnded(user))
+      throw new UnauthorizedException('This demo has ended');
 
     // Claim the token and create its successor in one step, so two concurrent
     // refreshes with the same token can't both rotate it.
@@ -194,7 +197,7 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({
       where: { id: next.userId },
     });
-    if (!user) return null;
+    if (!user || demoHasEnded(user)) return null;
 
     return {
       accessToken: await this.signAccessToken(user.id, user.email),
@@ -389,6 +392,34 @@ export class AuthService {
     );
   }
 
+  /** A new session (fresh token family) for a user created without a password. */
+  startSession(user: { id: string; email: string }) {
+    return this.issueTokens(
+      user.id,
+      user.email,
+      randomBytes(16).toString('hex'),
+    );
+  }
+
+  /**
+   * The user a refresh token belongs to while it is still usable as is: not
+   * revoked, not rotated, not expired. Null otherwise. Doesn't rotate it.
+   */
+  async liveSessionUser(refreshToken: string) {
+    const stored = await this.prisma.refreshToken.findUnique({
+      where: { tokenHash: sha256(refreshToken) },
+      include: { user: true },
+    });
+    if (
+      !stored ||
+      stored.revokedAt ||
+      stored.rotatedToId ||
+      stored.expiresAt < new Date()
+    )
+      return null;
+    return stored.user;
+  }
+
   /**
    * Mints a fresh access token (JWT) and refresh token (opaque, persisted
    * hashed) for `userId`, linking the new refresh token into `familyId`, a
@@ -435,6 +466,14 @@ export class AuthService {
       expiresAt: new Date(Date.now() + refreshTtlMs),
     };
   }
+}
+
+/** A temporary demo user past its expiry (cleanup may not have run yet). */
+export function demoHasEnded(
+  user: { isDemo: boolean; expiresAt: Date | null },
+  now = new Date(),
+): boolean {
+  return user.isDemo && user.expiresAt !== null && user.expiresAt <= now;
 }
 
 /** A 400 shaped like ZodValidationPipe's, so the form shows it on `path`. */
