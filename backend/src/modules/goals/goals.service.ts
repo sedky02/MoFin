@@ -476,21 +476,23 @@ export class GoalsService {
       //
       // The account's opening balance is the starting point: it's what the
       // account held before its first entry, so it counts at any boundary.
-      const [rows, account] = await Promise.all([
-        db.transactionItem.groupBy({
-          by: ['direction'],
-          where: {
-            userId: goal.userId,
-            accountId: goal.accountId,
-            transaction: { occurredAt: { lte: boundary }, deletedAt: null },
-          },
-          _sum: { amount: true },
-        }),
-        db.account.findFirst({
-          where: { id: goal.accountId, userId: goal.userId },
-          select: { openingBalance: true },
-        }),
-      ]);
+      //
+      // One after the other, not Promise.all: `db` may be a caller's
+      // transaction, which runs on a single connection that can't take two
+      // queries at once.
+      const rows = await db.transactionItem.groupBy({
+        by: ['direction'],
+        where: {
+          userId: goal.userId,
+          accountId: goal.accountId,
+          transaction: { occurredAt: { lte: boundary }, deletedAt: null },
+        },
+        _sum: { amount: true },
+      });
+      const account = await db.account.findFirst({
+        where: { id: goal.accountId, userId: goal.userId },
+        select: { openingBalance: true },
+      });
       return rows.reduce(
         (sum, row) => {
           const amount = row._sum.amount ?? new Prisma.Decimal(0);
