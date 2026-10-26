@@ -42,11 +42,16 @@ export function ErrorState({
   title = "Something went wrong",
   description,
   onRetry,
+  retryLabel = "Try again",
+  action,
   className,
 }: {
   title?: string;
   description?: string;
   onRetry?: () => void;
+  retryLabel?: string;
+  /** A custom action (e.g. a link) shown instead of the retry button. */
+  action?: React.ReactNode;
   className?: string;
 }) {
   return (
@@ -64,10 +69,14 @@ export function ErrorState({
       {description && (
         <p className="mt-1 max-w-sm text-sm text-muted-foreground">{description}</p>
       )}
-      {onRetry && (
-        <Button variant="outline" className="mt-5" onClick={onRetry}>
-          Try again
-        </Button>
+      {action ? (
+        <div className="mt-5">{action}</div>
+      ) : (
+        onRetry && (
+          <Button variant="outline" className="mt-5" onClick={onRetry}>
+            {retryLabel}
+          </Button>
+        )
       )}
     </div>
   );
