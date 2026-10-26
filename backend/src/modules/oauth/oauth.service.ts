@@ -10,6 +10,8 @@ import { createHash, randomBytes } from 'crypto';
 import { PrismaService } from '../../database/prisma.service';
 import { sha256 } from '../../common/utils/hash';
 import { AuthorizeQueryDto, RegisterClientDto } from './dto/oauth.dto';
+import { demoBlocked } from '../../common/decorators/demo.decorator';
+import { isDemoEmail } from '../../common/utils/demo-identity';
 
 export interface OAuthTokenResponse {
   access_token: string;
@@ -421,7 +423,7 @@ export class OAuthService {
    * so the value that travels in the URL never remains the live cookie value.
    */
   async createHandoff(accessToken: string): Promise<string> {
-    let payload: { sub: string };
+    let payload: { sub: string; email?: string };
     try {
       payload = await this.jwt.verifyAsync(accessToken, {
         secret: this.config.getOrThrow<string>('JWT_ACCESS_SECRET'),
@@ -429,6 +431,9 @@ export class OAuthService {
     } catch {
       throw new UnauthorizedException('invalid access token');
     }
+    // A public route, so DemoRestrictionsGuard never sees the user: without a
+    // session here, a demo user can't connect an AI app.
+    if (isDemoEmail(payload.email)) throw demoBlocked();
     const handoff = randomBytes(32).toString('base64url');
     const ttl = this.config.getOrThrow<number>('OAUTH_SESSION_TTL');
     await this.prisma.authSession.create({
