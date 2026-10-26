@@ -45,7 +45,10 @@ describeWithDb('Password recovery (e2e)', () => {
     return `10.20.${(ipCounter >> 8) & 255}.${ipCounter & 255}`;
   };
   const post = (path: string, body: object) =>
-    request(app.getHttpServer()).post(`/api/v1${path}`).set('X-Forwarded-For', nextIp()).send(body);
+    request(app.getHttpServer())
+      .post(`/api/v1${path}`)
+      .set('X-Forwarded-For', nextIp())
+      .send(body);
 
   const newEmail = (label: string) => {
     const email = `b02-${runId}-${label}@mofin.test`;
@@ -65,7 +68,8 @@ describeWithDb('Password recovery (e2e)', () => {
     const deadline = Date.now() + 5000;
     while (Date.now() < deadline) {
       const message = [...mail.sent].reverse().find((m) => m.to === to);
-      const match = message && /reset-password#token=([A-Za-z0-9_-]+)/.exec(message.text);
+      const match =
+        message && /reset-password#token=([A-Za-z0-9_-]+)/.exec(message.text);
       if (match) {
         mail.sent.splice(mail.sent.indexOf(message), 1);
         return match[1];
@@ -76,9 +80,14 @@ describeWithDb('Password recovery (e2e)', () => {
   }
 
   beforeAll(async () => {
-    const dbName = new URL(E2E_DATABASE_URL as string).pathname.replace(/^\//, '');
+    const dbName = new URL(E2E_DATABASE_URL as string).pathname.replace(
+      /^\//,
+      '',
+    );
     if (!/test|e2e/i.test(dbName)) {
-      throw new Error(`Refusing to run against "${dbName}": use a throwaway database whose name contains "test" or "e2e".`);
+      throw new Error(
+        `Refusing to run against "${dbName}": use a throwaway database whose name contains "test" or "e2e".`,
+      );
     }
     process.env.DATABASE_URL = E2E_DATABASE_URL;
     process.env.JWT_ACCESS_SECRET ??= `e2e-access-${'a'.repeat(32)}`;
@@ -113,10 +122,19 @@ describeWithDb('Password recovery (e2e)', () => {
     await registerUser(known, 'original-pass-1');
     const unknown = `b02-${runId}-nobody@mofin.test`;
 
-    const timings: Record<'known' | 'unknown', number[]> = { known: [], unknown: [] };
-    const bodies: Record<'known' | 'unknown', unknown[]> = { known: [], unknown: [] };
+    const timings: Record<'known' | 'unknown', number[]> = {
+      known: [],
+      unknown: [],
+    };
+    const bodies: Record<'known' | 'unknown', unknown[]> = {
+      known: [],
+      unknown: [],
+    };
     for (let i = 0; i < 5; i++) {
-      for (const [kind, email] of [['known', known], ['unknown', unknown]] as const) {
+      for (const [kind, email] of [
+        ['known', known],
+        ['unknown', unknown],
+      ] as const) {
         const started = performance.now();
         const res = await post('/auth/password/forgot', { email });
         timings[kind].push(performance.now() - started);
@@ -125,9 +143,16 @@ describeWithDb('Password recovery (e2e)', () => {
       }
     }
 
-    expect(new Set([...bodies.known, ...bodies.unknown].map((b) => JSON.stringify(b))).size).toBe(1);
-    const median = (xs: number[]) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)];
-    expect(Math.abs(median(timings.known) - median(timings.unknown))).toBeLessThan(100);
+    expect(
+      new Set(
+        [...bodies.known, ...bodies.unknown].map((b) => JSON.stringify(b)),
+      ).size,
+    ).toBe(1);
+    const median = (xs: number[]) =>
+      [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)];
+    expect(
+      Math.abs(median(timings.known) - median(timings.unknown)),
+    ).toBeLessThan(100);
 
     // Only the known address actually got an email.
     await waitForResetToken(known);
@@ -140,7 +165,9 @@ describeWithDb('Password recovery (e2e)', () => {
     await post('/auth/password/forgot', { email }).expect(202);
     const token = await waitForResetToken(email);
 
-    const rows = await prisma.passwordResetToken.findMany({ where: { user: { email } } });
+    const rows = await prisma.passwordResetToken.findMany({
+      where: { user: { email } },
+    });
     expect(rows).toHaveLength(1);
     expect(rows[0].tokenHash).toBe(sha256(token));
     expect(JSON.stringify(rows)).not.toContain(token);
@@ -158,15 +185,25 @@ describeWithDb('Password recovery (e2e)', () => {
     await post('/auth/password/forgot', { email }).expect(202);
     const token = await waitForResetToken(email);
 
-    await post('/auth/password/reset', { token, password: 'brand-new-pass-2' }).expect(200);
-    await post('/auth/password/reset', { token, password: 'another-pass-3' }).expect(400);
+    await post('/auth/password/reset', {
+      token,
+      password: 'brand-new-pass-2',
+    }).expect(200);
+    await post('/auth/password/reset', {
+      token,
+      password: 'another-pass-3',
+    }).expect(400);
 
     expect((await login(email, 'original-pass-1')).status).toBe(401);
     expect((await login(email, 'another-pass-3')).status).toBe(401);
     expect((await login(email, 'brand-new-pass-2')).status).toBe(201);
 
-    await post('/auth/refresh', { refreshToken: first.body.refreshToken }).expect(401);
-    await post('/auth/refresh', { refreshToken: second.body.refreshToken }).expect(401);
+    await post('/auth/refresh', {
+      refreshToken: first.body.refreshToken,
+    }).expect(401);
+    await post('/auth/refresh', {
+      refreshToken: second.body.refreshToken,
+    }).expect(401);
   });
 
   it('rejects an expired token with 400 and leaves the password unchanged', async () => {
@@ -180,12 +217,18 @@ describeWithDb('Password recovery (e2e)', () => {
       data: { expiresAt: new Date(Date.now() - 1000) },
     });
 
-    await post('/auth/password/reset', { token, password: 'brand-new-pass-2' }).expect(400);
+    await post('/auth/password/reset', {
+      token,
+      password: 'brand-new-pass-2',
+    }).expect(400);
     expect((await login(email, 'original-pass-1')).status).toBe(201);
   });
 
   it('rejects an unknown token and a superseded token with 400', async () => {
-    await post('/auth/password/reset', { token: 'not-a-real-token', password: 'brand-new-pass-2' }).expect(400);
+    await post('/auth/password/reset', {
+      token: 'not-a-real-token',
+      password: 'brand-new-pass-2',
+    }).expect(400);
 
     const email = newEmail('superseded');
     await registerUser(email, 'original-pass-1');
@@ -194,7 +237,13 @@ describeWithDb('Password recovery (e2e)', () => {
     await post('/auth/password/forgot', { email }).expect(202);
     const newer = await waitForResetToken(email);
 
-    await post('/auth/password/reset', { token: older, password: 'brand-new-pass-2' }).expect(400);
-    await post('/auth/password/reset', { token: newer, password: 'brand-new-pass-2' }).expect(200);
+    await post('/auth/password/reset', {
+      token: older,
+      password: 'brand-new-pass-2',
+    }).expect(400);
+    await post('/auth/password/reset', {
+      token: newer,
+      password: 'brand-new-pass-2',
+    }).expect(200);
   });
 });

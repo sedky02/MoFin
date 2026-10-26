@@ -16,7 +16,9 @@ initSentry(process.env.SENTRY_DSN);
 async function bootstrap() {
   // bufferLogs queues Nest's own startup logs until app.useLogger(...) below
   // swaps in the pino-backed logger, so nothing is lost/duplicated.
-  const app = await NestFactory.create<NestExpressApplication>(AppModule, { bufferLogs: true });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    bufferLogs: true,
+  });
   app.useLogger(app.get(Logger));
   const config = app.get(ConfigService);
   // The BFF (Next.js) is the only thing that ever calls this backend directly.
@@ -32,9 +34,18 @@ async function bootstrap() {
   // endpoints stay under the prefix — claude.ai reads their URLs from the metadata.
   app.setGlobalPrefix('api/v1', {
     exclude: [
-      { path: '.well-known/oauth-protected-resource', method: RequestMethod.GET },
-      { path: '.well-known/oauth-protected-resource/(.*)', method: RequestMethod.GET },
-      { path: '.well-known/oauth-authorization-server', method: RequestMethod.GET },
+      {
+        path: '.well-known/oauth-protected-resource',
+        method: RequestMethod.GET,
+      },
+      {
+        path: '.well-known/oauth-protected-resource/(.*)',
+        method: RequestMethod.GET,
+      },
+      {
+        path: '.well-known/oauth-authorization-server',
+        method: RequestMethod.GET,
+      },
       // Infra liveness/readiness probes expect an unversioned, well-known path.
       { path: 'health', method: RequestMethod.GET },
       { path: 'health/(.*)', method: RequestMethod.GET },
@@ -49,7 +60,10 @@ async function bootstrap() {
     .setTitle('MoFin API')
     .setDescription('AI-native personal finance backend')
     .setVersion('0.1.0')
-    .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'jwt')
+    .addBearerAuth(
+      { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
+      'jwt',
+    )
     .build();
   const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('docs', app, document);

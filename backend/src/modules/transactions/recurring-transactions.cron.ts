@@ -2,9 +2,16 @@ import { HttpException, Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { RecurringStatus } from '@prisma/client';
-import { DomainEvents, TransactionCreatedEvent } from '../../common/events/domain-events';
+import {
+  DomainEvents,
+  TransactionCreatedEvent,
+} from '../../common/events/domain-events';
 import { PrismaService } from '../../database/prisma.service';
-import { computeNextOccurrence, isPastEndDate, TransactionsService } from './transactions.service';
+import {
+  computeNextOccurrence,
+  isPastEndDate,
+  TransactionsService,
+} from './transactions.service';
 
 /**
  * Fixed key for a Postgres session advisory lock, arbitrary but stable. Only
@@ -32,14 +39,16 @@ export class RecurringTransactionsCron {
   constructor(
     private readonly prisma: PrismaService,
     private readonly transactionsService: TransactionsService,
-    private readonly events: EventEmitter2
+    private readonly events: EventEmitter2,
   ) {}
 
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async generateDueOccurrences() {
     const locked = await this.acquireLock();
     if (!locked) {
-      this.logger.log('Another instance holds the recurring-transactions lock; skipping this run.');
+      this.logger.log(
+        'Another instance holds the recurring-transactions lock; skipping this run.',
+      );
       return;
     }
 
@@ -47,7 +56,12 @@ export class RecurringTransactionsCron {
       const now = new Date();
       const dueRoots = await this.prisma.transaction.findMany({
         // A deleted root is a stopped series (restoring it picks the series up again).
-        where: { isRecurring: true, recurringStatus: RecurringStatus.ACTIVE, deletedAt: null, nextOccurrenceAt: { lte: now } }
+        where: {
+          isRecurring: true,
+          recurringStatus: RecurringStatus.ACTIVE,
+          deletedAt: null,
+          nextOccurrenceAt: { lte: now },
+        },
       });
 
       for (const root of dueRoots) {
@@ -58,12 +72,18 @@ export class RecurringTransactionsCron {
           if (isPastEndDate(root.nextOccurrenceAt!, root.recurringEndDate)) {
             await this.prisma.transaction.update({
               where: { id: root.id },
-              data: { recurringStatus: RecurringStatus.CANCELLED, nextOccurrenceAt: null }
+              data: {
+                recurringStatus: RecurringStatus.CANCELLED,
+                nextOccurrenceAt: null,
+              },
             });
             continue;
           }
 
-          const problem = await this.transactionsService.findSeriesProblem(root.userId, root);
+          const problem = await this.transactionsService.findSeriesProblem(
+            root.userId,
+            root,
+          );
           if (problem) {
             await this.pause(root.id, problem);
             continue;
@@ -85,19 +105,26 @@ export class RecurringTransactionsCron {
                 fromAccountId: root.recurringFromAccountId ?? undefined,
                 toAccountId: root.recurringToAccountId ?? undefined,
                 categoryId: root.categoryId ?? undefined,
-                parentTransactionId: root.id
+                parentTransactionId: root.id,
               },
-              db
+              db,
             );
 
-            const next = computeNextOccurrence(root.occurredAt.getUTCDate(), root.nextOccurrenceAt!, root.recurringInterval!);
+            const next = computeNextOccurrence(
+              root.occurredAt.getUTCDate(),
+              root.nextOccurrenceAt!,
+              root.recurringInterval!,
+            );
             const ended = isPastEndDate(next, root.recurringEndDate);
 
             await db.transaction.update({
               where: { id: root.id },
               data: ended
-                ? { recurringStatus: RecurringStatus.CANCELLED, nextOccurrenceAt: null }
-                : { nextOccurrenceAt: next }
+                ? {
+                    recurringStatus: RecurringStatus.CANCELLED,
+                    nextOccurrenceAt: null,
+                  }
+                : { nextOccurrenceAt: next },
             });
 
             return occurrence;
@@ -106,18 +133,25 @@ export class RecurringTransactionsCron {
           this.events.emit(DomainEvents.TransactionCreated, {
             transactionId: created.id,
             userId: root.userId,
-            occurredAt: created.occurredAt
+            occurredAt: created.occurredAt,
           } satisfies TransactionCreatedEvent);
         } catch (error) {
           // create() rejecting the occurrence (a 4xx) means the template itself
           // is invalid in a way findSeriesProblem doesn't know about yet, and
           // it would fail the same way tomorrow.
           if (error instanceof HttpException && error.getStatus() < 500) {
-            await this.pause(root.id, error.message).catch((pauseError: Error) =>
-              this.logger.error(`Failed to pause recurring series ${root.id}`, pauseError)
+            await this.pause(root.id, error.message).catch(
+              (pauseError: Error) =>
+                this.logger.error(
+                  `Failed to pause recurring series ${root.id}`,
+                  pauseError,
+                ),
             );
           } else {
-            this.logger.error(`Failed to generate recurring occurrence for transaction ${root.id}`, error as Error);
+            this.logger.error(
+              `Failed to generate recurring occurrence for transaction ${root.id}`,
+              error as Error,
+            );
           }
         }
       }
@@ -133,10 +167,16 @@ export class RecurringTransactionsCron {
   private async pause(rootId: string, reason: string): Promise<void> {
     await this.prisma.transaction.updateMany({
       where: { id: rootId, recurringStatus: RecurringStatus.ACTIVE },
-      data: { recurringStatus: RecurringStatus.PAUSED, recurringError: reason, lastFailedAt: new Date() }
+      data: {
+        recurringStatus: RecurringStatus.PAUSED,
+        recurringError: reason,
+        lastFailedAt: new Date(),
+      },
     });
     // The reason can name the user's accounts, so the log keeps to the id.
-    this.logger.warn(`Paused recurring series ${rootId} that can no longer post`);
+    this.logger.warn(
+      `Paused recurring series ${rootId} that can no longer post`,
+    );
   }
 
   private async acquireLock(): Promise<boolean> {
@@ -147,6 +187,7 @@ export class RecurringTransactionsCron {
   }
 
   private async releaseLock(): Promise<void> {
-    await this.prisma.$queryRaw`SELECT pg_advisory_unlock(${ADVISORY_LOCK_KEY})`;
+    await this.prisma
+      .$queryRaw`SELECT pg_advisory_unlock(${ADVISORY_LOCK_KEY})`;
   }
 }

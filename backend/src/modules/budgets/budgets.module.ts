@@ -3,6 +3,6 @@ import { BudgetsService } from './budgets.service';
 
 @Module({
   providers: [BudgetsService],
-  exports: [BudgetsService]
+  exports: [BudgetsService],
 })
 export class BudgetsModule {}

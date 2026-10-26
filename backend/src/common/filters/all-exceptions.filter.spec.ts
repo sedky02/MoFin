@@ -1,4 +1,8 @@
-import { ArgumentsHost, BadRequestException, InternalServerErrorException } from '@nestjs/common';
+import {
+  ArgumentsHost,
+  BadRequestException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { AllExceptionsFilter } from './all-exceptions.filter';
 
 function makeHost(url = '/api/v1/accounts') {
@@ -20,7 +24,9 @@ describe('AllExceptionsFilter', () => {
     const { host, status, json } = makeHost();
     filter.catch(new BadRequestException('bad input'), host);
     expect(status).toHaveBeenCalledWith(400);
-    expect(json).toHaveBeenCalledWith(expect.objectContaining({ message: 'bad input' }));
+    expect(json).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'bad input' }),
+    );
   });
 
   it('maps a 5xx HttpException to itself and reports it', () => {
@@ -35,7 +41,9 @@ describe('AllExceptionsFilter', () => {
     const { host, status, json } = makeHost();
     filter.catch(new Error('unexpected'), host);
     expect(status).toHaveBeenCalledWith(500);
-    expect(json).toHaveBeenCalledWith(expect.objectContaining({ statusCode: 500 }));
+    expect(json).toHaveBeenCalledWith(
+      expect.objectContaining({ statusCode: 500 }),
+    );
   });
 
   it('does not throw for a health-check path even on a 5xx (no Sentry client configured)', () => {

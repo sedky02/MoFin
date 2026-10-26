@@ -1,7 +1,23 @@
-import { BadRequestException, HttpException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  HttpException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { Account, Prisma, RecurringInterval, RecurringStatus, Transaction, TransactionType } from '@prisma/client';
-import { DomainEvents, TransactionChangedEvent, TransactionCreatedEvent } from '../../common/events/domain-events';
+import {
+  Account,
+  Prisma,
+  RecurringInterval,
+  RecurringStatus,
+  Transaction,
+  TransactionType,
+} from '@prisma/client';
+import {
+  DomainEvents,
+  TransactionChangedEvent,
+  TransactionCreatedEvent,
+} from '../../common/events/domain-events';
 import { PrismaService } from '../../database/prisma.service';
 import { AccountsService } from '../accounts/accounts.service';
 import { CategoriesService } from '../categories/categories.service';
@@ -9,7 +25,7 @@ import { LedgerService } from '../ledger/ledger.service';
 import {
   CreateTransactionCommand,
   UpdateRecurringTransactionCommand,
-  UpdateTransactionCommand
+  UpdateTransactionCommand,
 } from './dto/transactions.dto';
 import { TRANSACTION_INCLUDE } from './transaction-include';
 
@@ -27,14 +43,26 @@ type Db = Prisma.TransactionClient;
  * would reintroduce the same server-timezone-dependent bug at month
  * boundaries (audit DATA-XX).
  */
-export function computeNextOccurrence(anchorDay: number, from: Date, interval: RecurringInterval): Date {
+export function computeNextOccurrence(
+  anchorDay: number,
+  from: Date,
+  interval: RecurringInterval,
+): Date {
   const monthsToAdd = interval === RecurringInterval.MONTHLY ? 1 : 12;
   const year = from.getUTCFullYear();
   const month = from.getUTCMonth() + monthsToAdd;
   const daysInTargetMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
   const day = Math.min(anchorDay, daysInTargetMonth);
   return new Date(
-    Date.UTC(year, month, day, from.getUTCHours(), from.getUTCMinutes(), from.getUTCSeconds(), from.getUTCMilliseconds())
+    Date.UTC(
+      year,
+      month,
+      day,
+      from.getUTCHours(),
+      from.getUTCMinutes(),
+      from.getUTCSeconds(),
+      from.getUTCMilliseconds(),
+    ),
   );
 }
 
@@ -44,7 +72,10 @@ export function computeNextOccurrence(anchorDay: number, from: Date, interval: R
  * past its end is ended (CANCELLED with no next occurrence) rather than left
  * active, so the cron never posts a charge the user excluded.
  */
-export function isPastEndDate(nextOccurrenceAt: Date, recurringEndDate: Date | null | undefined): boolean {
+export function isPastEndDate(
+  nextOccurrenceAt: Date,
+  recurringEndDate: Date | null | undefined,
+): boolean {
   return recurringEndDate ? nextOccurrenceAt > recurringEndDate : false;
 }
 
@@ -67,11 +98,18 @@ export function firstOccurrenceOnOrAfter(
 /** What a series posts each time: enough of its root to tell whether it still can. */
 export type SeriesTemplate = Pick<
   Transaction,
-  'type' | 'currency' | 'categoryId' | 'recurringFromAccountId' | 'recurringToAccountId'
+  | 'type'
+  | 'currency'
+  | 'categoryId'
+  | 'recurringFromAccountId'
+  | 'recurringToAccountId'
 >;
 
 /** Why a series can't post to this account, in words for the user, or null when it can. */
-function accountProblem(account: Pick<Account, 'name' | 'currency' | 'archivedAt'>, currency: string): string | null {
+function accountProblem(
+  account: Pick<Account, 'name' | 'currency' | 'archivedAt'>,
+  currency: string,
+): string | null {
   if (account.archivedAt) return `Account ${account.name} is archived`;
   if (account.currency !== currency) {
     return `Account ${account.name} is in ${account.currency}, but the series is in ${currency}`;
@@ -86,7 +124,7 @@ export class TransactionsService {
     private readonly ledgerService: LedgerService,
     private readonly categoriesService: CategoriesService,
     private readonly accountsService: AccountsService,
-    private readonly events: EventEmitter2
+    private readonly events: EventEmitter2,
   ) {}
 
   /**
@@ -100,18 +138,35 @@ export class TransactionsService {
    */
   async create(userId: string, command: CreateTransactionCommand, db?: Db) {
     this.validateCommand(command);
-    await this.categoriesService.assertAssignable(userId, command.type, command.categoryId);
+    await this.categoriesService.assertAssignable(
+      userId,
+      command.type,
+      command.categoryId,
+    );
     for (const item of command.items ?? []) {
-      await this.categoriesService.assertAssignable(userId, command.type, item.categoryId);
+      await this.categoriesService.assertAssignable(
+        userId,
+        command.type,
+        item.categoryId,
+      );
     }
-    const ledgerEntries = await this.ledgerService.buildEntriesForCommand(userId, command);
+    const ledgerEntries = await this.ledgerService.buildEntriesForCommand(
+      userId,
+      command,
+    );
 
     const firstNextOccurrenceAt = command.isRecurring
-      ? computeNextOccurrence(command.occurredAt.getUTCDate(), command.occurredAt, command.recurringInterval!)
+      ? computeNextOccurrence(
+          command.occurredAt.getUTCDate(),
+          command.occurredAt,
+          command.recurringInterval!,
+        )
       : null;
     // The root itself is always posted; if the end date already excludes the
     // next occurrence there's nothing left to generate, so it starts ended.
-    const endedAtCreate = firstNextOccurrenceAt ? isPastEndDate(firstNextOccurrenceAt, command.recurringEndDate) : false;
+    const endedAtCreate = firstNextOccurrenceAt
+      ? isPastEndDate(firstNextOccurrenceAt, command.recurringEndDate)
+      : false;
 
     const run = async (db: Db) => {
       const created = await db.transaction.create({
@@ -128,31 +183,40 @@ export class TransactionsService {
             ? {
                 isRecurring: true,
                 recurringInterval: command.recurringInterval,
-                recurringStatus: endedAtCreate ? RecurringStatus.CANCELLED : RecurringStatus.ACTIVE,
+                recurringStatus: endedAtCreate
+                  ? RecurringStatus.CANCELLED
+                  : RecurringStatus.ACTIVE,
                 recurringEndDate: command.recurringEndDate,
                 recurringAmount: new Prisma.Decimal(command.amount),
                 recurringFromAccountId: command.fromAccountId,
                 recurringToAccountId: command.toAccountId,
-                nextOccurrenceAt: endedAtCreate ? null : firstNextOccurrenceAt
+                nextOccurrenceAt: endedAtCreate ? null : firstNextOccurrenceAt,
               }
-            : {})
-        }
+            : {}),
+        },
       });
 
-      await this.ledgerService.createEntries(db, userId, created.id, ledgerEntries);
+      await this.ledgerService.createEntries(
+        db,
+        userId,
+        created.id,
+        ledgerEntries,
+      );
       return db.transaction.findUniqueOrThrow({
         where: { id: created.id },
-        include: TRANSACTION_INCLUDE
+        include: TRANSACTION_INCLUDE,
       });
     };
 
-    const transaction = db ? await run(db) : await this.prisma.$transaction(run);
+    const transaction = db
+      ? await run(db)
+      : await this.prisma.$transaction(run);
 
     if (!db) {
       this.events.emit(DomainEvents.TransactionCreated, {
         transactionId: transaction.id,
         userId,
-        occurredAt: transaction.occurredAt
+        occurredAt: transaction.occurredAt,
       } satisfies TransactionCreatedEvent);
     }
 
@@ -162,7 +226,7 @@ export class TransactionsService {
   async getById(userId: string, id: string) {
     const transaction = await this.prisma.transaction.findFirst({
       where: { id, userId, deletedAt: null },
-      include: TRANSACTION_INCLUDE
+      include: TRANSACTION_INCLUDE,
     });
     if (!transaction) throw new NotFoundException('Transaction not found');
     return transaction;
@@ -180,23 +244,40 @@ export class TransactionsService {
     const existing = await this.findLive(userId, id);
     if (existing.isRecurring && !existing.parentTransactionId) {
       if (command.type !== existing.type) {
-        throw new BadRequestException("A recurring series can't change type; delete it and create a new one");
+        throw new BadRequestException(
+          "A recurring series can't change type; delete it and create a new one",
+        );
       }
       if (command.currency !== existing.currency) {
-        throw new BadRequestException("A recurring series can't change currency; delete it and create a new one");
+        throw new BadRequestException(
+          "A recurring series can't change currency; delete it and create a new one",
+        );
       }
       // Same rule as create: a recurring transaction is never split.
       if ((command.items?.length ?? 0) > 1) {
-        throw new BadRequestException("A recurring transaction can't be split into items");
+        throw new BadRequestException(
+          "A recurring transaction can't be split into items",
+        );
       }
     }
 
     this.validateCommand(command);
-    await this.categoriesService.assertAssignable(userId, command.type, command.categoryId);
+    await this.categoriesService.assertAssignable(
+      userId,
+      command.type,
+      command.categoryId,
+    );
     for (const item of command.items ?? []) {
-      await this.categoriesService.assertAssignable(userId, command.type, item.categoryId);
+      await this.categoriesService.assertAssignable(
+        userId,
+        command.type,
+        item.categoryId,
+      );
     }
-    const ledgerEntries = await this.ledgerService.buildEntriesForCommand(userId, command);
+    const ledgerEntries = await this.ledgerService.buildEntriesForCommand(
+      userId,
+      command,
+    );
 
     const updated = await this.prisma.$transaction(async (db) => {
       // Conditional on deletedAt so a delete racing this edit wins cleanly instead of being undone.
@@ -210,10 +291,16 @@ export class TransactionsService {
           occurredAt: command.occurredAt,
         },
       });
-      if (claimed.count === 0) throw new NotFoundException('Transaction not found');
-      await db.transactionItem.deleteMany({ where: { transactionId: id, userId } });
+      if (claimed.count === 0)
+        throw new NotFoundException('Transaction not found');
+      await db.transactionItem.deleteMany({
+        where: { transactionId: id, userId },
+      });
       await this.ledgerService.createEntries(db, userId, id, ledgerEntries);
-      return db.transaction.findUniqueOrThrow({ where: { id }, include: TRANSACTION_INCLUDE });
+      return db.transaction.findUniqueOrThrow({
+        where: { id },
+        include: TRANSACTION_INCLUDE,
+      });
     });
 
     // Cached summaries are per month: the month it left and the month it moved to both changed.
@@ -233,7 +320,8 @@ export class TransactionsService {
       where: { id, userId, deletedAt: null },
       data: { deletedAt: new Date() },
     });
-    if (claimed.count === 0) throw new NotFoundException('Transaction not found');
+    if (claimed.count === 0)
+      throw new NotFoundException('Transaction not found');
     this.emitChanged(userId, id, existing.occurredAt);
   }
 
@@ -243,7 +331,8 @@ export class TransactionsService {
       where: { id, userId, deletedAt: { not: null } },
       data: { deletedAt: null },
     });
-    if (claimed.count === 0) throw new NotFoundException('Deleted transaction not found');
+    if (claimed.count === 0)
+      throw new NotFoundException('Deleted transaction not found');
     const restored = await this.getById(userId, id);
     this.emitChanged(userId, id, restored.occurredAt);
     return restored;
@@ -251,12 +340,18 @@ export class TransactionsService {
 
   /** A transaction of this user that isn't deleted, or 404 (another user's id looks the same as a missing one). */
   private async findLive(userId: string, id: string) {
-    const transaction = await this.prisma.transaction.findFirst({ where: { id, userId, deletedAt: null } });
+    const transaction = await this.prisma.transaction.findFirst({
+      where: { id, userId, deletedAt: null },
+    });
     if (!transaction) throw new NotFoundException('Transaction not found');
     return transaction;
   }
 
-  private emitChanged(userId: string, transactionId: string, ...months: Date[]) {
+  private emitChanged(
+    userId: string,
+    transactionId: string,
+    ...months: Date[]
+  ) {
     const seen = new Set<string>();
     for (const occurredAt of months) {
       const month = `${occurredAt.getUTCFullYear()}-${occurredAt.getUTCMonth()}`;
@@ -273,7 +368,9 @@ export class TransactionsService {
   private async getRecurringRoot(userId: string, id: string) {
     const transaction = await this.findLive(userId, id);
     if (!transaction.isRecurring || transaction.parentTransactionId) {
-      throw new BadRequestException('Transaction is not the root of a recurring series');
+      throw new BadRequestException(
+        'Transaction is not the root of a recurring series',
+      );
     }
     return transaction;
   }
@@ -283,14 +380,20 @@ export class TransactionsService {
    * now on — the root's own ledger entries and any already-generated
    * occurrence are left untouched.
    */
-  async updateRecurring(userId: string, id: string, command: UpdateRecurringTransactionCommand) {
+  async updateRecurring(
+    userId: string,
+    id: string,
+    command: UpdateRecurringTransactionCommand,
+  ) {
     const root = await this.getRecurringRoot(userId, id);
     if (root.recurringStatus === RecurringStatus.CANCELLED) {
       throw new BadRequestException('Cannot edit a cancelled recurring series');
     }
 
-    const fromAccountId = command.fromAccountId ?? root.recurringFromAccountId ?? undefined;
-    const toAccountId = command.toAccountId ?? root.recurringToAccountId ?? undefined;
+    const fromAccountId =
+      command.fromAccountId ?? root.recurringFromAccountId ?? undefined;
+    const toAccountId =
+      command.toAccountId ?? root.recurringToAccountId ?? undefined;
     const amount = command.amount ?? root.recurringAmount!.toString();
 
     if (new Prisma.Decimal(amount).lessThanOrEqualTo(0)) {
@@ -302,8 +405,13 @@ export class TransactionsService {
     if (root.type === TransactionType.EXPENSE && !fromAccountId) {
       throw new BadRequestException('Expense requires fromAccountId');
     }
-    if (root.type === TransactionType.TRANSFER && (!fromAccountId || !toAccountId)) {
-      throw new BadRequestException('Transfer requires fromAccountId and toAccountId');
+    if (
+      root.type === TransactionType.TRANSFER &&
+      (!fromAccountId || !toAccountId)
+    ) {
+      throw new BadRequestException(
+        'Transfer requires fromAccountId and toAccountId',
+      );
     }
 
     // Every occurrence posts in the series' currency, so each account must be
@@ -316,32 +424,63 @@ export class TransactionsService {
       ['toAccountId', toAccountId],
     ] as const) {
       if (!accountId) continue;
-      const problem = accountProblem(await this.accountsService.assertOwned(userId, accountId), root.currency);
+      const problem = accountProblem(
+        await this.accountsService.assertOwned(userId, accountId),
+        root.currency,
+      );
       if (problem) errors.push({ path, message: problem });
     }
-    if (root.type === TransactionType.TRANSFER && fromAccountId === toAccountId) {
-      errors.push({ path: 'toAccountId', message: 'Choose a different account from the one it transfers from' });
+    if (
+      root.type === TransactionType.TRANSFER &&
+      fromAccountId === toAccountId
+    ) {
+      errors.push({
+        path: 'toAccountId',
+        message: 'Choose a different account from the one it transfers from',
+      });
     }
     if (errors.length) {
-      throw new BadRequestException({ message: errors.map((error) => error.message).join('. '), errors });
+      throw new BadRequestException({
+        message: errors.map((error) => error.message).join('. '),
+        errors,
+      });
     }
-    if (command.categoryId) await this.categoriesService.assertAssignable(userId, root.type, command.categoryId);
+    if (command.categoryId)
+      await this.categoriesService.assertAssignable(
+        userId,
+        root.type,
+        command.categoryId,
+      );
 
     let nextOccurrenceAt = root.nextOccurrenceAt;
-    if (command.recurringInterval && command.recurringInterval !== root.recurringInterval && nextOccurrenceAt) {
+    if (
+      command.recurringInterval &&
+      command.recurringInterval !== root.recurringInterval &&
+      nextOccurrenceAt
+    ) {
       const lastOccurrenceAt = new Date(nextOccurrenceAt);
       lastOccurrenceAt.setUTCMonth(
-        lastOccurrenceAt.getUTCMonth() - (root.recurringInterval === RecurringInterval.MONTHLY ? 1 : 12)
+        lastOccurrenceAt.getUTCMonth() -
+          (root.recurringInterval === RecurringInterval.MONTHLY ? 1 : 12),
       );
-      nextOccurrenceAt = computeNextOccurrence(root.occurredAt.getUTCDate(), lastOccurrenceAt, command.recurringInterval);
+      nextOccurrenceAt = computeNextOccurrence(
+        root.occurredAt.getUTCDate(),
+        lastOccurrenceAt,
+        command.recurringInterval,
+      );
     }
 
     // Moving the end date (or the interval) so the next occurrence falls past
     // the end ends the series now, the same way the cron ends it after its
     // last occurrence. Ended is final: like a cancelled series it can't be
     // edited back to life.
-    const recurringEndDate = command.recurringEndDate === undefined ? root.recurringEndDate : command.recurringEndDate;
-    const ended = nextOccurrenceAt ? isPastEndDate(nextOccurrenceAt, recurringEndDate) : false;
+    const recurringEndDate =
+      command.recurringEndDate === undefined
+        ? root.recurringEndDate
+        : command.recurringEndDate;
+    const ended = nextOccurrenceAt
+      ? isPastEndDate(nextOccurrenceAt, recurringEndDate)
+      : false;
 
     // A series the cron paused keeps its reason only while it still applies:
     // an edit that moves it off an archived account leaves it paused (the user
@@ -351,7 +490,10 @@ export class TransactionsService {
         ? await this.findSeriesProblem(userId, {
             type: root.type,
             currency: root.currency,
-            categoryId: command.categoryId === undefined ? root.categoryId : command.categoryId,
+            categoryId:
+              command.categoryId === undefined
+                ? root.categoryId
+                : command.categoryId,
             recurringFromAccountId: fromAccountId ?? null,
             recurringToAccountId: toAccountId ?? null,
           })
@@ -361,17 +503,29 @@ export class TransactionsService {
       where: { id: root.id },
       data: {
         description: command.description,
-        categoryId: command.categoryId === null ? null : (command.categoryId ?? undefined),
-        recurringAmount: command.amount ? new Prisma.Decimal(command.amount) : undefined,
+        categoryId:
+          command.categoryId === null
+            ? null
+            : (command.categoryId ?? undefined),
+        recurringAmount: command.amount
+          ? new Prisma.Decimal(command.amount)
+          : undefined,
         recurringFromAccountId: command.fromAccountId,
         recurringToAccountId: command.toAccountId,
         recurringInterval: command.recurringInterval,
         recurringEndDate:
-          command.recurringEndDate === null ? null : (command.recurringEndDate ?? undefined),
+          command.recurringEndDate === null
+            ? null
+            : (command.recurringEndDate ?? undefined),
         recurringError,
-        ...(ended ? { recurringStatus: RecurringStatus.CANCELLED, nextOccurrenceAt: null } : { nextOccurrenceAt })
+        ...(ended
+          ? {
+              recurringStatus: RecurringStatus.CANCELLED,
+              nextOccurrenceAt: null,
+            }
+          : { nextOccurrenceAt }),
       },
-      include: TRANSACTION_INCLUDE
+      include: TRANSACTION_INCLUDE,
     });
   }
 
@@ -382,14 +536,24 @@ export class TransactionsService {
   async pauseRecurring(userId: string, id: string) {
     const root = await this.getRecurringRoot(userId, id);
     if (root.recurringStatus !== RecurringStatus.ACTIVE) {
-      throw new BadRequestException('Only an active recurring series can be paused');
+      throw new BadRequestException(
+        'Only an active recurring series can be paused',
+      );
     }
     // Conditional on the status so a cancel or a cron pause racing this one isn't overwritten.
     const claimed = await this.prisma.transaction.updateMany({
-      where: { id: root.id, userId, deletedAt: null, recurringStatus: RecurringStatus.ACTIVE },
+      where: {
+        id: root.id,
+        userId,
+        deletedAt: null,
+        recurringStatus: RecurringStatus.ACTIVE,
+      },
       data: { recurringStatus: RecurringStatus.PAUSED, recurringError: null },
     });
-    if (claimed.count === 0) throw new BadRequestException('Only an active recurring series can be paused');
+    if (claimed.count === 0)
+      throw new BadRequestException(
+        'Only an active recurring series can be paused',
+      );
     return this.getById(userId, root.id);
   }
 
@@ -405,14 +569,21 @@ export class TransactionsService {
   async resumeRecurring(userId: string, id: string) {
     const root = await this.getRecurringRoot(userId, id);
     if (root.recurringStatus !== RecurringStatus.PAUSED) {
-      throw new BadRequestException('Only a paused recurring series can be resumed');
+      throw new BadRequestException(
+        'Only a paused recurring series can be resumed',
+      );
     }
     const problem = await this.findSeriesProblem(userId, root);
     if (problem) {
       // Kept on the series too, so the panel says why it's still paused (a
       // manual pause has no reason until the user tries to resume it).
       await this.prisma.transaction.updateMany({
-        where: { id: root.id, userId, deletedAt: null, recurringStatus: RecurringStatus.PAUSED },
+        where: {
+          id: root.id,
+          userId,
+          deletedAt: null,
+          recurringStatus: RecurringStatus.PAUSED,
+        },
         data: { recurringError: problem },
       });
       throw new BadRequestException(problem);
@@ -421,23 +592,43 @@ export class TransactionsService {
     const anchorDay = root.occurredAt.getUTCDate();
     const interval = root.recurringInterval!;
     const now = new Date();
-    const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-    const cursor = root.nextOccurrenceAt ?? computeNextOccurrence(anchorDay, root.occurredAt, interval);
-    const nextOccurrenceAt = firstOccurrenceOnOrAfter(anchorDay, cursor, interval, today);
+    const today = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+    );
+    const cursor =
+      root.nextOccurrenceAt ??
+      computeNextOccurrence(anchorDay, root.occurredAt, interval);
+    const nextOccurrenceAt = firstOccurrenceOnOrAfter(
+      anchorDay,
+      cursor,
+      interval,
+      today,
+    );
     // Like an edit, skipping ahead can land past the end date: then the series is over.
     const ended = isPastEndDate(nextOccurrenceAt, root.recurringEndDate);
 
     const claimed = await this.prisma.transaction.updateMany({
-      where: { id: root.id, userId, deletedAt: null, recurringStatus: RecurringStatus.PAUSED },
+      where: {
+        id: root.id,
+        userId,
+        deletedAt: null,
+        recurringStatus: RecurringStatus.PAUSED,
+      },
       data: {
         recurringError: null,
         lastFailedAt: null,
         ...(ended
-          ? { recurringStatus: RecurringStatus.CANCELLED, nextOccurrenceAt: null }
+          ? {
+              recurringStatus: RecurringStatus.CANCELLED,
+              nextOccurrenceAt: null,
+            }
           : { recurringStatus: RecurringStatus.ACTIVE, nextOccurrenceAt }),
       },
     });
-    if (claimed.count === 0) throw new BadRequestException('Only a paused recurring series can be resumed');
+    if (claimed.count === 0)
+      throw new BadRequestException(
+        'Only a paused recurring series can be resumed',
+      );
     return this.getById(userId, root.id);
   }
 
@@ -449,18 +640,32 @@ export class TransactionsService {
    * while one remains. Each occurrence still goes through create()'s own
    * validation on top of this.
    */
-  async findSeriesProblem(userId: string, series: SeriesTemplate): Promise<string | null> {
-    const { type, recurringFromAccountId: fromId, recurringToAccountId: toId } = series;
-    if (type !== TransactionType.INCOME && !fromId) return 'The series has no account to post from';
-    if (type !== TransactionType.EXPENSE && !toId) return 'The series has no account to post to';
+  async findSeriesProblem(
+    userId: string,
+    series: SeriesTemplate,
+  ): Promise<string | null> {
+    const {
+      type,
+      recurringFromAccountId: fromId,
+      recurringToAccountId: toId,
+    } = series;
+    if (type !== TransactionType.INCOME && !fromId)
+      return 'The series has no account to post from';
+    if (type !== TransactionType.EXPENSE && !toId)
+      return 'The series has no account to post to';
     if (type === TransactionType.TRANSFER && fromId === toId) {
       return 'The series transfers from and to the same account';
     }
 
-    const accountIds = [type !== TransactionType.INCOME ? fromId : null, type !== TransactionType.EXPENSE ? toId : null];
+    const accountIds = [
+      type !== TransactionType.INCOME ? fromId : null,
+      type !== TransactionType.EXPENSE ? toId : null,
+    ];
     for (const accountId of accountIds) {
       if (!accountId) continue;
-      const account = await this.accountsService.assertOwned(userId, accountId).catch(() => null);
+      const account = await this.accountsService
+        .assertOwned(userId, accountId)
+        .catch(() => null);
       if (!account) return 'An account of this series no longer exists';
       const problem = accountProblem(account, series.currency);
       if (problem) return problem;
@@ -468,9 +673,14 @@ export class TransactionsService {
 
     if (series.categoryId) {
       try {
-        await this.categoriesService.assertAssignable(userId, type, series.categoryId);
+        await this.categoriesService.assertAssignable(
+          userId,
+          type,
+          series.categoryId,
+        );
       } catch (error) {
-        if (error instanceof NotFoundException) return 'The category of this series no longer exists';
+        if (error instanceof NotFoundException)
+          return 'The category of this series no longer exists';
         if (error instanceof HttpException) return error.message;
         throw error;
       }
@@ -484,20 +694,31 @@ export class TransactionsService {
     return this.prisma.transaction.update({
       where: { id: root.id },
       data: { recurringStatus: RecurringStatus.CANCELLED },
-      include: TRANSACTION_INCLUDE
+      include: TRANSACTION_INCLUDE,
     });
   }
 
-  private validateCommand(command: CreateTransactionCommand | UpdateTransactionCommand) {
+  private validateCommand(
+    command: CreateTransactionCommand | UpdateTransactionCommand,
+  ) {
     if ('isRecurring' in command && command.isRecurring) {
       if (command.items?.length) {
-        throw new BadRequestException('Recurring transactions cannot use split items');
+        throw new BadRequestException(
+          'Recurring transactions cannot use split items',
+        );
       }
       if (!command.recurringInterval) {
-        throw new BadRequestException('Recurring transactions require recurringInterval');
+        throw new BadRequestException(
+          'Recurring transactions require recurringInterval',
+        );
       }
-      if (command.recurringEndDate && command.recurringEndDate <= command.occurredAt) {
-        throw new BadRequestException('recurringEndDate must be after occurredAt');
+      if (
+        command.recurringEndDate &&
+        command.recurringEndDate <= command.occurredAt
+      ) {
+        throw new BadRequestException(
+          'recurringEndDate must be after occurredAt',
+        );
       }
     }
     if (new Prisma.Decimal(command.amount).lessThanOrEqualTo(0)) {
@@ -509,15 +730,25 @@ export class TransactionsService {
     if (command.type === TransactionType.EXPENSE && !command.fromAccountId) {
       throw new BadRequestException('Expense requires fromAccountId');
     }
-    if (command.type === TransactionType.TRANSFER && (!command.fromAccountId || !command.toAccountId)) {
-      throw new BadRequestException('Transfer requires fromAccountId and toAccountId');
+    if (
+      command.type === TransactionType.TRANSFER &&
+      (!command.fromAccountId || !command.toAccountId)
+    ) {
+      throw new BadRequestException(
+        'Transfer requires fromAccountId and toAccountId',
+      );
     }
-    if (command.type === TransactionType.TRANSFER && command.fromAccountId === command.toAccountId) {
+    if (
+      command.type === TransactionType.TRANSFER &&
+      command.fromAccountId === command.toAccountId
+    ) {
       throw new BadRequestException('Transfer accounts must be different');
     }
     if (command.items?.length) {
       if (command.type === TransactionType.TRANSFER) {
-        throw new BadRequestException('Transfers cannot be split into multiple items');
+        throw new BadRequestException(
+          'Transfers cannot be split into multiple items',
+        );
       }
       // A split's categories live on its lines. A top-level one as well would be a second,
       // conflicting answer, and analytics/search/the list would each pick a different one.
@@ -529,12 +760,19 @@ export class TransactionsService {
       }
       for (const item of command.items) {
         if (new Prisma.Decimal(item.amount).lessThanOrEqualTo(0)) {
-          throw new BadRequestException('Each split item amount must be greater than zero');
+          throw new BadRequestException(
+            'Each split item amount must be greater than zero',
+          );
         }
       }
-      const itemsTotal = command.items.reduce((sum, item) => sum.plus(item.amount), new Prisma.Decimal(0));
+      const itemsTotal = command.items.reduce(
+        (sum, item) => sum.plus(item.amount),
+        new Prisma.Decimal(0),
+      );
       if (!itemsTotal.equals(new Prisma.Decimal(command.amount))) {
-        throw new BadRequestException('Split item amounts must add up to the transaction total');
+        throw new BadRequestException(
+          'Split item amounts must add up to the transaction total',
+        );
       }
     }
   }

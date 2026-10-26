@@ -19,7 +19,8 @@ export class LedgerController {
   @ApiZodQuery(getBalanceQuerySchema)
   getBalance(
     @CurrentUser() user: AuthenticatedUser,
-    @Query(new ZodValidationPipe(getBalanceQuerySchema)) query: GetBalanceQueryDto,
+    @Query(new ZodValidationPipe(getBalanceQuerySchema))
+    query: GetBalanceQueryDto,
   ) {
     return this.ledgerService.getBalance(user.id, query);
   }

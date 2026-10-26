@@ -62,40 +62,72 @@ export class OAuthController {
 
     // Before redirect_uri is validated we cannot safely redirect, so render HTML.
     if (!parsed.success) {
-      const clientId = typeof req.query.client_id === 'string' ? req.query.client_id : undefined;
-      const redirectUri = typeof req.query.redirect_uri === 'string' ? req.query.redirect_uri : undefined;
+      const clientId =
+        typeof req.query.client_id === 'string'
+          ? req.query.client_id
+          : undefined;
+      const redirectUri =
+        typeof req.query.redirect_uri === 'string'
+          ? req.query.redirect_uri
+          : undefined;
       if (clientId && redirectUri) {
-        const client = await this.oauth.getClientOrThrow(clientId).catch(() => null);
+        const client = await this.oauth
+          .getClientOrThrow(clientId)
+          .catch(() => null);
         if (client?.redirectUris.includes(redirectUri)) {
           // redirect_uri is trusted → return the error to the client per RFC 6749.
-          return this.redirectError(res, redirectUri, 'invalid_request', String(req.query.state ?? ''));
+          return this.redirectError(
+            res,
+            redirectUri,
+            'invalid_request',
+            typeof req.query.state === 'string' ? req.query.state : '',
+          );
         }
       }
       return this.renderError(res, 'Invalid authorization request.');
     }
 
     const q = parsed.data;
-    const client = await this.oauth.getClientOrThrow(q.client_id).catch(() => null);
+    const client = await this.oauth
+      .getClientOrThrow(q.client_id)
+      .catch(() => null);
     if (!client) return this.renderError(res, 'Unknown client.');
     if (!client.redirectUris.includes(q.redirect_uri)) {
-      return this.renderError(res, 'redirect_uri does not match a registered URI.');
+      return this.renderError(
+        res,
+        'redirect_uri does not match a registered URI.',
+      );
     }
 
     // redirect_uri now trusted — protocol violations go back to the client.
     if (q.response_type !== 'code') {
-      return this.redirectError(res, q.redirect_uri, 'unsupported_response_type', q.state);
+      return this.redirectError(
+        res,
+        q.redirect_uri,
+        'unsupported_response_type',
+        q.state,
+      );
     }
     if (q.code_challenge_method !== 'S256') {
-      return this.redirectError(res, q.redirect_uri, 'invalid_request', q.state);
+      return this.redirectError(
+        res,
+        q.redirect_uri,
+        'invalid_request',
+        q.state,
+      );
     }
 
     // Authenticate the end user via the backend session cookie.
-    const user = await this.oauth.resolveSession(getCookie(req, SESSION_COOKIE));
+    const user = await this.oauth.resolveSession(
+      getCookie(req, SESSION_COOKIE),
+    );
     if (!user) {
       // Start the cross-origin login bridge: send the user to the web login,
       // carrying the full authorize URL so we return here afterwards.
       const authorizeUrl = `${this.oauth.issuer}/api/v1/oauth/authorize?${queryString(req)}`;
-      const webUrl = this.config.getOrThrow<string>('WEB_URL').replace(/\/$/, '');
+      const webUrl = this.config
+        .getOrThrow<string>('WEB_URL')
+        .replace(/\/$/, '');
       const loginUrl = `${webUrl}/login?mcp_authorize=${encodeURIComponent(authorizeUrl)}`;
       return res.redirect(loginUrl);
     }
@@ -106,26 +138,45 @@ export class OAuthController {
       return this.redirectSuccess(res, q.redirect_uri, code, q.state);
     }
 
-    return this.renderConsent(res, q, client.clientName ?? q.client_id, user.email);
+    return this.renderConsent(
+      res,
+      q,
+      client.clientName ?? q.client_id,
+      user.email,
+    );
   }
 
   @Public()
   @Post('consent')
-  async consent(@Body() body: unknown, @Req() req: Request, @Res() res: Response) {
+  async consent(
+    @Body() body: unknown,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
     const dto = consentBodySchema.parse(body);
 
     // SameSite=Lax on the session cookie already blocks cross-site POSTs; we also
     // re-resolve the session here so consent can never be granted unauthenticated.
-    const user = await this.oauth.resolveSession(getCookie(req, SESSION_COOKIE));
+    const user = await this.oauth.resolveSession(
+      getCookie(req, SESSION_COOKIE),
+    );
     if (!user) throw new UnauthorizedException('no session');
 
     const client = await this.oauth.getClientOrThrow(dto.client_id);
     if (!client.redirectUris.includes(dto.redirect_uri)) {
-      return this.renderError(res, 'redirect_uri does not match a registered URI.');
+      return this.renderError(
+        res,
+        'redirect_uri does not match a registered URI.',
+      );
     }
 
     if (dto.decision === 'deny') {
-      return this.redirectError(res, dto.redirect_uri, 'access_denied', dto.state);
+      return this.redirectError(
+        res,
+        dto.redirect_uri,
+        'access_denied',
+        dto.state,
+      );
     }
 
     await this.oauth.rememberGrant(user.id, dto.client_id, dto.scope ?? 'mcp');
@@ -141,7 +192,12 @@ export class OAuthController {
     const dto = tokenBodySchema.parse(body);
 
     if (dto.grant_type === 'authorization_code') {
-      if (!dto.code || !dto.code_verifier || !dto.client_id || !dto.redirect_uri) {
+      if (
+        !dto.code ||
+        !dto.code_verifier ||
+        !dto.client_id ||
+        !dto.redirect_uri
+      ) {
         throw new BadRequestException({ error: 'invalid_request' });
       }
       const tokens = await this.oauth.exchangeAuthorizationCode({
@@ -188,7 +244,10 @@ export class OAuthController {
 
   @UseGuards(JwtAuthGuard)
   @Delete('grants/:clientId')
-  async revokeGrant(@CurrentUser() user: AuthenticatedUser, @Param('clientId') clientId: string) {
+  async revokeGrant(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('clientId') clientId: string,
+  ) {
     await this.oauth.revokeGrant(user.id, clientId);
     return { revoked: true };
   }
@@ -197,7 +256,10 @@ export class OAuthController {
 
   @Public()
   @Post('session/handoff')
-  async handoff(@Headers('authorization') authorization: string | undefined, @Res() res: Response) {
+  async handoff(
+    @Headers('authorization') authorization: string | undefined,
+    @Res() res: Response,
+  ) {
     const token = authorization?.replace(/^Bearer\s+/i, '');
     if (!token) throw new UnauthorizedException('missing bearer token');
     const handoff = await this.oauth.createHandoff(token);
@@ -211,7 +273,8 @@ export class OAuthController {
     @Query('continue') cont: string,
     @Res() res: Response,
   ) {
-    if (!handoff || !cont) throw new BadRequestException('missing handoff/continue');
+    if (!handoff || !cont)
+      throw new BadRequestException('missing handoff/continue');
 
     const sessionValue = await this.oauth.consumeHandoff(handoff);
 
@@ -234,14 +297,24 @@ export class OAuthController {
 
   // --- HTML / redirect helpers ---
 
-  private redirectSuccess(res: Response, redirectUri: string, code: string, state: string) {
+  private redirectSuccess(
+    res: Response,
+    redirectUri: string,
+    code: string,
+    state: string,
+  ) {
     const url = new URL(redirectUri);
     url.searchParams.set('code', code);
     url.searchParams.set('state', state);
     return res.redirect(url.toString());
   }
 
-  private redirectError(res: Response, redirectUri: string, error: string, state: string) {
+  private redirectError(
+    res: Response,
+    redirectUri: string,
+    error: string,
+    state: string,
+  ) {
     const url = new URL(redirectUri);
     url.searchParams.set('error', error);
     if (state) url.searchParams.set('state', state);
@@ -249,21 +322,39 @@ export class OAuthController {
   }
 
   private renderError(res: Response, message: string) {
-    res.status(400).type('html').send(page(`
+    res
+      .status(400)
+      .type('html')
+      .send(
+        page(`
       <h1>Authorization error</h1>
       <p class="muted">${escapeHtml(message)}</p>
-    `));
+    `),
+      );
   }
 
   private renderConsent(
     res: Response,
-    q: { client_id: string; redirect_uri: string; code_challenge: string; code_challenge_method: string; state: string; scope?: string; resource?: string; response_type: string },
+    q: {
+      client_id: string;
+      redirect_uri: string;
+      code_challenge: string;
+      code_challenge_method: string;
+      state: string;
+      scope?: string;
+      resource?: string;
+      response_type: string;
+    },
     clientName: string,
     email: string,
   ) {
     const hidden = (name: string, value: string) =>
       `<input type="hidden" name="${name}" value="${escapeHtml(value)}" />`;
-    res.status(200).type('html').send(page(`
+    res
+      .status(200)
+      .type('html')
+      .send(
+        page(`
       <h1>Authorize <span class="accent">${escapeHtml(clientName)}</span></h1>
       <p class="muted">Signed in as <strong>${escapeHtml(email)}</strong></p>
       <p class="muted">This connector is requesting access to:</p>
@@ -282,7 +373,8 @@ export class OAuthController {
           <button type="submit" name="decision" value="deny" class="ghost">Deny</button>
         </div>
       </form>
-    `));
+    `),
+      );
   }
 }
 

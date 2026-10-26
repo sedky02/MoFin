@@ -28,7 +28,9 @@ export class McpServerFactory {
 
     // Bind to a loose signature: registering a union of differently-typed
     // schemas in a loop otherwise trips registerTool's deep generic inference.
-    const register = server.registerTool.bind(server) as unknown as RegisterTool;
+    const register = server.registerTool.bind(
+      server,
+    ) as unknown as RegisterTool;
 
     for (const tool of MCP_TOOLS) {
       register(
@@ -36,7 +38,7 @@ export class McpServerFactory {
         {
           title: tool.title,
           description: tool.description,
-          inputSchema: mcpToolSchemas[tool.name].shape as ZodRawShape,
+          inputSchema: mcpToolSchemas[tool.name].shape,
         },
         async (args) => {
           const result = await this.mcp.dispatch(userId, tool.name, args);

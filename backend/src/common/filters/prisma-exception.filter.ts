@@ -1,4 +1,10 @@
-import { ArgumentsHost, Catch, ExceptionFilter, HttpStatus, Logger } from '@nestjs/common';
+import {
+  ArgumentsHost,
+  Catch,
+  ExceptionFilter,
+  HttpStatus,
+  Logger,
+} from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { Request, Response } from 'express';
 import { Sentry } from '../sentry';
@@ -50,7 +56,10 @@ export class PrismaExceptionFilter implements ExceptionFilter {
       // Connectivity failure, engine crash, or a genuinely unclassified
       // error — none of these are caused by the request's shape, so they're
       // operational/transient, not a client error.
-      this.logger.error(`Prisma ${exception.constructor.name} during ${context}: ${exception.message}`, exception.stack);
+      this.logger.error(
+        `Prisma ${exception.constructor.name} during ${context}: ${exception.message}`,
+        exception.stack,
+      );
       Sentry.captureException(exception);
       response.status(HttpStatus.SERVICE_UNAVAILABLE).json({
         statusCode: HttpStatus.SERVICE_UNAVAILABLE,
@@ -61,10 +70,14 @@ export class PrismaExceptionFilter implements ExceptionFilter {
 
     switch (exception.code) {
       case 'P2002': {
-        const target = (exception.meta?.target as string[] | undefined)?.join(', ');
+        const target = (exception.meta?.target as string[] | undefined)?.join(
+          ', ',
+        );
         response.status(HttpStatus.CONFLICT).json({
           statusCode: HttpStatus.CONFLICT,
-          message: target ? `A record with this ${target} already exists` : 'Resource already exists',
+          message: target
+            ? `A record with this ${target} already exists`
+            : 'Resource already exists',
         });
         return;
       }
@@ -75,7 +88,10 @@ export class PrismaExceptionFilter implements ExceptionFilter {
         });
         return;
       case 'P2003':
-        this.logger.error(`Prisma P2003 (foreign key violation) during ${context}: ${exception.message}`, exception.stack);
+        this.logger.error(
+          `Prisma P2003 (foreign key violation) during ${context}: ${exception.message}`,
+          exception.stack,
+        );
         Sentry.captureException(exception);
         response.status(HttpStatus.CONFLICT).json({
           statusCode: HttpStatus.CONFLICT,
@@ -83,7 +99,10 @@ export class PrismaExceptionFilter implements ExceptionFilter {
         });
         return;
       case 'P2024':
-        this.logger.error(`Prisma P2024 (connection pool timeout) during ${context}: ${exception.message}`, exception.stack);
+        this.logger.error(
+          `Prisma P2024 (connection pool timeout) during ${context}: ${exception.message}`,
+          exception.stack,
+        );
         Sentry.captureException(exception);
         response.status(HttpStatus.SERVICE_UNAVAILABLE).json({
           statusCode: HttpStatus.SERVICE_UNAVAILABLE,
@@ -91,7 +110,10 @@ export class PrismaExceptionFilter implements ExceptionFilter {
         });
         return;
       default:
-        this.logger.error(`Unhandled Prisma error ${exception.code} during ${context}: ${exception.message}`, exception.stack);
+        this.logger.error(
+          `Unhandled Prisma error ${exception.code} during ${context}: ${exception.message}`,
+          exception.stack,
+        );
         Sentry.captureException(exception);
         response.status(HttpStatus.BAD_REQUEST).json({
           statusCode: HttpStatus.BAD_REQUEST,

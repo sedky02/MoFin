@@ -24,7 +24,9 @@ export class SmtpMailSender extends MailSender {
       host: settings.host,
       port: settings.port,
       secure: settings.secure,
-      auth: settings.user ? { user: settings.user, pass: settings.pass ?? '' } : undefined,
+      auth: settings.user
+        ? { user: settings.user, pass: settings.pass ?? '' }
+        : undefined,
       // Bounded so a stuck relay can't pile up pending sends.
       connectionTimeout: 10_000,
       greetingTimeout: 10_000,
@@ -50,12 +52,17 @@ export class LogMailSender extends MailSender {
     super();
   }
 
-  async send(message: MailMessage): Promise<void> {
+  send(message: MailMessage): Promise<void> {
     if (this.includeBody) {
-      this.logger.log(`Email (not sent, no SMTP configured) to ${message.to}: ${message.subject}\n${message.text}`);
-      return;
+      this.logger.log(
+        `Email (not sent, no SMTP configured) to ${message.to}: ${message.subject}\n${message.text}`,
+      );
+      return Promise.resolve();
     }
-    this.logger.warn(`Email "${message.subject}" was not sent: SMTP is not configured`);
+    this.logger.warn(
+      `Email "${message.subject}" was not sent: SMTP is not configured`,
+    );
+    return Promise.resolve();
   }
 }
 
@@ -71,6 +78,9 @@ export class FileCaptureMailSender extends MailSender {
   async send(message: MailMessage): Promise<void> {
     await mkdir(this.dir, { recursive: true });
     const name = `${Date.now()}-${randomBytes(4).toString('hex')}.json`;
-    await writeFile(join(this.dir, name), JSON.stringify({ ...message, sentAt: new Date().toISOString() }, null, 2));
+    await writeFile(
+      join(this.dir, name),
+      JSON.stringify({ ...message, sentAt: new Date().toISOString() }, null, 2),
+    );
   }
 }

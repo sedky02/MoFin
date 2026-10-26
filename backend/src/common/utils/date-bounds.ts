@@ -43,5 +43,7 @@ export function inclusiveUpperBound(value: string): Date {
 
 /** Prisma filter for an upper bound: `lt` the next day for a date-only value, `lte` an exact instant. */
 export function upperBoundFilter(value: string): { lt: Date } | { lte: Date } {
-  return isDateOnly(value) ? { lt: exclusiveUpperBound(value) } : { lte: new Date(value.trim()) };
+  return isDateOnly(value)
+    ? { lt: exclusiveUpperBound(value) }
+    : { lte: new Date(value.trim()) };
 }

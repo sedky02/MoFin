@@ -12,15 +12,17 @@ export const monthlySummaryQueryObject = z.object({
   // Amounts can't be summed across currencies: an all-accounts summary is always one currency.
   currency: z.string().length(3).optional(),
 });
-export const monthlySummaryQuerySchema = monthlySummaryQueryObject.superRefine((value, ctx) => {
-  if (!value.accountId && !value.currency) {
-    ctx.addIssue({
-      code: 'custom',
-      path: ['currency'],
-      message: 'currency is required when accountId is not given',
-    });
-  }
-});
+export const monthlySummaryQuerySchema = monthlySummaryQueryObject.superRefine(
+  (value, ctx) => {
+    if (!value.accountId && !value.currency) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['currency'],
+        message: 'currency is required when accountId is not given',
+      });
+    }
+  },
+);
 export const monthlySeriesQuerySchema = z.object({
   months: z.coerce.number().int().min(1).max(24).default(6),
   // Balances can't be summed across currencies, so the series is always one currency.

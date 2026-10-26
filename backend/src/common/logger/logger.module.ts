@@ -29,7 +29,11 @@ import { customLogLevel, customProps, genReqId } from './pino-options';
         customLogLevel: (_req, res, err) => customLogLevel(res, err),
         // The BFF secret header is already stripped by
         // trustedClientIpMiddleware; redacted here too in case that changes.
-        redact: ['req.headers.authorization', 'req.headers.cookie', 'req.headers["x-mofin-bff-secret"]'],
+        redact: [
+          'req.headers.authorization',
+          'req.headers.cookie',
+          'req.headers["x-mofin-bff-secret"]',
+        ],
       },
     }),
   ],

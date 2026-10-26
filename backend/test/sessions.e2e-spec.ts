@@ -22,7 +22,10 @@ import { CHANGE_PASSWORD_THROTTLE } from '../src/common/guards/auth-throttler.gu
 import { GlobalJwtAuthGuard } from '../src/common/guards/jwt-auth.guard';
 import { PrismaService } from '../src/database/prisma.service';
 import { AuthController } from '../src/modules/auth/auth.controller';
-import { AuthService, GOOGLE_ONLY_PASSWORD_MESSAGE } from '../src/modules/auth/auth.service';
+import {
+  AuthService,
+  GOOGLE_ONLY_PASSWORD_MESSAGE,
+} from '../src/modules/auth/auth.service';
 import { PasswordResetService } from '../src/modules/auth/password-reset.service';
 import { JwtStrategy } from '../src/modules/auth/strategies/jwt.strategy';
 import { UsersService } from '../src/modules/users/users.service';
@@ -37,14 +40,16 @@ type Row = Record<string, unknown> & { id: string };
 
 /** Just enough of Prisma's API over arrays for AuthService and UsersService. */
 function inMemoryPrisma() {
-  const tables: Record<'user' | 'refreshToken' | 'passwordResetToken', Row[]> = {
-    user: [],
-    refreshToken: [],
-    passwordResetToken: [],
-  };
+  const tables: Record<'user' | 'refreshToken' | 'passwordResetToken', Row[]> =
+    {
+      user: [],
+      refreshToken: [],
+      passwordResetToken: [],
+    };
   const matches = (row: Row, where: Record<string, unknown>) =>
     Object.entries(where).every(([key, value]) => {
-      if (value && typeof value === 'object' && 'not' in value) return row[key] !== (value as { not: unknown }).not;
+      if (value && typeof value === 'object' && 'not' in value)
+        return row[key] !== (value as { not: unknown }).not;
       return row[key] === value;
     });
   const delegate = (rows: Row[]) => ({
@@ -53,16 +58,33 @@ function inMemoryPrisma() {
       return row ? { ...row } : null;
     },
     create: async ({ data }: { data: Record<string, unknown> }) => {
-      const row: Row = { id: `row-${rows.length + 1}`, revokedAt: null, rotatedToId: null, ...data };
+      const row: Row = {
+        id: `row-${rows.length + 1}`,
+        revokedAt: null,
+        rotatedToId: null,
+        ...data,
+      };
       rows.push(row);
       return { ...row };
     },
-    update: async ({ where, data }: { where: Record<string, unknown>; data: Record<string, unknown> }) => {
+    update: async ({
+      where,
+      data,
+    }: {
+      where: Record<string, unknown>;
+      data: Record<string, unknown>;
+    }) => {
       const row = rows.find((r) => matches(r, where));
       if (!row) throw new Error('record not found');
       return { ...Object.assign(row, data) };
     },
-    updateMany: async ({ where, data }: { where: Record<string, unknown>; data: Record<string, unknown> }) => {
+    updateMany: async ({
+      where,
+      data,
+    }: {
+      where: Record<string, unknown>;
+      data: Record<string, unknown>;
+    }) => {
       const hit = rows.filter((r) => matches(r, where));
       hit.forEach((r) => Object.assign(r, data));
       return { count: hit.length };
@@ -93,7 +115,12 @@ describe('Password change and sign-out everywhere (e2e)', () => {
     prisma.tables.user.push(
       { id: 'u1', email: 'one@example.com', passwordHash, googleId: null },
       { id: 'u2', email: 'two@example.com', passwordHash, googleId: null },
-      { id: 'g1', email: 'google@example.com', passwordHash: null, googleId: 'google-sub' },
+      {
+        id: 'g1',
+        email: 'google@example.com',
+        passwordHash: null,
+        googleId: 'google-sub',
+      },
     );
 
     const moduleRef = await Test.createTestingModule({
@@ -135,9 +162,14 @@ describe('Password change and sign-out everywhere (e2e)', () => {
     return res.body as { accessToken: string; refreshToken: string };
   }
 
-  const refresh = (refreshToken: string) => http().post('/api/v1/auth/refresh').send({ refreshToken });
+  const refresh = (refreshToken: string) =>
+    http().post('/api/v1/auth/refresh').send({ refreshToken });
 
-  const changePassword = (accessToken: string, body: object, ip = '203.0.113.7') =>
+  const changePassword = (
+    accessToken: string,
+    body: object,
+    ip = '203.0.113.7',
+  ) =>
     http()
       .post('/api/v1/auth/password/change')
       .set('X-Forwarded-For', ip)
@@ -163,7 +195,9 @@ describe('Password change and sign-out everywhere (e2e)', () => {
       });
 
       expect(res.status).toBe(400);
-      expect(res.body.errors).toEqual([{ path: 'currentPassword', message: expect.any(String) }]);
+      expect(res.body.errors).toEqual([
+        { path: 'currentPassword', message: expect.any(String) },
+      ]);
       await refresh(laptop.refreshToken).expect(201);
       await login('one@example.com', 'old-password');
     });
@@ -171,10 +205,15 @@ describe('Password change and sign-out everywhere (e2e)', () => {
     it('applies the register/reset password rule to the new password', async () => {
       const current = await login('one@example.com');
 
-      const res = await changePassword(current.accessToken, { currentPassword: 'old-password', newPassword: 'short' });
+      const res = await changePassword(current.accessToken, {
+        currentPassword: 'old-password',
+        newPassword: 'short',
+      });
 
       expect(res.status).toBe(400);
-      expect(res.body.errors).toEqual([expect.objectContaining({ path: 'newPassword' })]);
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({ path: 'newPassword' }),
+      ]);
     });
 
     it("changes the password, signs out the other sessions and keeps the caller's", async () => {
@@ -209,10 +248,17 @@ describe('Password change and sign-out everywhere (e2e)', () => {
     it('tells a Google-only account it has no password to change', async () => {
       const token = new JwtService().sign(
         { sub: 'g1', email: 'google@example.com' },
-        { secret: ENV.JWT_ACCESS_SECRET, issuer: ENV.OAUTH_ISSUER, audience: 'mofin-web' },
+        {
+          secret: ENV.JWT_ACCESS_SECRET,
+          issuer: ENV.OAUTH_ISSUER,
+          audience: 'mofin-web',
+        },
       );
 
-      const res = await changePassword(token, { currentPassword: 'anything', newPassword: 'new-password' });
+      const res = await changePassword(token, {
+        currentPassword: 'anything',
+        newPassword: 'new-password',
+      });
 
       expect(res.status).toBe(400);
       expect(res.body.message).toBe(GOOGLE_ONLY_PASSWORD_MESSAGE);
@@ -224,7 +270,11 @@ describe('Password change and sign-out everywhere (e2e)', () => {
       const wrong = { currentPassword: 'guess', newPassword: 'new-password' };
 
       for (let i = 0; i < CHANGE_PASSWORD_THROTTLE.limit; i++) {
-        await changePassword(one.accessToken, wrong, `198.51.100.${i + 1}`).expect(400);
+        await changePassword(
+          one.accessToken,
+          wrong,
+          `198.51.100.${i + 1}`,
+        ).expect(400);
       }
       const res = await changePassword(one.accessToken, wrong, '198.51.100.99');
       expect(res.status).toBe(429);
@@ -243,7 +293,9 @@ describe('Password change and sign-out everywhere (e2e)', () => {
     it("revokes every refresh token of the user, the caller's included", async () => {
       const laptop = await login('one@example.com');
       const current = await login('one@example.com');
-      const rotated = (await refresh(laptop.refreshToken).expect(201)).body as { refreshToken: string };
+      const rotated = (await refresh(laptop.refreshToken).expect(201)).body as {
+        refreshToken: string;
+      };
       const otherUser = await login('two@example.com');
 
       await http()

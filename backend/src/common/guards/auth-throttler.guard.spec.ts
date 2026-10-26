@@ -13,7 +13,9 @@ import {
 
 describe('authTracker', () => {
   it('keys on IP + normalized submitted email, not IP alone', () => {
-    expect(authTracker({ ip: '1.2.3.4', body: { email: '  Foo@Example.com ' } })).toBe('1.2.3.4:foo@example.com');
+    expect(
+      authTracker({ ip: '1.2.3.4', body: { email: '  Foo@Example.com ' } }),
+    ).toBe('1.2.3.4:foo@example.com');
   });
 
   it('two different emails from the same IP get different trackers', () => {
@@ -29,11 +31,15 @@ describe('authTracker', () => {
   });
 
   it('keys a reset-password body on a hash of the presented token', () => {
-    expect(authTracker({ ip: '1.2.3.4', body: { token: 'reset-a', password: 'x' } })).toBe(`reset:${sha256('reset-a')}`);
+    expect(
+      authTracker({ ip: '1.2.3.4', body: { token: 'reset-a', password: 'x' } }),
+    ).toBe(`reset:${sha256('reset-a')}`);
   });
 
   it('never puts the raw reset token in the key', () => {
-    expect(authTracker({ ip: '1.2.3.4', body: { token: 'super-secret-token' } })).not.toContain('super-secret-token');
+    expect(
+      authTracker({ ip: '1.2.3.4', body: { token: 'super-secret-token' } }),
+    ).not.toContain('super-secret-token');
   });
 
   it('gives different reset tokens from the same IP different trackers', () => {
@@ -61,16 +67,30 @@ describe('AuthThrottlerGuard', () => {
   async function forwardedLimits(guardClass: typeof AuthThrottlerGuard) {
     const guard = Object.create(guardClass.prototype) as AuthThrottlerGuard;
     const spy = jest.spyOn(parent, 'handleRequest').mockResolvedValue(true);
-    const props = { limit: 300, ttl: 1_000, blockDuration: 1_000 } as ThrottlerRequest;
-    await (guard as unknown as { handleRequest(p: ThrottlerRequest): Promise<boolean> }).handleRequest(props);
+    const props = {
+      limit: 300,
+      ttl: 1_000,
+      blockDuration: 1_000,
+    } as ThrottlerRequest;
+    await (
+      guard as unknown as {
+        handleRequest(p: ThrottlerRequest): Promise<boolean>;
+      }
+    ).handleRequest(props);
     const [forwarded] = spy.mock.calls[0];
     spy.mockRestore();
     return forwarded;
   }
 
   it('uses authTracker as its tracker', async () => {
-    const guard = Object.create(AuthThrottlerGuard.prototype) as AuthThrottlerGuard;
-    const tracker = await (guard as unknown as { getTracker(req: Record<string, unknown>): Promise<string> }).getTracker({
+    const guard = Object.create(
+      AuthThrottlerGuard.prototype,
+    ) as AuthThrottlerGuard;
+    const tracker = await (
+      guard as unknown as {
+        getTracker(req: Record<string, unknown>): Promise<string>;
+      }
+    ).getTracker({
       ip: '1.2.3.4',
       body: { email: 'a@x.com' },
     });
@@ -99,8 +119,14 @@ describe('AuthThrottlerGuard', () => {
       ttl: CHANGE_PASSWORD_THROTTLE.ttl,
       blockDuration: CHANGE_PASSWORD_THROTTLE.ttl,
     });
-    const guard = Object.create(ChangePasswordThrottlerGuard.prototype) as ChangePasswordThrottlerGuard;
-    const tracker = await (guard as unknown as { getTracker(req: Record<string, unknown>): Promise<string> }).getTracker({
+    const guard = Object.create(
+      ChangePasswordThrottlerGuard.prototype,
+    ) as ChangePasswordThrottlerGuard;
+    const tracker = await (
+      guard as unknown as {
+        getTracker(req: Record<string, unknown>): Promise<string>;
+      }
+    ).getTracker({
       ip: '1.2.3.4',
       user: { id: 'user-1' },
     });

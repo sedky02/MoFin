@@ -1,4 +1,9 @@
-import { CanActivate, ExecutionContext, INestApplication, Injectable } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  INestApplication,
+  Injectable,
+} from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test } from '@nestjs/testing';
 import { JwtAuthGuard } from '../src/common/guards/jwt-auth.guard';
@@ -22,9 +27,30 @@ import { TransactionsService } from '../src/modules/transactions/transactions.se
 const USER_ID = 'user-1';
 
 const accounts = {
-  main: { id: '201bcfd6-0000-4000-8000-000000000001', userId: USER_ID, name: 'Main checking', type: 'BANK', currency: 'USD', archivedAt: null },
-  emergency: { id: '201bcfd6-0000-4000-8000-000000000002', userId: USER_ID, name: 'Emergency fund', type: 'SAVINGS', currency: 'USD', archivedAt: null },
-  old: { id: '201bcfd6-0000-4000-8000-000000000003', userId: USER_ID, name: 'Old savings', type: 'SAVINGS', currency: 'EUR', archivedAt: new Date('2026-09-01T00:00:00Z') },
+  main: {
+    id: '201bcfd6-0000-4000-8000-000000000001',
+    userId: USER_ID,
+    name: 'Main checking',
+    type: 'BANK',
+    currency: 'USD',
+    archivedAt: null,
+  },
+  emergency: {
+    id: '201bcfd6-0000-4000-8000-000000000002',
+    userId: USER_ID,
+    name: 'Emergency fund',
+    type: 'SAVINGS',
+    currency: 'USD',
+    archivedAt: null,
+  },
+  old: {
+    id: '201bcfd6-0000-4000-8000-000000000003',
+    userId: USER_ID,
+    name: 'Old savings',
+    type: 'SAVINGS',
+    currency: 'EUR',
+    archivedAt: new Date('2026-09-01T00:00:00Z'),
+  },
 };
 
 const transactions: Array<{
@@ -36,7 +62,15 @@ const transactions: Array<{
   occurredAt: Date;
   categoryId: null;
   deletedAt?: Date | null;
-  items: Array<{ id: string; accountId: string; categoryId: null; direction: string; amount: string; currency: string; memo: null }>;
+  items: Array<{
+    id: string;
+    accountId: string;
+    categoryId: null;
+    direction: string;
+    amount: string;
+    currency: string;
+    memo: null;
+  }>;
 }> = [
   {
     id: 'tx-transfer',
@@ -47,8 +81,24 @@ const transactions: Array<{
     occurredAt: new Date('2026-10-02T09:00:00Z'),
     categoryId: null,
     items: [
-      { id: 'i1', accountId: accounts.main.id, categoryId: null, direction: 'DEBIT', amount: '500.00', currency: 'USD', memo: null },
-      { id: 'i2', accountId: accounts.emergency.id, categoryId: null, direction: 'CREDIT', amount: '500.00', currency: 'USD', memo: null },
+      {
+        id: 'i1',
+        accountId: accounts.main.id,
+        categoryId: null,
+        direction: 'DEBIT',
+        amount: '500.00',
+        currency: 'USD',
+        memo: null,
+      },
+      {
+        id: 'i2',
+        accountId: accounts.emergency.id,
+        categoryId: null,
+        direction: 'CREDIT',
+        amount: '500.00',
+        currency: 'USD',
+        memo: null,
+      },
     ],
   },
   {
@@ -60,15 +110,27 @@ const transactions: Array<{
     occurredAt: new Date('2026-06-02T09:00:00Z'),
     categoryId: null,
     items: [
-      { id: 'i3', accountId: accounts.old.id, categoryId: null, direction: 'CREDIT', amount: '800.00', currency: 'EUR', memo: null },
+      {
+        id: 'i3',
+        accountId: accounts.old.id,
+        categoryId: null,
+        direction: 'CREDIT',
+        amount: '800.00',
+        currency: 'EUR',
+        memo: null,
+      },
     ],
   },
 ];
 
-type Include = { items?: boolean | { include?: { account?: boolean; category?: boolean } }; category?: boolean };
+type Include = {
+  items?: boolean | { include?: { account?: boolean; category?: boolean } };
+  category?: boolean;
+};
 
 function project(tx: (typeof transactions)[number], include?: Include) {
-  const itemInclude = typeof include?.items === 'object' ? include.items.include : undefined;
+  const itemInclude =
+    typeof include?.items === 'object' ? include.items.include : undefined;
   return {
     ...tx,
     ...(include?.category ? { category: null } : {}),
@@ -76,7 +138,11 @@ function project(tx: (typeof transactions)[number], include?: Include) {
       ...item,
       ...(itemInclude?.category ? { category: null } : {}),
       ...(itemInclude?.account
-        ? { account: Object.values(accounts).find((a) => a.id === item.accountId) ?? null }
+        ? {
+            account:
+              Object.values(accounts).find((a) => a.id === item.accountId) ??
+              null,
+          }
         : {}),
     })),
   };
@@ -84,25 +150,65 @@ function project(tx: (typeof transactions)[number], include?: Include) {
 
 const prismaStub = {
   transaction: {
-    findFirst: async ({ where, include }: { where: { id: string; userId: string; deletedAt?: null }; include?: Include }) => {
+    findFirst: async ({
+      where,
+      include,
+    }: {
+      where: { id: string; userId: string; deletedAt?: null };
+      include?: Include;
+    }) => {
       const tx = transactions.find(
-        (t) => t.id === where.id && t.userId === where.userId && !('deletedAt' in where && t.deletedAt),
+        (t) =>
+          t.id === where.id &&
+          t.userId === where.userId &&
+          !('deletedAt' in where && t.deletedAt),
       );
       return tx ? project(tx, include) : null;
     },
     // Soft delete and restore: `deletedAt: null` matches live rows, `{ not: null }` deleted ones.
-    updateMany: async ({ where, data }: { where: { id: string; userId: string; deletedAt: null | { not: null } }; data: { deletedAt: Date | null } }) => {
+    updateMany: async ({
+      where,
+      data,
+    }: {
+      where: { id: string; userId: string; deletedAt: null | { not: null } };
+      data: { deletedAt: Date | null };
+    }) => {
       const wantDeleted = where.deletedAt !== null;
-      const rows = transactions.filter((t) => t.id === where.id && t.userId === where.userId && !!t.deletedAt === wantDeleted);
+      const rows = transactions.filter(
+        (t) =>
+          t.id === where.id &&
+          t.userId === where.userId &&
+          !!t.deletedAt === wantDeleted,
+      );
       for (const row of rows) row.deletedAt = data.deletedAt;
       return { count: rows.length };
     },
   },
   paginated: {
     transaction: {
-      paginate: async ({ where, include, limit, offset }: { where: { userId: string; deletedAt?: null }; include?: Include; limit: number; offset: number }) => {
-        const rows = transactions.filter((t) => t.userId === where.userId && !('deletedAt' in where && t.deletedAt));
-        return { data: rows.slice(offset, offset + limit).map((t) => project(t, include)), total: rows.length, limit, offset };
+      paginate: async ({
+        where,
+        include,
+        limit,
+        offset,
+      }: {
+        where: { userId: string; deletedAt?: null };
+        include?: Include;
+        limit: number;
+        offset: number;
+      }) => {
+        const rows = transactions.filter(
+          (t) =>
+            t.userId === where.userId && !('deletedAt' in where && t.deletedAt),
+        );
+        return {
+          data: rows
+            .slice(offset, offset + limit)
+            .map((t) => project(t, include)),
+          total: rows.length,
+          limit,
+          offset,
+        };
       },
     },
   },
@@ -131,8 +237,14 @@ describe('Transactions API (e2e)', () => {
         SearchService,
         { provide: PrismaService, useValue: prismaStub },
         { provide: LedgerService, useValue: {} },
-        { provide: AccountsService, useValue: { assertOwned: async () => ({}) } },
-        { provide: CategoriesService, useValue: { assertAvailable: async () => ({}) } },
+        {
+          provide: AccountsService,
+          useValue: { assertOwned: async () => ({}) },
+        },
+        {
+          provide: CategoriesService,
+          useValue: { assertAvailable: async () => ({}) },
+        },
         { provide: EventEmitter2, useValue: { emit: () => true } },
       ],
     })
@@ -150,7 +262,8 @@ describe('Transactions API (e2e)', () => {
     await app.close();
   });
 
-  const get = (path: string, user = USER_ID) => fetch(`${baseUrl}${path}`, { headers: { 'x-test-user': user } });
+  const get = (path: string, user = USER_ID) =>
+    fetch(`${baseUrl}${path}`, { headers: { 'x-test-user': user } });
   const send = (method: string, path: string, user = USER_ID) =>
     fetch(`${baseUrl}${path}`, { method, headers: { 'x-test-user': user } });
 
@@ -159,7 +272,12 @@ describe('Transactions API (e2e)', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
 
-    expect(body.items.map((i: { direction: string; account: { name: string } }) => [i.direction, i.account.name])).toEqual([
+    expect(
+      body.items.map((i: { direction: string; account: { name: string } }) => [
+        i.direction,
+        i.account.name,
+      ]),
+    ).toEqual([
       ['DEBIT', 'Main checking'],
       ['CREDIT', 'Emergency fund'],
     ]);
@@ -170,7 +288,12 @@ describe('Transactions API (e2e)', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
 
-    expect(body.items[0].account).toEqual(expect.objectContaining({ name: 'Old savings', archivedAt: expect.any(String) }));
+    expect(body.items[0].account).toEqual(
+      expect.objectContaining({
+        name: 'Old savings',
+        archivedAt: expect.any(String),
+      }),
+    );
   });
 
   it("GET /transactions/:id 404s for another user's transaction", async () => {
@@ -183,34 +306,55 @@ describe('Transactions API (e2e)', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
 
-    const names = body.data.flatMap((t: { items: Array<{ account: { name: string } }> }) => t.items.map((i) => i.account.name));
+    const names = body.data.flatMap(
+      (t: { items: Array<{ account: { name: string } }> }) =>
+        t.items.map((i) => i.account.name),
+    );
     expect(names).toEqual(['Main checking', 'Emergency fund', 'Old savings']);
   });
 
   it('DELETE soft-deletes: the transaction 404s and leaves search, and restore brings it back', async () => {
-    expect((await send('DELETE', '/transactions/tx-transfer')).status).toBe(204);
+    expect((await send('DELETE', '/transactions/tx-transfer')).status).toBe(
+      204,
+    );
     expect((await get('/transactions/tx-transfer')).status).toBe(404);
-    const search = await (await get('/search/transactions?limit=20&offset=0')).json();
-    expect(search.data.map((t: { id: string }) => t.id)).toEqual(['tx-archived']);
+    const search = await (
+      await get('/search/transactions?limit=20&offset=0')
+    ).json();
+    expect(search.data.map((t: { id: string }) => t.id)).toEqual([
+      'tx-archived',
+    ]);
 
     // A second delete finds nothing live to delete.
-    expect((await send('DELETE', '/transactions/tx-transfer')).status).toBe(404);
+    expect((await send('DELETE', '/transactions/tx-transfer')).status).toBe(
+      404,
+    );
 
     const restored = await send('POST', '/transactions/tx-transfer/restore');
     expect(restored.status).toBe(201);
     expect((await restored.json()).id).toBe('tx-transfer');
     expect((await get('/transactions/tx-transfer')).status).toBe(200);
     // Restoring a live transaction is a 404 too.
-    expect((await send('POST', '/transactions/tx-transfer/restore')).status).toBe(404);
+    expect(
+      (await send('POST', '/transactions/tx-transfer/restore')).status,
+    ).toBe(404);
   });
 
   it("can't delete or restore another user's transaction", async () => {
-    expect((await send('DELETE', '/transactions/tx-transfer', 'someone-else')).status).toBe(404);
-    expect((await send('POST', '/transactions/tx-transfer/restore', 'someone-else')).status).toBe(404);
+    expect(
+      (await send('DELETE', '/transactions/tx-transfer', 'someone-else'))
+        .status,
+    ).toBe(404);
+    expect(
+      (await send('POST', '/transactions/tx-transfer/restore', 'someone-else'))
+        .status,
+    ).toBe(404);
     expect((await get('/transactions/tx-transfer')).status).toBe(200);
   });
 
   it('no longer has a void endpoint', async () => {
-    expect((await send('POST', '/transactions/tx-transfer/void')).status).toBe(404);
+    expect((await send('POST', '/transactions/tx-transfer/void')).status).toBe(
+      404,
+    );
   });
 });

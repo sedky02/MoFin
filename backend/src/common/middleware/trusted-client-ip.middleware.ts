@@ -75,7 +75,12 @@ export function trustedClientIpMiddleware(expectedSecret: string | undefined) {
 
     // Express defines `ip` as a getter on the request prototype; an own
     // property on this request shadows it.
-    if (ip) Object.defineProperty(req, 'ip', { value: ip, configurable: true, enumerable: true });
+    if (ip)
+      Object.defineProperty(req, 'ip', {
+        value: ip,
+        configurable: true,
+        enumerable: true,
+      });
     next();
   };
 }

@@ -13,8 +13,11 @@ type SearchSort = NonNullable<SearchTransactionsDto['sort']>;
 // first between equal totals (see searchByAmount).
 const DATE_ORDER = {
   newest: [{ occurredAt: 'desc' }, { createdAt: 'desc' }],
-  oldest: [{ occurredAt: 'asc' }, { createdAt: 'asc' }]
-} satisfies Record<'newest' | 'oldest', Prisma.TransactionOrderByWithRelationInput[]>;
+  oldest: [{ occurredAt: 'asc' }, { createdAt: 'asc' }],
+} satisfies Record<
+  'newest' | 'oldest',
+  Prisma.TransactionOrderByWithRelationInput[]
+>;
 
 // What a series list wants first: active series (the enum sorts in declaration
 // order: ACTIVE, PAUSED, CANCELLED), the soonest next occurrence first. Rows
@@ -22,10 +25,12 @@ const DATE_ORDER = {
 const NEXT_OCCURRENCE_ORDER = [
   { recurringStatus: { sort: 'asc', nulls: 'last' } },
   { nextOccurrenceAt: { sort: 'asc', nulls: 'last' } },
-  ...DATE_ORDER.newest
+  ...DATE_ORDER.newest,
 ] satisfies Prisma.TransactionOrderByWithRelationInput[];
 
-function orderFor(sort: SearchSort | undefined): Prisma.TransactionOrderByWithRelationInput[] {
+function orderFor(
+  sort: SearchSort | undefined,
+): Prisma.TransactionOrderByWithRelationInput[] {
   if (sort === 'next-occurrence') return NEXT_OCCURRENCE_ORDER;
   return DATE_ORDER[sort === 'oldest' ? 'oldest' : 'newest'];
 }
@@ -35,7 +40,9 @@ function orderFor(sort: SearchSort | undefined): Prisma.TransactionOrderByWithRe
  * transfer) or came into one (income). A transfer's two legs carry the same
  * amount, so the larger side is the total for every type.
  */
-export function transactionTotal(items: { direction: string; amount: Prisma.Decimal }[]): Prisma.Decimal {
+export function transactionTotal(
+  items: { direction: string; amount: Prisma.Decimal }[],
+): Prisma.Decimal {
   let debit = new Prisma.Decimal(0);
   let credit = new Prisma.Decimal(0);
   for (const item of items) {
@@ -50,12 +57,14 @@ export class SearchService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly accountsService: AccountsService,
-    private readonly categoriesService: CategoriesService
+    private readonly categoriesService: CategoriesService,
   ) {}
 
   async searchTransactions(userId: string, query: SearchTransactionsDto) {
-    if (query.accountId) await this.accountsService.assertOwned(userId, query.accountId);
-    if (query.categoryId) await this.categoriesService.assertAvailable(userId, query.categoryId);
+    if (query.accountId)
+      await this.accountsService.assertOwned(userId, query.accountId);
+    if (query.categoryId)
+      await this.categoriesService.assertAvailable(userId, query.categoryId);
 
     const args = {
       where: {
@@ -65,15 +74,20 @@ export class SearchService {
         // A split files its categories on its lines, an unsplit transaction on itself; match either.
         // OR (not a second `items` key) so it composes with the account/amount filter below.
         ...(query.categoryId
-          ? { OR: [{ categoryId: query.categoryId }, { items: { some: { categoryId: query.categoryId } } }] }
+          ? {
+              OR: [
+                { categoryId: query.categoryId },
+                { items: { some: { categoryId: query.categoryId } } },
+              ],
+            }
           : {}),
         // A date-only `to` covers that whole day (`lt` the next day); a datetime stays an inclusive instant.
         ...(query.from || query.to
           ? {
               occurredAt: {
                 ...(query.from ? { gte: lowerBound(query.from) } : {}),
-                ...(query.to ? upperBoundFilter(query.to) : {})
-              }
+                ...(query.to ? upperBoundFilter(query.to) : {}),
+              },
             }
           : {}),
         ...(query.accountId || query.minAmount || query.maxAmount
@@ -82,30 +96,55 @@ export class SearchService {
                 some: {
                   ...(query.accountId ? { accountId: query.accountId } : {}),
                   amount: {
-                    ...(query.minAmount ? { gte: new Prisma.Decimal(query.minAmount) } : {}),
-                    ...(query.maxAmount ? { lte: new Prisma.Decimal(query.maxAmount) } : {})
-                  }
-                }
-              }
+                    ...(query.minAmount
+                      ? { gte: new Prisma.Decimal(query.minAmount) }
+                      : {}),
+                    ...(query.maxAmount
+                      ? { lte: new Prisma.Decimal(query.maxAmount) }
+                      : {}),
+                  },
+                },
+              },
             }
           : {}),
         ...(query.type ? { type: query.type } : {}),
         // Under AND so it composes with the category OR above.
         ...(query.recurrence === 'recurring'
-          ? { AND: [{ OR: [{ isRecurring: true }, { parentTransactionId: { not: null } }] }] }
+          ? {
+              AND: [
+                {
+                  OR: [
+                    { isRecurring: true },
+                    { parentTransactionId: { not: null } },
+                  ],
+                },
+              ],
+            }
           : {}),
-        ...(query.recurrence === 'one-off' ? { isRecurring: false, parentTransactionId: null } : {}),
+        ...(query.recurrence === 'one-off'
+          ? { isRecurring: false, parentTransactionId: null }
+          : {}),
         // Only a root carries the series template (schedule, amount, status).
-        ...(query.recurrence === 'series' ? { isRecurring: true, parentTransactionId: null } : {})
+        ...(query.recurrence === 'series'
+          ? { isRecurring: true, parentTransactionId: null }
+          : {}),
       },
       include: TRANSACTION_INCLUDE,
       orderBy: orderFor(query.sort),
       limit: query.limit,
-      offset: query.offset
-    } satisfies Prisma.TransactionFindManyArgs & { limit: number; offset: number };
+      offset: query.offset,
+    } satisfies Prisma.TransactionFindManyArgs & {
+      limit: number;
+      offset: number;
+    };
 
     if (query.sort === 'amount-desc' || query.sort === 'amount-asc') {
-      return this.searchByAmount(args.where, query.sort, query.limit, query.offset);
+      return this.searchByAmount(
+        args.where,
+        query.sort,
+        query.limit,
+        query.offset,
+      );
     }
     return this.prisma.paginated.transaction.paginate(args);
   }
@@ -121,11 +160,16 @@ export class SearchService {
     where: Prisma.TransactionWhereInput,
     sort: Extract<SearchSort, 'amount-desc' | 'amount-asc'>,
     limit: number,
-    offset: number
+    offset: number,
   ) {
     const matches = await this.prisma.transaction.findMany({
       where,
-      select: { id: true, occurredAt: true, createdAt: true, items: { select: { direction: true, amount: true } } }
+      select: {
+        id: true,
+        occurredAt: true,
+        createdAt: true,
+        items: { select: { direction: true, amount: true } },
+      },
     });
     const sign = sort === 'amount-desc' ? -1 : 1;
     const ranked = matches
@@ -134,13 +178,13 @@ export class SearchService {
         (a, b) =>
           sign * a.total.comparedTo(b.total) ||
           b.occurredAt.getTime() - a.occurredAt.getTime() ||
-          b.createdAt.getTime() - a.createdAt.getTime()
+          b.createdAt.getTime() - a.createdAt.getTime(),
       );
 
     const pageIds = ranked.slice(offset, offset + limit).map((tx) => tx.id);
     const rows = await this.prisma.transaction.findMany({
       where: { id: { in: pageIds } },
-      include: TRANSACTION_INCLUDE
+      include: TRANSACTION_INCLUDE,
     });
     const byId = new Map(rows.map((row) => [row.id, row]));
     const data = pageIds.flatMap((id) => byId.get(id) ?? []);

@@ -10,7 +10,8 @@ import { UsersService } from '../users/users.service';
 
 export const FORGOT_PASSWORD_MESSAGE =
   'If an account exists for this email, we have sent a link to reset its password.';
-export const INVALID_RESET_TOKEN_MESSAGE = 'This reset link is invalid or has expired. Request a new one.';
+export const INVALID_RESET_TOKEN_MESSAGE =
+  'This reset link is invalid or has expired. Request a new one.';
 
 /**
  * Email-based password recovery.
@@ -44,7 +45,9 @@ export class PasswordResetService {
    */
   requestResetInBackground(email: string): void {
     this.requestReset(email).catch((err: unknown) => {
-      this.logger.error(`Password reset request could not be processed: ${err instanceof Error ? err.message : String(err)}`);
+      this.logger.error(
+        `Password reset request could not be processed: ${err instanceof Error ? err.message : String(err)}`,
+      );
     });
   }
 
@@ -56,7 +59,9 @@ export class PasswordResetService {
     if (!user) return;
 
     const token = randomBytes(32).toString('base64url');
-    const ttlMs = parseDurationMs(this.config.get<string>('PASSWORD_RESET_TTL', '30m'));
+    const ttlMs = parseDurationMs(
+      this.config.get<string>('PASSWORD_RESET_TTL', '30m'),
+    );
     const now = new Date();
 
     await this.prisma.$transaction([
@@ -65,11 +70,17 @@ export class PasswordResetService {
         data: { usedAt: now },
       }),
       this.prisma.passwordResetToken.create({
-        data: { tokenHash: sha256(token), userId: user.id, expiresAt: new Date(now.getTime() + ttlMs) },
+        data: {
+          tokenHash: sha256(token),
+          userId: user.id,
+          expiresAt: new Date(now.getTime() + ttlMs),
+        },
       }),
     ]);
 
-    const webUrl = this.config.get<string>('WEB_URL', 'http://localhost:3001').replace(/\/$/, '');
+    const webUrl = this.config
+      .get<string>('WEB_URL', 'http://localhost:3001')
+      .replace(/\/$/, '');
     // In the fragment, not the query string: the fragment is never sent to a
     // server, so the token stays out of access logs and Referer headers.
     const link = `${webUrl}/reset-password#token=${token}`;
@@ -94,9 +105,14 @@ export class PasswordResetService {
     });
   }
 
-  async resetPassword(token: string, newPassword: string): Promise<{ message: string }> {
+  async resetPassword(
+    token: string,
+    newPassword: string,
+  ): Promise<{ message: string }> {
     const now = new Date();
-    const stored = await this.prisma.passwordResetToken.findUnique({ where: { tokenHash: sha256(token) } });
+    const stored = await this.prisma.passwordResetToken.findUnique({
+      where: { tokenHash: sha256(token) },
+    });
     if (!stored || stored.usedAt || stored.expiresAt <= now) {
       throw new BadRequestException(INVALID_RESET_TOKEN_MESSAGE);
     }
@@ -110,9 +126,13 @@ export class PasswordResetService {
         where: { id: stored.id, usedAt: null, expiresAt: { gt: now } },
         data: { usedAt: now },
       });
-      if (claimed.count !== 1) throw new BadRequestException(INVALID_RESET_TOKEN_MESSAGE);
+      if (claimed.count !== 1)
+        throw new BadRequestException(INVALID_RESET_TOKEN_MESSAGE);
 
-      await tx.user.update({ where: { id: stored.userId }, data: { passwordHash } });
+      await tx.user.update({
+        where: { id: stored.userId },
+        data: { passwordHash },
+      });
       await tx.refreshToken.updateMany({
         where: { userId: stored.userId, revokedAt: null },
         data: { revokedAt: now },
@@ -124,6 +144,8 @@ export class PasswordResetService {
       });
     });
 
-    return { message: 'Your password has been reset. Sign in with your new password.' };
+    return {
+      message: 'Your password has been reset. Sign in with your new password.',
+    };
   }
 }

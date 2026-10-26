@@ -5,7 +5,10 @@ import { PrismaClient } from '@prisma/client';
 import { paginationExtension } from './pagination.extension';
 
 @Injectable()
-export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
+export class PrismaService
+  extends PrismaClient
+  implements OnModuleInit, OnModuleDestroy
+{
   constructor(config: ConfigService) {
     // Prisma 7 requires a driver adapter for a direct database connection.
     super({ adapter: new PrismaPg(config.getOrThrow<string>('DATABASE_URL')) });

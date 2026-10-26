@@ -54,11 +54,19 @@ type ExportRows = Awaited<ReturnType<ExportService['load']>>;
 export class ExportService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async export(userId: string, format: ExportFormat, now = new Date()): Promise<ExportFile> {
+  async export(
+    userId: string,
+    format: ExportFormat,
+    now = new Date(),
+  ): Promise<ExportFile> {
     const rows = await this.load(userId);
     const filename = `mofin-export-${now.toISOString().slice(0, 10)}.${format}`;
     if (format === 'csv') {
-      return { filename, contentType: 'text/csv; charset=utf-8', body: this.toCsv(rows) };
+      return {
+        filename,
+        contentType: 'text/csv; charset=utf-8',
+        body: this.toCsv(rows),
+      };
     }
     return {
       filename,
@@ -107,7 +115,10 @@ export class ExportService {
     return { user, accounts, categories, transactions, goals };
   }
 
-  toJson({ user, accounts, categories, transactions, goals }: ExportRows, now: Date) {
+  toJson(
+    { user, accounts, categories, transactions, goals }: ExportRows,
+    now: Date,
+  ) {
     return {
       exportedAt: now.toISOString(),
       user: { email: user.email, displayName: user.displayName },
@@ -194,7 +205,9 @@ export class ExportService {
         t.type,
         csvText(i.account.name),
         csvText(i.category?.name ?? t.category?.name ?? ''),
-        money(i.direction === LedgerDirection.DEBIT ? i.amount.negated() : i.amount),
+        money(
+          i.direction === LedgerDirection.DEBIT ? i.amount.negated() : i.amount,
+        ),
         i.currency,
         t.id,
       ]),

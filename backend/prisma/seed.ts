@@ -1,5 +1,10 @@
 import { NestFactory } from '@nestjs/core';
-import { buildDemoPlan, DEMO_DEFAULT_PASSWORD, DEMO_EMAIL, demoSeedRefusal } from '../src/demo/demo-plan';
+import {
+  buildDemoPlan,
+  DEMO_DEFAULT_PASSWORD,
+  DEMO_EMAIL,
+  demoSeedRefusal,
+} from '../src/demo/demo-plan';
 import { DemoSeedModule } from '../src/demo/demo-seed.module';
 import { DemoSeeder } from '../src/demo/demo-seeder';
 
@@ -20,30 +25,43 @@ async function main() {
     return;
   }
 
-  const reset = process.argv.includes('--reset') || process.env.DEMO_RESET === 'true';
+  const reset =
+    process.argv.includes('--reset') || process.env.DEMO_RESET === 'true';
   const password = process.env.DEMO_PASSWORD || DEMO_DEFAULT_PASSWORD;
   const plan = buildDemoPlan(new Date());
 
-  const app = await NestFactory.createApplicationContext(DemoSeedModule, { logger: ['error', 'warn'] });
+  const app = await NestFactory.createApplicationContext(DemoSeedModule, {
+    logger: ['error', 'warn'],
+  });
   try {
     const result = await app.get(DemoSeeder).run({ plan, password, reset });
     if (result.status === 'exists') {
-      console.log(`The demo account ${DEMO_EMAIL} already exists; nothing changed. Run with --reset to recreate it.`);
+      console.log(
+        `The demo account ${DEMO_EMAIL} already exists; nothing changed. Run with --reset to recreate it.`,
+      );
       return;
     }
 
     const { summary } = result;
     console.log(`${result.reset ? 'Recreated' : 'Created'} the demo account.`);
-    console.log(`  Login:        ${DEMO_EMAIL} / ${process.env.DEMO_PASSWORD ? '(DEMO_PASSWORD)' : DEMO_DEFAULT_PASSWORD}`);
+    console.log(
+      `  Login:        ${DEMO_EMAIL} / ${process.env.DEMO_PASSWORD ? '(DEMO_PASSWORD)' : DEMO_DEFAULT_PASSWORD}`,
+    );
     console.log(`  Accounts:     ${result.accounts}`);
-    console.log(`  Transactions: ${result.transactions} (${plan.windowStart.toISOString().slice(0, 10)} to today)`);
+    console.log(
+      `  Transactions: ${result.transactions} (${plan.windowStart.toISOString().slice(0, 10)} to today)`,
+    );
     console.log(`  Goals:        ${result.goals}`);
     for (const [label, counts] of [
       ['By account', summary.byAccount],
       ['By category', summary.byCategory],
       ['By month', summary.byMonth],
     ] as const) {
-      console.log(`  ${label}: ${Object.entries(counts).map(([key, count]) => `${key} ${count}`).join(', ')}`);
+      console.log(
+        `  ${label}: ${Object.entries(counts)
+          .map(([key, count]) => `${key} ${count}`)
+          .join(', ')}`,
+      );
     }
   } finally {
     await app.close();

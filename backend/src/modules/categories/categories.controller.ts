@@ -1,4 +1,14 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -35,7 +45,8 @@ export class CategoriesController {
   @ApiZodQuery(listCategoriesQuerySchema)
   list(
     @CurrentUser() user: AuthenticatedUser,
-    @Query(new ZodValidationPipe(listCategoriesQuerySchema)) query: ListCategoriesQueryDto,
+    @Query(new ZodValidationPipe(listCategoriesQuerySchema))
+    query: ListCategoriesQueryDto,
   ) {
     return this.categoriesService.list(user.id, query);
   }

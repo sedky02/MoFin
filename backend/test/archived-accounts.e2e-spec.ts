@@ -1,4 +1,9 @@
-import { CanActivate, ExecutionContext, INestApplication, Injectable } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  INestApplication,
+  Injectable,
+} from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test } from '@nestjs/testing';
 import { Prisma } from '@prisma/client';
@@ -23,15 +28,37 @@ import { TransactionsService } from '../src/modules/transactions/transactions.se
 const USER_ID = 'user-1';
 
 const accounts = [
-  { id: '201bcfd6-0000-4000-8000-000000000001', userId: USER_ID, name: 'Main checking', currency: 'USD', archivedAt: null as Date | null },
-  { id: '201bcfd6-0000-4000-8000-000000000003', userId: USER_ID, name: 'Old savings', currency: 'EUR', archivedAt: new Date('2026-09-01T00:00:00Z') as Date | null },
+  {
+    id: '201bcfd6-0000-4000-8000-000000000001',
+    userId: USER_ID,
+    name: 'Main checking',
+    currency: 'USD',
+    archivedAt: null as Date | null,
+  },
+  {
+    id: '201bcfd6-0000-4000-8000-000000000003',
+    userId: USER_ID,
+    name: 'Old savings',
+    currency: 'EUR',
+    archivedAt: new Date('2026-09-01T00:00:00Z') as Date | null,
+  },
 ];
 const [main, old] = accounts;
 
-type Item = { accountId: string; direction: 'CREDIT' | 'DEBIT'; amount: string; currency: string };
+type Item = {
+  accountId: string;
+  direction: 'CREDIT' | 'DEBIT';
+  amount: string;
+  currency: string;
+};
 const ledger: Item[] = [
   { accountId: old.id, direction: 'CREDIT', amount: '800.00', currency: 'EUR' },
-  { accountId: main.id, direction: 'CREDIT', amount: '3200.00', currency: 'USD' },
+  {
+    accountId: main.id,
+    direction: 'CREDIT',
+    amount: '3200.00',
+    currency: 'USD',
+  },
   { accountId: main.id, direction: 'DEBIT', amount: '45.50', currency: 'USD' },
 ];
 const created: unknown[] = [];
@@ -43,7 +70,8 @@ const db = {
       created.push(row);
       return row;
     },
-    findUniqueOrThrow: async ({ where }: { where: { id: string } }) => created.find((t) => (t as { id: string }).id === where.id),
+    findUniqueOrThrow: async ({ where }: { where: { id: string } }) =>
+      created.find((t) => (t as { id: string }).id === where.id),
   },
   transactionItem: {
     createMany: async () => ({ count: 1 }),
@@ -53,24 +81,50 @@ const db = {
 const prismaStub = {
   ...db,
   account: {
-    findFirst: async ({ where }: { where: { id: string; userId: string; archivedAt?: null } }) => {
-      const found = accounts.find((a) => a.id === where.id && a.userId === where.userId);
+    findFirst: async ({
+      where,
+    }: {
+      where: { id: string; userId: string; archivedAt?: null };
+    }) => {
+      const found = accounts.find(
+        (a) => a.id === where.id && a.userId === where.userId,
+      );
       if (!found || ('archivedAt' in where && found.archivedAt)) return null;
       return found;
     },
   },
   transactionItem: {
     ...db.transactionItem,
-    groupBy: async ({ where }: { where: { userId: string; accountId?: string } }) => {
-      const sums = new Map<string, { accountId: string; currency: string; direction: string; total: Prisma.Decimal }>();
+    groupBy: async ({
+      where,
+    }: {
+      where: { userId: string; accountId?: string };
+    }) => {
+      const sums = new Map<
+        string,
+        {
+          accountId: string;
+          currency: string;
+          direction: string;
+          total: Prisma.Decimal;
+        }
+      >();
       for (const item of ledger) {
         if (where.accountId && item.accountId !== where.accountId) continue;
         const key = `${item.accountId}:${item.currency}:${item.direction}`;
-        const row = sums.get(key) ?? { accountId: item.accountId, currency: item.currency, direction: item.direction, total: new Prisma.Decimal(0) };
+        const row = sums.get(key) ?? {
+          accountId: item.accountId,
+          currency: item.currency,
+          direction: item.direction,
+          total: new Prisma.Decimal(0),
+        };
         row.total = row.total.plus(item.amount);
         sums.set(key, row);
       }
-      return [...sums.values()].map(({ total, ...row }) => ({ ...row, _sum: { amount: total } }));
+      return [...sums.values()].map(({ total, ...row }) => ({
+        ...row,
+        _sum: { amount: total },
+      }));
     },
   },
   $transaction: async <T>(run: (tx: typeof db) => Promise<T>) => run(db),
@@ -99,7 +153,13 @@ describe('Archived accounts (e2e)', () => {
         AccountsService,
         TransactionsService,
         { provide: PrismaService, useValue: prismaStub },
-        { provide: CategoriesService, useValue: { assertAvailable: async () => ({}), assertAssignable: async () => null } },
+        {
+          provide: CategoriesService,
+          useValue: {
+            assertAvailable: async () => ({}),
+            assertAssignable: async () => null,
+          },
+        },
         { provide: EventEmitter2, useValue: { emit: () => true } },
       ],
     })
@@ -121,7 +181,8 @@ describe('Archived accounts (e2e)', () => {
     created.length = 0;
   });
 
-  const get = (path: string, user = USER_ID) => fetch(`${baseUrl}${path}`, { headers: { 'x-test-user': user } });
+  const get = (path: string, user = USER_ID) =>
+    fetch(`${baseUrl}${path}`, { headers: { 'x-test-user': user } });
   const post = (path: string, body: object) =>
     fetch(`${baseUrl}${path}`, {
       method: 'POST',
@@ -135,8 +196,11 @@ describe('Archived accounts (e2e)', () => {
     expect(await res.json()).toEqual([{ key: 'EUR', balance: '800' }]);
   });
 
-  it("GET /ledger/balance?accountId=<archived> still 404s for another user", async () => {
-    const res = await get(`/ledger/balance?accountId=${old.id}`, 'someone-else');
+  it('GET /ledger/balance?accountId=<archived> still 404s for another user', async () => {
+    const res = await get(
+      `/ledger/balance?accountId=${old.id}`,
+      'someone-else',
+    );
     expect(res.status).toBe(404);
   });
 

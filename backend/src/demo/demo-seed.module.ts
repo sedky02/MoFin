@@ -17,7 +17,11 @@ import { DemoSeeder } from './demo-seeder';
  * DATABASE_URL is read.
  */
 @Module({
-  imports: [ConfigModule.forRoot({ isGlobal: true }), EventEmitterModule.forRoot({ wildcard: false }), PrismaModule],
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
+    EventEmitterModule.forRoot({ wildcard: false }),
+    PrismaModule,
+  ],
   providers: [
     UsersService,
     AccountsService,

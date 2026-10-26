@@ -1,4 +1,14 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -35,7 +45,8 @@ export class AccountsController {
   @ApiZodQuery(listAccountsQuerySchema)
   list(
     @CurrentUser() user: AuthenticatedUser,
-    @Query(new ZodValidationPipe(listAccountsQuerySchema)) query: ListAccountsQueryDto,
+    @Query(new ZodValidationPipe(listAccountsQuerySchema))
+    query: ListAccountsQueryDto,
   ) {
     return this.accountsService.list(user.id, query);
   }

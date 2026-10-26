@@ -41,16 +41,30 @@ export class McpService {
           accountId?: string;
           currency?: string;
         };
-        return this.analyticsService.getMonthlySummary(userId, year, month, refresh, accountId, currency);
+        return this.analyticsService.getMonthlySummary(
+          userId,
+          year,
+          month,
+          refresh,
+          accountId,
+          currency,
+        );
       }
       case 'list_accounts':
         return this.accountsService.list(userId, args as never);
       case 'list_goals':
         return this.goalsService.list(userId, args as never);
       case 'get_goal':
-        return this.goalsService.findOne(userId, (args as { goalId: string }).goalId);
+        return this.goalsService.findOne(
+          userId,
+          (args as { goalId: string }).goalId,
+        );
       case 'get_goal_history': {
-        const { goalId, ...query } = args as { goalId: string; limit: number; offset: number };
+        const { goalId, ...query } = args as {
+          goalId: string;
+          limit: number;
+          offset: number;
+        };
         return this.goalsService.history(userId, goalId, query);
       }
     }

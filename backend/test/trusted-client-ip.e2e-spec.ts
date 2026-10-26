@@ -43,7 +43,9 @@ describe('Trusted client IP from the BFF (e2e)', () => {
 
   async function start(configuredSecret: string | undefined) {
     const moduleRef = await Test.createTestingModule({
-      imports: [ThrottlerModule.forRoot([{ ttl: 60_000, limit: GLOBAL_LIMIT }])],
+      imports: [
+        ThrottlerModule.forRoot([{ ttl: 60_000, limit: GLOBAL_LIMIT }]),
+      ],
       controllers: [AuthController],
       providers: [
         { provide: APP_GUARD, useClass: ThrottlerGuard },
@@ -91,7 +93,9 @@ describe('Trusted client IP from the BFF (e2e)', () => {
       ['no secret', undefined],
     ])('ignores the client IP header sent with %s', async (_label, secret) => {
       for (let i = 0; i < AUTH_THROTTLE.limit; i++) {
-        await login('victim@example.com', `198.51.100.${i + 1}`, secret).expect(201);
+        await login('victim@example.com', `198.51.100.${i + 1}`, secret).expect(
+          201,
+        );
       }
       // Rotating the claimed IP doesn't buy fresh buckets: every attempt
       // counts against the hop's own IP.
@@ -114,7 +118,9 @@ describe('Trusted client IP from the BFF (e2e)', () => {
 
     it('ignores the client IP header and keys on req.ip as before', async () => {
       for (let i = 0; i < AUTH_THROTTLE.limit; i++) {
-        await login('same@example.com', `198.51.100.${i + 1}`, SECRET).expect(201);
+        await login('same@example.com', `198.51.100.${i + 1}`, SECRET).expect(
+          201,
+        );
       }
       await login('same@example.com', '198.51.100.99', SECRET).expect(429);
     });

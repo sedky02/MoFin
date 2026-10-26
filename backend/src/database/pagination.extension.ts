@@ -30,19 +30,30 @@ export const paginationExtension = Prisma.defineExtension({
     $allModels: {
       async paginate<T, A extends Prisma.Args<T, 'findMany'>>(
         this: T,
-        { limit, offset, ...findManyArgs }: A & PaginateInput
+        input: A & PaginateInput,
       ): Promise<PaginatedResult<Prisma.Result<T, A, 'findMany'>[number]>> {
+        const { limit, offset, ...rest } = input as PaginateInput &
+          Record<string, unknown>;
+        const findManyArgs: Record<string, unknown> = rest;
         const context = Prisma.getExtensionContext(this);
-        const findMany = (context as { findMany: (args: unknown) => Promise<unknown> }).findMany;
-        const count = (context as { count: (args: unknown) => Promise<number> }).count;
+        const findMany = (
+          context as { findMany: (args: unknown) => Promise<unknown> }
+        ).findMany;
+        const count = (context as { count: (args: unknown) => Promise<number> })
+          .count;
 
         const [data, total] = await Promise.all([
           findMany({ ...findManyArgs, skip: offset, take: limit }),
-          count({ where: (findManyArgs as { where?: unknown }).where })
+          count({ where: findManyArgs.where }),
         ]);
 
-        return { data: data as Prisma.Result<T, A, 'findMany'>[number][], total, limit, offset };
-      }
-    }
-  }
+        return {
+          data: data as Prisma.Result<T, A, 'findMany'>[number][],
+          total,
+          limit,
+          offset,
+        };
+      },
+    },
+  },
 });

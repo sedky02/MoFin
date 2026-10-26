@@ -1,4 +1,9 @@
-import { CanActivate, ExecutionContext, INestApplication, Injectable } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  INestApplication,
+  Injectable,
+} from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { Prisma, TransactionType } from '@prisma/client';
 import { JwtAuthGuard } from '../src/common/guards/jwt-auth.guard';
@@ -29,7 +34,13 @@ const item = (accountId: string, amount: string, currency: string) => ({
 });
 
 const transactions = [
-  { userId: USER_ID, type: TransactionType.INCOME, categoryId: null, category: null, items: [item(TND, '2500', 'TND')] },
+  {
+    userId: USER_ID,
+    type: TransactionType.INCOME,
+    categoryId: null,
+    category: null,
+    items: [item(TND, '2500', 'TND')],
+  },
   {
     userId: USER_ID,
     type: TransactionType.EXPENSE,
@@ -37,7 +48,13 @@ const transactions = [
     category: { name: 'Rent', color: null },
     items: [item(TND, '900', 'TND')],
   },
-  { userId: USER_ID, type: TransactionType.INCOME, categoryId: null, category: null, items: [item(EUR_ARCHIVED, '120', 'EUR')] },
+  {
+    userId: USER_ID,
+    type: TransactionType.INCOME,
+    categoryId: null,
+    category: null,
+    items: [item(EUR_ARCHIVED, '120', 'EUR')],
+  },
   {
     userId: USER_ID,
     type: TransactionType.EXPENSE,
@@ -53,9 +70,16 @@ const prismaStub = {
     upsert: async () => undefined,
   },
   transaction: {
-    findMany: async ({ where }: { where: { userId: string; items?: { some: { accountId: string } } } }) =>
+    findMany: async ({
+      where,
+    }: {
+      where: { userId: string; items?: { some: { accountId: string } } };
+    }) =>
       transactions.filter(
-        (t) => t.userId === where.userId && (!where.items || t.items.some((i) => i.accountId === where.items?.some.accountId)),
+        (t) =>
+          t.userId === where.userId &&
+          (!where.items ||
+            t.items.some((i) => i.accountId === where.items?.some.accountId)),
       ),
   },
 };
@@ -78,7 +102,10 @@ describe('Analytics API (e2e)', () => {
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       controllers: [AnalyticsController],
-      providers: [AnalyticsService, { provide: PrismaService, useValue: prismaStub }],
+      providers: [
+        AnalyticsService,
+        { provide: PrismaService, useValue: prismaStub },
+      ],
     })
       .overrideGuard(JwtAuthGuard)
       .useClass(HeaderUserGuard)
@@ -94,17 +121,22 @@ describe('Analytics API (e2e)', () => {
     await app.close();
   });
 
-  const get = (path: string) => fetch(`${baseUrl}${path}`, { headers: { 'x-test-user': USER_ID } });
+  const get = (path: string) =>
+    fetch(`${baseUrl}${path}`, { headers: { 'x-test-user': USER_ID } });
 
   it('GET /analytics/monthly-summary without accountId and without currency is a 400', async () => {
     const res = await get('/analytics/monthly-summary?year=2026&month=10');
     expect(res.status).toBe(400);
     const body = await res.json();
-    expect(body.errors).toEqual([expect.objectContaining({ path: 'currency' })]);
+    expect(body.errors).toEqual([
+      expect.objectContaining({ path: 'currency' }),
+    ]);
   });
 
   it('an all-accounts summary only adds up the requested currency', async () => {
-    const tnd = await (await get('/analytics/monthly-summary?year=2026&month=10&currency=TND')).json();
+    const tnd = await (
+      await get('/analytics/monthly-summary?year=2026&month=10&currency=TND')
+    ).json();
     expect(tnd).toEqual(
       expect.objectContaining({
         income: '2500',
@@ -113,24 +145,38 @@ describe('Analytics API (e2e)', () => {
       }),
     );
 
-    const eur = await (await get('/analytics/monthly-summary?year=2026&month=10&currency=EUR')).json();
+    const eur = await (
+      await get('/analytics/monthly-summary?year=2026&month=10&currency=EUR')
+    ).json();
     expect(eur).toEqual(
       expect.objectContaining({
         income: '120',
         expenses: '45.5',
-        categoryBreakdown: [{ category: 'Travel', color: null, amount: '45.5' }],
+        categoryBreakdown: [
+          { category: 'Travel', color: null, amount: '45.5' },
+        ],
       }),
     );
   });
 
   it("lists the archived account's currency among the month's active currencies", async () => {
-    const body = await (await get('/analytics/monthly-summary?year=2026&month=10&currency=TND')).json();
+    const body = await (
+      await get('/analytics/monthly-summary?year=2026&month=10&currency=TND')
+    ).json();
     expect(body.activeCurrencies).toEqual(['EUR', 'TND']);
   });
 
   it('an account-scoped summary still works without a currency', async () => {
-    const res = await get(`/analytics/monthly-summary?year=2026&month=10&accountId=${TND}`);
+    const res = await get(
+      `/analytics/monthly-summary?year=2026&month=10&accountId=${TND}`,
+    );
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual(expect.objectContaining({ income: '2500', expenses: '900', activeCurrencies: ['TND'] }));
+    expect(await res.json()).toEqual(
+      expect.objectContaining({
+        income: '2500',
+        expenses: '900',
+        activeCurrencies: ['TND'],
+      }),
+    );
   });
 });

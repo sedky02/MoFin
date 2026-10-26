@@ -25,7 +25,10 @@ export function csvText(value: string): string {
 }
 
 /** Rows joined with CRLF, as RFC 4180 and Excel expect, behind a UTF-8 BOM. */
-export function toCsv(header: readonly string[], rows: readonly (readonly string[])[]): string {
+export function toCsv(
+  header: readonly string[],
+  rows: readonly (readonly string[])[],
+): string {
   const lines = [header, ...rows].map((row) => row.map(csvCell).join(','));
   return `${UTF8_BOM}${lines.join('\r\n')}\r\n`;
 }
