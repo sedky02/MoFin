@@ -8,6 +8,10 @@ import {
 } from './dto/accounts.dto';
 
 // Undefined stays undefined: create falls back to the column's 0, update leaves it as is.
+// Optional on the methods the demo seed uses, so it can run them inside its own
+// transaction; every route omits it and keeps using this.prisma.
+type Db = Prisma.TransactionClient;
+
 function toDecimal(amount: string | undefined): Prisma.Decimal | undefined {
   return amount === undefined ? undefined : new Prisma.Decimal(amount);
 }
@@ -16,8 +20,8 @@ function toDecimal(amount: string | undefined): Prisma.Decimal | undefined {
 export class AccountsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  create(userId: string, dto: CreateAccountDto) {
-    return this.prisma.account.create({
+  create(userId: string, dto: CreateAccountDto, db: Db = this.prisma) {
+    return db.account.create({
       data: {
         ...dto,
         userId,
@@ -46,8 +50,8 @@ export class AccountsService {
    * Ownership check for reads (balance, search, history). Archived accounts
    * pass: their ledger entries are kept and their balance is still real money.
    */
-  async assertOwned(userId: string, accountId: string) {
-    const account = await this.prisma.account.findFirst({
+  async assertOwned(userId: string, accountId: string, db: Db = this.prisma) {
+    const account = await db.account.findFirst({
       where: { id: accountId, userId },
     });
     if (!account) throw new NotFoundException(`Account ${accountId} not found`);
@@ -59,8 +63,8 @@ export class AccountsService {
    * An archived account is read-only until it is restored, so it 404s here
    * the same way an account the user doesn't own does.
    */
-  async assertActive(userId: string, accountId: string) {
-    const account = await this.prisma.account.findFirst({
+  async assertActive(userId: string, accountId: string, db: Db = this.prisma) {
+    const account = await db.account.findFirst({
       where: { id: accountId, userId, archivedAt: null },
     });
     if (!account) throw new NotFoundException(`Account ${accountId} not found`);

@@ -77,12 +77,13 @@ function makeWriter(plan: DemoPlan) {
     assertActive: findAccount,
     assertOwned: findAccount,
   };
-  const categoriesService = new CategoriesService({
-    category: {
-      findFirst: async ({ where }: { where: { id: string } }) =>
-        categories.find((c) => c.id === where.id) ?? null,
-    },
-  } as never);
+  // The create path's category checks read through whichever client it is
+  // given (the caller's transaction or the service's own), so both fakes need it.
+  const category = {
+    findFirst: async ({ where }: { where: { id: string } }) =>
+      categories.find((c) => c.id === where.id) ?? null,
+  };
+  const categoriesService = new CategoriesService({ category } as never);
   const ledgerService = new LedgerService(
     {} as never,
     accountsService as never,
@@ -91,6 +92,7 @@ function makeWriter(plan: DemoPlan) {
   const rows = new Map<string, Record<string, unknown>>();
   const items: (WrittenItem & { transactionId: string })[] = [];
   const db = {
+    category,
     transaction: {
       create: async ({ data }: { data: Record<string, unknown> }) => {
         const row = { ...data, id: `tx-${rows.size + 1}` };
@@ -111,6 +113,7 @@ function makeWriter(plan: DemoPlan) {
     },
   };
   const prisma = {
+    category,
     $transaction: async (run: (client: typeof db) => unknown) => run(db),
   };
   const service = new TransactionsService(
