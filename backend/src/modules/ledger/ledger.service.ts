@@ -33,14 +33,19 @@ export class LedgerService {
       description: string;
       items?: { amount: string; categoryId?: string; memo?: string }[];
     },
+    db: Db = this.prisma,
   ): Promise<LedgerEntryInput[]> {
     // assertActive returns the account, so we validate ownership and currency in one pass.
     // Archived accounts are read-only: nothing new can be posted to them.
     const fromAccount = command.fromAccountId
-      ? await this.accountsService.assertActive(userId, command.fromAccountId)
+      ? await this.accountsService.assertActive(
+          userId,
+          command.fromAccountId,
+          db,
+        )
       : null;
     const toAccount = command.toAccountId
-      ? await this.accountsService.assertActive(userId, command.toAccountId)
+      ? await this.accountsService.assertActive(userId, command.toAccountId, db)
       : null;
 
     // Currency consistency (audit A3): every leg must be in the account's own

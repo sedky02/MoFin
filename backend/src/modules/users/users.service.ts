@@ -24,8 +24,11 @@ export class UsersService {
    * this idempotent: a repeated registration never reaches here (or fails on
    * the unique email before anything is written).
    */
-  createUser(input: CreateUserInput) {
-    return this.prisma.user.create({
+  createUser(
+    input: CreateUserInput,
+    db: Prisma.TransactionClient = this.prisma,
+  ) {
+    return db.user.create({
       data: {
         ...input,
         categories: { createMany: { data: [...DEFAULT_CATEGORIES] } },
@@ -48,6 +51,9 @@ export class UsersService {
         createdAt: true,
         updatedAt: true,
         passwordHash: true,
+        // The web app shows a demo banner and disables what the demo blocks.
+        isDemo: true,
+        expiresAt: true,
       },
     });
     if (!user) throw new NotFoundException('User not found');

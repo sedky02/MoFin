@@ -138,21 +138,27 @@ export class TransactionsService {
    */
   async create(userId: string, command: CreateTransactionCommand, db?: Db) {
     this.validateCommand(command);
+    // The checks read through the caller's transaction too, so a caller that
+    // created the account or category earlier in that transaction can see it.
+    const reader = db ?? this.prisma;
     await this.categoriesService.assertAssignable(
       userId,
       command.type,
       command.categoryId,
+      reader,
     );
     for (const item of command.items ?? []) {
       await this.categoriesService.assertAssignable(
         userId,
         command.type,
         item.categoryId,
+        reader,
       );
     }
     const ledgerEntries = await this.ledgerService.buildEntriesForCommand(
       userId,
       command,
+      reader,
     );
 
     const firstNextOccurrenceAt = command.isRecurring

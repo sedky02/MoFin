@@ -19,6 +19,9 @@ export interface User {
   settings?: UserSettings | null;
   /** False for an account that only signs in with Google (no password to change). */
   hasPassword?: boolean;
+  /** A temporary "Try the demo" user, deleted at `expiresAt`. */
+  isDemo?: boolean;
+  expiresAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }

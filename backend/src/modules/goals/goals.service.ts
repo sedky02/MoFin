@@ -101,10 +101,15 @@ export class GoalsService {
     private readonly accountsService: AccountsService,
   ) {}
 
-  async create(userId: string, dto: CreateGoalDto) {
+  async create(
+    userId: string,
+    dto: CreateGoalDto,
+    db: Prisma.TransactionClient = this.prisma,
+  ) {
     const account = await this.accountsService.assertActive(
       userId,
       dto.accountId,
+      db,
     );
 
     let periodStart: Date;
@@ -122,7 +127,7 @@ export class GoalsService {
       periodEnd = inclusiveUpperBound(dto.periodEnd!);
     }
 
-    return this.prisma.goal.create({
+    return db.goal.create({
       data: {
         userId,
         accountId: account.id,
@@ -452,6 +457,7 @@ export class GoalsService {
     periodStart: Date,
     periodEnd: Date,
     now: Date,
+    db: Prisma.TransactionClient = this.prisma,
   ): Promise<Prisma.Decimal> {
     const boundary = now < periodEnd ? now : periodEnd;
 
@@ -470,21 +476,23 @@ export class GoalsService {
       //
       // The account's opening balance is the starting point: it's what the
       // account held before its first entry, so it counts at any boundary.
-      const [rows, account] = await Promise.all([
-        this.prisma.transactionItem.groupBy({
-          by: ['direction'],
-          where: {
-            userId: goal.userId,
-            accountId: goal.accountId,
-            transaction: { occurredAt: { lte: boundary }, deletedAt: null },
-          },
-          _sum: { amount: true },
-        }),
-        this.prisma.account.findFirst({
-          where: { id: goal.accountId, userId: goal.userId },
-          select: { openingBalance: true },
-        }),
-      ]);
+      //
+      // One after the other, not Promise.all: `db` may be a caller's
+      // transaction, which runs on a single connection that can't take two
+      // queries at once.
+      const rows = await db.transactionItem.groupBy({
+        by: ['direction'],
+        where: {
+          userId: goal.userId,
+          accountId: goal.accountId,
+          transaction: { occurredAt: { lte: boundary }, deletedAt: null },
+        },
+        _sum: { amount: true },
+      });
+      const account = await db.account.findFirst({
+        where: { id: goal.accountId, userId: goal.userId },
+        select: { openingBalance: true },
+      });
       return rows.reduce(
         (sum, row) => {
           const amount = row._sum.amount ?? new Prisma.Decimal(0);
@@ -509,7 +517,7 @@ export class GoalsService {
       goal.type === GoalType.INCOME
         ? TransactionType.INCOME
         : TransactionType.EXPENSE;
-    const { _sum } = await this.prisma.transactionItem.aggregate({
+    const { _sum } = await db.transactionItem.aggregate({
       where: {
         userId: goal.userId,
         accountId: goal.accountId,

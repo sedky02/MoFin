@@ -11,6 +11,7 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
+import { DemoBlocked } from '../../common/decorators/demo.decorator';
 import {
   AuthThrottlerGuard,
   ChangePasswordThrottlerGuard,
@@ -124,6 +125,7 @@ export class AuthController {
   // session can't be used to brute-force the current password.
   @UseGuards(ChangePasswordThrottlerGuard)
   @ApiBearerAuth('jwt')
+  @DemoBlocked()
   @Post('password/change')
   @HttpCode(HttpStatus.OK)
   @ApiZodBody(changePasswordSchema)
@@ -136,6 +138,7 @@ export class AuthController {
 
   /** Signs out every web session of the caller, this one included. */
   @ApiBearerAuth('jwt')
+  @DemoBlocked()
   @Post('sessions/revoke-all')
   @HttpCode(HttpStatus.NO_CONTENT)
   revokeAllSessions(@CurrentUser() user: AuthenticatedUser) {

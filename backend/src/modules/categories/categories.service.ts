@@ -32,9 +32,13 @@ export class CategoriesService {
     return { ...category, isSystem: category.userId === null };
   }
 
-  async create(userId: string, dto: CreateCategoryDto) {
+  async create(
+    userId: string,
+    dto: CreateCategoryDto,
+    db: Prisma.TransactionClient = this.prisma,
+  ) {
     try {
-      const category = await this.prisma.category.create({
+      const category = await db.category.create({
         data: { ...dto, userId },
       });
       return this.toResponse(category);
@@ -45,7 +49,7 @@ export class CategoriesService {
         err instanceof Prisma.PrismaClientKnownRequestError &&
         err.code === 'P2002'
       ) {
-        const archived = await this.prisma.category.findFirst({
+        const archived = await db.category.findFirst({
           where: {
             userId,
             name: dto.name,
@@ -87,9 +91,13 @@ export class CategoriesService {
    * them, so editing one of those transactions, or searching by the category,
    * must keep working. Archiving only takes them out of the pickers.
    */
-  async assertAvailable(userId: string, categoryId?: string | null) {
+  async assertAvailable(
+    userId: string,
+    categoryId?: string | null,
+    db: Prisma.TransactionClient = this.prisma,
+  ) {
     if (!categoryId) return null;
-    const category = await this.prisma.category.findFirst({
+    const category = await db.category.findFirst({
       where: { id: categoryId, OR: [{ userId }, { userId: null }] },
     });
     if (!category)
@@ -108,12 +116,13 @@ export class CategoriesService {
     userId: string,
     transactionType: TransactionType,
     categoryId?: string | null,
+    db: Prisma.TransactionClient = this.prisma,
   ) {
     if (!categoryId) return null;
     if (transactionType === TransactionType.TRANSFER) {
       throw new BadRequestException('Transfers cannot have a category');
     }
-    const category = await this.assertAvailable(userId, categoryId);
+    const category = await this.assertAvailable(userId, categoryId, db);
     if (category && category.type !== transactionType) {
       throw new BadRequestException(
         `"${category.name}" is an ${category.type.toLowerCase()} category and cannot be used on an ${transactionType.toLowerCase()} transaction`,

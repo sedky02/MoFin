@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { SidebarNav } from "./sidebar-nav";
 import { ThemeToggle } from "./theme-toggle";
 import { UserMenu } from "./user-menu";
+import { DemoBanner } from "./demo-banner";
 import { AccountSwitcher } from "@/components/dashboard/account-switcher";
 import { useActiveAccount } from "@/hooks/useActiveAccount";
 import { BOTTOM_NAV_ITEMS, isNavActive } from "./nav-items";
@@ -52,6 +53,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       <div className="flex min-h-dvh flex-col">
+        <DemoBanner />
         {/* Topbar */}
         <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border bg-background/80 px-4 backdrop-blur-md">
           {/* Mobile: open full nav sheet */}

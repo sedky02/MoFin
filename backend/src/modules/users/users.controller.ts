@@ -22,6 +22,7 @@ import {
   updateProfileSchema,
 } from './dto/users.dto';
 import { UsersService } from './users.service';
+import { DemoBlocked } from '../../common/decorators/demo.decorator';
 
 @ApiTags('users')
 @ApiBearerAuth('jwt')
@@ -51,6 +52,7 @@ export class UsersController {
    * guess the password.
    */
   @UseGuards(DeleteAccountThrottlerGuard)
+  @DemoBlocked()
   @Delete('me')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiZodBody(deleteAccountSchema)

@@ -18,6 +18,8 @@ import { BudgetsModule } from './modules/budgets/budgets.module';
 import { CategoriesModule } from './modules/categories/categories.module';
 import { DraftTransactionsModule } from './modules/draft-transactions/draft-transactions.module';
 import { ExportModule } from './modules/export/export.module';
+import { DemoModule } from './modules/demo/demo.module';
+import { DemoRestrictionsGuard } from './common/guards/demo-restrictions.guard';
 import { GoalsModule } from './modules/goals/goals.module';
 import { LedgerModule } from './modules/ledger/ledger.module';
 import { McpModule } from './modules/mcp/mcp.module';
@@ -58,6 +60,7 @@ import { UsersModule } from './modules/users/users.module';
     BudgetsModule,
     GoalsModule,
     ExportModule,
+    DemoModule,
   ],
   providers: [
     // Global guards run in registration order: rate limit first, so an
@@ -65,6 +68,8 @@ import { UsersModule } from './modules/users/users.module';
     // token on every route not marked @Public().
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: GlobalJwtAuthGuard },
+    // After the JWT guard, so it sees req.user.
+    { provide: APP_GUARD, useClass: DemoRestrictionsGuard },
     // Order matters: Nest checks global filters in REVERSE registration
     // order, so AllExceptionsFilter (registered first, checked last) is the
     // fallback behind PrismaExceptionFilter's more specific `@Catch()` scope.

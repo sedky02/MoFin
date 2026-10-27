@@ -20,4 +20,7 @@ export interface CreateUserInput {
   passwordHash?: string;
   displayName?: string;
   googleId?: string;
+  /** Temporary "Try the demo" user (see DemoService). */
+  isDemo?: boolean;
+  expiresAt?: Date;
 }

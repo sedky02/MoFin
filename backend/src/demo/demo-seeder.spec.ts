@@ -2,7 +2,7 @@ import { GoalStatus, Prisma } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { DEFAULT_CATEGORIES } from '../modules/categories/default-categories';
 import { buildDemoPlan, DEMO_DISPLAY_NAME, DEMO_EMAIL } from './demo-plan';
-import { DemoSeeder } from './demo-seeder';
+import { DemoSeeder, SEED_TRANSACTION_OPTIONS } from './demo-seeder';
 
 const NOW = new Date('2026-10-25T15:30:00.000Z');
 
@@ -20,11 +20,10 @@ function makeSeeder(existing: { id: string } | null) {
     status: GoalStatus;
   }[] = [];
 
-  const db = { transaction: { update: jest.fn() } };
-  const prisma = {
-    $transaction: jest.fn(async (run: (client: typeof db) => unknown) =>
-      run(db),
-    ),
+  // The transaction client the seed runs on; everything it reads or writes
+  // goes through here, never through `prisma` itself.
+  const db = {
+    transaction: { update: jest.fn() },
     category: { findMany: jest.fn(async () => categoryRows) },
     goal: {
       findUniqueOrThrow: jest.fn(
@@ -53,6 +52,11 @@ function makeSeeder(existing: { id: string } | null) {
         },
       ),
     },
+  };
+  const prisma = {
+    $transaction: jest.fn(async (run: (client: typeof db) => unknown) =>
+      run(db),
+    ),
   };
   const usersService = {
     findByEmail: jest.fn(async () => existing),
@@ -174,6 +178,7 @@ describe('DemoSeeder', () => {
     const {
       seeder,
       plan,
+      db,
       accountsService,
       categoriesService,
       transactionsService,
@@ -188,11 +193,15 @@ describe('DemoSeeder', () => {
         name: 'Credit card',
         openingBalance: '-420.00',
       }),
+      db,
     );
     expect(categoriesService.create).toHaveBeenCalledWith(
       'demo',
       expect.objectContaining({ name: 'Household' }),
+      db,
     );
+    for (const call of transactionsService.create.mock.calls as unknown[][])
+      expect(call[2]).toBe(db);
     const series = plan.recurring[0];
     expect(transactionsService.create).toHaveBeenCalledTimes(
       plan.transactions.length + 1 + series.occurrences.length,
@@ -248,7 +257,7 @@ describe('DemoSeeder', () => {
   });
 
   it('creates the goals and closes the past periods of the recurring ones', async () => {
-    const { seeder, plan, goalsService, prisma, instances } = makeSeeder(null);
+    const { seeder, plan, db, goalsService, instances } = makeSeeder(null);
 
     await seeder.run({ plan, password: 'pw', reset: false });
 
@@ -259,23 +268,33 @@ describe('DemoSeeder', () => {
         name: 'Groceries budget',
         accountId: 'acc-Credit card',
       }),
+      db,
     );
     // August and September close for each of the two monthly goals; October stays open.
-    expect(prisma.goalInstance.update).toHaveBeenCalledTimes(4);
+    expect(db.goalInstance.update).toHaveBeenCalledTimes(4);
     const side = instances
       .filter((i) => i.goalId === 'goal-Side income')
       .map((i) => i.periodStart.toISOString().slice(0, 10));
     expect(side).toEqual(['2026-08-01', '2026-09-01', '2026-10-01']);
   });
 
-  it('removes a half-written demo account when something fails', async () => {
-    const { seeder, plan, usersService, transactionsService } =
+  it('creates the user and its data in one transaction, so a failure rolls both back', async () => {
+    const { seeder, plan, prisma, db, usersService, transactionsService } =
       makeSeeder(null);
     transactionsService.create.mockRejectedValueOnce(new Error('boom'));
 
     await expect(
       seeder.run({ plan, password: 'pw', reset: false }),
     ).rejects.toThrow('boom');
-    expect(usersService.deleteUserData).toHaveBeenCalledWith('demo');
+    expect(prisma.$transaction).toHaveBeenCalledWith(
+      expect.any(Function),
+      SEED_TRANSACTION_OPTIONS,
+    );
+    expect(usersService.createUser).toHaveBeenCalledWith(
+      expect.objectContaining({ email: DEMO_EMAIL }),
+      db,
+    );
+    // Nothing to clean up by hand: the transaction never committed.
+    expect(usersService.deleteUserData).not.toHaveBeenCalled();
   });
 });

@@ -10,6 +10,7 @@ import {
   ParseTransactionIntentDto,
   parseTransactionIntentSchema,
 } from './dto/ai.dto';
+import { DemoQuota } from '../../common/decorators/demo.decorator';
 
 @ApiTags('ai')
 @ApiBearerAuth('jwt')
@@ -18,6 +19,7 @@ import {
 export class AiController {
   constructor(private readonly aiService: AiService) {}
 
+  @DemoQuota('ai-drafts')
   @Post('transaction-intents')
   @ApiZodBody(parseTransactionIntentSchema)
   parse(
