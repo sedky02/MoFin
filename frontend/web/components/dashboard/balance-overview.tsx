@@ -179,7 +179,6 @@ export function BalanceOverview({
           </div>
 
           <table className="sr-only">
-            <caption>Last {points.length} months</caption>
             <thead>
               <tr>
                 {["Month", "Income", "Expenses", "Balance"].map((h) => (
