@@ -16,9 +16,9 @@ export default function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // The landing page is for visitors; signed-in users go straight to their dashboard.
+  // The landing page is public for everyone, signed in or not; the app lives at /dashboard.
   if (pathname === "/") {
-    return refresh ? NextResponse.redirect(new URL("/dashboard", request.url)) : NextResponse.next();
+    return NextResponse.next();
   }
 
   // Not logged in and trying to reach an app route → bounce to /login.

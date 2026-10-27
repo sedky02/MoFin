@@ -16,8 +16,16 @@ describe("proxy", () => {
     expect(res.headers.get("x-middleware-next")).toBe("1");
   });
 
-  it("sends signed-in users from / to their dashboard", () => {
-    expect(visit("/", true).headers.get("location")).toBe("http://web.test/dashboard");
+  it("shows signed-in users the landing page at / too", () => {
+    const res = visit("/", true);
+    expect(res.headers.get("location")).toBeNull();
+    expect(res.headers.get("x-middleware-next")).toBe("1");
+  });
+
+  it("sends signed-in users away from the auth pages only", () => {
+    expect(visit("/login", true).headers.get("location")).toBe("http://web.test/dashboard");
+    expect(visit("/register", true).headers.get("location")).toBe("http://web.test/dashboard");
+    expect(visit("/dashboard", true).headers.get("location")).toBeNull();
   });
 
   it("still sends visitors from app routes to sign in", () => {
