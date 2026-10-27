@@ -35,21 +35,21 @@ afterEach(() => {
 });
 
 describe("ThemeProvider", () => {
-  it("defaults to dark when nothing is stored", () => {
-    expect(renderProbe().textContent).toBe("dark");
+  it("defaults to light when nothing is stored", () => {
+    expect(renderProbe().textContent).toBe("light");
   });
 
   it("reads the stored theme", () => {
-    localStorage.setItem("mofin-theme", "light");
-    expect(renderProbe().textContent).toBe("light");
+    localStorage.setItem("mofin-theme", "dark");
+    expect(renderProbe().textContent).toBe("dark");
   });
 
   it("toggle updates state, storage and the document", async () => {
     const button = renderProbe();
     await userEvent.click(button);
-    expect(button.textContent).toBe("light");
-    expect(localStorage.getItem("mofin-theme")).toBe("light");
-    expect(document.documentElement.classList.contains("dark")).toBe(false);
-    expect(document.documentElement.style.colorScheme).toBe("light");
+    expect(button.textContent).toBe("dark");
+    expect(localStorage.getItem("mofin-theme")).toBe("dark");
+    expect(document.documentElement.classList.contains("dark")).toBe(true);
+    expect(document.documentElement.style.colorScheme).toBe("dark");
   });
 });
