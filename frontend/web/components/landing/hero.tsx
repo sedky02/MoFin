@@ -3,94 +3,86 @@
 import * as React from "react";
 import Link from "next/link";
 import { Suspense } from "react";
-import { motion, useMotionValue, useReducedMotion, useScroll, useSpring, useTransform } from "motion/react";
+import { motion, useInView, useScroll, useSpring, useTransform } from "motion/react";
 import { DemoButton } from "./demo-button";
 import { DemoNotice } from "./demo-notice";
+import { AppFrame } from "./mock/app-frame";
 import { MockDashboard } from "./mock/mock-dashboard";
-import { DeviceFrame } from "./mock/device-frame";
-import { fadeUp, SPRING_SLOW, stagger, TILT_SPRING } from "./motion";
+import { useSignedIn } from "./use-signed-in";
 
-const MAX_TILT = 5; // degrees
+/** Smooths the scroll-linked values so the window eases into each new size. */
+const SCROLL_SPRING = { stiffness: 140, damping: 30, mass: 0.6 };
 
+/**
+ * The headline and the actions are plain, static markup (visible before and
+ * without JavaScript); the motion is the app window below, which grows and
+ * tips toward you as you scroll to it.
+ */
 export function Hero() {
   const frameRef = React.useRef<HTMLDivElement>(null);
-  const reduceMotion = useReducedMotion();
-  const [play, setPlay] = React.useState(false);
+  const play = useInView(frameRef, { once: true, amount: 0.25 });
+  const signedIn = useSignedIn();
 
-  // Scrolling past the hero: the window settles back a little and dims.
-  const { scrollYProgress } = useScroll({ target: frameRef, offset: ["start 80%", "end start"] });
-  const scale = useTransform(scrollYProgress, [0, 0.5, 1], [1, 1, 0.94]);
-  const opacity = useTransform(scrollYProgress, [0.6, 1], [1, 0.5]);
-
-  // A slight tilt toward a precise pointer; springs back to flat when it leaves.
-  const tiltX = useSpring(useMotionValue(0), TILT_SPRING);
-  const tiltY = useSpring(useMotionValue(0), TILT_SPRING);
-  function onPointerMove(e: React.PointerEvent<HTMLDivElement>) {
-    if (reduceMotion || e.pointerType !== "mouse") return;
-    const box = e.currentTarget.getBoundingClientRect();
-    tiltY.set(((e.clientX - box.left) / box.width - 0.5) * 2 * MAX_TILT);
-    tiltX.set(-((e.clientY - box.top) / box.height - 0.5) * 2 * MAX_TILT);
-  }
-  function onPointerLeave() {
-    tiltX.set(0);
-    tiltY.set(0);
-  }
+  const { scrollYProgress } = useScroll({ target: frameRef, offset: ["start end", "center center"] });
+  const scale = useSpring(useTransform(scrollYProgress, [0, 1], [0.86, 1.04]), SCROLL_SPRING);
+  const rotateX = useSpring(useTransform(scrollYProgress, [0, 1], [12, 0]), SCROLL_SPRING);
+  const y = useSpring(useTransform(scrollYProgress, [0, 1], [32, 0]), SCROLL_SPRING);
 
   return (
-    <section className="relative overflow-x-clip px-4 pt-16 pb-10 sm:px-6 sm:pt-24">
-      {/* Soft lime light behind the window. */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-40 -z-10 mx-auto h-[28rem] max-w-4xl rounded-full bg-primary/15 blur-3xl"
-      />
-
-      <motion.div
-        className="mx-auto flex max-w-3xl flex-col items-center text-center"
-        variants={stagger(0.09)}
-        initial="hidden"
-        animate="show"
-      >
-        <motion.p variants={fadeUp} className="label-sm text-primary-text!">
-          Personal finance you can talk to
-        </motion.p>
-        <motion.h1
-          variants={fadeUp}
-          className="mt-4 text-[2.6rem] leading-[1.05] font-semibold tracking-[-0.035em] text-balance sm:text-6xl"
-        >
+    <section className="px-4 pt-12 pb-16 sm:px-6 sm:pt-20">
+      {/* One centred column: headline, what it does, then the two ways in. */}
+      <div className="mx-auto flex max-w-3xl flex-col items-center text-center">
+        <h1 className="text-[2.9rem] leading-[1] font-semibold tracking-[-0.045em] text-balance sm:text-7xl">
           Know where your money goes.
-        </motion.h1>
-        <motion.p variants={fadeUp} className="mt-5 max-w-xl text-lg text-pretty text-muted-foreground">
-          Type what you spent, or just say it. MoFin writes it down, you check it, and every balance stays exact.
-        </motion.p>
-        <motion.div variants={fadeUp} className="mt-8 flex flex-col items-center gap-3 sm:flex-row">
-          <DemoButton />
-          <Link
-            href="/register"
-            className="inline-flex h-12 items-center rounded-xl border border-border px-6 text-base font-medium transition-colors hover:bg-muted active:scale-[0.97]"
-          >
-            Create an account
-          </Link>
-        </motion.div>
-        <motion.p variants={fadeUp} className="mt-4 text-xs text-muted-foreground">
-          No sign-up for the demo. It&apos;s yours alone, filled with sample data, and deletes itself after 24 hours.
-        </motion.p>
+        </h1>
+
+        <p className="mt-6 max-w-2xl text-lg leading-relaxed text-pretty text-muted-foreground sm:text-xl">
+          Tell MoFin what you spent in a sentence, or ask Claude or ChatGPT to log it for you. Nothing is saved until you
+          approve it, and every balance is added up from the entries behind it.
+        </p>
+
+        <div className="mt-8 flex w-full flex-col justify-center gap-3 sm:w-auto sm:flex-row">
+          {signedIn ? (
+            <Link
+              href="/dashboard"
+              className="inline-flex h-12 items-center justify-center rounded-xl bg-primary px-6 text-base font-medium text-primary-foreground transition-colors outline-none hover:bg-primary/85 focus-visible:ring-3 focus-visible:ring-ring active:scale-[0.97]"
+            >
+              Go to your dashboard
+            </Link>
+          ) : (
+            <>
+              <DemoButton />
+              <Link
+                href="/register"
+                className="inline-flex h-12 items-center justify-center rounded-xl border border-border px-6 text-base font-medium transition-colors hover:bg-muted active:scale-[0.97]"
+              >
+                Create an account
+              </Link>
+            </>
+          )}
+        </div>
+
+        {!signedIn && (
+          <p className="mt-4 text-sm text-muted-foreground">
+            The demo is your own copy, filled with sample data, and it deletes itself after 24 hours.
+          </p>
+        )}
+
         <Suspense>
           <DemoNotice />
         </Suspense>
-      </motion.div>
+      </div>
 
-      <div className="mx-auto mt-14 max-w-5xl [perspective:1600px]" onPointerMove={onPointerMove} onPointerLeave={onPointerLeave}>
+      <div className="mx-auto mt-14 max-w-6xl [perspective:1800px]">
         <motion.div
           ref={frameRef}
-          style={{ scale, opacity, rotateX: tiltX, rotateY: tiltY }}
-          initial={{ opacity: 0, y: 48 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ ...SPRING_SLOW, delay: 0.35 }}
-          onAnimationComplete={() => setPlay(true)}
+          // With reduced motion the window stays put (CSS overrides the scroll-linked transform).
+          className="origin-[50%_0%] motion-reduce:transform-none!"
+          style={{ scale, rotateX, y }}
         >
-          <DeviceFrame>
+          <AppFrame>
             <MockDashboard play={play} />
-          </DeviceFrame>
+          </AppFrame>
         </motion.div>
       </div>
     </section>

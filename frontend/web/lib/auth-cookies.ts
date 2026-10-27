@@ -3,9 +3,17 @@
 // NODE_ENV (false in dev, true in prod).
 import { NextResponse } from "next/server";
 import { bffHeaders } from "@/lib/bff-headers";
+import { SIGNED_IN_COOKIE } from "@/lib/session-hint";
 
 export const ACCESS_COOKIE = "access_token";
 export const REFRESH_COOKIE = "refresh_token";
+/**
+ * Set and cleared with the session: a non-secret hint, readable by client code
+ * (the session cookies are httpOnly). The prerendered landing page uses it to
+ * offer "Open MoFin" instead of "Sign in". It grants nothing: if it is stale,
+ * the dashboard's own auth still sends the visitor to sign in.
+ */
+export { SIGNED_IN_COOKIE };
 
 // ~15 min access, ~30 day refresh.
 export const ACCESS_MAX_AGE = 60 * 15;
@@ -48,12 +56,14 @@ export function setAuthCookies(
 ): void {
   res.cookies.set(ACCESS_COOKIE, tokens.accessToken, baseCookieOptions(ACCESS_MAX_AGE));
   res.cookies.set(REFRESH_COOKIE, tokens.refreshToken, baseCookieOptions(REFRESH_MAX_AGE));
+  res.cookies.set(SIGNED_IN_COOKIE, "1", { ...baseCookieOptions(REFRESH_MAX_AGE), httpOnly: false });
 }
 
 /** Clear both auth cookies (logout / failed refresh). */
 export function clearAuthCookies(res: NextResponse): void {
   res.cookies.set(ACCESS_COOKIE, "", { ...baseCookieOptions(0), maxAge: 0 });
   res.cookies.set(REFRESH_COOKIE, "", { ...baseCookieOptions(0), maxAge: 0 });
+  res.cookies.set(SIGNED_IN_COOKIE, "", { ...baseCookieOptions(0), httpOnly: false, maxAge: 0 });
 }
 
 export interface BackendTokens {

@@ -8,7 +8,7 @@ vi.mock("next/headers", () => ({
 }));
 
 import { POST } from "./route";
-import { ACCESS_COOKIE, BACKEND_URL, REFRESH_COOKIE } from "@/lib/auth-cookies";
+import { ACCESS_COOKIE, BACKEND_URL, REFRESH_COOKIE, SIGNED_IN_COOKIE } from "@/lib/auth-cookies";
 
 const fetchMock = vi.fn<typeof fetch>();
 
@@ -41,7 +41,7 @@ describe("POST /api/auth/sessions/revoke-all", () => {
     expect(String(input)).toBe(`${BACKEND_URL}/auth/sessions/revoke-all`);
     expect(new Headers(init?.headers).get("authorization")).toBe("Bearer access-1");
     expect(res.headers.getSetCookie().every((c) => /Max-Age=0/i.test(c))).toBe(true);
-    expect(setCookieNames(res).sort()).toEqual([ACCESS_COOKIE, REFRESH_COOKIE].sort());
+    expect(setCookieNames(res).sort()).toEqual([ACCESS_COOKIE, REFRESH_COOKIE, SIGNED_IN_COOKIE].sort());
   });
 
   it("keeps the cookies when the backend fails, so the user can try again", async () => {

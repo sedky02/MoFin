@@ -8,7 +8,7 @@ vi.mock("next/headers", () => ({
 }));
 
 import { GET } from "./route";
-import { ACCESS_COOKIE, BACKEND_URL, REFRESH_COOKIE } from "@/lib/auth-cookies";
+import { ACCESS_COOKIE, BACKEND_URL, REFRESH_COOKIE, SIGNED_IN_COOKIE } from "@/lib/auth-cookies";
 import { BFF_SECRET_HEADER, CLIENT_IP_HEADER } from "@/lib/bff-headers";
 
 const fetchMock = vi.fn<typeof fetch>();
@@ -90,7 +90,7 @@ describe("backend proxy refresh handling", () => {
     expect(res.status).toBe(401);
     expect(await res.json()).toMatchObject({ message: "Session expired." });
     const cleared = res.headers.getSetCookie();
-    expect(cleared.map((c) => c.split("=")[0]).sort()).toEqual([ACCESS_COOKIE, REFRESH_COOKIE].sort());
+    expect(cleared.map((c) => c.split("=")[0]).sort()).toEqual([ACCESS_COOKIE, REFRESH_COOKIE, SIGNED_IN_COOKIE].sort());
     expect(cleared.every((c) => /Max-Age=0/i.test(c))).toBe(true);
   });
 

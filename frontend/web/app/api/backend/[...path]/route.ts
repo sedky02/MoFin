@@ -4,11 +4,10 @@ import {
   ACCESS_COOKIE,
   REFRESH_COOKIE,
   BACKEND_URL,
-  ACCESS_MAX_AGE,
-  REFRESH_MAX_AGE,
+  clearAuthCookies,
   refreshUnavailableResponse,
   requestRefresh,
-  secureCookies,
+  setAuthCookies,
   type BackendTokens,
   type RefreshOutcome,
 } from "@/lib/auth-cookies";
@@ -164,21 +163,7 @@ async function passthrough(upstream: Response, requestId: string): Promise<NextR
 }
 
 function applyTokenCookies(res: NextResponse, tokens: BackendTokens) {
-  const secure = secureCookies();
-  res.cookies.set(ACCESS_COOKIE, tokens.accessToken, {
-    httpOnly: true,
-    secure,
-    sameSite: "lax",
-    path: "/",
-    maxAge: ACCESS_MAX_AGE,
-  });
-  res.cookies.set(REFRESH_COOKIE, tokens.refreshToken, {
-    httpOnly: true,
-    secure,
-    sameSite: "lax",
-    path: "/",
-    maxAge: REFRESH_MAX_AGE,
-  });
+  setAuthCookies(res, tokens);
 }
 
 function clearedUnauthorized(): NextResponse {
@@ -186,9 +171,7 @@ function clearedUnauthorized(): NextResponse {
     { statusCode: 401, message: "Session expired." },
     { status: 401 },
   );
-  const secure = secureCookies();
-  res.cookies.set(ACCESS_COOKIE, "", { httpOnly: true, secure, sameSite: "lax", path: "/", maxAge: 0 });
-  res.cookies.set(REFRESH_COOKIE, "", { httpOnly: true, secure, sameSite: "lax", path: "/", maxAge: 0 });
+  clearAuthCookies(res);
   return res;
 }
 

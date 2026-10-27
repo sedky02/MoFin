@@ -8,7 +8,7 @@ vi.mock("next/headers", () => ({
 }));
 
 import { POST } from "./route";
-import { ACCESS_COOKIE, BACKEND_URL, REFRESH_COOKIE } from "@/lib/auth-cookies";
+import { ACCESS_COOKIE, BACKEND_URL, REFRESH_COOKIE, SIGNED_IN_COOKIE } from "@/lib/auth-cookies";
 
 const fetchMock = vi.fn<typeof fetch>();
 const CHANGE_URL = `${BACKEND_URL}/auth/password/change`;
@@ -112,7 +112,7 @@ describe("POST /api/auth/password/change", () => {
     const res = await call();
 
     expect(res.status).toBe(401);
-    expect(setCookies(res)).toEqual({ [ACCESS_COOKIE]: "", [REFRESH_COOKIE]: "" });
+    expect(setCookies(res)).toEqual({ [ACCESS_COOKIE]: "", [REFRESH_COOKIE]: "", [SIGNED_IN_COOKIE]: "" });
   });
 
   it("refuses a body without both passwords before calling the backend", async () => {

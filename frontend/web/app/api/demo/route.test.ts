@@ -8,7 +8,7 @@ vi.mock("next/headers", () => ({
 }));
 
 import { POST } from "./route";
-import { ACCESS_COOKIE, BACKEND_URL, REFRESH_COOKIE } from "@/lib/auth-cookies";
+import { ACCESS_COOKIE, BACKEND_URL, REFRESH_COOKIE, SIGNED_IN_COOKIE } from "@/lib/auth-cookies";
 
 const fetchMock = vi.fn<typeof fetch>();
 
@@ -44,7 +44,7 @@ describe("POST /api/demo", () => {
 
     expect(res.status).toBe(303);
     expect(res.headers.get("location")).toBe("http://web.test/dashboard");
-    expect(setCookieNames(res).sort()).toEqual([ACCESS_COOKIE, REFRESH_COOKIE].sort());
+    expect(setCookieNames(res).sort()).toEqual([ACCESS_COOKIE, REFRESH_COOKIE, SIGNED_IN_COOKIE].sort());
     const [input, init] = fetchMock.mock.calls[0];
     expect(String(input)).toBe(`${BACKEND_URL}/auth/demo`);
     expect(JSON.parse(String(init?.body))).toEqual({});

@@ -1,6 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { NextResponse } from "next/server";
-import { ACCESS_COOKIE, REFRESH_COOKIE, secureCookies, setAuthCookies } from "@/lib/auth-cookies";
+import {
+  ACCESS_COOKIE,
+  REFRESH_COOKIE,
+  SIGNED_IN_COOKIE,
+  clearAuthCookies,
+  secureCookies,
+  setAuthCookies,
+} from "@/lib/auth-cookies";
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -51,5 +58,23 @@ describe("setAuthCookies", () => {
     setAuthCookies(res, { accessToken: "a", refreshToken: "r" });
     expect(res.cookies.get(ACCESS_COOKIE)?.secure).toBe(true);
     expect(res.cookies.get(REFRESH_COOKIE)?.secure).toBe(true);
+  });
+});
+
+describe("signed-in hint", () => {
+  it("is set with the session, readable by page scripts, and carries no token", () => {
+    const res = NextResponse.json({});
+    setAuthCookies(res, { accessToken: "a", refreshToken: "r" });
+    const hint = res.cookies.get(SIGNED_IN_COOKIE);
+    expect(hint?.value).toBe("1");
+    expect(hint?.httpOnly).toBe(false);
+    expect(res.cookies.get(ACCESS_COOKIE)?.httpOnly).toBe(true);
+    expect(res.cookies.get(REFRESH_COOKIE)?.httpOnly).toBe(true);
+  });
+
+  it("is cleared with the session", () => {
+    const res = NextResponse.json({});
+    clearAuthCookies(res);
+    expect(res.cookies.get(SIGNED_IN_COOKIE)).toMatchObject({ value: "", maxAge: 0 });
   });
 });

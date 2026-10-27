@@ -2,183 +2,291 @@
 
 import * as React from "react";
 import { AnimatePresence, motion, useInView, useReducedMotion } from "motion/react";
+// Check marks are the app's own approve/done marks, as in the real UI. avoid-ai-design-ignore: I3
 import { Check, RotateCcw } from "lucide-react";
+import { LogoMark } from "@/components/brand/logo";
+import { AnthropicLogo } from "@/components/common/ai-logos";
+import { MoneyAmount } from "@/components/common/money-amount";
+import { cn } from "@/lib/utils";
+import { ChatWindow, Composer, Reserve, Thinking, ToolChip, UserBubble } from "./chat-parts";
 import { SPRING } from "./motion";
+import { useSequence, useTypewriter } from "./use-sequence";
 
-const SENTENCE = "Spent 12.50 on lunch at Panera";
-const TYPE_MS = 45;
+const QUESTION = "I just spent 12.50 on lunch at Panera, can you add it to MoFin?";
+const REPLY = "Done. I've added it to MoFin as a draft: $12.50, Dining out, from Everyday checking. Approve it there and it's saved.";
+const TOOL = "create_draft_transaction";
 
-type Step = "idle" | "typing" | "draft" | "saved";
+// Stage reached after each delay (ms):
+// 1 typing, 2 sent, 3 thinking, 4 tool call, 5 reply, 6 draft in MoFin, 7 approved, 8 in the ledger
+const STAGES = [300, 1900, 500, 1200, 900, 2700, 1500, 800] as const;
+const TYPING = 1;
+const SENT = 2;
+const THINKING = 3;
+const TOOL_CALL = 4;
+const REPLIED = 5;
+const DRAFT = 6;
+const APPROVED = 7;
+const SAVED = 8;
 
-const LEDGER = [
-  { name: "Shake Shack", meta: "Dining out · Yesterday", amount: "−$14.61" },
-  { name: "Salary", meta: "Income · Oct 1", amount: "+$3,200.00", income: true },
+const STEPS = [
+  { title: "You ask", text: "Tell Claude or ChatGPT what you spent, or type it in MoFin. There's no form to fill in." },
+  { title: "You check the draft", text: "It arrives in MoFin as a draft. Fix anything before it counts." },
+  { title: "It's saved", text: "Approve it and it goes into your ledger, and every balance updates." },
 ];
 
+// What the animation shows, for screen readers (the animation itself is hidden from them).
+const DESCRIPTION =
+  "In this example, someone asks Claude to add $12.50 for lunch at Panera. Claude uses MoFin's create_draft_transaction tool, the entry waits in MoFin as a draft, and once it's approved it goes into the ledger and the Everyday checking balance goes from $4,230.90 to $4,218.40.";
+
 /**
- * The draft flow in miniature: a sentence is typed, MoFin turns it into a
- * draft, and only after "Approve" does it reach the ledger. Plays once when
- * scrolled into view; with reduced motion it shows the finished state.
+ * How an entry gets in, as it really happens: you ask Claude, Claude
+ * calls MoFin's create_draft_transaction tool, and the draft waits in MoFin
+ * until you approve it. The steps on the left follow along. Every area that
+ * changes keeps the size of its largest state, so nothing on the page moves.
  */
-export function DraftFlow() {
+export function HowItWorks() {
   const ref = React.useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, amount: 0.4 });
-  const reduceMotion = useReducedMotion();
-  const [step, setStep] = React.useState<Step>("idle");
-  const [typed, setTyped] = React.useState(0);
-  const [run, setRun] = React.useState(0);
-
-  React.useEffect(() => {
-    // With reduced motion the finished state is shown directly (see below).
-    if (!inView || reduceMotion) return;
-    let chars = 0;
-    const timers: ReturnType<typeof setTimeout>[] = [];
-    const typer = setInterval(() => {
-      chars += 1;
-      setTyped(chars);
-      if (chars === 1) setStep("typing");
-      if (chars >= SENTENCE.length) {
-        clearInterval(typer);
-        timers.push(setTimeout(() => setStep("draft"), 450));
-        timers.push(setTimeout(() => setStep("saved"), 2200));
-      }
-    }, TYPE_MS);
-    return () => {
-      clearInterval(typer);
-      timers.forEach(clearTimeout);
-    };
-  }, [inView, reduceMotion, run]);
-
-  const finished = Boolean(reduceMotion && inView);
-  const current: Step = finished ? "saved" : step;
-  const shownChars = finished ? SENTENCE.length : typed;
-  const showDraft = current === "draft" || current === "saved";
-  const saved = current === "saved";
-
-  function replay() {
-    setTyped(0);
-    setStep("typing");
-    setRun((n) => n + 1);
-  }
+  const inView = useInView(ref, { once: true, amount: 0.35 });
+  const reduceMotion = Boolean(useReducedMotion());
+  const [stage, restart] = useSequence(STAGES, inView, reduceMotion);
+  const typed = useTypewriter(QUESTION, stage >= TYPING, reduceMotion, 26);
+  const reply = useTypewriter(REPLY, stage >= REPLIED, reduceMotion, 14);
+  const activeStep = stage >= APPROVED ? 2 : stage >= DRAFT ? 1 : stage >= TYPING ? 0 : -1;
+  const canReplay = stage === SAVED && !reduceMotion;
 
   return (
-    <div ref={ref} className="relative mx-auto w-full max-w-md">
-      <div aria-hidden className="space-y-3">
-      {/* What you said */}
-      <div className="ml-auto w-fit max-w-[85%] rounded-2xl rounded-br-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground">
-        {SENTENCE.slice(0, shownChars) || " "}
-        {current === "typing" && <span className="ml-0.5 inline-block h-4 w-px translate-y-0.5 animate-pulse bg-current" />}
-      </div>
-
-      {/* What MoFin understood */}
-      <AnimatePresence>
-        {showDraft && (
-          <motion.div
-            key="draft"
-            initial={{ opacity: 0, y: 12, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0 }}
-            transition={SPRING}
-            className="rounded-card border border-border bg-card p-4 shadow-surface"
-          >
-            <div className="flex items-center justify-between">
-              <span className="label-sm">Draft · check it</span>
-              <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">from your words</span>
-            </div>
-            <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-              <dt className="text-muted-foreground">Amount</dt>
-              <dd className="tabular text-right font-semibold">$12.50</dd>
-              <dt className="text-muted-foreground">Category</dt>
-              <dd className="text-right">Dining out</dd>
-              <dt className="text-muted-foreground">Account</dt>
-              <dd className="text-right">Everyday checking</dd>
-            </dl>
-            <div className="mt-4 flex justify-end gap-2">
-              <span className="rounded-lg px-3 py-1.5 text-sm text-muted-foreground">Edit</span>
-              <motion.span
-                className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground"
-                animate={saved ? { scale: [1, 0.95, 1] } : undefined}
-                transition={{ duration: 0.25 }}
+    <div className="mx-auto grid max-w-6xl items-start gap-12 lg:grid-cols-[1fr_1.15fr] lg:gap-16">
+      <div className="lg:sticky lg:top-28">
+        <h2 className="text-3xl font-semibold tracking-[-0.035em] text-balance sm:text-5xl">
+          From a sentence to your ledger
+        </h2>
+        <p className="mt-4 max-w-md text-muted-foreground">
+          Claude writes the entry for you. You decide whether it&apos;s saved.
+        </p>
+        <p className="sr-only">{DESCRIPTION}</p>
+        <ol className="mt-8 space-y-3">
+          {STEPS.map((step, i) => {
+            const active = i === activeStep;
+            const done = i < activeStep;
+            return (
+              <li
+                key={step.title}
+                aria-current={active ? "step" : undefined}
+                className={cn(
+                  "flex gap-4 rounded-2xl border p-4 transition-colors duration-300",
+                  active ? "border-primary/40 bg-primary/8" : "border-transparent",
+                )}
               >
-                <Check className="size-3.5" />
-                {saved ? "Approved" : "Approve"}
-              </motion.span>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* The ledger */}
-      <div className="rounded-card border border-border bg-card p-2 shadow-surface">
-        <ul>
-          <AnimatePresence initial={false}>
-            {saved && (
-              <motion.li
-                key="new"
-                layout
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                transition={SPRING}
-                className="overflow-hidden"
-              >
-                <Row name="Panera Bread" meta="Dining out · Today" amount="−$12.50" fresh />
-              </motion.li>
-            )}
-          </AnimatePresence>
-          {LEDGER.map((row) => (
-            <motion.li key={row.name} layout transition={SPRING}>
-              <Row {...row} />
-            </motion.li>
-          ))}
-        </ul>
-      </div>
-      </div>
-
-      {saved && !reduceMotion && (
+                <span
+                  className={cn(
+                    "tabular flex size-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold transition-colors duration-300",
+                    active || done ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground",
+                  )}
+                >
+                  {done ? <Check className="size-4" aria-hidden /> : i + 1}
+                </span>
+                <div>
+                  <h3 className="font-semibold">{step.title}</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">{step.text}</p>
+                </div>
+              </li>
+            );
+          })}
+        </ol>
+        {/* Always takes its space, so it appearing doesn't move anything. */}
         <button
           type="button"
-          onClick={replay}
-          className="mx-auto mt-3 flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground active:scale-[0.97]"
+          onClick={restart}
+          disabled={!canReplay}
+          aria-hidden={!canReplay}
+          tabIndex={canReplay ? 0 : -1}
+          className={cn(
+            "mt-4 inline-flex min-h-11 items-center gap-1.5 rounded-lg px-3 text-sm text-muted-foreground transition-[color,opacity] hover:text-foreground active:scale-[0.97]",
+            canReplay ? "opacity-100" : "pointer-events-none opacity-0",
+          )}
         >
           <RotateCcw className="size-3.5" aria-hidden />
           Play again
         </button>
-      )}
+      </div>
+
+      {/* Starts when the conversation itself is on screen (below the steps on phones). */}
+      <div ref={ref} aria-hidden>
+        <ChatWindow
+          name="Claude"
+          Logo={AnthropicLogo}
+          badge="bg-[#d97757] text-white"
+          composer={
+            <Composer
+              text={stage === TYPING ? typed : ""}
+              full={QUESTION}
+              typing={stage === TYPING}
+              placeholder="Reply to Claude…"
+            />
+          }
+        >
+          <Reserve reserve={<Messages question reply={REPLY} slot="tool" toolDone />}>
+            <Messages
+              question={stage >= SENT}
+              slot={stage === THINKING ? "think" : stage >= TOOL_CALL ? "tool" : "none"}
+              toolDone={stage >= REPLIED}
+              reply={stage >= REPLIED ? reply : ""}
+            />
+          </Reserve>
+        </ChatWindow>
+
+        {/* The hand-off from Claude to MoFin */}
+        <div className="flex h-12 items-center justify-center">
+          <motion.div
+            className="h-full w-px origin-top bg-gradient-to-b from-border to-primary"
+            initial={{ scaleY: 0 }}
+            animate={stage >= DRAFT ? { scaleY: 1 } : { scaleY: 0 }}
+            transition={SPRING}
+          />
+        </div>
+
+        {/* MoFin */}
+        <div className="overflow-hidden rounded-hero border border-border bg-card shadow-hero">
+          <div className="flex items-center gap-2.5 border-b border-border px-5 py-3">
+            <LogoMark className="size-7" />
+            <span className="text-sm font-semibold">MoFin</span>
+            <span className="ml-auto text-xs text-muted-foreground">Drafts</span>
+          </div>
+
+          <div className="space-y-3 p-5">
+            {/* Placeholder, draft and saved row all live in the draft card's space. */}
+            <Reserve reserve={<DraftCard approved={false} />}>
+              <AnimatePresence initial={false}>
+                {stage < DRAFT && (
+                  <motion.p
+                    key="waiting"
+                    className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground"
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    Waiting for something to check…
+                  </motion.p>
+                )}
+                {stage >= DRAFT && stage < SAVED && (
+                  <motion.div
+                    key="draft"
+                    className="absolute inset-0"
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.98 }}
+                    transition={SPRING}
+                  >
+                    <DraftCard approved={stage >= APPROVED} />
+                  </motion.div>
+                )}
+                {stage >= SAVED && (
+                  <motion.div
+                    key="saved"
+                    className="absolute inset-0 flex items-center"
+                    // The saved row arriving is the demo's state change, not a section reveal. avoid-ai-design-ignore: M1
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={SPRING}
+                  >
+                    <SavedRow />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </Reserve>
+
+            <div className="flex items-center justify-between rounded-2xl border border-border px-4 py-3">
+              <span className="text-sm text-muted-foreground">Everyday checking</span>
+              <span className="text-sm font-semibold">
+                <MoneyAmount amount={stage >= SAVED ? "4218.40" : "4230.90"} currency="USD" animate />
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
 
-function Row({
-  name,
-  meta,
-  amount,
-  income,
-  fresh,
+function Messages({
+  question,
+  slot,
+  toolDone,
+  reply,
 }: {
-  name: string;
-  meta: string;
-  amount: string;
-  income?: boolean;
-  fresh?: boolean;
+  question: boolean;
+  slot: "none" | "think" | "tool";
+  toolDone: boolean;
+  reply: string;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-xl px-3 py-2.5">
-      <span
-        className={
-          fresh
-            ? "flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground"
-            : "flex size-8 items-center justify-center rounded-full bg-muted text-xs text-muted-foreground"
-        }
-      >
-        {fresh ? <Check className="size-4" /> : name[0]}
+    <div className="space-y-4">
+      <div className={cn("transition-opacity duration-300", question ? "opacity-100" : "opacity-0")}>
+        <UserBubble text={QUESTION} />
+      </div>
+      {/* Thinking and the tool call share one row. */}
+      <div className="h-9">
+        {slot === "think" && <Thinking dot="bg-[#d97757]" />}
+        {slot === "tool" && (
+          // The tool call appearing is part of the conversation. avoid-ai-design-ignore: M1
+          <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={SPRING}>
+            <ToolChip verb="Used MoFin" tool={TOOL} done={toolDone} />
+          </motion.div>
+        )}
+      </div>
+      <p className="max-w-[92%] text-sm leading-relaxed">{reply}</p>
+    </div>
+  );
+}
+
+function DraftCard({ approved }: { approved: boolean }) {
+  return (
+    <div className="rounded-2xl border border-border bg-background/60 p-4">
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium">Panera Bread</span>
+        <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">from Claude</span>
+      </div>
+      <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
+        {[
+          ["Amount", "$12.50"],
+          ["Category", "Dining out"],
+          ["Account", "Checking"],
+        ].map(([label, value]) => (
+          <div key={label} className="rounded-lg bg-card px-2.5 py-2">
+            <p className="text-muted-foreground">{label}</p>
+            <p className="tabular mt-0.5 truncate font-medium">{value}</p>
+          </div>
+        ))}
+      </div>
+      <div className="mt-3 flex justify-end gap-2">
+        <span className="rounded-lg px-3 py-1.5 text-sm text-muted-foreground">Edit</span>
+        <motion.span
+          className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-1.5 text-sm font-semibold text-primary-foreground"
+          animate={approved ? { scale: [1, 0.94, 1] } : undefined}
+          transition={{ duration: 0.28 }}
+        >
+          <Check className="size-3.5" />
+          {/* Both labels take the wider one's width, so the button doesn't resize. */}
+          <span className="grid">
+            <span className={cn("[grid-area:1/1]", approved && "invisible")}>Approve</span>
+            <span className={cn("[grid-area:1/1]", !approved && "invisible")}>Approved</span>
+          </span>
+        </motion.span>
+      </div>
+    </div>
+  );
+}
+
+function SavedRow() {
+  return (
+    <div className="flex w-full items-center gap-3 rounded-2xl bg-primary/10 px-4 py-3">
+      <span className="flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
+        <Check className="size-4" />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium">{name}</p>
-        <p className="text-xs text-muted-foreground">{meta}</p>
+        <p className="text-sm font-medium">Panera Bread</p>
+        <p className="text-xs text-muted-foreground">Dining out, today</p>
       </div>
-      <span className={income ? "tabular text-sm font-semibold text-success" : "tabular text-sm font-semibold"}>
-        {amount}
-      </span>
+      <span className="tabular text-sm font-semibold">−$12.50</span>
     </div>
   );
 }
