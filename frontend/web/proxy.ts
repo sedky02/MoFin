@@ -16,6 +16,11 @@ export default function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // The landing page is for visitors; signed-in users go straight to their dashboard.
+  if (pathname === "/") {
+    return refresh ? NextResponse.redirect(new URL("/dashboard", request.url)) : NextResponse.next();
+  }
+
   // Not logged in and trying to reach an app route → bounce to /login.
   if (!refresh && !isAuthRoute) {
     const login = new URL(loginUrlWithNext(pathname + request.nextUrl.search), request.url);
