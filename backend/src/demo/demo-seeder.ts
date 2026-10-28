@@ -11,8 +11,8 @@ import {
 import {
   computeNextOccurrence,
   isPastEndDate,
-  TransactionsService,
-} from '../modules/transactions/transactions.service';
+} from '../modules/transactions/recurrence';
+import { TransactionsService } from '../modules/transactions/transactions.service';
 import { UsersService } from '../modules/users/users.service';
 import {
   DEMO_DISPLAY_NAME,

@@ -14,6 +14,7 @@ import { LedgerService } from '../src/modules/ledger/ledger.service';
 import { SearchController } from '../src/modules/search/search.controller';
 import { SearchService } from '../src/modules/search/search.service';
 import { TransactionsController } from '../src/modules/transactions/transactions.controller';
+import { RecurringSeriesService } from '../src/modules/transactions/recurring-series.service';
 import { TransactionsService } from '../src/modules/transactions/transactions.service';
 
 /**
@@ -234,6 +235,7 @@ describe('Transactions API (e2e)', () => {
       controllers: [TransactionsController, SearchController],
       providers: [
         TransactionsService,
+        RecurringSeriesService,
         SearchService,
         { provide: PrismaService, useValue: prismaStub },
         { provide: LedgerService, useValue: {} },

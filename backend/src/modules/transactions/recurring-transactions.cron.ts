@@ -2,11 +2,9 @@ import { HttpException, Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { Prisma, RecurringStatus } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
-import {
-  computeNextOccurrence,
-  isPastEndDate,
-  TransactionsService,
-} from './transactions.service';
+import { computeNextOccurrence, isPastEndDate } from './recurrence';
+import { RecurringSeriesService } from './recurring-series.service';
+import { TransactionsService } from './transactions.service';
 
 /**
  * Fixed key for a Postgres transaction-level advisory lock, arbitrary but
@@ -43,6 +41,7 @@ export class RecurringTransactionsCron {
   constructor(
     private readonly prisma: PrismaService,
     private readonly transactionsService: TransactionsService,
+    private readonly seriesService: RecurringSeriesService,
   ) {}
 
   // UTC, like the occurrence dates the cron compares against.
@@ -90,7 +89,7 @@ export class RecurringTransactionsCron {
           continue;
         }
 
-        const problem = await this.transactionsService.findSeriesProblem(
+        const problem = await this.seriesService.findSeriesProblem(
           root.userId,
           root,
         );

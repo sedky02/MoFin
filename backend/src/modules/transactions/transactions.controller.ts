@@ -23,6 +23,7 @@ import {
   UpdateTransactionDto,
   updateTransactionSchema,
 } from './dto/transactions.dto';
+import { RecurringSeriesService } from './recurring-series.service';
 import { TransactionsService } from './transactions.service';
 
 @ApiTags('transactions')
@@ -30,7 +31,10 @@ import { TransactionsService } from './transactions.service';
 @UseGuards(JwtAuthGuard)
 @Controller('transactions')
 export class TransactionsController {
-  constructor(private readonly transactionsService: TransactionsService) {}
+  constructor(
+    private readonly transactionsService: TransactionsService,
+    private readonly seriesService: RecurringSeriesService,
+  ) {}
 
   @Post()
   @ApiZodBody(createTransactionSchema)
@@ -89,7 +93,7 @@ export class TransactionsController {
     @Body(new ZodValidationPipe(updateRecurringTransactionSchema))
     dto: UpdateRecurringTransactionDto,
   ) {
-    return this.transactionsService.updateRecurring(user.id, id, {
+    return this.seriesService.updateRecurring(user.id, id, {
       ...dto,
       recurringEndDate:
         dto.recurringEndDate === null
@@ -105,7 +109,7 @@ export class TransactionsController {
     @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
   ) {
-    return this.transactionsService.pauseRecurring(user.id, id);
+    return this.seriesService.pauseRecurring(user.id, id);
   }
 
   @Post(':id/recurring/resume')
@@ -113,7 +117,7 @@ export class TransactionsController {
     @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
   ) {
-    return this.transactionsService.resumeRecurring(user.id, id);
+    return this.seriesService.resumeRecurring(user.id, id);
   }
 
   @Post(':id/recurring/cancel')
@@ -121,6 +125,6 @@ export class TransactionsController {
     @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
   ) {
-    return this.transactionsService.cancelRecurring(user.id, id);
+    return this.seriesService.cancelRecurring(user.id, id);
   }
 }

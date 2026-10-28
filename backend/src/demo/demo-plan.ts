@@ -6,7 +6,7 @@ import {
   RecurringInterval,
   TransactionType,
 } from '@prisma/client';
-import { computeNextOccurrence } from '../modules/transactions/transactions.service';
+import { computeNextOccurrence } from '../modules/transactions/recurrence';
 import { CreateTransactionCommand } from '../modules/transactions/dto/transactions.dto';
 
 /**

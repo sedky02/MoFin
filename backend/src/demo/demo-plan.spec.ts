@@ -8,10 +8,8 @@ import {
 import { CategoriesService } from '../modules/categories/categories.service';
 import { DEFAULT_CATEGORIES } from '../modules/categories/default-categories';
 import { LedgerService } from '../modules/ledger/ledger.service';
-import {
-  computeNextOccurrence,
-  TransactionsService,
-} from '../modules/transactions/transactions.service';
+import { computeNextOccurrence } from '../modules/transactions/recurrence';
+import { TransactionsService } from '../modules/transactions/transactions.service';
 import {
   allPostings,
   buildDemoPlan,
@@ -120,7 +118,6 @@ function makeWriter(plan: DemoPlan) {
     prisma as never,
     ledgerService,
     categoriesService,
-    accountsService as never,
     { emit: jest.fn() } as never,
   );
 

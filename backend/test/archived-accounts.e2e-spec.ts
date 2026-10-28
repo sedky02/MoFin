@@ -14,6 +14,7 @@ import { CategoriesService } from '../src/modules/categories/categories.service'
 import { LedgerController } from '../src/modules/ledger/ledger.controller';
 import { LedgerService } from '../src/modules/ledger/ledger.service';
 import { TransactionsController } from '../src/modules/transactions/transactions.controller';
+import { RecurringSeriesService } from '../src/modules/transactions/recurring-series.service';
 import { TransactionsService } from '../src/modules/transactions/transactions.service';
 
 /**
@@ -152,6 +153,7 @@ describe('Archived accounts (e2e)', () => {
         LedgerService,
         AccountsService,
         TransactionsService,
+        RecurringSeriesService,
         { provide: PrismaService, useValue: prismaStub },
         {
           provide: CategoriesService,

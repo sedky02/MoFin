@@ -44,14 +44,17 @@ describe('RecurringTransactionsCron', () => {
       create: jest
         .fn()
         .mockResolvedValue({ id: 'occ-1', occurredAt: root.nextOccurrenceAt }),
-      findSeriesProblem: jest.fn().mockResolvedValue(null),
       announceCreated: jest.fn(),
+    };
+    const seriesService = {
+      findSeriesProblem: jest.fn().mockResolvedValue(null),
     };
     const cron = new RecurringTransactionsCron(
       prisma as never,
       transactionsService as never,
+      seriesService as never,
     );
-    return { cron, prisma, transactionsService };
+    return { cron, prisma, transactionsService, seriesService };
   }
 
   afterEach(() => jest.clearAllMocks());
@@ -185,8 +188,8 @@ describe('RecurringTransactionsCron', () => {
     });
 
     it('is paused with the reason instead of failing every night, posting nothing', async () => {
-      const { cron, prisma, transactionsService } = makeCron();
-      transactionsService.findSeriesProblem.mockResolvedValue(
+      const { cron, prisma, transactionsService, seriesService } = makeCron();
+      seriesService.findSeriesProblem.mockResolvedValue(
         'Account Savings is archived',
       );
 
@@ -237,9 +240,9 @@ describe('RecurringTransactionsCron', () => {
 
   it('moves on to the next series after pausing one', async () => {
     const other = { ...root, id: 'root-2' };
-    const { cron, prisma, transactionsService } = makeCron();
+    const { cron, prisma, transactionsService, seriesService } = makeCron();
     prisma.transaction.findMany.mockResolvedValue([root, other]);
-    transactionsService.findSeriesProblem
+    seriesService.findSeriesProblem
       .mockResolvedValueOnce('Account Savings is archived')
       .mockResolvedValueOnce(null);
 
