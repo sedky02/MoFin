@@ -70,12 +70,13 @@ describe('DraftTransactionsService state machine', () => {
         overrides.createImpl ??
         jest.fn(async () => overrides.createResult ?? { id: 'tx1' }),
     };
+    const events = { emit: jest.fn() };
     const service = new DraftTransactionsService(
       prisma as never,
       transactionsService as never,
-      { emit: jest.fn() } as never,
+      events as never,
     );
-    return { service, prisma, transactionsService, db, paginate };
+    return { service, prisma, transactionsService, db, paginate, events };
   }
 
   it('throws NotFound when the draft does not exist', async () => {
@@ -128,6 +129,19 @@ describe('DraftTransactionsService state machine', () => {
         }),
       }),
     );
+  });
+
+  it('emits TransactionCreated after approval, so cached summaries are cleared', async () => {
+    const occurredAt = new Date('2026-10-01T00:00:00Z');
+    const { service, events } = makeService({
+      createResult: { id: 'tx1', occurredAt },
+    });
+    await service.approve('u1', 'd1');
+    expect(events.emit).toHaveBeenCalledWith('transaction.created', {
+      transactionId: 'tx1',
+      userId: 'u1',
+      occurredAt,
+    });
   });
 
   it('approves atomically: transaction creation and draft-status update happen inside the same $transaction', async () => {
