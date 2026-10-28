@@ -663,6 +663,7 @@ describe('TransactionsService edit, delete and restore', () => {
         'u1',
         TransactionType.EXPENSE,
         'c2',
+        expect.anything(),
       );
     });
 

@@ -268,24 +268,29 @@ export class TransactionsService {
     }
 
     this.validateCommand(command);
-    await this.categoriesService.assertAssignable(
-      userId,
-      command.type,
-      command.categoryId,
-    );
-    for (const item of command.items ?? []) {
+
+    const updated = await this.prisma.$transaction(async (db) => {
+      // Checked inside the write's own transaction, as create() does, so the
+      // gap between the check and the write is one transaction, not a request.
       await this.categoriesService.assertAssignable(
         userId,
         command.type,
-        item.categoryId,
+        command.categoryId,
+        db,
       );
-    }
-    const ledgerEntries = await this.ledgerService.buildEntriesForCommand(
-      userId,
-      command,
-    );
-
-    const updated = await this.prisma.$transaction(async (db) => {
+      for (const item of command.items ?? []) {
+        await this.categoriesService.assertAssignable(
+          userId,
+          command.type,
+          item.categoryId,
+          db,
+        );
+      }
+      const ledgerEntries = await this.ledgerService.buildEntriesForCommand(
+        userId,
+        command,
+        db,
+      );
       // Conditional on deletedAt so a delete racing this edit wins cleanly instead of being undone.
       const claimed = await db.transaction.updateMany({
         where: { id, userId, deletedAt: null },
