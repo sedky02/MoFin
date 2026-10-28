@@ -196,14 +196,16 @@ model Transaction {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Guarantees a crash between generating an occurrence and advancing the
+  // cursor cannot double-create the same occurrence on retry (SEC-XX).
+  @@unique([parentTransactionId, occurredAt])
   @@index([userId, occurredAt])
   @@index([userId, deletedAt])
   @@index([userId, categoryId])
   @@index([isRecurring, recurringStatus, nextOccurrenceAt])
   @@index([parentTransactionId])
-  // Guarantees a crash between generating an occurrence and advancing the
-  // cursor cannot double-create the same occurrence on retry (SEC-XX).
-  @@unique([parentTransactionId, occurredAt])
+  @@index([recurringFromAccountId])
+  @@index([recurringToAccountId])
 }
 
 model TransactionItem {
@@ -224,6 +226,7 @@ model TransactionItem {
 
   @@index([userId, accountId, createdAt])
   @@index([transactionId])
+  @@index([categoryId])
 }
 
 model DraftTransaction {
@@ -254,6 +257,7 @@ model AnalyticsCache {
   expiresAt  DateTime
 
   @@unique([userId, cacheKey])
+  @@index([expiresAt])
 }
 
 model Budget {
@@ -268,6 +272,9 @@ model Budget {
   period     BudgetPeriod @default(MONTHLY)
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt
+
+  @@index([userId])
+  @@index([categoryId])
 }
 
 model Goal {
@@ -289,6 +296,7 @@ model Goal {
   instances      GoalInstance[]
 
   @@index([userId, archivedAt])
+  @@index([accountId])
 }
 
 model GoalInstance {
@@ -311,25 +319,29 @@ model GoalInstance {
 // A client registered via Dynamic Client Registration (RFC 7591).
 // claude.ai is a public PKCE client, so there is no client secret.
 model OAuthClient {
-  id                      String   @id @default(uuid())
-  clientId                String   @unique
+  id                      String              @id @default(uuid())
+  clientId                String              @unique
   clientName              String?
   redirectUris            String[]
   grantTypes              String[]
   responseTypes           String[]
   scope                   String?
-  tokenEndpointAuthMethod String   @default("none")
-  createdAt               DateTime @default(now())
+  tokenEndpointAuthMethod String              @default("none")
+  createdAt               DateTime            @default(now())
+  authorizationCodes      AuthorizationCode[]
+  refreshTokens           OAuthRefreshToken[]
+  grants                  OAuthGrant[]
 }
 
 // Single-use authorization code issued by /authorize and exchanged at /token.
 // `code` stores a hash of the value handed back in the redirect, never the raw code.
 model AuthorizationCode {
-  id                  String    @id @default(uuid())
-  code                String    @unique
+  id                  String      @id @default(uuid())
+  code                String      @unique
   clientId            String
+  client              OAuthClient @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
   userId              String
-  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   redirectUri         String
   codeChallenge       String
   codeChallengeMethod String
@@ -337,9 +349,10 @@ model AuthorizationCode {
   resource            String?
   usedAt              DateTime?
   expiresAt           DateTime
-  createdAt           DateTime  @default(now())
+  createdAt           DateTime    @default(now())
 
   @@index([userId])
+  @@index([expiresAt])
 }
 
 // Persisted, rotating refresh token. `tokenHash` is the hash of the opaque token.
@@ -359,32 +372,36 @@ model RefreshToken {
 
   @@index([userId])
   @@index([familyId])
+  @@index([expiresAt])
 }
 
 model OAuthRefreshToken {
-  id          String    @id @default(uuid())
-  tokenHash   String    @unique
+  id          String      @id @default(uuid())
+  tokenHash   String      @unique
   userId      String
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   clientId    String
+  client      OAuthClient @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
   scope       String
   resource    String?
   familyId    String
   rotatedToId String?
   revokedAt   DateTime?
   expiresAt   DateTime
-  createdAt   DateTime  @default(now())
+  createdAt   DateTime    @default(now())
 
   @@index([userId])
   @@index([familyId])
+  @@index([expiresAt])
 }
 
 // Remembered user consent for a (user, client) pair so consent is shown only once.
 model OAuthGrant {
-  id       String @id @default(uuid())
+  id       String      @id @default(uuid())
   userId   String
-  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user     User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   clientId String
+  client   OAuthClient @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
   scope    String
 
   @@unique([userId, clientId])
@@ -399,6 +416,9 @@ model AuthSession {
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   expiresAt    DateTime
   createdAt    DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 // Single-use password reset token sent by email. Only the SHA-256 of the
