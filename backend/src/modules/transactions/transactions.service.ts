@@ -702,11 +702,17 @@ export class TransactionsService {
   /** Stops future generation. Already-generated occurrences (past or future-dated) are left as-is. */
   async cancelRecurring(userId: string, id: string) {
     const root = await this.getRecurringRoot(userId, id);
-    return this.prisma.transaction.update({
-      where: { id: root.id },
+    // Conditional on the status so a cron end that landed first isn't re-applied.
+    await this.prisma.transaction.updateMany({
+      where: {
+        id: root.id,
+        userId,
+        deletedAt: null,
+        recurringStatus: { not: RecurringStatus.CANCELLED },
+      },
       data: { recurringStatus: RecurringStatus.CANCELLED },
-      include: TRANSACTION_INCLUDE,
     });
+    return this.getById(userId, root.id);
   }
 
   private validateCommand(

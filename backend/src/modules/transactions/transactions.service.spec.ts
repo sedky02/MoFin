@@ -1046,6 +1046,23 @@ describe('TransactionsService paused series', () => {
     });
   });
 
+  describe('cancelRecurring', () => {
+    it('cancels conditionally, so a series the cron already ended is not rewritten', async () => {
+      const { service, prisma } = setup();
+      await service.cancelRecurring('u1', 'r1');
+      expect(prisma.transaction.updateMany).toHaveBeenCalledWith({
+        where: {
+          id: 'r1',
+          userId: 'u1',
+          deletedAt: null,
+          recurringStatus: { not: RecurringStatus.CANCELLED },
+        },
+        data: { recurringStatus: RecurringStatus.CANCELLED },
+      });
+      expect(prisma.transaction.update).not.toHaveBeenCalled();
+    });
+  });
+
   describe('resumeRecurring', () => {
     beforeEach(() =>
       jest.useFakeTimers({ now: new Date('2026-10-25T12:00:00Z') }),
