@@ -45,14 +45,13 @@ describe('RecurringTransactionsCron', () => {
         .fn()
         .mockResolvedValue({ id: 'occ-1', occurredAt: root.nextOccurrenceAt }),
       findSeriesProblem: jest.fn().mockResolvedValue(null),
+      announceCreated: jest.fn(),
     };
-    const events = { emit: jest.fn() };
     const cron = new RecurringTransactionsCron(
       prisma as never,
       transactionsService as never,
-      events as never,
     );
-    return { cron, prisma, transactionsService, events };
+    return { cron, prisma, transactionsService };
   }
 
   afterEach(() => jest.clearAllMocks());
@@ -96,7 +95,7 @@ describe('RecurringTransactionsCron', () => {
       nextOccurrenceAt: new Date('2026-11-17T00:00:00Z'),
       recurringEndDate: new Date('2026-10-30T00:00:00Z'),
     };
-    const { cron, prisma, transactionsService, events } = makeCron({
+    const { cron, prisma, transactionsService } = makeCron({
       due: pastEnd,
     });
     await cron.generateDueOccurrences();
@@ -104,7 +103,7 @@ describe('RecurringTransactionsCron', () => {
     expect(transactionsService.create).not.toHaveBeenCalled();
     // Only the lock transaction ran; no occurrence transaction.
     expect(prisma.$transaction).toHaveBeenCalledTimes(1);
-    expect(events.emit).not.toHaveBeenCalled();
+    expect(transactionsService.announceCreated).not.toHaveBeenCalled();
     expect(prisma.transaction.update).toHaveBeenCalledWith({
       where: { id: 'root-1' },
       data: {
@@ -119,7 +118,7 @@ describe('RecurringTransactionsCron', () => {
       ...root,
       recurringEndDate: new Date('2026-02-28T00:00:00Z'),
     };
-    const { cron, transactionsService, events } = makeCron({ due: lastOne });
+    const { cron, transactionsService } = makeCron({ due: lastOne });
     await cron.generateDueOccurrences();
 
     expect(transactionsService.create).toHaveBeenCalledWith(
@@ -137,16 +136,15 @@ describe('RecurringTransactionsCron', () => {
         nextOccurrenceAt: null,
       },
     });
-    expect(events.emit).toHaveBeenCalledTimes(1);
+    expect(transactionsService.announceCreated).toHaveBeenCalledTimes(1);
   });
 
-  it('emits TransactionCreated only after the transaction commits', async () => {
-    const { cron, events } = makeCron();
+  it('announces the occurrence only after the transaction commits', async () => {
+    const { cron, transactionsService } = makeCron();
     await cron.generateDueOccurrences();
 
-    expect(events.emit).toHaveBeenCalledWith(
-      'transaction.created',
-      expect.objectContaining({ transactionId: 'occ-1', userId: 'user-1' }),
+    expect(transactionsService.announceCreated).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'occ-1' }),
     );
   });
 
@@ -187,7 +185,7 @@ describe('RecurringTransactionsCron', () => {
     });
 
     it('is paused with the reason instead of failing every night, posting nothing', async () => {
-      const { cron, prisma, transactionsService, events } = makeCron();
+      const { cron, prisma, transactionsService } = makeCron();
       transactionsService.findSeriesProblem.mockResolvedValue(
         'Account Savings is archived',
       );
@@ -198,7 +196,7 @@ describe('RecurringTransactionsCron', () => {
         pausedWith('Account Savings is archived'),
       );
       expect(transactionsService.create).not.toHaveBeenCalled();
-      expect(events.emit).not.toHaveBeenCalled();
+      expect(transactionsService.announceCreated).not.toHaveBeenCalled();
     });
 
     it('is paused when create rejects the occurrence', async () => {

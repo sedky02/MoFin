@@ -218,15 +218,24 @@ export class TransactionsService {
       ? await run(db)
       : await this.prisma.$transaction(run);
 
-    if (!db) {
-      this.events.emit(DomainEvents.TransactionCreated, {
-        transactionId: transaction.id,
-        userId,
-        occurredAt: transaction.occurredAt,
-      } satisfies TransactionCreatedEvent);
-    }
+    if (!db) this.announceCreated(transaction);
 
     return transaction;
+  }
+
+  /**
+   * Tells listeners (the analytics cache) a transaction now exists. create()
+   * calls it itself; a caller that passed `db` calls it once its own
+   * transaction has committed.
+   */
+  announceCreated(
+    transaction: Pick<Transaction, 'id' | 'userId' | 'occurredAt'>,
+  ) {
+    this.events.emit(DomainEvents.TransactionCreated, {
+      transactionId: transaction.id,
+      userId: transaction.userId,
+      occurredAt: transaction.occurredAt,
+    } satisfies TransactionCreatedEvent);
   }
 
   async getById(userId: string, id: string) {

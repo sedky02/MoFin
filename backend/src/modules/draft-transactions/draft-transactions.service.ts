@@ -9,7 +9,6 @@ import {
   DomainEvents,
   DraftApprovedEvent,
   DraftCreatedEvent,
-  TransactionCreatedEvent,
 } from '../../common/events/domain-events';
 import { PrismaService } from '../../database/prisma.service';
 import { TransactionsService } from '../transactions/transactions.service';
@@ -135,14 +134,8 @@ export class DraftTransactionsService {
         },
       );
 
-      // create() ran inside our transaction, so it left the event to us: emitted
-      // now that it has committed, it clears the cached summaries the new
-      // transaction changed.
-      this.events.emit(DomainEvents.TransactionCreated, {
-        transactionId: transaction.id,
-        userId,
-        occurredAt: transaction.occurredAt,
-      } satisfies TransactionCreatedEvent);
+      // create() ran inside our transaction, so it left the announcement to us.
+      this.transactionsService.announceCreated(transaction);
       this.events.emit(DomainEvents.DraftApproved, {
         draftId: draft.id,
         transactionId: transaction.id,

@@ -1,11 +1,6 @@
 import { HttpException, Injectable, Logger } from '@nestjs/common';
-import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { Prisma, RecurringStatus } from '@prisma/client';
-import {
-  DomainEvents,
-  TransactionCreatedEvent,
-} from '../../common/events/domain-events';
 import { PrismaService } from '../../database/prisma.service';
 import {
   computeNextOccurrence,
@@ -48,7 +43,6 @@ export class RecurringTransactionsCron {
   constructor(
     private readonly prisma: PrismaService,
     private readonly transactionsService: TransactionsService,
-    private readonly events: EventEmitter2,
   ) {}
 
   // UTC, like the occurrence dates the cron compares against.
@@ -146,11 +140,7 @@ export class RecurringTransactionsCron {
           return occurrence;
         });
 
-        this.events.emit(DomainEvents.TransactionCreated, {
-          transactionId: created.id,
-          userId: root.userId,
-          occurredAt: created.occurredAt,
-        } satisfies TransactionCreatedEvent);
+        this.transactionsService.announceCreated(created);
       } catch (error) {
         // create() rejecting the occurrence (a 4xx) means the template itself
         // is invalid in a way findSeriesProblem doesn't know about yet, and

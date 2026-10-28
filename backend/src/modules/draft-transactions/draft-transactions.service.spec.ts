@@ -69,6 +69,7 @@ describe('DraftTransactionsService state machine', () => {
       create:
         overrides.createImpl ??
         jest.fn(async () => overrides.createResult ?? { id: 'tx1' }),
+      announceCreated: jest.fn(),
     };
     const events = { emit: jest.fn() };
     const service = new DraftTransactionsService(
@@ -131,17 +132,13 @@ describe('DraftTransactionsService state machine', () => {
     );
   });
 
-  it('emits TransactionCreated after approval, so cached summaries are cleared', async () => {
-    const occurredAt = new Date('2026-10-01T00:00:00Z');
-    const { service, events } = makeService({
-      createResult: { id: 'tx1', occurredAt },
+  it('announces the new transaction after approval, so cached summaries are cleared', async () => {
+    const created = { id: 'tx1', occurredAt: new Date('2026-10-01T00:00:00Z') };
+    const { service, transactionsService } = makeService({
+      createResult: created,
     });
     await service.approve('u1', 'd1');
-    expect(events.emit).toHaveBeenCalledWith('transaction.created', {
-      transactionId: 'tx1',
-      userId: 'u1',
-      occurredAt,
-    });
+    expect(transactionsService.announceCreated).toHaveBeenCalledWith(created);
   });
 
   it('approves atomically: transaction creation and draft-status update happen inside the same $transaction', async () => {
