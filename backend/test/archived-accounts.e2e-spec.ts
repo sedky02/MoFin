@@ -82,6 +82,8 @@ const db = {
 const prismaStub = {
   ...db,
   account: {
+    // Only accounts with a non-zero opening balance are read; the fixtures have none.
+    findMany: async () => [],
     findFirst: async ({
       where,
     }: {

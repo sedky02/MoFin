@@ -401,6 +401,7 @@ describe('Public routes across every controller', () => {
     'POST /auth/password/reset',
     'POST /auth/logout',
     'POST /auth/google',
+    'POST /auth/demo',
     'POST /oauth/register',
     'GET /oauth/authorize',
     'POST /oauth/consent',
