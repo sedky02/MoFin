@@ -2,3 +2,5 @@
 
 # Local settings for the root docker-compose.yml (see .env.example)
 .env
+learnings.txt
+notes.txt

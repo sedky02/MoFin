@@ -1,5 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { Injectable } from '@nestjs/common';
+import { ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
 import { ZodRawShape } from 'zod';
 import { mcpToolSchemas } from './dto/mcp.dto';
 import { MCP_TOOLS } from './mcp-tools';
@@ -8,7 +9,12 @@ import { McpService } from './mcp.service';
 type ToolResult = { content: Array<{ type: 'text'; text: string }> };
 type RegisterTool = (
   name: string,
-  config: { title: string; description: string; inputSchema: ZodRawShape },
+  config: {
+    title: string;
+    description: string;
+    inputSchema: ZodRawShape;
+    annotations: ToolAnnotations;
+  },
   cb: (args: Record<string, unknown>) => Promise<ToolResult>,
 ) => unknown;
 
@@ -38,6 +44,7 @@ export class McpServerFactory {
         {
           title: tool.title,
           description: tool.description,
+          annotations: tool.annotations,
           inputSchema: mcpToolSchemas[tool.name].shape,
         },
         async (args) => {
