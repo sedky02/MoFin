@@ -7,7 +7,10 @@ import {
 import { RecurringTransactionsCron } from './recurring-transactions.cron';
 
 describe('RecurringTransactionsCron', () => {
-  const fakeDb = { transaction: { update: jest.fn() } };
+  const fakeDb = {
+    transaction: { update: jest.fn() },
+    $queryRaw: jest.fn(),
+  };
   const root = {
     id: 'root-1',
     userId: 'user-1',
@@ -35,8 +38,8 @@ describe('RecurringTransactionsCron', () => {
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
       $transaction: jest.fn(async (fn: (db: unknown) => unknown) => fn(fakeDb)),
-      $queryRaw: jest.fn().mockResolvedValue([{ locked }]),
     };
+    fakeDb.$queryRaw.mockResolvedValue([{ locked }]);
     const transactionsService = {
       create: jest
         .fn()
@@ -70,7 +73,8 @@ describe('RecurringTransactionsCron', () => {
     const { cron, prisma, transactionsService } = makeCron();
     await cron.generateDueOccurrences();
 
-    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    // One transaction holds the run's advisory lock, one posts the occurrence.
+    expect(prisma.$transaction).toHaveBeenCalledTimes(2);
     // The create call must receive the transaction's db client as its 3rd arg,
     // so it participates in the same commit as the cursor update below.
     expect(transactionsService.create).toHaveBeenCalledWith(
@@ -98,7 +102,8 @@ describe('RecurringTransactionsCron', () => {
     await cron.generateDueOccurrences();
 
     expect(transactionsService.create).not.toHaveBeenCalled();
-    expect(prisma.$transaction).not.toHaveBeenCalled();
+    // Only the lock transaction ran; no occurrence transaction.
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
     expect(events.emit).not.toHaveBeenCalled();
     expect(prisma.transaction.update).toHaveBeenCalledWith({
       where: { id: 'root-1' },
@@ -153,14 +158,17 @@ describe('RecurringTransactionsCron', () => {
     expect(prisma.transaction.findMany).not.toHaveBeenCalled();
   });
 
-  it('releases the advisory lock even if generation throws', async () => {
-    const { cron, prisma, transactionsService } = makeCron();
+  it('takes a transaction-level advisory lock, so Postgres releases it with the run', async () => {
+    const { cron, transactionsService } = makeCron();
     transactionsService.create.mockRejectedValue(new Error('boom'));
 
     await cron.generateDueOccurrences();
 
-    // pg_try_advisory_lock then pg_advisory_unlock: two raw calls total.
-    expect(prisma.$queryRaw).toHaveBeenCalledTimes(2);
+    // A single xact lock call and no explicit unlock to leak on another pooled connection.
+    expect(fakeDb.$queryRaw).toHaveBeenCalledTimes(1);
+    expect(String(fakeDb.$queryRaw.mock.calls[0][0])).toContain(
+      'pg_try_advisory_xact_lock',
+    );
   });
 
   describe('a series that can no longer post', () => {

@@ -1,7 +1,7 @@
 import { HttpException, Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { RecurringStatus } from '@prisma/client';
+import { Prisma, RecurringStatus } from '@prisma/client';
 import {
   DomainEvents,
   TransactionCreatedEvent,
@@ -14,12 +14,21 @@ import {
 } from './transactions.service';
 
 /**
- * Fixed key for a Postgres session advisory lock, arbitrary but stable. Only
- * one process (across however many replicas) can hold it at a time, so
- * @nestjs/schedule firing this cron on every replica doesn't multiply every
- * recurring charge by the replica count.
+ * Fixed key for a Postgres transaction-level advisory lock, arbitrary but
+ * stable. Only one process (across however many replicas) can hold it at a
+ * time, so @nestjs/schedule firing this cron on every replica doesn't multiply
+ * every recurring charge by the replica count.
+ *
+ * It is a transaction lock (pg_try_advisory_xact_lock), held by one interactive
+ * transaction for the whole run. A session lock would be taken and released
+ * through the connection pool, possibly on different connections, and could
+ * stay held on the first one and silently skip every later run. A transaction
+ * lock is released by Postgres on commit, rollback or a dropped connection.
  */
 const ADVISORY_LOCK_KEY = 727_002_001;
+
+/** The lock transaction idles while the run works, so it must outlive the run. */
+const LOCK_TRANSACTION_TIMEOUT_MS = 30 * 60 * 1000;
 
 /**
  * Generates the next Transaction(s) for each active recurring series. Runs
@@ -42,121 +51,124 @@ export class RecurringTransactionsCron {
     private readonly events: EventEmitter2,
   ) {}
 
-  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  // UTC, like the occurrence dates the cron compares against.
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT, { timeZone: 'UTC' })
   async generateDueOccurrences() {
-    const locked = await this.acquireLock();
-    if (!locked) {
-      this.logger.log(
-        'Another instance holds the recurring-transactions lock; skipping this run.',
-      );
-      return;
-    }
-
-    try {
-      const now = new Date();
-      const dueRoots = await this.prisma.transaction.findMany({
-        // A deleted root is a stopped series (restoring it picks the series up again).
-        where: {
-          isRecurring: true,
-          recurringStatus: RecurringStatus.ACTIVE,
-          deletedAt: null,
-          nextOccurrenceAt: { lte: now },
-        },
-      });
-
-      for (const root of dueRoots) {
-        try {
-          // A series whose cursor is already past its end date (e.g. one
-          // created or edited before create/updateRecurring ended it on the
-          // spot) ends here without posting anything.
-          if (isPastEndDate(root.nextOccurrenceAt!, root.recurringEndDate)) {
-            await this.prisma.transaction.update({
-              where: { id: root.id },
-              data: {
-                recurringStatus: RecurringStatus.CANCELLED,
-                nextOccurrenceAt: null,
-              },
-            });
-            continue;
-          }
-
-          const problem = await this.transactionsService.findSeriesProblem(
-            root.userId,
-            root,
+    await this.prisma.$transaction(
+      async (lockDb) => {
+        if (!(await this.acquireLock(lockDb))) {
+          this.logger.log(
+            'Another instance holds the recurring-transactions lock; skipping this run.',
           );
-          if (problem) {
-            await this.pause(root.id, problem);
-            continue;
-          }
+          return;
+        }
+        await this.generate();
+      },
+      { timeout: LOCK_TRANSACTION_TIMEOUT_MS },
+    );
+  }
 
-          // Occurrence creation and cursor advance commit atomically: a crash
-          // between them is impossible, and the @@unique([parentTransactionId,
-          // occurredAt]) constraint rejects a duplicate outright if this ever
-          // retries against a row that was (pre-fix) left half-applied.
-          const created = await this.prisma.$transaction(async (db) => {
-            const occurrence = await this.transactionsService.create(
-              root.userId,
-              {
-                type: root.type,
-                description: root.description,
-                amount: root.recurringAmount!.toString(),
-                currency: root.currency,
-                occurredAt: root.nextOccurrenceAt!,
-                fromAccountId: root.recurringFromAccountId ?? undefined,
-                toAccountId: root.recurringToAccountId ?? undefined,
-                categoryId: root.categoryId ?? undefined,
-                parentTransactionId: root.id,
-              },
-              db,
-            );
+  private async generate() {
+    const now = new Date();
+    const dueRoots = await this.prisma.transaction.findMany({
+      // A deleted root is a stopped series (restoring it picks the series up again).
+      where: {
+        isRecurring: true,
+        recurringStatus: RecurringStatus.ACTIVE,
+        deletedAt: null,
+        nextOccurrenceAt: { lte: now },
+      },
+    });
 
-            const next = computeNextOccurrence(
-              root.occurredAt.getUTCDate(),
-              root.nextOccurrenceAt!,
-              root.recurringInterval!,
-            );
-            const ended = isPastEndDate(next, root.recurringEndDate);
+    for (const root of dueRoots) {
+      try {
+        // A series whose cursor is already past its end date (e.g. one
+        // created or edited before create/updateRecurring ended it on the
+        // spot) ends here without posting anything.
+        if (isPastEndDate(root.nextOccurrenceAt!, root.recurringEndDate)) {
+          await this.prisma.transaction.update({
+            where: { id: root.id },
+            data: {
+              recurringStatus: RecurringStatus.CANCELLED,
+              nextOccurrenceAt: null,
+            },
+          });
+          continue;
+        }
 
-            await db.transaction.update({
-              where: { id: root.id },
-              data: ended
-                ? {
-                    recurringStatus: RecurringStatus.CANCELLED,
-                    nextOccurrenceAt: null,
-                  }
-                : { nextOccurrenceAt: next },
-            });
+        const problem = await this.transactionsService.findSeriesProblem(
+          root.userId,
+          root,
+        );
+        if (problem) {
+          await this.pause(root.id, problem);
+          continue;
+        }
 
-            return occurrence;
+        // Occurrence creation and cursor advance commit atomically: a crash
+        // between them is impossible, and the @@unique([parentTransactionId,
+        // occurredAt]) constraint rejects a duplicate outright if this ever
+        // retries against a row that was (pre-fix) left half-applied.
+        const created = await this.prisma.$transaction(async (db) => {
+          const occurrence = await this.transactionsService.create(
+            root.userId,
+            {
+              type: root.type,
+              description: root.description,
+              amount: root.recurringAmount!.toString(),
+              currency: root.currency,
+              occurredAt: root.nextOccurrenceAt!,
+              fromAccountId: root.recurringFromAccountId ?? undefined,
+              toAccountId: root.recurringToAccountId ?? undefined,
+              categoryId: root.categoryId ?? undefined,
+              parentTransactionId: root.id,
+            },
+            db,
+          );
+
+          const next = computeNextOccurrence(
+            root.occurredAt.getUTCDate(),
+            root.nextOccurrenceAt!,
+            root.recurringInterval!,
+          );
+          const ended = isPastEndDate(next, root.recurringEndDate);
+
+          await db.transaction.update({
+            where: { id: root.id },
+            data: ended
+              ? {
+                  recurringStatus: RecurringStatus.CANCELLED,
+                  nextOccurrenceAt: null,
+                }
+              : { nextOccurrenceAt: next },
           });
 
-          this.events.emit(DomainEvents.TransactionCreated, {
-            transactionId: created.id,
-            userId: root.userId,
-            occurredAt: created.occurredAt,
-          } satisfies TransactionCreatedEvent);
-        } catch (error) {
-          // create() rejecting the occurrence (a 4xx) means the template itself
-          // is invalid in a way findSeriesProblem doesn't know about yet, and
-          // it would fail the same way tomorrow.
-          if (error instanceof HttpException && error.getStatus() < 500) {
-            await this.pause(root.id, error.message).catch(
-              (pauseError: Error) =>
-                this.logger.error(
-                  `Failed to pause recurring series ${root.id}`,
-                  pauseError,
-                ),
-            );
-          } else {
+          return occurrence;
+        });
+
+        this.events.emit(DomainEvents.TransactionCreated, {
+          transactionId: created.id,
+          userId: root.userId,
+          occurredAt: created.occurredAt,
+        } satisfies TransactionCreatedEvent);
+      } catch (error) {
+        // create() rejecting the occurrence (a 4xx) means the template itself
+        // is invalid in a way findSeriesProblem doesn't know about yet, and
+        // it would fail the same way tomorrow.
+        if (error instanceof HttpException && error.getStatus() < 500) {
+          await this.pause(root.id, error.message).catch((pauseError: Error) =>
             this.logger.error(
-              `Failed to generate recurring occurrence for transaction ${root.id}`,
-              error as Error,
-            );
-          }
+              `Failed to pause recurring series ${root.id}`,
+              pauseError,
+            ),
+          );
+        } else {
+          this.logger.error(
+            `Failed to generate recurring occurrence for transaction ${root.id}`,
+            error as Error,
+          );
         }
       }
-    } finally {
-      await this.releaseLock();
     }
   }
 
@@ -179,15 +191,10 @@ export class RecurringTransactionsCron {
     );
   }
 
-  private async acquireLock(): Promise<boolean> {
-    const rows = await this.prisma.$queryRaw<{ locked: boolean }[]>`
-      SELECT pg_try_advisory_lock(${ADVISORY_LOCK_KEY}) AS locked
+  private async acquireLock(db: Prisma.TransactionClient): Promise<boolean> {
+    const rows = await db.$queryRaw<{ locked: boolean }[]>`
+      SELECT pg_try_advisory_xact_lock(${ADVISORY_LOCK_KEY}) AS locked
     `;
     return rows[0]?.locked === true;
-  }
-
-  private async releaseLock(): Promise<void> {
-    await this.prisma
-      .$queryRaw`SELECT pg_advisory_unlock(${ADVISORY_LOCK_KEY})`;
   }
 }
