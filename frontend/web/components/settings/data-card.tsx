@@ -4,7 +4,7 @@ import * as React from "react";
 import { Download, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { SettingsCard } from "@/components/settings/settings-card";
 import { ApiClientError } from "@/lib/api";
 import { downloadFile } from "@/lib/download";
 import { handleApiError } from "@/lib/form-errors";
@@ -37,11 +37,11 @@ export function DataCard() {
   }
 
   return (
-    <Card className="mt-6 border-0 p-6 shadow-sm">
-      <h2 className="text-sm font-semibold">Data</h2>
-      <p className="mb-4 text-xs text-muted-foreground">
-        Download your accounts, categories, transactions and goals. Deleted transactions are left out.
-      </p>
+    <SettingsCard
+      id="data"
+      title="Data"
+      description="Download your accounts, categories, transactions and goals. Deleted transactions are left out."
+    >
       <div className="flex flex-wrap gap-2">
         {FORMATS.map(({ format, label }) => (
           <Button
@@ -56,6 +56,6 @@ export function DataCard() {
           </Button>
         ))}
       </div>
-    </Card>
+    </SettingsCard>
   );
 }

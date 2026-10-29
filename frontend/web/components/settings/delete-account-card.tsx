@@ -25,7 +25,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { SettingsCard } from "@/components/settings/settings-card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PasswordInput } from "@/components/common/password-input";
@@ -65,29 +65,31 @@ export function DeleteAccountCard({ user, isLoading }: { user?: User; isLoading:
   // Nothing to delete by hand: the demo and its sample data go when it ends.
   if (user?.isDemo) {
     return (
-      <Card className="mt-6 border-0 p-6 shadow-sm">
-        <h2 className="text-sm font-semibold">Delete account</h2>
-        <p className="mt-2 text-xs text-muted-foreground">
-          This demo and everything in it are deleted automatically when it ends.
-        </p>
-      </Card>
+      <SettingsCard
+        id="delete-account"
+        title="Delete account"
+        description="This demo and everything in it are deleted automatically when it ends."
+      />
     );
   }
 
   return (
-    <Card className="mt-6 border border-destructive/30 p-6 shadow-sm">
-      <div className="text-xs text-muted-foreground">
-        <h2 className="text-sm font-semibold text-destructive">Delete account</h2>
-        <p className="mb-2">Permanently deletes your account and everything in it:</p>
-        <ul className="list-disc space-y-1 pl-5">
-          <li>your accounts and their balances;</li>
-          <li>every transaction, including deleted and recurring ones;</li>
-          <li>the categories you created, your goals and pending drafts;</li>
-          <li>connected AI apps and every signed-in session.</li>
-        </ul>
-        <p className="mt-2">Export your data first if you want to keep a copy. This can&apos;t be undone.</p>
-      </div>
-      <div className="flex justify-end">
+    <SettingsCard
+      id="delete-account"
+      tone="danger"
+      title="Delete account"
+      description="Permanently deletes your account and everything in it. This can't be undone."
+    >
+      <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
+        <li>your accounts and their balances;</li>
+        <li>every transaction, including deleted and recurring ones;</li>
+        <li>the categories you created, your goals and pending drafts;</li>
+        <li>connected AI apps and every signed-in session.</li>
+      </ul>
+      <p className="mt-3 text-sm text-muted-foreground">
+        Export your data first if you want to keep a copy.
+      </p>
+      <div className="mt-5 flex justify-end">
         {isLoading ? (
           <Skeleton className="h-9 w-36" />
         ) : (
@@ -106,7 +108,7 @@ export function DeleteAccountCard({ user, isLoading }: { user?: User; isLoading:
           hasPassword={user.hasPassword !== false}
         />
       )}
-    </Card>
+    </SettingsCard>
   );
 }
 

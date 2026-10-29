@@ -16,20 +16,19 @@ import {
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CURRENCIES } from "@/lib/constants";
-import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/common/page-header";
 import { SubmitButton } from "@/components/common/submit-button";
-import { ThemeToggle } from "@/components/shell/theme-toggle";
+import { SettingsCard } from "@/components/settings/settings-card";
+import { SettingsNav } from "@/components/settings/settings-nav";
+import { ThemeSetting } from "@/components/settings/theme-setting";
+import { ConnectedAppsCard } from "@/components/settings/connected-apps-card";
 import { DataCard } from "@/components/settings/data-card";
 import { DeleteAccountCard } from "@/components/settings/delete-account-card";
 import { useUser, useUpdateUser } from "@/hooks/useUser";
 import { useAccounts } from "@/hooks/useAccounts";
-import { useConnectedApps, useDisconnectApp } from "@/hooks/useConnectedApps";
-import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { Button } from "@/components/ui/button";
-import type { ConnectedApp } from "@/lib/types";
 import { handleApiError } from "@/lib/form-errors";
 import { SecurityCard } from "@/components/settings/security-card";
 
@@ -46,9 +45,6 @@ export default function SettingsPage() {
   const { data: user, isLoading } = useUser();
   const updateMut = useUpdateUser();
   const { data: accounts } = useAccounts();
-  const apps = useConnectedApps();
-  const disconnect = useDisconnectApp();
-  const [toDisconnect, setToDisconnect] = React.useState<ConnectedApp | undefined>();
 
   const form = useForm<Values>({
     resolver: zodResolver(schema),
@@ -98,176 +94,166 @@ export default function SettingsPage() {
     }
   }
 
+  function discard() {
+    form.reset({
+      displayName: user?.displayName ?? "",
+      defaultCurrency: user?.settings?.defaultCurrency || "auto",
+      mainAccountId: savedMainId,
+    });
+  }
+
   return (
-    <div className="mx-auto max-w-xl">
-      <PageHeader title="Settings" description="Manage your profile and preferences." />
+    <div className="mx-auto max-w-5xl">
+      <PageHeader title="Settings" description="Manage your profile, preferences and security." />
 
-      <Card className="border-0 p-6 shadow-sm">
-        <h2 className="text-sm font-semibold">Profile</h2>
-        <p className="mb-5 text-xs text-muted-foreground">
-          Your sign-in email. Changing it isn&apos;t supported yet.
-        </p>
+      <div className="lg:grid lg:grid-cols-[12rem_minmax(0,1fr)] lg:gap-10">
+        <SettingsNav />
 
-        {isLoading ? (
-          <div className="space-y-4">
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-          </div>
-        ) : (
-          <Form {...form}>
-            <form action={action} className="space-y-5">
-              <div className="space-y-2">
-                <Label htmlFor="settings-email">Email</Label>
-                <Input
-                  id="settings-email"
-                  // A demo's address is a generated placeholder; say what it is instead.
-                  value={user?.isDemo ? "Temporary demo account" : (user?.email ?? "")}
-                  readOnly
-                  disabled
-                  className="bg-muted/50"
-                />
-              </div>
-
-              <FormField
-                control={form.control}
-                name="displayName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Display name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Your name" {...field} />
-                    </FormControl>
-                    <FormDescription>Shown across the app.</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="defaultCurrency"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Primary currency</FormLabel>
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <FormControl>
-                        <SelectTrigger className="w-full">
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="auto">Automatic (most-used currency)</SelectItem>
-                        {CURRENCIES.map((c) => (
-                          <SelectItem key={c} value={c} className="tabular">
-                            {c}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormDescription>
-                      Leads the dashboard balance and monthly summary when you have accounts in several currencies.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="mainAccountId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Main account</FormLabel>
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <FormControl>
-                        <SelectTrigger className="w-full">
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="none">None (all accounts)</SelectItem>
-                        {(accounts ?? []).map((a) => (
-                          <SelectItem key={a.id} value={a.id}>
-                            {a.name} <span className="text-xs text-muted-foreground tabular">{a.currency}</span>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormDescription>
-                      The dashboard and new transactions start on this account until you pick another from the account menu at the top. Choosing “All accounts” there overrides it.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <div className="flex justify-end">
-                <SubmitButton disabled={!changed} pendingText="Saving…">
-                  Save changes
-                </SubmitButton>
-              </div>
-            </form>
-          </Form>
-        )}
-      </Card>
-
-      <Card id="connected-apps" className="mt-6 scroll-mt-20 border-0 p-6 shadow-sm">
-        <h2 className="text-sm font-semibold">Connected AI apps</h2>
-        <p className="mb-4 text-xs text-muted-foreground">
-          Apps you&apos;ve approved to read your data and suggest transactions. Disconnecting stops an app
-          from renewing access; a session it already holds can keep working for up to 15 minutes.
-        </p>
-        {apps.isLoading ? (
-          <Skeleton className="h-12 w-full" />
-        ) : apps.isError ? (
-          <p className="text-sm text-destructive">Couldn&apos;t load connected apps.</p>
-        ) : !apps.data?.length ? (
-          <p className="text-sm text-muted-foreground">No apps connected.</p>
-        ) : (
-          <ul className="divide-y divide-border">
-            {apps.data.map((app) => (
-              <li key={app.clientId} className="flex items-center justify-between gap-3 py-3">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">{app.clientName ?? "Unnamed app"}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {app.active ? "Active" : "Not currently signed in"} · {app.scope}
-                  </p>
+        <div className="min-w-0 max-w-2xl space-y-6">
+          {isLoading ? (
+            <>
+              <SettingsCard id="profile" title="Profile" description="Your sign-in email. Changing it isn't supported yet.">
+                <div className="space-y-4">
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
                 </div>
-                <Button variant="outline" size="sm" onClick={() => setToDisconnect(app)}>
-                  Disconnect
-                </Button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
+              </SettingsCard>
+              <SettingsCard id="preferences" title="Preferences">
+                <Skeleton className="h-24 w-full" />
+              </SettingsCard>
+            </>
+          ) : (
+            <Form {...form}>
+              <form action={action} className="space-y-6">
+                <SettingsCard id="profile" title="Profile" description="Your sign-in email. Changing it isn't supported yet.">
+                  <div className="grid gap-5 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="settings-email">Email</Label>
+                      <Input
+                        id="settings-email"
+                        // A demo's address is a generated placeholder; say what it is instead.
+                        value={user?.isDemo ? "Temporary demo account" : (user?.email ?? "")}
+                        readOnly
+                        disabled
+                        className="bg-muted/50"
+                      />
+                    </div>
 
-      <SecurityCard user={user} isLoading={isLoading} />
+                    <FormField
+                      control={form.control}
+                      name="displayName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Display name</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Your name" autoComplete="name" {...field} />
+                          </FormControl>
+                          <FormDescription>Shown across the app.</FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </SettingsCard>
 
-      <ConfirmDialog
-        open={!!toDisconnect}
-        onOpenChange={(o) => !o && setToDisconnect(undefined)}
-        title={`Disconnect ${toDisconnect?.clientName ?? "this app"}?`}
-        description="It will lose access and have to ask for your approval again to reconnect."
-        confirmLabel="Disconnect"
-        destructive
-        onConfirm={() => {
-          if (toDisconnect) disconnect.mutate(toDisconnect.clientId);
-          setToDisconnect(undefined);
-        }}
-      />
+                <SettingsCard
+                  id="preferences"
+                  title="Preferences"
+                  description="How your money is shown and where new entries start."
+                >
+                  <div className="grid gap-5 sm:grid-cols-2">
+                    <FormField
+                      control={form.control}
+                      name="defaultCurrency"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Primary currency</FormLabel>
+                          <Select value={field.value} onValueChange={field.onChange}>
+                            <FormControl>
+                              <SelectTrigger className="w-full">
+                                <SelectValue />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="auto">Automatic (most-used currency)</SelectItem>
+                              {CURRENCIES.map((c) => (
+                                <SelectItem key={c} value={c} className="tabular">
+                                  {c}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormDescription>
+                            Leads the dashboard balance and monthly summary when you have accounts in several currencies.
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-      <DataCard />
+                    <FormField
+                      control={form.control}
+                      name="mainAccountId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Default account</FormLabel>
+                          <Select value={field.value} onValueChange={field.onChange}>
+                            <FormControl>
+                              <SelectTrigger className="w-full">
+                                <SelectValue />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="none">None (all accounts)</SelectItem>
+                              {(accounts ?? []).map((a) => (
+                                <SelectItem key={a.id} value={a.id}>
+                                  {a.name} <span className="text-xs text-muted-foreground tabular">{a.currency}</span>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormDescription>
+                            The dashboard and new transactions start here. Pick another from the account menu at the top
+                            any time.
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
 
-      <Card className="mt-6 flex-row items-center justify-between border-0 p-6 shadow-sm">
-        <div>
-          <h2 className="text-sm font-semibold">Appearance</h2>
-          <p className="text-xs text-muted-foreground">Switch between light and dark mode.</p>
+                  <div className="mt-6 border-t border-border pt-5">
+                    <ThemeSetting />
+                  </div>
+                </SettingsCard>
+
+                {changed && (
+                  <div
+                    role="status"
+                    className="sticky bottom-20 z-20 flex items-center justify-between gap-3 rounded-xl border border-border bg-card/95 p-3 shadow-lg backdrop-blur-md lg:bottom-4"
+                  >
+                    <p className="text-sm">You have unsaved changes.</p>
+                    <div className="flex shrink-0 gap-2">
+                      <Button type="button" variant="ghost" onClick={discard}>
+                        Discard
+                      </Button>
+                      <SubmitButton pendingText="Saving…">Save changes</SubmitButton>
+                    </div>
+                  </div>
+                )}
+              </form>
+            </Form>
+          )}
+
+          <SecurityCard user={user} isLoading={isLoading} />
+
+          <ConnectedAppsCard />
+
+          <DataCard />
+
+          <DeleteAccountCard user={user} isLoading={isLoading} />
         </div>
-        <ThemeToggle />
-      </Card>
-
-      <DeleteAccountCard user={user} isLoading={isLoading} />
+      </div>
     </div>
   );
 }

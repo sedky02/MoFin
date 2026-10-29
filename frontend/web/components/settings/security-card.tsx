@@ -18,7 +18,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { SettingsCard } from "@/components/settings/settings-card";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
@@ -42,36 +42,31 @@ const changeSchema = z
 type ChangeValues = z.infer<typeof changeSchema>;
 
 export function SecurityCard({ user, isLoading }: { user?: User; isLoading: boolean }) {
+  const description = isLoading
+    ? undefined
+    : user?.isDemo
+      ? "The demo has no password, and its one session ends with the demo. Create your own account to set a password and manage where you're signed in."
+      : user?.hasPassword === false
+        ? "You sign in with Google, so there's no MoFin password to change. Your Google account's own security settings protect this sign-in."
+        : "Changing your password signs out every other device. This one stays signed in.";
+  const hasPassword = !isLoading && !user?.isDemo && user?.hasPassword !== false;
+
   return (
-    <Card className="mt-6 border-0 p-6 shadow-sm">
-      <h2 className="text-sm font-semibold">Security</h2>
+    <SettingsCard id="security" title="Security" description={description}>
       {isLoading ? (
-        <Skeleton className="mt-4 h-40 w-full" />
-      ) : user?.isDemo ? (
-        <p className="text-xs text-muted-foreground">
-          The demo has no password, and its one session ends with the demo. Create your own account to set a
-          password and manage where you&apos;re signed in.
-        </p>
-      ) : user?.hasPassword === false ? (
-        <p className="mb-5 text-xs text-muted-foreground">
-          You sign in with Google, so there&apos;s no MoFin password to change. Your Google account&apos;s own
-          security settings protect this sign-in.
-        </p>
+        <Skeleton className="h-40 w-full" />
       ) : (
         <>
-          <p className="mb-5 text-xs text-muted-foreground">
-            Changing your password signs out every other device. This one stays signed in.
-          </p>
-          <ChangePasswordForm email={user?.email ?? ""} />
+          {hasPassword && <ChangePasswordForm email={user?.email ?? ""} />}
+          {!user?.isDemo && (
+            <>
+              {hasPassword && <Separator className="my-6" />}
+              <SignOutEverywhere />
+            </>
+          )}
         </>
       )}
-      {!user?.isDemo && (
-        <>
-          <Separator className="my-6" />
-          <SignOutEverywhere />
-        </>
-      )}
-    </Card>
+    </SettingsCard>
   );
 }
 
