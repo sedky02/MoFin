@@ -211,7 +211,7 @@ export default function SettingsPage() {
         )}
       </Card>
 
-      <Card className="mt-6 border-0 p-6 shadow-sm">
+      <Card id="connected-apps" className="mt-6 scroll-mt-20 border-0 p-6 shadow-sm">
         <h2 className="text-sm font-semibold">Connected AI apps</h2>
         <p className="mb-4 text-xs text-muted-foreground">
           Apps you&apos;ve approved to read your data and suggest transactions. Disconnecting stops an app
