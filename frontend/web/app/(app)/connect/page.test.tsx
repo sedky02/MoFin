@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import * as React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 let user: { isDemo?: boolean; email?: string } | undefined;
 let apps: { clientId: string; clientName: string | null; scope: string; active: boolean }[] | undefined;
@@ -48,7 +49,7 @@ describe("ConnectPage", () => {
   it("disables the ChatGPT button for a demo user too", async () => {
     user = { isDemo: true };
     await renderPage();
-    fireEvent.click(screen.getAllByRole("button").filter((b) => b.hasAttribute("aria-pressed"))[1]);
+    await userEvent.click(screen.getByRole("tab", { name: /ChatGPT/ }));
     expect((screen.getByRole("button", { name: /Open ChatGPT connector settings/ }) as HTMLButtonElement).disabled).toBe(true);
   });
 
@@ -64,7 +65,7 @@ describe("ConnectPage", () => {
     await renderPage();
     expect(screen.getByText(/Claude is connected to your account/)).toBeTruthy();
     expect(screen.getByRole("link", { name: "Manage in Settings" }).getAttribute("href")).toBe("/settings#connected-apps");
-    expect(screen.getAllByText("Connected").length).toBeGreaterThan(0);
+    expect(screen.getByRole("tab", { name: /Claude.*\(connected\)/ })).toBeTruthy();
   });
 
   it("says when consent was kept but the app is signed out", async () => {
@@ -79,19 +80,36 @@ describe("ConnectPage", () => {
     expect(screen.queryByText(/is connected to your account/)).toBeNull();
   });
 
-  it("exposes every client choice as a toggle button with a visible name and no heading inside", async () => {
+  it("offers the assistants as tabs with visible names, and switches the steps with them", async () => {
     await renderPage();
-    const picker = screen.getAllByRole("button").filter((b) => b.hasAttribute("aria-pressed"));
-    expect(picker).toHaveLength(4);
-    for (const button of picker) {
+    const tabs = screen.getAllByRole("tab");
+    expect(tabs).toHaveLength(4);
+    // By accessible name: the logos inside are hidden from it.
+    for (const name of ["Claude", "ChatGPT", "Gemini", "Other"]) {
+      expect(screen.getByRole("tab", { name })).toBeTruthy();
+    }
+    expect(tabs[0].getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByRole("heading", { name: "Set up Claude" })).toBeTruthy();
+
+    await userEvent.click(screen.getByRole("tab", { name: "Other" }));
+    expect(screen.getByRole("tab", { name: "Other" }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByRole("heading", { name: "Set up another MCP client" })).toBeTruthy();
+    expect(screen.getByText("Find the connector option")).toBeTruthy();
+  });
+
+  it("shows the connector URL once", async () => {
+    await renderPage();
+    expect(screen.getAllByDisplayValue("https://api.example.com/api/v1/mcp")).toHaveLength(1);
+  });
+
+  it("has no heading inside a button and keeps the heading order h1, h2, h3", async () => {
+    await renderPage();
+    for (const button of screen.getAllByRole("button")) {
       expect(button.querySelector("h1,h2,h3,h4")).toBeNull();
     }
-    const other = picker[3];
-    expect(other.textContent).toContain("Other");
-    expect(other.getAttribute("aria-pressed")).toBe("false");
-    fireEvent.click(other);
-    expect(other.getAttribute("aria-pressed")).toBe("true");
-    expect(picker[0].getAttribute("aria-pressed")).toBe("false");
+    const levels = screen.getAllByRole("heading").map((h) => Number(h.tagName[1]));
+    expect(levels[0]).toBe(1);
+    for (let i = 1; i < levels.length; i++) expect(levels[i] - levels[i - 1]).toBeLessThanOrEqual(1);
   });
 
   it("links to the Connected AI apps card in Settings", async () => {

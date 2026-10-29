@@ -2,49 +2,62 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { ExternalLink, Plus, ShieldCheck } from "lucide-react";
+import { ExternalLink, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CopyButton } from "@/components/common/copy-button";
-import { AnthropicLogo } from "@/components/common/ai-logos";
 import { CONNECTOR_BRAND } from "@/components/common/connector-logo";
+import { PageHeader } from "@/components/common/page-header";
 import { useConnectedApps } from "@/hooks/useConnectedApps";
 import { useUser } from "@/hooks/useUser";
 import { connectedStates } from "@/lib/connected-apps";
-import { cn } from "@/lib/utils";
 
 const MCP_URL = process.env.NEXT_PUBLIC_MCP_URL ?? "";
 const NOT_AVAILABLE = "The AI connector isn't available on this server yet.";
 const CONNECTOR_NAME = "MoFin — Monitor your Finances";
+const CHATGPT_SETTINGS_URL = "https://chatgpt.com/#settings/Connectors";
 
-const GEMINI_CLI_CONFIG = JSON.stringify(
-  { mcpServers: { mofin: { url: MCP_URL } } },
-  null,
-  2,
-);
+const GEMINI_CLI_CONFIG = JSON.stringify({ mcpServers: { mofin: { url: MCP_URL } } }, null, 2);
 
 const CLIENTS = [
-  {
-    key: "claude",
-    label: "Claude",
-    description: "Anthropic Claude — web, desktop & mobile",
-    ...CONNECTOR_BRAND.claude,
-  },
-  {
-    key: "chatgpt",
-    label: "ChatGPT",
-    description: "OpenAI ChatGPT — custom connectors",
-    ...CONNECTOR_BRAND.chatgpt,
-  },
-  {
-    key: "gemini",
-    label: "Gemini",
-    description: "Google Gemini CLI & Enterprise",
-    ...CONNECTOR_BRAND.gemini,
-  },
+  { key: "claude", label: "Claude", Logo: CONNECTOR_BRAND.claude.Logo },
+  { key: "chatgpt", label: "ChatGPT", Logo: CONNECTOR_BRAND.chatgpt.Logo },
+  { key: "gemini", label: "Gemini", Logo: CONNECTOR_BRAND.gemini.Logo },
+  { key: "other", label: "Other", Logo: null },
 ] as const;
 
-type ClientKey = (typeof CLIENTS)[number]["key"] | "other";
+type ClientKey = (typeof CLIENTS)[number]["key"];
+
+/** A numbered step: what to do, a line of detail, and optionally the button or snippet that does it. */
+function Step({
+  n,
+  title,
+  children,
+  action,
+}: {
+  n: number;
+  title: string;
+  children?: React.ReactNode;
+  action?: React.ReactNode;
+}) {
+  return (
+    <li className="flex gap-4">
+      <span
+        aria-hidden
+        className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-secondary text-sm font-semibold tabular"
+      >
+        {n}
+      </span>
+      <div className="min-w-0 flex-1 pb-6 last:pb-0">
+        <h3 className="text-sm font-medium leading-7">{title}</h3>
+        {children && <div className="text-sm text-muted-foreground">{children}</div>}
+        {action && <div className="mt-3">{action}</div>}
+      </div>
+    </li>
+  );
+}
 
 export default function ConnectPage() {
   const { data: user } = useUser();
@@ -55,7 +68,11 @@ export default function ConnectPage() {
   // visitor off to an assistant for nothing; the same goes for a server with no URL.
   const unavailable = !MCP_URL || !!user?.isDemo;
   const connected = connectedStates(apps.data);
+  const activeClient = CLIENTS.find((c) => c.key === active);
+  const activeLabel = active === "other" ? "another MCP client" : (activeClient?.label ?? "");
+  const appName = active === "other" ? "An app" : (activeClient?.label ?? "An app");
   const activeState = connected[active];
+  const describedBy = unavailable ? "connect-unavailable" : undefined;
 
   const claudeDeepLink = MCP_URL
     ? `https://claude.ai/customize/connectors?modal=add-custom-connector&connectorName=${encodeURIComponent(
@@ -63,326 +80,221 @@ export default function ConnectPage() {
       )}&connectorUrl=${encodeURIComponent(MCP_URL)}`
     : "";
 
-  const activeClient = CLIENTS.find((c) => c.key === active);
+  /** The button that opens an assistant's settings: a link out, or a real disabled button when it can't be used. */
+  function openButton(label: string, href: string, icon?: React.ReactNode) {
+    return unavailable ? (
+      <Button size="lg" disabled aria-describedby={describedBy}>
+        {icon}
+        {label}
+      </Button>
+    ) : (
+      <Button size="lg" asChild>
+        <a href={href} target="_blank" rel="noopener noreferrer">
+          {icon}
+          {label}
+          <ExternalLink aria-hidden />
+          <span className="sr-only">(opens in a new tab)</span>
+        </a>
+      </Button>
+    );
+  }
+
+  const ClaudeLogo = CONNECTOR_BRAND.claude.Logo;
 
   return (
-    <div>
-      {/* HERO */}
-      <header className="mb-8 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-        <div className="max-w-2xl">
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1">
-            <span className={cn("size-2 rounded-full", MCP_URL ? "bg-primary" : "bg-muted-foreground")} aria-hidden />
-            <span className="label-sm text-primary-text! tracking-widest!">
-              {MCP_URL ? "Ready to connect" : "Not available"}
-            </span>
-          </div>
-          <h1 className="font-heading text-4xl font-extrabold leading-none tracking-tight sm:text-5xl">
-            AI Connector Hub
-          </h1>
-          <p className="mt-4 max-w-xl text-sm text-muted-foreground sm:text-base">
-            Let Claude, ChatGPT or another AI assistant read your balances and suggest transactions.
-            Anything it suggests stays a draft until you approve it. Works through the open
-            Model Context Protocol (MCP).
-          </p>
-        </div>
+    <div className="mx-auto max-w-5xl">
+      <PageHeader
+        title="Connect an AI assistant"
+        description="Let Claude, ChatGPT or another assistant read your balances and suggest transactions. Anything it suggests stays a draft until you approve it."
+      />
 
-        <div className="glass-panel w-full rounded-xl p-4 md:w-72 lg:hidden">
-          <div className="mb-3 flex items-center justify-between">
-            <span className="label-sm">Your connector</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <code className="flex-1 truncate font-mono text-xs text-primary-text">
-              {MCP_URL || "Not available"}
-            </code>
-            {MCP_URL && <CopyButton value={MCP_URL} label="" ariaLabel="Copy connector URL" className="px-2" />}
-          </div>
-        </div>
-      </header>
+      {unavailable && (
+        <p
+          id="connect-unavailable"
+          role="status"
+          className="mb-6 rounded-xl border border-border bg-accent px-4 py-3 text-sm text-accent-foreground"
+        >
+          {user?.isDemo
+            ? "Connecting an AI app isn't available in the demo. Create your own account to connect Claude, ChatGPT or Gemini to your data."
+            : NOT_AVAILABLE}
+        </p>
+      )}
 
-      {/* CONNECTOR GRID */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-        {/* Client cards — logo-only row on mobile, full cards from lg up */}
-        <div className="flex gap-3 lg:col-span-4 lg:flex-col lg:gap-4">
-          {CLIENTS.map(({ key, label, description, swatch, Logo }) => {
-            const isActive = active === key;
-            return (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setActive(key)}
-                aria-pressed={isActive}
-                className={cn(
-                  "glass-panel flex-1 rounded-2xl border-l-4 p-3 text-left transition-all duration-300 lg:w-full lg:flex-none lg:p-6 lg:hover:-translate-y-0.5",
-                  isActive ? "border-l-primary" : "border-l-transparent",
-                )}
-              >
-                <div className="flex items-center justify-center lg:mb-6 lg:items-start lg:justify-between">
-                  <div
-                    className={cn(
-                      "flex size-10 items-center justify-center rounded-xl lg:size-12",
-                      swatch,
-                    )}
-                  >
-                    <Logo className="size-5 lg:size-6" />
-                  </div>
-                  <span className="hidden items-center gap-1.5 lg:flex">
-                    {connected[key] && (
-                      <span className="rounded-lg bg-success/15 px-2 py-1">
-                        <span className="label-sm text-success!">Connected</span>
-                      </span>
-                    )}
-                    {isActive && (
-                      <span className="rounded-lg bg-primary/15 px-2 py-1">
-                        <span className="label-sm text-primary-text!">Selected</span>
-                      </span>
-                    )}
-                  </span>
-                </div>
-                <span className="mt-2 block text-center text-xs font-medium lg:mt-3 lg:text-left lg:font-heading lg:text-xl lg:font-bold">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_19rem]">
+        <Card className="gap-0 border-0 p-5 sm:p-6">
+          {/* The URL every assistant needs, shown once. */}
+          <div>
+            <label htmlFor="mcp-endpoint" className="text-sm font-medium">
+              Connector URL
+            </label>
+            <div className="mt-2 flex gap-2">
+              <Input
+                id="mcp-endpoint"
+                value={MCP_URL || "Not available"}
+                readOnly
+                className="bg-muted/50 font-mono text-xs"
+              />
+              {MCP_URL && <CopyButton value={MCP_URL} ariaLabel="Copy connector URL" />}
+            </div>
+          </div>
+
+          <Tabs value={active} onValueChange={(v) => setActive(v as ClientKey)} className="mt-6 gap-0">
+            <TabsList className="h-auto! w-full">
+              {CLIENTS.map(({ key, label, Logo }) => (
+                <TabsTrigger key={key} value={key} className="h-auto flex-col gap-1 py-2 sm:flex-row sm:gap-2">
+                  {Logo && <Logo aria-hidden className="size-4" />}
                   {label}
-                  {connected[key] && <span className="sr-only lg:hidden"> (connected)</span>}
-                  {connected[key] && <span aria-hidden className="ml-1 inline-block size-1.5 rounded-full bg-success align-middle lg:hidden" />}
-                </span>
-                <span className="mt-1 hidden text-sm text-muted-foreground lg:block">{description}</span>
-              </button>
-            );
-          })}
+                  {connected[key] && (
+                    <>
+                      <span aria-hidden className="size-1.5 rounded-full bg-success" />
+                      <span className="sr-only">(connected)</span>
+                    </>
+                  )}
+                </TabsTrigger>
+              ))}
+            </TabsList>
 
-          <button
-            type="button"
-            onClick={() => setActive("other")}
-            aria-pressed={active === "other"}
-            className={cn(
-              "glass-panel flex flex-1 flex-col items-center justify-center rounded-2xl border-2 border-dashed p-3 text-center transition-all duration-300 lg:w-full lg:flex-none lg:p-8 lg:hover:-translate-y-0.5",
-              active === "other" ? "border-primary/50" : "border-border",
+            <h2 className="mt-6 text-base font-semibold">Set up {activeLabel}</h2>
+
+            {!unavailable && activeState && (
+              <p className="mt-3 rounded-xl border border-success/30 bg-success/10 px-4 py-3 text-sm">
+                {activeState === "active"
+                  ? `${appName} is connected to your account.`
+                  : `${appName} was approved but isn't signed in right now. Add it again to reconnect.`}{" "}
+                <Link
+                  href="/settings#connected-apps"
+                  className="font-medium text-primary-text underline-offset-4 hover:underline"
+                >
+                  Manage in Settings
+                </Link>
+              </p>
             )}
-          >
-            <div className="flex size-10 items-center justify-center rounded-full border border-border lg:mb-3 lg:size-12">
-              <Plus className="size-4 text-muted-foreground lg:size-5" />
-            </div>
-            <span className="mt-2 block text-xs font-medium lg:mt-3 lg:font-heading lg:text-lg lg:font-bold">
-              <span className="lg:hidden">Other</span>
-              <span className="hidden lg:inline">Other MCP client</span>
-              {connected.other && <span className="sr-only"> (connected)</span>}
-            </span>
-            <span className="hidden text-sm text-muted-foreground lg:block">
-              Any assistant that supports remote MCP
-            </span>
-          </button>
-        </div>
 
-        {/* Workspace */}
-        <div className="lg:col-span-8">
-          <div className="glass-panel relative h-full overflow-hidden rounded-3xl p-6 sm:p-8">
-            <div
-              className="pointer-events-none absolute -top-24 -right-24 size-64 rounded-full bg-primary/10 blur-3xl"
-              aria-hidden
-            />
+            <TabsContent value="claude" className="mt-5">
+              <ol>
+                <Step
+                  n={1}
+                  title="Add MoFin to Claude"
+                  action={openButton("Add to Claude", claudeDeepLink, <ClaudeLogo aria-hidden className="size-4" />)}
+                >
+                  This opens Claude with the connector name and URL already filled in.
+                </Step>
+                <Step n={2} title="Confirm in Claude">
+                  Review the details in the dialog that opens, then confirm.
+                </Step>
+                <Step n={3} title="Sign in and approve">
+                  Claude sends you back here to sign in
+                  {user && !user.isDemo ? (
+                    <>
+                      {" "}
+                      as <span className="font-medium text-foreground">{user.email}</span>
+                    </>
+                  ) : null}{" "}
+                  and approve access.
+                </Step>
+              </ol>
+              <p className="mt-5 text-sm text-muted-foreground">
+                Didn&apos;t work? In Claude go to Settings → Connectors → Add custom connector and paste the URL above.
+              </p>
+            </TabsContent>
 
-            <div className="relative">
-              <div className="mb-8 flex items-center gap-4">
-                {activeClient ? (
-                  <div
-                    className={cn(
-                      "flex size-10 items-center justify-center rounded-lg",
-                      activeClient.swatch,
-                    )}
-                  >
-                    <activeClient.Logo className="size-5" />
-                  </div>
-                ) : (
-                  <div className="flex size-10 items-center justify-center rounded-lg border border-dashed border-border">
-                    <Plus className="size-5 text-muted-foreground" />
-                  </div>
-                )}
-                <div>
-                  <h2 className="font-heading text-2xl font-bold">
-                    {activeClient?.label ?? "Other MCP client"} configuration
-                  </h2>
-                  <p className="font-mono text-xs text-muted-foreground">
-                    Signs in with your MoFin account — no keys to paste
-                  </p>
-                </div>
-              </div>
+            <TabsContent value="chatgpt" className="mt-5">
+              <ol>
+                <Step
+                  n={1}
+                  title="Open ChatGPT's connector settings"
+                  action={openButton("Open ChatGPT connector settings", CHATGPT_SETTINGS_URL)}
+                >
+                  That is Settings → Apps &amp; Connectors in ChatGPT.
+                </Step>
+                <Step n={2} title="Create a custom connector">
+                  Click Create and choose Custom connector.
+                </Step>
+                <Step n={3} title="Paste the connector URL">
+                  Paste the URL above into the Server URL field, then save.
+                </Step>
+                <Step n={4} title="Connect">
+                  Click Connect — you&apos;ll be redirected here to sign in and approve access.
+                </Step>
+              </ol>
+            </TabsContent>
 
-              {unavailable && (
-                <p id="connect-unavailable" role="status" className="mb-6 rounded-xl border border-border bg-accent px-4 py-3 text-sm text-accent-foreground">
-                  {user?.isDemo
-                    ? "Connecting an AI app isn't available in the demo. Create your own account to connect Claude, ChatGPT or Gemini to your data."
-                    : NOT_AVAILABLE}
-                </p>
-              )}
-
-              {!unavailable && activeState && (
-                <p className="mb-6 rounded-xl border border-success/30 bg-success/10 px-4 py-3 text-sm">
-                  {activeState === "active"
-                    ? `${activeClient?.label ?? "An app"} is connected to your account.`
-                    : `${activeClient?.label ?? "An app"} was approved but isn't signed in right now. Add it again to reconnect.`}{" "}
-                  <Link href="/settings#connected-apps" className="font-medium text-primary-text underline-offset-4 hover:underline">
-                    Manage in Settings
-                  </Link>
-                </p>
-              )}
-
-              <div className="space-y-7">
-                {/* Primary CTA */}
-                {active === "claude" && (
-                  <Button
-                    size="lg"
-                    className="w-full"
-                    disabled={unavailable}
-                    aria-describedby={unavailable ? "connect-unavailable" : undefined}
-                    asChild={!unavailable}
-                  >
-                    {unavailable ? (
-                      <>
-                        <AnthropicLogo className="size-4" />
-                        Add to Claude
-                      </>
-                    ) : (
-                      <a href={claudeDeepLink} target="_blank" rel="noopener noreferrer">
-                        <AnthropicLogo className="size-4" />
-                        Add to Claude
-                        <ExternalLink aria-hidden />
-                        <span className="sr-only">(opens in a new tab)</span>
-                      </a>
-                    )}
-                  </Button>
-                )}
-                {active === "chatgpt" && (
-                  <Button
-                    size="lg"
-                    className="w-full"
-                    disabled={unavailable}
-                    aria-describedby={unavailable ? "connect-unavailable" : undefined}
-                    asChild={!unavailable}
-                  >
-                    {unavailable ? (
-                      <>
-                        <ExternalLink aria-hidden />
-                        Open ChatGPT connector settings
-                      </>
-                    ) : (
-                      <a href="https://chatgpt.com/#settings/Connectors" target="_blank" rel="noopener noreferrer">
-                        <ExternalLink aria-hidden />
-                        Open ChatGPT connector settings
-                        <span className="sr-only">(opens in a new tab)</span>
-                      </a>
-                    )}
-                  </Button>
-                )}
-
-                {/* Endpoint */}
-                <div>
-                  <label htmlFor="mcp-endpoint" className="label-sm text-primary-text! mb-3 block">
-                    Connector URL
-                  </label>
-                  <div className="flex gap-2">
-                    <Input
-                      id="mcp-endpoint"
-                      value={MCP_URL || "Not available"}
-                      readOnly
-                      className="bg-muted/50 font-mono text-xs"
+            <TabsContent value="gemini" className="mt-5">
+              <p className="mb-5 text-sm text-muted-foreground">
+                The consumer Gemini app doesn&apos;t support custom MCP connectors yet. If you use{" "}
+                <span className="font-medium text-foreground">Gemini CLI</span>, you can add MoFin to its settings file.
+              </p>
+              <ol>
+                <Step n={1} title="Open the settings file">
+                  <code className="rounded bg-muted px-1.5 py-0.5 text-xs">~/.gemini/settings.json</code>
+                </Step>
+                <Step n={2} title="Add this configuration">
+                  <div className="relative mt-1">
+                    <pre className="overflow-x-auto rounded-xl border border-border bg-muted/30 p-4 pr-20 text-xs">
+                      <code>{GEMINI_CLI_CONFIG}</code>
+                    </pre>
+                    <CopyButton
+                      value={GEMINI_CLI_CONFIG}
+                      ariaLabel="Copy the Gemini CLI configuration"
+                      className="absolute right-2 top-2"
                     />
-                    {MCP_URL && <CopyButton value={MCP_URL} ariaLabel="Copy connector URL" />}
                   </div>
-                </div>
+                </Step>
+              </ol>
+            </TabsContent>
 
-                {/* Auth */}
-                <div className="flex items-start gap-3 rounded-xl border border-border bg-muted/30 p-4">
-                  <ShieldCheck className="mt-0.5 size-4 shrink-0 text-primary-text" />
-                  <p className="text-sm text-muted-foreground">
-                    No manual tokens — when {activeClient?.label ?? "the client"} connects,
-                    it redirects you here to sign in as{" "}
-                    <span className="font-medium text-foreground">
-                      {user?.isDemo ? "your account" : (user?.email ?? "your account")}
-                    </span>{" "}
-                    and approve access. You can disconnect it any time under{" "}
-                    <Link href="/settings#connected-apps" className="font-medium text-primary-text underline-offset-4 hover:underline">
-                      Settings → Connected AI apps
-                    </Link>
-                    .
-                  </p>
-                </div>
+            <TabsContent value="other" className="mt-5">
+              <ol>
+                <Step n={1} title="Find the connector option">
+                  In your AI client, look for the option to add a custom remote MCP server.
+                </Step>
+                <Step n={2} title="Paste the connector URL">
+                  Paste the URL above as the server URL.
+                </Step>
+                <Step n={3} title="Choose OAuth">
+                  If it asks for an auth method, choose OAuth — the client will redirect you here to sign in and approve
+                  access.
+                </Step>
+              </ol>
+            </TabsContent>
+          </Tabs>
+        </Card>
 
-                {/* Setup instructions, per client */}
-                <div>
-                  <h3 className="label-sm text-primary-text! mb-4 block">Setup instructions</h3>
-
-                  {active === "claude" && (
-                    <div className="space-y-3">
-                      <p className="text-sm text-muted-foreground">
-                        Add to Claude opens Claude with the connector name and URL already
-                        filled in — review and confirm in the dialog that opens.
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Didn&apos;t work? Go to Claude → Settings → Connectors → Add custom
-                        connector and paste the URL above.
-                      </p>
-                    </div>
-                  )}
-
-                  {active === "chatgpt" && (
-                    <div className="space-y-4">
-                      <div className="space-y-3">
-                        {[
-                          "Click the button above (Settings → Apps & Connectors on ChatGPT).",
-                          "Click Create and choose Custom connector.",
-                          "Paste the connector URL from above into the Server URL field, then save.",
-                          "Click Connect — you'll be redirected here to sign in and approve access.",
-                        ].map((step, i) => (
-                          <div key={i} className="flex gap-3">
-                            <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-bold">
-                              {i + 1}
-                            </div>
-                            <p className="text-sm leading-relaxed text-muted-foreground">{step}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {active === "gemini" && (
-                    <div className="space-y-3">
-                      <p className="text-sm text-muted-foreground">
-                        The consumer Gemini app doesn&apos;t support custom MCP connectors yet.
-                        If you use <span className="font-medium text-foreground">Gemini CLI</span>
-                        , add this to{" "}
-                        <code className="rounded bg-muted px-1 py-0.5 text-xs">
-                          ~/.gemini/settings.json
-                        </code>
-                        :
-                      </p>
-                      <div className="flex items-start gap-2">
-                        <pre className="flex-1 overflow-x-auto rounded-xl border border-border bg-muted/30 p-4 text-xs">
-                          <code>{GEMINI_CLI_CONFIG}</code>
-                        </pre>
-                        <CopyButton value={GEMINI_CLI_CONFIG} />
-                      </div>
-                    </div>
-                  )}
-
-                  {active === "other" && (
-                    <div className="space-y-3">
-                      {[
-                        "In your AI client, find the option to add a custom remote MCP server.",
-                        "Paste the connector URL above as the server URL.",
-                        "If prompted for an auth method, choose OAuth — the client will redirect you here to sign in and approve access.",
-                      ].map((step, i) => (
-                        <div key={i} className="flex gap-3">
-                          <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-bold">
-                            {i + 1}
-                          </div>
-                          <p className="text-sm leading-relaxed text-muted-foreground">{step}</p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
+        <aside aria-labelledby="how-access-works">
+          <Card className="gap-0 border-0 p-5 sm:p-6 lg:sticky lg:top-20">
+            <div className="flex items-center gap-3">
+              <span
+                aria-hidden
+                className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/15 text-primary-text"
+              >
+                <ShieldCheck className="size-5" />
+              </span>
+              <h2 id="how-access-works" className="text-base font-semibold">
+                How access works
+              </h2>
             </div>
-          </div>
-        </div>
+            <ul className="mt-4 space-y-4 text-sm text-muted-foreground">
+              <li>
+                <span className="font-medium text-foreground">Suggestions only.</span> An assistant can read your
+                balances and propose transactions, but each one waits as a draft until you approve it.
+              </li>
+              <li>
+                <span className="font-medium text-foreground">No keys to paste.</span> You sign in here with your MoFin
+                account, so the assistant never sees your password.
+              </li>
+              <li>
+                <span className="font-medium text-foreground">You stay in control.</span> Disconnect any time under{" "}
+                <Link
+                  href="/settings#connected-apps"
+                  className="font-medium text-primary-text underline-offset-4 hover:underline"
+                >
+                  Settings → Connected AI apps
+                </Link>
+                .
+              </li>
+            </ul>
+          </Card>
+        </aside>
       </div>
     </div>
   );
