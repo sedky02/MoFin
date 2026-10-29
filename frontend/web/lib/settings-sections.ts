@@ -11,12 +11,28 @@ export const SETTINGS_SECTIONS = [
 export type SettingsSectionId = (typeof SETTINGS_SECTIONS)[number]["id"];
 
 /**
- * The section to highlight: the first one in page order that is on screen,
- * or the previous highlight when none is (between two sections), or the first.
+ * How far below the top of the viewport a section's top must have scrolled for
+ * that section to count as the one being read. It clears the sticky top bar and
+ * the mobile section row, with a little room to spare.
  */
-export function pickActiveSection(
-  visible: ReadonlySet<string>,
-  previous: SettingsSectionId | undefined,
+export const ACTIVE_SECTION_OFFSET = 140;
+
+/**
+ * The section being read: the last one, in page order, whose top has reached
+ * `offset` pixels from the top of the viewport. At the very bottom of the page
+ * it is the last section, because short final sections can never scroll up
+ * to the offset. `tops` maps a section id to its distance from the viewport top.
+ */
+export function activeSectionAt(
+  tops: Readonly<Record<string, number | undefined>>,
+  atBottom: boolean,
+  offset: number = ACTIVE_SECTION_OFFSET,
 ): SettingsSectionId {
-  return SETTINGS_SECTIONS.find((s) => visible.has(s.id))?.id ?? previous ?? SETTINGS_SECTIONS[0].id;
+  if (atBottom) return SETTINGS_SECTIONS[SETTINGS_SECTIONS.length - 1].id;
+  let active: SettingsSectionId = SETTINGS_SECTIONS[0].id;
+  for (const { id } of SETTINGS_SECTIONS) {
+    const top = tops[id];
+    if (top !== undefined && top <= offset) active = id;
+  }
+  return active;
 }
