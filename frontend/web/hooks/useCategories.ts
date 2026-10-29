@@ -1,10 +1,10 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api";
+import { api, ApiClientError } from "@/lib/api";
 import { categoryKeys } from "@/lib/query-keys";
 import { STALE } from "@/lib/query-client";
-import type { Category, CategoryType, CategoryUsage, Paginated } from "@/lib/types";
+import type { Category, CategoryType, Paginated } from "@/lib/types";
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/form-errors";
 
@@ -36,17 +36,6 @@ export function useCategories(status: CategoryListStatus = "active", enabled = t
   });
 }
 
-/** How many transactions (and budgets) use the category, fetched fresh each time it's asked for. */
-export function useCategoryUsage(id: string | undefined) {
-  return useQuery({
-    queryKey: categoryKeys.usage(id ?? ""),
-    queryFn: () => api.get<CategoryUsage>(`/categories/${id}/usage`),
-    enabled: !!id,
-    staleTime: 0,
-    gcTime: 0,
-  });
-}
-
 /** Drops a category from a cached list once the server has confirmed it left. */
 function removeFromList(
   queryClient: ReturnType<typeof useQueryClient>,
@@ -74,7 +63,11 @@ export function useCreateCategory() {
       queryClient.invalidateQueries({ queryKey: categoryKeys.all });
       toast.success("Category created.");
     },
-    onError: (err) => handleApiError(err, { fallback: "Could not create category." }),
+    // A name that's taken (409) is shown on the Name field by the dialog, not as a toast.
+    onError: (err) => {
+      if (err instanceof ApiClientError && err.status === 409) return;
+      handleApiError(err, { fallback: "Could not create category." });
+    },
   });
 }
 
@@ -94,34 +87,35 @@ export function useUpdateCategory() {
       queryClient.invalidateQueries({ queryKey: categoryKeys.all });
       toast.success("Category updated.");
     },
-    onError: (err) => handleApiError(err, { fallback: "Could not update category." }),
-  });
-}
-
-// None of these remove the tile optimistically: a delete of a category in use
-// is refused, and a tile that vanishes and then comes back with an error toast
-// is worse than a short wait. The tile goes once the server has confirmed.
-export function useDeleteCategory() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => api.delete<void>(`/categories/${id}`),
-    onSuccess: (_data, id) => {
-      removeFromList(queryClient, "active", id);
-      removeFromList(queryClient, "archived", id);
-      toast.success("Category deleted.");
+    onError: (err) => {
+      if (err instanceof ApiClientError && err.status === 409) return;
+      handleApiError(err, { fallback: "Could not update category." });
     },
-    onError: (err) => handleApiError(err, { fallback: "Could not delete category." }),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: categoryKeys.all }),
   });
 }
 
+// Neither removes the tile optimistically: it goes once the server has confirmed. Categories are
+// never deleted from the app: archiving hides one from the pickers and keeps it on past
+// transactions, and it can always be restored.
 export function useArchiveCategory() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => api.patch<Category>(`/categories/${id}/archive`),
     onSuccess: (category) => {
       removeFromList(queryClient, "active", category.id);
-      toast.success(`"${category.name}" archived. Restore it any time from Archived.`);
+      toast.success(`"${category.name}" archived.`, {
+        description: "It is hidden from pickers but stays on past transactions.",
+        action: {
+          label: "Undo",
+          onClick: () => {
+            api
+              .patch<Category>(`/categories/${category.id}/restore`)
+              .then(() => toast.success(`"${category.name}" restored.`))
+              .catch((err) => handleApiError(err, { fallback: "Could not restore category." }))
+              .finally(() => queryClient.invalidateQueries({ queryKey: categoryKeys.all }));
+          },
+        },
+      });
     },
     onError: (err) => handleApiError(err, { fallback: "Could not archive category." }),
     onSettled: () => queryClient.invalidateQueries({ queryKey: categoryKeys.all }),

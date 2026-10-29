@@ -18,10 +18,16 @@ function TooltipProvider({
   )
 }
 
+// Radix throws if a Tooltip has no Provider above it, and the app has no app-wide one, so each
+// Tooltip brings its own (a nearer TooltipProvider, such as the goals summary's, still wins).
 function Tooltip({
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Root>) {
-  return <TooltipPrimitive.Root data-slot="tooltip" {...props} />
+  return (
+    <TooltipProvider>
+      <TooltipPrimitive.Root data-slot="tooltip" {...props} />
+    </TooltipProvider>
+  )
 }
 
 function TooltipTrigger({

@@ -1,5 +1,6 @@
 "use client";
 
+import { CategoryGlyph } from "@/components/categories/category-glyph";
 import * as React from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { PauseCircle, Repeat } from "lucide-react";
@@ -285,8 +286,10 @@ export function RecurringSeriesActions({ tx, className }: { tx: Transaction; cla
                         <SelectContent>
                           {relevantCategories.map((c) => (
                             <SelectItem key={c.id} value={c.id}>
-                              {c.icon ? `${c.icon} ` : ""}
-                              {c.name}
+                              <span className="flex items-center gap-2">
+                                <CategoryGlyph category={c} className="size-4" />
+                                {c.name}
+                              </span>
                             </SelectItem>
                           ))}
                         </SelectContent>

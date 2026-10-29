@@ -1,7 +1,7 @@
 "use client";
 
 import { Plus } from "lucide-react";
-import { CategoryIcon } from "@/components/dashboard/category-icon";
+import { CategoryGlyph } from "@/components/categories/category-glyph";
 import { cn } from "@/lib/utils";
 import type { Category } from "@/lib/types";
 
@@ -42,7 +42,7 @@ export function CategoryChips({
                 : "bg-background/70 text-muted-foreground hover:text-foreground",
             )}
           >
-            {c.icon ? <span aria-hidden>{c.icon}</span> : <CategoryIcon name={c.name} className="size-3.5" />}
+            <CategoryGlyph category={c} className="size-3.5" />
             {c.name}
           </button>
         );

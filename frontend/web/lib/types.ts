@@ -60,12 +60,6 @@ export interface Category {
   updatedAt?: string;
 }
 
-/** What still uses a category; anything above zero blocks deleting it. */
-export interface CategoryUsage {
-  transactions: number;
-  budgets: number;
-}
-
 export interface LedgerItem {
   id: string;
   transactionId: string;

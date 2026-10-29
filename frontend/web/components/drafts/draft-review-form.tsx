@@ -1,5 +1,6 @@
 "use client";
 
+import { CategoryGlyph } from "@/components/categories/category-glyph";
 import * as React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -249,7 +250,7 @@ export function DraftReviewForm({
                     {relevantCategories.map((c) => (
                       <SelectItem key={c.id} value={c.id}>
                         <span className="flex items-center gap-2">
-                          {c.icon && <span>{c.icon}</span>}
+                          <CategoryGlyph category={c} className="size-4" />
                           {c.name}
                         </span>
                       </SelectItem>

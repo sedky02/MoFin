@@ -1,5 +1,6 @@
 "use client";
 
+import { CategoryGlyph } from "@/components/categories/category-glyph";
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -129,7 +130,7 @@ export function TransactionDetail({ id }: { id: string }) {
                 <div className="flex items-center gap-2">
                   <dt className="text-muted-foreground">Category</dt>
                   <dd className="flex items-center gap-1.5 font-medium">
-                    {tx.category.icon && <span>{tx.category.icon}</span>}
+                    <CategoryGlyph category={tx.category} className="size-4" />
                     <span
                       className="size-2 rounded-full"
                       style={{ backgroundColor: tx.category.color || "var(--muted-foreground)" }}
@@ -250,7 +251,7 @@ export function TransactionDetail({ id }: { id: string }) {
                     <TableCell className="whitespace-normal">
                       {item.category ? (
                         <span className="flex items-center gap-1.5 text-sm">
-                          {item.category.icon && <span>{item.category.icon}</span>}
+                          <CategoryGlyph category={item.category} className="size-4" />
                           <span
                             className="size-2 rounded-full"
                             style={{

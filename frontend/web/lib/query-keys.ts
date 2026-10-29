@@ -11,7 +11,6 @@ export const categoryKeys = {
   all: ["categories"] as const,
   list: (status: "active" | "archived" | "all" = "active") =>
     [...categoryKeys.all, "list", status] as const,
-  usage: (id: string) => [...categoryKeys.all, "usage", id] as const,
 };
 
 export const transactionKeys = {

@@ -1,5 +1,6 @@
 "use client";
 
+import { CategoryGlyph } from "@/components/categories/category-glyph";
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -573,7 +574,7 @@ export function TransactionForm({ transaction }: { transaction?: Transaction }) 
                         {relevantCategories.map((c) => (
                                     <SelectItem key={c.id} value={c.id}>
                                       <span className="flex items-center gap-2">
-                                        {c.icon && <span>{c.icon}</span>}
+                                        <CategoryGlyph category={c} className="size-4" />
                                         {c.name}
                                       </span>
                                     </SelectItem>

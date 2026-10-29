@@ -1,19 +1,18 @@
 "use client";
 
 import * as React from "react";
-import { ArchiveRestore, Plus, Tags, Lock, Pencil, Trash2 } from "lucide-react";
+import { Archive, ArchiveRestore, ArrowLeft, Plus, Search, Tags, Lock, Pencil } from "lucide-react";
 import {
   useArchiveCategory,
   useCategories,
-  useDeleteCategory,
   useRestoreCategory,
 } from "@/hooks/useCategories";
 import { CategoryDialog } from "@/components/categories/category-dialog";
-import { DeleteCategoryDialog } from "@/components/categories/delete-category-dialog";
+import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { PageHeader } from "@/components/common/page-header";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState, ErrorState } from "@/components/common/states";
 import {
@@ -21,60 +20,37 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { CategoryIcon } from "@/components/dashboard/category-icon";
+import { CategoryAvatar } from "@/components/categories/category-avatar";
 import { cn } from "@/lib/utils";
 import type { Category } from "@/lib/types";
 
-type TileActions = {
+type RowActions = {
   onEdit?: (c: Category) => void;
-  onDelete?: (c: Category) => void;
+  onArchive?: (c: Category) => void;
   onRestore?: (c: Category) => void;
   /** Id of the category a delete, archive or restore is in flight for. */
   busyId?: string;
 };
 
-function CategoryTile({
+function CategoryRow({
   category,
   onEdit,
-  onDelete,
+  onArchive,
   onRestore,
   busyId,
-}: { category: Category } & TileActions) {
+}: { category: Category } & RowActions) {
   const busy = busyId === category.id;
+  // Quiet until you point at the row or move focus into it; on touch screens there is no
+  // hover, so the actions stay visible there.
+  const reveal =
+    "transition-opacity sm:opacity-0 sm:group-hover/row:opacity-100 sm:group-focus-within/row:opacity-100 pointer-coarse:opacity-100";
   return (
-    // `flex-row` is required: Card is `flex-col` by default, so `flex` alone stacks everything vertically.
-    <Card
+    <li
       aria-busy={busy || undefined}
-      className={cn(
-        "flex-row items-center gap-3 border-0 p-3.5 shadow-sm transition-opacity",
-        busy && "opacity-60",
-      )}
+      className={cn("group/row flex items-center gap-3 px-4 py-2.5 transition-opacity", busy && "opacity-60")}
     >
-      <span
-        className="flex size-9 shrink-0 items-center justify-center rounded-lg text-base"
-        style={{
-          backgroundColor: category.color ? `${category.color}22` : "var(--secondary)",
-        }}
-      >
-        {category.icon || (
-          <CategoryIcon
-            name={category.name}
-            className="size-4"
-            style={{ color: category.color || "var(--muted-foreground)" }}
-          />
-        )}
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium">{category.name}</p>
-        <p
-          className={cn(
-            "text-xs",
-            category.type === "INCOME" ? "text-success" : "text-muted-foreground",
-          )}
-        >
-          {category.type === "INCOME" ? "Income" : "Expense"}
-        </p>
-      </div>
+      <CategoryAvatar category={category} />
+      <p className="min-w-0 flex-1 truncate text-sm font-medium">{category.name}</p>
       {category.isSystem ? (
         <Tooltip>
           <TooltipTrigger asChild>
@@ -82,9 +58,10 @@ function CategoryTile({
               tabIndex={0}
               role="img"
               aria-label="System category (read-only)"
-              className="flex size-8 items-center justify-center rounded-md text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring"
+              className="flex h-8 items-center gap-1.5 rounded-md px-2 text-xs text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring"
             >
-              <Lock className="size-4" />
+              <Lock className="size-3.5" />
+              System
             </span>
           </TooltipTrigger>
           <TooltipContent>System category — can&apos;t be edited</TooltipContent>
@@ -102,7 +79,7 @@ function CategoryTile({
           Restore
         </Button>
       ) : (
-        <>
+        <div className={cn("flex items-center", reveal)}>
           {onEdit && (
             <Button
               variant="ghost"
@@ -114,70 +91,82 @@ function CategoryTile({
               <Pencil className="size-4" />
             </Button>
           )}
-          {onDelete && (
+          {onArchive && (
             <Button
               variant="ghost"
               size="icon"
-              className="size-8 text-muted-foreground"
+              className="size-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
               disabled={busy}
-              onClick={() => onDelete(category)}
-              aria-label={`Delete ${category.name}`}
+              onClick={() => onArchive(category)}
+              aria-label={`Archive ${category.name}`}
+              title="Archive"
             >
-              <Trash2 className="size-4" />
+              <Archive className="size-4" />
             </Button>
           )}
-        </>
+        </div>
       )}
-    </Card>
+    </li>
   );
 }
 
-function Section({
+/** One list of categories in a single card, rows divided by hairlines. */
+function Group({
   title,
   hint,
   items,
   ...actions
 }: {
   title: string;
-  hint: string;
+  hint?: string;
   items: Category[];
-} & TileActions) {
+} & RowActions) {
   if (items.length === 0) return null;
   return (
-    <section>
-      <div className="mb-3 flex items-baseline gap-2">
+    <Card className="gap-0 border-0 py-0">
+      <div className="flex items-baseline justify-between gap-3 px-4 pb-2 pt-4">
         <h2 className="text-sm font-semibold">{title}</h2>
-        <span className="text-xs text-muted-foreground">{hint}</span>
+        <span className="text-xs text-muted-foreground">{hint ?? items.length}</span>
       </div>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <ul className="divide-y divide-border pb-1">
         {items.map((c) => (
-          <CategoryTile key={c.id} category={c} {...actions} />
+          <CategoryRow key={c.id} category={c} {...actions} />
         ))}
-      </div>
-    </section>
+      </ul>
+    </Card>
   );
 }
 
-function TilesSkeleton() {
+function ListSkeleton() {
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      {Array.from({ length: 6 }).map((_, i) => (
-        <Skeleton key={i} className="h-[68px] rounded-xl" />
+    <div className="grid items-start gap-4 lg:grid-cols-2">
+      {[4, 3].map((rows, i) => (
+        <Card key={i} className="gap-0 border-0 p-4">
+          <Skeleton className="mb-4 h-4 w-24" />
+          <div className="space-y-3">
+            {Array.from({ length: rows }).map((_, j) => (
+              <div key={j} className="flex items-center gap-3">
+                <Skeleton className="size-10 rounded-xl" />
+                <Skeleton className="h-4 w-32" />
+              </div>
+            ))}
+          </div>
+        </Card>
       ))}
     </div>
   );
 }
 
 export default function CategoriesPage() {
-  const [tab, setTab] = React.useState<"active" | "archived">("active");
+  // Two views of the same page: the active categories, or the archived ones on their own.
+  const [view, setView] = React.useState<"active" | "archived">("active");
   const { data, isLoading, isError, refetch } = useCategories("active");
-  const archived = useCategories("archived", tab === "archived");
-  const deleteCategory = useDeleteCategory();
+  const archived = useCategories("archived");
   const archiveCategory = useArchiveCategory();
   const restoreCategory = useRestoreCategory();
   const [open, setOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<Category | undefined>();
-  const [toDelete, setToDelete] = React.useState<Category | undefined>();
+  const [toArchive, setToArchive] = React.useState<Category | undefined>();
 
   function openCreate() {
     setEditing(undefined);
@@ -190,36 +179,68 @@ export default function CategoriesPage() {
 
   // The tile stays until the server confirms; it's only dimmed meanwhile.
   const busyId =
-    (deleteCategory.isPending && deleteCategory.variables) ||
     (archiveCategory.isPending && archiveCategory.variables) ||
     (restoreCategory.isPending && restoreCategory.variables) ||
     undefined;
 
-  const userCategories = (data ?? []).filter((c) => !c.isSystem);
-  const systemCategories = (data ?? []).filter((c) => c.isSystem);
+  // Typing in the filter narrows whichever tab is open; it only appears once the list is long enough to need it.
+  const [query, setQuery] = React.useState("");
+  const matches = (c: Category) => c.name.toLowerCase().includes(query.trim().toLowerCase());
+  const active = (data ?? []).filter(matches);
+  const archivedList = (archived.data ?? []).filter(matches);
+  const expenses = active.filter((c) => c.type === "EXPENSE");
+  const income = active.filter((c) => c.type === "INCOME");
+  const archivedCount = archived.data?.length ?? 0;
+  const showFilter = (data?.length ?? 0) + (archived.data?.length ?? 0) > 6;
+  const noMatches = (
+    <p className="py-10 text-center text-sm text-muted-foreground">No categories match &ldquo;{query.trim()}&rdquo;.</p>
+  );
 
   return (
     <>
       <PageHeader
         title="Categories"
-        description="Organize transactions. System categories are read-only."
+        description="Organize your transactions. System categories are read-only."
         action={
-          <Button onClick={openCreate} className="gap-2">
-            <Plus className="size-4" />
-            New category
-          </Button>
+          // The page's actions sit together: switch view on the left, the primary action last.
+          <div className="flex flex-wrap items-center gap-2">
+            {view === "active" ? (
+              <Button variant="outline" onClick={() => setView("archived")} className="gap-2">
+                <Archive className="size-4" aria-hidden />
+                {archivedCount > 0 ? `Archived (${archivedCount})` : "Archived"}
+              </Button>
+            ) : (
+              <Button variant="outline" onClick={() => setView("active")} className="gap-2">
+                <ArrowLeft className="size-4" aria-hidden />
+                Back to categories
+              </Button>
+            )}
+            <Button onClick={openCreate} className="gap-2">
+              <Plus className="size-4" />
+              New category
+            </Button>
+          </div>
         }
       />
 
-      <Tabs value={tab} onValueChange={(v) => setTab(v as "active" | "archived")}>
-        <TabsList>
-          <TabsTrigger value="active">Active</TabsTrigger>
-          <TabsTrigger value="archived">Archived</TabsTrigger>
-        </TabsList>
+      {showFilter && (
+        <div className="relative w-full sm:w-72">
+          <Search aria-hidden className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Filter categories"
+            aria-label="Filter categories"
+            className="pl-9"
+          />
+        </div>
+      )}
 
-        <TabsContent value="active" className="mt-6">
-          {isLoading ? (
-            <TilesSkeleton />
+      <div className={showFilter ? "mt-5" : undefined}>
+        {view === "active" ? (
+          isLoading ? (
+            <ListSkeleton />
           ) : isError ? (
             <ErrorState description="Couldn't load categories." onRetry={() => refetch()} />
           ) : (data ?? []).length === 0 ? (
@@ -234,63 +255,53 @@ export default function CategoriesPage() {
                 </Button>
               }
             />
+          ) : active.length === 0 ? (
+            noMatches
           ) : (
-            <div className="space-y-8">
-              <Section
-                title="Your categories"
-                hint={`${userCategories.length}`}
-                items={userCategories}
-                onEdit={openEdit}
-                onDelete={setToDelete}
-                busyId={busyId}
-              />
-              <Section
-                title="System categories"
-                hint="read-only"
-                items={systemCategories}
-              />
+            <div className="grid items-start gap-4 lg:grid-cols-2">
+              <Group title="Expenses" items={expenses} onEdit={openEdit} onArchive={setToArchive} busyId={busyId} />
+              <Group title="Income" items={income} onEdit={openEdit} onArchive={setToArchive} busyId={busyId} />
             </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="archived" className="mt-6">
-          {archived.isLoading ? (
-            <TilesSkeleton />
-          ) : archived.isError ? (
-            <ErrorState
-              description="Couldn't load your archived categories."
-              onRetry={() => archived.refetch()}
-            />
-          ) : !archived.data || archived.data.length === 0 ? (
-            <EmptyState
-              icon={Tags}
-              title="No archived categories"
-              description="Categories you archive are hidden from pickers but stay on past transactions. They'll show up here."
-            />
-          ) : (
-            <Section
+          )
+        ) : archived.isLoading ? (
+          <ListSkeleton />
+        ) : archived.isError ? (
+          <ErrorState
+            description="Couldn't load your archived categories."
+            onRetry={() => archived.refetch()}
+          />
+        ) : archivedCount === 0 ? (
+          <EmptyState
+            icon={Tags}
+            title="No archived categories"
+            description="Categories you archive are hidden from pickers but stay on past transactions. They'll show up here."
+          />
+        ) : archivedList.length === 0 ? (
+          noMatches
+        ) : (
+          <div className="max-w-2xl">
+            <Group
               title="Archived"
               hint="hidden from pickers, kept on past transactions"
-              items={archived.data}
+              items={archivedList}
               onRestore={(c) => restoreCategory.mutate(c.id)}
               busyId={busyId}
             />
-          )}
-        </TabsContent>
-      </Tabs>
+          </div>
+        )}
+      </div>
 
       <CategoryDialog open={open} onOpenChange={setOpen} category={editing} />
-
-      <DeleteCategoryDialog
-        category={toDelete}
-        onOpenChange={(o) => !o && setToDelete(undefined)}
-        onDelete={(c) => {
-          setToDelete(undefined);
-          deleteCategory.mutate(c.id);
-        }}
-        onArchive={(c) => {
-          setToDelete(undefined);
-          archiveCategory.mutate(c.id);
+      <ConfirmDialog
+        open={!!toArchive}
+        onOpenChange={(o) => !o && setToArchive(undefined)}
+        title={`Archive "${toArchive?.name ?? ""}"?`}
+        description="It will be hidden from pickers but stay on past transactions. You can restore it any time from Archived."
+        confirmLabel="Archive"
+        destructive
+        onConfirm={() => {
+          if (toArchive) archiveCategory.mutate(toArchive.id);
+          setToArchive(undefined);
         }}
       />
     </>

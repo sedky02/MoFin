@@ -30,20 +30,20 @@ async function createCategory(page: Page, name: string): Promise<string> {
 }
 
 function tile(page: Page, name: string) {
-  return page.getByRole("tabpanel").locator('[data-slot="card"]').filter({ hasText: name });
+  return page.locator("main").locator('[data-slot="card"]').filter({ hasText: name });
 }
 
 /**
  * Records, from inside the page, every time `text` appears in or leaves the
- * open tab's tiles, so a tile that is removed and then put back (the old
- * optimistic delete) shows up as present → absent → present. Only the tab
- * panel is watched: the dialog and the toast name the category too.
+ * page's lists, so a tile that is removed and then put back (the old
+ * optimistic delete) shows up as present → absent → present. Only the page
+ * content is watched: the dialog and the toast name the category too.
  */
 async function watchPresence(page: Page, text: string) {
   await page.evaluate((needle) => {
     const w = window as unknown as { __presence: boolean[] };
     const present = () =>
-      [...document.querySelectorAll('[role="tabpanel"]')].some((p) => (p as HTMLElement).innerText.includes(needle));
+      ((document.querySelector("main") as HTMLElement | null)?.innerText ?? "").includes(needle);
     w.__presence = [present()];
     new MutationObserver(() => {
       const now = present();
@@ -57,7 +57,7 @@ function presence(page: Page) {
 }
 
 test.describe("archiving categories", () => {
-  test("a used category offers Archive, leaves the pickers and can be restored", async ({ page }, testInfo) => {
+  test("archiving a category in use leaves the pickers and can be restored", async ({ page }, testInfo) => {
     const name = `Archive check ${testInfo.project.name} ${Date.now()}`;
     const accountId = await mainAccountId(page);
     const categoryId = await createCategory(page, name);
@@ -81,15 +81,15 @@ test.describe("archiving categories", () => {
       await page.goto("/categories");
       await expect(tile(page, name)).toHaveCount(1);
 
-      // The dialog says why it can't be deleted before anything is confirmed.
-      await tile(page, name).getByRole("button", { name: `Delete ${name}` }).click();
+      // There is no delete in the app: archiving asks first.
+      await expect(tile(page, name).getByRole("button", { name: `Delete ${name}` })).toHaveCount(0);
+      await tile(page, name).getByRole("button", { name: `Archive ${name}` }).click();
       const dialog = page.getByRole("alertdialog");
-      await expect(dialog.getByText(/Used by 1 transaction\b/)).toBeVisible();
       await expect(dialog.getByRole("heading", { name: `Archive "${name}"?` })).toBeVisible();
       await expect(dialog.getByRole("button", { name: "Delete" })).toHaveCount(0);
 
       const axe = await runAxe(page, { skipSettle: true });
-      await testInfo.attach("axe delete dialog", { body: formatViolations(axe) || "no violations", contentType: "text/plain" });
+      await testInfo.attach("axe archive dialog", { body: formatViolations(axe) || "no violations", contentType: "text/plain" });
       const violations = axe.filter((v) => v.id !== "heading-order");
       expect(violations, `axe violations with the dialog open\n${formatViolations(violations)}`).toEqual([]);
 
@@ -119,13 +119,14 @@ test.describe("archiving categories", () => {
       await expect(chips.getByRole("radio").first()).toBeVisible();
       await expect(chips.getByRole("radio", { name: new RegExp(name) })).toHaveCount(0);
 
-      // Restore it from the Archived tab.
+      // Restore it from the archived list.
       await page.goto("/categories");
-      await page.getByRole("tab", { name: "Archived" }).click();
+      await expect(tile(page, name)).toHaveCount(0);
+      await page.getByRole("button", { name: /^Archived/ }).click();
       await expect(tile(page, name)).toHaveCount(1);
       await tile(page, name).getByRole("button", { name: `Restore ${name}` }).click();
       await expect(tile(page, name)).toHaveCount(0);
-      await page.getByRole("tab", { name: "Active" }).click();
+      await page.getByRole("button", { name: "Back to categories" }).click();
       await expect(tile(page, name)).toHaveCount(1);
     } finally {
       // Leave the fixture as seeded: soft-delete the transaction, then the
@@ -137,21 +138,25 @@ test.describe("archiving categories", () => {
     }
   });
 
-  test("an unused category can still be deleted outright", async ({ page }, testInfo) => {
-    const name = `Delete check ${testInfo.project.name} ${Date.now()}`;
+  test("an unused category is archived too, and Undo brings it back", async ({ page }, testInfo) => {
+    const name = `Undo check ${testInfo.project.name} ${Date.now()}`;
     const categoryId = await createCategory(page, name);
 
     try {
       await page.goto("/categories");
-      await tile(page, name).getByRole("button", { name: `Delete ${name}` }).click();
-      const dialog = page.getByRole("alertdialog");
-      await expect(dialog.getByText("No transactions use this category.", { exact: false })).toBeVisible();
-      await expect(dialog.getByRole("button", { name: "Archive" })).toHaveCount(0);
-      await dialog.getByRole("button", { name: "Delete" }).click();
+      await tile(page, name).getByRole("button", { name: `Archive ${name}` }).click();
+      await page.getByRole("alertdialog").getByRole("button", { name: "Archive" }).click();
       await expect(tile(page, name)).toHaveCount(0);
-      expect((await firstPage(page, "/categories", { status: "all" })).some((c) => c.id === categoryId)).toBe(false);
+
+      // It is archived, not deleted: still there with status=all, and restorable.
+      expect((await firstPage(page, "/categories", { status: "archived" })).some((c) => c.id === categoryId)).toBe(true);
+
+      await page.getByRole("button", { name: "Undo" }).click();
+      await expect(tile(page, name)).toHaveCount(1);
+      expect((await firstPage(page, "/categories")).some((c) => c.id === categoryId)).toBe(true);
     } finally {
-      // A no-op 404 when the test got as far as deleting it.
+      // Tidy the fixture through the API: restoring first in case the test stopped halfway.
+      await page.request.patch(`/api/backend/categories/${categoryId}/restore`);
       await page.request.delete(`/api/backend/categories/${categoryId}`);
     }
   });
