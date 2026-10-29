@@ -56,17 +56,20 @@ async function bootstrap() {
   // exception filter, throttler guard, and structured (pino) request logging
   // are registered globally in AppModule.
 
-  const swaggerConfig = new DocumentBuilder()
-    .setTitle('MoFin API')
-    .setDescription('AI-native personal finance backend')
-    .setVersion('0.1.0')
-    .addBearerAuth(
-      { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
-      'jwt',
-    )
-    .build();
-  const document = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup('docs', app, document);
+  // The API reference lists every route, so production doesn't serve it.
+  if (config.get<string>('NODE_ENV') !== 'production') {
+    const swaggerConfig = new DocumentBuilder()
+      .setTitle('MoFin API')
+      .setDescription('AI-native personal finance backend')
+      .setVersion('0.1.0')
+      .addBearerAuth(
+        { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
+        'jwt',
+      )
+      .build();
+    const document = SwaggerModule.createDocument(app, swaggerConfig);
+    SwaggerModule.setup('docs', app, document);
+  }
 
   await app.listen(config.get<number>('PORT', 3000));
 }
