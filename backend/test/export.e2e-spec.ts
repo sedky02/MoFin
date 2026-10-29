@@ -50,6 +50,7 @@ const accounts: Row[] = [
     name: 'Wallet',
     type: 'CASH',
     currency: 'TND',
+    openingBalance: D('150.250'),
     archivedAt: null,
     createdAt: at('2026-01-01T00:00:00Z'),
   },
@@ -59,6 +60,7 @@ const accounts: Row[] = [
     name: 'Old savings',
     type: 'SAVINGS',
     currency: 'TND',
+    openingBalance: D('0'),
     archivedAt: at('2026-09-01T00:00:00Z'),
     createdAt: at('2026-01-02T00:00:00Z'),
   },
@@ -68,6 +70,7 @@ const accounts: Row[] = [
     name: 'Their bank',
     type: 'BANK',
     currency: 'EUR',
+    openingBalance: D('0'),
     archivedAt: null,
     createdAt: at('2026-01-01T00:00:00Z'),
   },
@@ -371,6 +374,9 @@ describe('GET /export (e2e)', () => {
         (t: Row) => t.id === 'tx-groceries',
       );
       expect(groceries.items[0].amount).toBe('12.345');
+      expect(
+        doc.accounts.find((a: Row) => a.id === 'acc-wallet').openingBalance,
+      ).toBe('150.25');
       expect(doc.goals[0].instances[0]).toEqual(
         expect.objectContaining({
           targetAmount: '5000.5',
