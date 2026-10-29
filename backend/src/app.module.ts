@@ -22,6 +22,7 @@ import { DemoModule } from './modules/demo/demo.module';
 import { DemoRestrictionsGuard } from './common/guards/demo-restrictions.guard';
 import { GoalsModule } from './modules/goals/goals.module';
 import { LedgerModule } from './modules/ledger/ledger.module';
+import { MaintenanceModule } from './modules/maintenance/maintenance.module';
 import { McpModule } from './modules/mcp/mcp.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { OAuthModule } from './modules/oauth/oauth.module';
@@ -61,6 +62,7 @@ import { UsersModule } from './modules/users/users.module';
     GoalsModule,
     ExportModule,
     DemoModule,
+    MaintenanceModule,
   ],
   providers: [
     // Global guards run in registration order: rate limit first, so an
