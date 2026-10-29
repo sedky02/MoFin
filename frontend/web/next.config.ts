@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
   // node_modules) for the Docker image; `next dev` and `next start` ignore it.
   output: "standalone",
   cacheComponents: true, // enables the "use cache" directive + PPR; data is dynamic by default
+  partialPrefetching: false, // keeps the prefetching this app was built with; <ViewTransition> needs no flag
   reactCompiler: true, // stable in Next.js 16 — no manual useMemo/useCallback
   async redirects() {
     // The transaction list used to live at /search. Query strings carry over,
@@ -13,7 +14,6 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     turbopackFileSystemCacheForDev: true, // faster cold starts (beta)
-    viewTransition: true, // React <ViewTransition> for sidebar nav crossfades
   },
 };
 
