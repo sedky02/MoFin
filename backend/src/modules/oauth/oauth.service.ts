@@ -261,6 +261,19 @@ export class OAuthService {
       where: { code: codeHash },
     });
 
+    if (record && claim.count === 0) {
+      // A used code presented again: whoever has it may also hold the tokens it
+      // bought, so the client's refresh tokens for this user are revoked
+      // (RFC 6749 §4.1.2). Access tokens already issued expire on their own.
+      await this.prisma.oAuthRefreshToken.updateMany({
+        where: {
+          userId: record.userId,
+          clientId: record.clientId,
+          revokedAt: null,
+        },
+        data: { revokedAt: new Date() },
+      });
+    }
     if (!record || claim.count === 0) {
       // Either unknown or already used → reject (replay defense).
       throw new BadRequestException({
@@ -483,10 +496,14 @@ export class OAuthService {
       throw new UnauthorizedException('invalid or expired handoff');
     }
     const fresh = randomBytes(32).toString('base64url');
-    await this.prisma.authSession.update({
-      where: { id: session.id },
+    // Conditional on the old value, so two consumes of the same handoff can't both win.
+    const { count } = await this.prisma.authSession.updateMany({
+      where: { id: session.id, sessionToken: session.sessionToken },
       data: { sessionToken: sha256(fresh) },
     });
+    if (count === 0) {
+      throw new UnauthorizedException('invalid or expired handoff');
+    }
     return fresh;
   }
 

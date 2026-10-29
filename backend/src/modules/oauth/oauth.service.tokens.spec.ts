@@ -112,3 +112,96 @@ describe('OAuthService.exchangeRefreshToken', () => {
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 });
+
+describe('OAuthService.exchangeAuthorizationCode', () => {
+  const record = {
+    code: sha256('code'),
+    userId: 'u1',
+    clientId: 'client-a',
+    redirectUri: 'https://app/cb',
+    codeChallenge: 'x',
+    codeChallengeMethod: 'S256',
+    scope: 'mcp',
+    resource: null,
+    usedAt: new Date(),
+    expiresAt: new Date(Date.now() + 60_000),
+  };
+
+  it("revokes the client's refresh tokens when a used code is presented again", async () => {
+    const prisma = {
+      authorizationCode: {
+        updateMany: jest.fn(async () => ({ count: 0 })),
+        findUnique: jest.fn(async () => record),
+      },
+      oAuthRefreshToken: { updateMany: jest.fn(async () => ({ count: 1 })) },
+    };
+    const service = new OAuthService(prisma as never, {} as never, {} as never);
+    await expect(
+      service.exchangeAuthorizationCode({
+        code: 'code',
+        codeVerifier: 'v',
+        clientId: 'client-a',
+        redirectUri: 'https://app/cb',
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.oAuthRefreshToken.updateMany).toHaveBeenCalledWith({
+      where: { userId: 'u1', clientId: 'client-a', revokedAt: null },
+      data: { revokedAt: expect.any(Date) },
+    });
+  });
+
+  it('does not revoke anything for an unknown code', async () => {
+    const prisma = {
+      authorizationCode: {
+        updateMany: jest.fn(async () => ({ count: 0 })),
+        findUnique: jest.fn(async () => null),
+      },
+      oAuthRefreshToken: { updateMany: jest.fn() },
+    };
+    const service = new OAuthService(prisma as never, {} as never, {} as never);
+    await expect(
+      service.exchangeAuthorizationCode({
+        code: 'nope',
+        codeVerifier: 'v',
+        clientId: 'client-a',
+        redirectUri: 'https://app/cb',
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.oAuthRefreshToken.updateMany).not.toHaveBeenCalled();
+  });
+});
+
+describe('OAuthService.consumeHandoff', () => {
+  function setup(count: number) {
+    const prisma = {
+      authSession: {
+        findUnique: jest.fn(async () => ({
+          id: 's1',
+          sessionToken: sha256('handoff'),
+          expiresAt: new Date(Date.now() + 60_000),
+        })),
+        updateMany: jest.fn(async () => ({ count })),
+      },
+    };
+    return {
+      prisma,
+      service: new OAuthService(prisma as never, {} as never, {} as never),
+    };
+  }
+
+  it('rotates the session value, conditional on the value it read', async () => {
+    const { service, prisma } = setup(1);
+    const fresh = await service.consumeHandoff('handoff');
+    expect(prisma.authSession.updateMany).toHaveBeenCalledWith({
+      where: { id: 's1', sessionToken: sha256('handoff') },
+      data: { sessionToken: sha256(fresh) },
+    });
+  });
+
+  it('refuses when another consume rotated it first', async () => {
+    const { service } = setup(0);
+    await expect(service.consumeHandoff('handoff')).rejects.toThrow(
+      'invalid or expired handoff',
+    );
+  });
+});
