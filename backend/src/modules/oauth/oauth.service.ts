@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import { Prisma } from '@prisma/client';
 import { createHash, randomBytes } from 'crypto';
 import { PrismaService } from '../../database/prisma.service';
 import { sha256 } from '../../common/utils/hash';
@@ -349,32 +350,55 @@ export class OAuthService {
     });
     if (!user) throw new BadRequestException({ error: 'invalid_grant' });
 
-    const next = await this.mintTokens({
-      userId: user.id,
-      email: user.email,
-      clientId: stored.clientId,
-      scope: stored.scope,
-      resource: stored.resource ?? this.resourceUri,
-      familyId: stored.familyId,
+    // Claim the presented token and create its successor in one transaction,
+    // so two concurrent refreshes with the same token can't both rotate it:
+    // the loser claims nothing and is treated as a reuse.
+    const successor = randomBytes(32).toString('base64url');
+    const next = await this.prisma.$transaction(async (tx) => {
+      const { count } = await tx.oAuthRefreshToken.updateMany({
+        where: { id: stored.id, revokedAt: null, rotatedToId: null },
+        data: { revokedAt: new Date(), rotatedToId: sha256(successor) },
+      });
+      if (count === 0) return null;
+      return this.mintTokens(
+        {
+          userId: user.id,
+          email: user.email,
+          clientId: stored.clientId,
+          scope: stored.scope,
+          resource: stored.resource ?? this.resourceUri,
+          familyId: stored.familyId,
+          refreshToken: successor,
+        },
+        tx,
+      );
     });
-
-    // Rotate: revoke the presented token and link it to its successor.
-    await this.prisma.oAuthRefreshToken.update({
-      where: { id: stored.id },
-      data: { revokedAt: new Date(), rotatedToId: sha256(next.refresh_token) },
-    });
-
+    if (!next) {
+      await this.prisma.oAuthRefreshToken.updateMany({
+        where: { familyId: stored.familyId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+      throw new BadRequestException({
+        error: 'invalid_grant',
+        error_description: 'refresh token reuse detected',
+      });
+    }
     return next;
   }
 
-  private async mintTokens(params: {
-    userId: string;
-    email: string;
-    clientId: string;
-    scope: string;
-    resource: string;
-    familyId: string;
-  }): Promise<OAuthTokenResponse> {
+  private async mintTokens(
+    params: {
+      userId: string;
+      email: string;
+      clientId: string;
+      scope: string;
+      resource: string;
+      familyId: string;
+      /** The raw refresh token to store, when the caller already hashed it into a rotation link. */
+      refreshToken?: string;
+    },
+    db: Prisma.TransactionClient = this.prisma,
+  ): Promise<OAuthTokenResponse> {
     const accessTtl = this.config.get<string>('JWT_ACCESS_TTL', '15m');
     const accessToken = await this.jwt.signAsync(
       {
@@ -391,9 +415,10 @@ export class OAuthService {
       },
     );
 
-    const refreshToken = randomBytes(32).toString('base64url');
+    const refreshToken =
+      params.refreshToken ?? randomBytes(32).toString('base64url');
     const refreshTtl = this.config.getOrThrow<number>('OAUTH_REFRESH_TTL');
-    await this.prisma.oAuthRefreshToken.create({
+    await db.oAuthRefreshToken.create({
       data: {
         tokenHash: sha256(refreshToken),
         userId: params.userId,
