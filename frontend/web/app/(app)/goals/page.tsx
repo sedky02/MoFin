@@ -1,27 +1,29 @@
 "use client";
 
 import * as React from "react";
-import { Plus, Target } from "lucide-react";
+import { Archive, ArrowLeft, Plus, Target } from "lucide-react";
 import { useGoals, useArchiveGoal, useRestoreGoal } from "@/hooks/useGoals";
 import { useAccounts } from "@/hooks/useAccounts";
 import { GoalCard } from "@/components/goals/goal-card";
 import { GoalDialog } from "@/components/goals/goal-dialog";
+import { EndedGoalsList } from "@/components/goals/ended-goals-list";
 import { GoalHistoryDialog } from "@/components/goals/goal-history-dialog";
 import { PageHeader } from "@/components/common/page-header";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SkeletonCard, EmptyState, ErrorState } from "@/components/common/states";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import type { Goal } from "@/lib/types";
 
 export default function GoalsPage() {
-  const [tab, setTab] = React.useState<"active" | "ended">("active");
+  // Two views of the same page: the active goals, or the ended ones on their own as a history.
+  const [view, setView] = React.useState<"active" | "ended">("active");
 
   const active = useGoals("active");
-  const disabled = useGoals("archived", tab === "ended");
+  const ended = useGoals("archived");
   const { data: accounts } = useAccounts("all");
   const stopMut = useArchiveGoal();
   const restoreMut = useRestoreGoal();
+  const endedCount = ended.data?.length ?? 0;
 
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<Goal | undefined>();
@@ -64,83 +66,81 @@ export default function GoalsPage() {
         title="Goals"
         description="Balance, income and expense targets tracked against your ledger."
         action={
-          <Button onClick={openCreate} className="gap-2">
-            <Plus className="size-4" />
-            New goal
-          </Button>
+          // The page's actions sit together: switch view on the left, the primary action last.
+          <div className="flex flex-wrap items-center gap-2">
+            {view === "active" ? (
+              <Button variant="outline" onClick={() => setView("ended")} className="gap-2">
+                <Archive className="size-4" aria-hidden />
+                {endedCount > 0 ? `Ended (${endedCount})` : "Ended"}
+              </Button>
+            ) : (
+              <Button variant="outline" onClick={() => setView("active")} className="gap-2">
+                <ArrowLeft className="size-4" aria-hidden />
+                Back to goals
+              </Button>
+            )}
+            <Button onClick={openCreate} className="gap-2">
+              <Plus className="size-4" />
+              New goal
+            </Button>
+          </div>
         }
       />
 
-      <Tabs value={tab} onValueChange={(v) => setTab(v as "active" | "ended")}>
-        <TabsList>
-          <TabsTrigger value="active">Active</TabsTrigger>
-          <TabsTrigger value="ended">Ended</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="active" className="mt-6">
-          {active.isLoading ? (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <SkeletonCard key={i} />
-              ))}
-            </div>
-          ) : active.isError ? (
-            <ErrorState description="Couldn't load your goals." onRetry={() => active.refetch()} />
-          ) : optimisticActive.length === 0 ? (
-            <EmptyState
-              icon={Target}
-              title="No active goals"
-              description="Set a balance, income or expense target to start tracking progress."
-              action={
-                <Button onClick={openCreate} className="gap-2">
-                  <Plus className="size-4" />
-                  New goal
-                </Button>
-              }
-            />
-          ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {optimisticActive.map((goal) => (
-                <GoalCard
-                  key={goal.id}
-                  goal={goal}
-                  account={accountsById.get(goal.accountId)}
-                  onEdit={openEdit}
-                  onStop={setToStop}
-                  onViewHistory={setHistoryGoal}
-                />
-              ))}
-            </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="ended" className="mt-6">
-          {disabled.isLoading ? (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <SkeletonCard key={i} />
-              ))}
-            </div>
-          ) : disabled.isError ? (
-            <ErrorState description="Couldn't load your ended goals." onRetry={() => disabled.refetch()} />
-          ) : !disabled.data || disabled.data.length === 0 ? (
-            <EmptyState icon={Target} title="No ended goals" description="Goals you end will show up here, and can be restored." />
-          ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {disabled.data.map((goal) => (
-                <GoalCard
-                  key={goal.id}
-                  goal={goal}
-                  account={accountsById.get(goal.accountId)}
-                  onViewHistory={setHistoryGoal}
-                  onRestore={(g) => restoreMut.mutate(g.id)}
-                  readOnly
-                />
-              ))}
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
+      {view === "active" ? (
+        active.isLoading ? (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <SkeletonCard key={i} />
+            ))}
+          </div>
+        ) : active.isError ? (
+          <ErrorState description="Couldn't load your goals." onRetry={() => active.refetch()} />
+        ) : optimisticActive.length === 0 ? (
+          <EmptyState
+            icon={Target}
+            title="No active goals"
+            description="Set a balance, income or expense target to start tracking progress."
+            action={
+              <Button onClick={openCreate} className="gap-2">
+                <Plus className="size-4" />
+                New goal
+              </Button>
+            }
+          />
+        ) : (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {optimisticActive.map((goal) => (
+              <GoalCard
+                key={goal.id}
+                goal={goal}
+                account={accountsById.get(goal.accountId)}
+                onEdit={openEdit}
+                onStop={setToStop}
+                onViewHistory={setHistoryGoal}
+              />
+            ))}
+          </div>
+        )
+      ) : ended.isLoading ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <SkeletonCard key={i} />
+          ))}
+        </div>
+      ) : ended.isError ? (
+        <ErrorState description="Couldn't load your ended goals." onRetry={() => ended.refetch()} />
+      ) : endedCount === 0 ? (
+        <EmptyState icon={Target} title="No ended goals" description="Goals you end will show up here, and can be restored." />
+      ) : (
+        <EndedGoalsList
+          goals={ended.data ?? []}
+          accountsById={accountsById}
+          onViewHistory={setHistoryGoal}
+          onRestore={(g) => restoreMut.mutate(g.id)}
+          busyId={(restoreMut.isPending && restoreMut.variables) || undefined}
+        />
+      )}
 
       <GoalDialog open={dialogOpen} onOpenChange={setDialogOpen} goal={editing} />
 
@@ -155,7 +155,7 @@ export default function GoalsPage() {
         open={!!toStop}
         onOpenChange={(o) => !o && setToStop(undefined)}
         title={`End "${toStop?.name}"?`}
-        description="Stops tracking and moves it to the Ended tab, with its progress as it is now. Its history is kept. You can restore it later; it restarts from that day."
+        description="Stops tracking and moves it to Ended, with its progress as it is now. Its history is kept. You can restore it later; it restarts from that day."
         confirmLabel="End goal"
         onConfirm={confirmStop}
       />

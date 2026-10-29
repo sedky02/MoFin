@@ -102,7 +102,6 @@ test("tapping the centre of each segmented option selects it", async ({ page }) 
     { route: "/dashboard", option: '[role="tablist"] [role="tab"]', state: "aria-selected" },
     { route: "/dashboard", option: '[role="radiogroup"][aria-label="Currency"] [role="radio"]', state: "aria-checked" },
     { route: "/transactions", option: '[role="tablist"] [role="tab"]', state: "aria-selected" },
-    { route: "/goals", option: '[role="tablist"] [role="tab"]', state: "aria-selected" },
     { route: "/accounts", option: '[role="tablist"] [role="tab"]', state: "aria-selected" },
     { route: "/drafts", option: '[role="tablist"] [role="tab"]', state: "aria-selected" },
     {

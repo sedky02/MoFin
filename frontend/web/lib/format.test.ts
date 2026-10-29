@@ -1,17 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  formatMoneyInput,
-  formatPeriodDate,
-  interpretMoneyText,
-  moneyInputHint,
-  moneyInputPrefix,
-  normalizeMoneyTyping,
-  normalizeSignedMoneyTyping,
-  parseMoneyInput,
-  pasteMoneyText,
-  pickPrimaryCurrency,
-  signedMoneyInputHint,
-} from "@/lib/format";
+import { formatMoneyInput, formatPeriodDate, interpretMoneyText, moneyInputHint, moneyInputPrefix, normalizeMoneyTyping, normalizeSignedMoneyTyping, parseMoneyInput, pasteMoneyText, pickPrimaryCurrency, signedMoneyInputHint, goalPercent } from "@/lib/format";
 
 /** What a money field ends up holding after blur: normalise, then tidy. */
 function blurred(raw: string, currency: string): string {
@@ -224,5 +212,28 @@ describe("pickPrimaryCurrency", () => {
   it("falls back to a neutral value, not USD", () => {
     expect(pickPrimaryCurrency([], null)).toBe("");
     expect(pickPrimaryCurrency(undefined, undefined, "", [])).toBe("");
+  });
+});
+
+describe("goalPercent", () => {
+  it("rounds to a whole percent of the target", () => {
+    expect(goalPercent("6200.50", "10000")).toBe(62);
+    expect(goalPercent("1", "3")).toBe(33);
+    expect(goalPercent("2", "3")).toBe(67);
+  });
+
+  it("is not capped at 100, so an expense over its cap shows how far over", () => {
+    expect(goalPercent("468.20", "400")).toBe(117);
+    expect(goalPercent("3240", "3000")).toBe(108);
+  });
+
+  it("is 0 for no progress, a zero target or something that isn't a number", () => {
+    expect(goalPercent("0", "100")).toBe(0);
+    expect(goalPercent("10", "0")).toBe(0);
+    expect(goalPercent("abc", "100")).toBe(0);
+  });
+
+  it("never goes negative", () => {
+    expect(goalPercent("-50", "100")).toBe(0);
   });
 });

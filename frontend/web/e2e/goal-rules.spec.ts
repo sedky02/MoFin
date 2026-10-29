@@ -26,12 +26,11 @@ test("the goal dialog shows helper text for each goal type", async ({ page }) =>
   await expect(rule).toContainText(RULES.Balance);
 
   for (const type of ["Income", "Expense", "Balance"] as const) {
-    await dialog.getByLabel("Goal type").click();
-    await page.getByRole("option", { name: new RegExp(`^${type}`) }).click();
+    await dialog.getByRole("radio", { name: new RegExp(`^${type}`) }).click();
     await expect(rule).toContainText(RULES[type]);
   }
 
-  // The rule is part of the select's description, so screen readers get it too.
+  // The rule is part of the type group's description, so screen readers get it too.
   await expect(dialog.getByLabel("Goal type")).toHaveAccessibleDescription(/so transfers in count/);
 
   const violations = await runAxe(page);

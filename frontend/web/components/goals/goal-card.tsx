@@ -5,9 +5,10 @@ import type { Account, Goal } from "@/lib/types";
 import { MoneyAmount } from "@/components/common/money-amount";
 import { GoalTypeBadge, GoalStatusBadge } from "@/components/common/badges";
 import { GoalProgressBar } from "@/components/goals/goal-progress-bar";
-import { formatDate, formatPeriodDate, goalProgressRatio } from "@/lib/format";
+import { goalPercent, goalProgressRatio } from "@/lib/format";
 import { isGreaterThan } from "@/lib/decimal";
 import { goalScopeLabel } from "@/lib/goal-scope";
+import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -39,91 +40,94 @@ export function GoalCard({
   const instance = goal.currentInstance;
 
   const ratio = instance ? goalProgressRatio(instance.progressAmount, instance.targetAmount) : 0;
+  const percent = instance ? goalPercent(instance.progressAmount, instance.targetAmount) : 0;
   const overTarget =
     goal.type === "EXPENSE" && !!instance && isGreaterThan(instance.progressAmount, instance.targetAmount);
 
-  const periodLabel = instance
-    ? `${formatPeriodDate(instance.periodStart)} – ${formatPeriodDate(instance.periodEnd)}`
-    : "No active period";
-
   return (
-    <Card className="group relative border-0 p-5 shadow-sm">
-      <div className="flex items-start justify-between">
-        <div className="min-w-0">
-          <h3 className="truncate font-semibold">{goal.name}</h3>
-          <div className="mt-1.5 flex flex-wrap items-center gap-2">
-            <GoalTypeBadge type={goal.type} />
-            {account && (
-              <span className="text-xs text-muted-foreground tabular">
-                {account.name} · {account.currency}
-              </span>
-            )}
-            {goal.isRecurring && (
-              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                <Repeat className="size-3" />
-                Every {goal.recurrenceUnit === "YEAR" ? "year" : "month"}
-              </span>
-            )}
-          </div>
+    <Card className="group relative h-full gap-0 border-0 p-4 shadow-sm">
+      {/* Top line: what kind of goal and how often, then its status and menu. */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+          <GoalTypeBadge type={goal.type} />
+          {goal.isRecurring && (
+            <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+              <Repeat className="size-3" aria-hidden />
+              Every {goal.recurrenceUnit === "YEAR" ? "year" : "month"}
+            </span>
+          )}
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-8 text-muted-foreground"
-              aria-label={`Actions for ${goal.name}`}
-            >
-              <MoreVertical className="size-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => onViewHistory(goal)}>
-              <History className="size-4" />
-              View history
-            </DropdownMenuItem>
-            {!readOnly && (
-              <>
-                <DropdownMenuItem onClick={() => onEdit?.(goal)}>
-                  <Pencil className="size-4" />
-                  Edit
-                </DropdownMenuItem>
-                <DropdownMenuItem variant="destructive" onClick={() => onStop?.(goal)}>
-                  <Ban className="size-4" />
-                  End goal
-                </DropdownMenuItem>
-              </>
-            )}
-            {readOnly && onRestore && (
-              <DropdownMenuItem onClick={() => onRestore(goal)}>
-                <RotateCcw className="size-4" />
-                Restore
-              </DropdownMenuItem>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-
-      <div className="mt-5 space-y-2">
-        <div className="flex items-baseline justify-between">
-          <span className="text-sm">
-            <MoneyAmount amount={instance?.progressAmount ?? "0"} currency={currency} className="font-semibold" />
-            <span className="text-muted-foreground"> / </span>
-            <MoneyAmount amount={goal.targetAmount} currency={currency} className="text-muted-foreground" />
-          </span>
+        <div className="-mr-1.5 flex shrink-0 items-center gap-1">
           {/* An ended goal's open period was frozen unjudged; "In progress" would be wrong there. */}
           {instance && !(goal.archivedAt && instance.status === "IN_PROGRESS") && (
             <GoalStatusBadge status={instance.status} />
           )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-7 text-muted-foreground"
+                aria-label={`Actions for ${goal.name}`}
+              >
+                <MoreVertical className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => onViewHistory(goal)}>
+                <History className="size-4" />
+                View history
+              </DropdownMenuItem>
+              {!readOnly && (
+                <>
+                  <DropdownMenuItem onClick={() => onEdit?.(goal)}>
+                    <Pencil className="size-4" />
+                    Edit
+                  </DropdownMenuItem>
+                  <DropdownMenuItem variant="destructive" onClick={() => onStop?.(goal)}>
+                    <Ban className="size-4" />
+                    End goal
+                  </DropdownMenuItem>
+                </>
+              )}
+              {readOnly && onRestore && (
+                <DropdownMenuItem onClick={() => onRestore(goal)}>
+                  <RotateCcw className="size-4" />
+                  Restore
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-        <GoalProgressBar ratio={ratio} overTarget={overTarget} />
-        <p className="truncate text-xs text-muted-foreground" data-testid="goal-scope">
-          {goalScopeLabel(goal.type, account?.name)}
-        </p>
-        <p className="text-xs text-muted-foreground">
-          {readOnly && goal.archivedAt ? `Ended on ${formatDate(goal.archivedAt)}` : periodLabel}
-        </p>
       </div>
+
+      <h3 className="mt-2.5 truncate text-sm font-medium">{goal.name}</h3>
+
+      {/* The figure that matters, with its target beside it and the share reached at the end. */}
+      <div className="mt-1 flex items-baseline justify-between gap-3">
+        <p className="flex min-w-0 items-baseline gap-1.5">
+          <MoneyAmount
+            amount={instance?.progressAmount ?? "0"}
+            currency={currency}
+            className={cn("truncate text-xl font-semibold leading-tight", overTarget && "text-destructive")}
+          />
+          <span className="shrink-0 text-sm text-muted-foreground">
+            of <MoneyAmount amount={goal.targetAmount} currency={currency} />
+          </span>
+        </p>
+        <span
+          className={cn("shrink-0 text-sm font-medium tabular", overTarget ? "text-destructive" : "text-muted-foreground")}
+        >
+          {percent}%
+        </span>
+      </div>
+
+      <GoalProgressBar ratio={ratio} overTarget={overTarget} className="mt-3 h-1.5" />
+
+      {/* What the goal counts, kept for screen readers: the card itself stays quiet. */}
+      <p className="sr-only" data-testid="goal-scope">
+        {goalScopeLabel(goal.type, account?.name)}
+      </p>
     </Card>
   );
 }

@@ -8,7 +8,7 @@ const EXPENSE = "Counts all expenses from Main checking";
 const INCOME = "Counts all income into Main checking";
 const BALANCE = "Tracks the balance of Emergency fund";
 
-test("goal cards show the scope line", async ({ page }) => {
+test("goal cards carry the scope line for screen readers", async ({ page }) => {
   await page.goto("/goals");
   await expect(page.getByRole("heading", { level: 1, name: "Goals" })).toBeVisible();
 
@@ -47,12 +47,10 @@ test("the goal dialog updates the scope line as type and account change", async 
   await page.getByRole("option", { name: /Main checking/ }).click();
   await expect(scope).toHaveText("Tracks the balance of Main checking");
 
-  await dialog.getByLabel("Goal type").click();
-  await page.getByRole("option", { name: /^Expense/ }).click();
+  await dialog.getByRole("radio", { name: /^Expense/ }).click();
   await expect(scope).toHaveText(EXPENSE);
 
-  await dialog.getByLabel("Goal type").click();
-  await page.getByRole("option", { name: /^Income/ }).click();
+  await dialog.getByRole("radio", { name: /^Income/ }).click();
   await expect(scope).toHaveText(INCOME);
 
   await dialog.getByRole("button", { name: "Cancel" }).click();

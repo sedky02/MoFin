@@ -394,6 +394,14 @@ export function percent(value: number): string {
 }
 
 /** Goal progress as a 0-100 ratio for a progress bar. Clamped — an EXPENSE goal can exceed 100%. */
+/** Whole percent of the target reached, uncapped (an expense at 117% of its cap says 117). 0 for a bad or zero target. */
+export function goalPercent(progressAmount: string, targetAmount: string): number {
+  const progress = tryParse(progressAmount);
+  const target = tryParse(targetAmount);
+  if (!progress || !target || target.isZero()) return 0;
+  return Math.max(0, Math.round(progress.dividedBy(target).times(100).toNumber()));
+}
+
 export function goalProgressRatio(progressAmount: string, targetAmount: string): number {
   const progress = tryParse(progressAmount);
   const target = tryParse(targetAmount);
