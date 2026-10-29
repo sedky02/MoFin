@@ -7,7 +7,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, ShieldCheck } from "lucide-react";
 import {
   Form,
   FormControl,
@@ -18,7 +18,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
-import { SettingsCard } from "@/components/settings/settings-card";
+import { SettingsCard, SettingsRow } from "@/components/settings/settings-card";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
@@ -52,7 +52,7 @@ export function SecurityCard({ user, isLoading }: { user?: User; isLoading: bool
   const hasPassword = !isLoading && !user?.isDemo && user?.hasPassword !== false;
 
   return (
-    <SettingsCard id="security" title="Security" description={description}>
+    <SettingsCard id="security" icon={ShieldCheck} title="Security" description={description}>
       {isLoading ? (
         <Skeleton className="h-40 w-full" />
       ) : (
@@ -167,16 +167,9 @@ function SignOutEverywhere() {
   }
 
   return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        <h3 className="text-sm font-medium">Sign out everywhere</h3>
-        <p className="text-xs text-muted-foreground">
-          Signs out every device and browser, this one included.
-        </p>
-      </div>
+    <SettingsRow title="Sign out everywhere" description="Signs out every device and browser, this one included.">
       <Button
         variant="outline"
-        className="shrink-0"
         onClick={() => setConfirming(true)}
         disabled={pending}
         aria-busy={pending}
@@ -193,6 +186,6 @@ function SignOutEverywhere() {
         destructive
         onConfirm={signOutEverywhere}
       />
-    </div>
+    </SettingsRow>
   );
 }

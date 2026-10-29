@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { SlidersHorizontal, User as UserIcon } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -94,6 +95,14 @@ export default function SettingsPage() {
     }
   }
 
+  // A link like /settings#connected-apps lands before the profile has loaded, and the
+  // cards above its target change height when it does; go to the section again once settled.
+  React.useEffect(() => {
+    if (isLoading) return;
+    const id = window.location.hash.slice(1);
+    if (id) document.getElementById(id)?.scrollIntoView();
+  }, [isLoading]);
+
   function discard() {
     form.reset({
       displayName: user?.displayName ?? "",
@@ -112,20 +121,33 @@ export default function SettingsPage() {
         <div className="min-w-0 max-w-2xl space-y-6">
           {isLoading ? (
             <>
-              <SettingsCard id="profile" title="Profile" description="Your sign-in email. Changing it isn't supported yet.">
-                <div className="space-y-4">
-                  <Skeleton className="h-10 w-full" />
-                  <Skeleton className="h-10 w-full" />
-                </div>
+              <SettingsCard id="profile" icon={UserIcon} title="Profile" description="Your sign-in email. Changing it isn't supported yet.">
+                <Skeleton className="h-16 w-full" />
+                <Skeleton className="mt-5 h-[4.5rem] w-full" />
               </SettingsCard>
-              <SettingsCard id="preferences" title="Preferences">
-                <Skeleton className="h-24 w-full" />
+              <SettingsCard id="preferences" icon={SlidersHorizontal} title="Preferences" description="How your money is shown and where new entries start.">
+                <Skeleton className="h-28 w-full" />
+                <Skeleton className="mt-6 h-32 w-full" />
               </SettingsCard>
             </>
           ) : (
             <Form {...form}>
               <form action={action} className="space-y-6">
-                <SettingsCard id="profile" title="Profile" description="Your sign-in email. Changing it isn't supported yet.">
+                <SettingsCard id="profile" icon={UserIcon} title="Profile" description="Your sign-in email. Changing it isn't supported yet.">
+                  <div className="mb-5 flex items-center gap-4 rounded-xl bg-muted/40 p-4">
+                    <span
+                      aria-hidden
+                      className="grid size-14 shrink-0 place-items-center rounded-full bg-primary/15 text-xl font-semibold text-primary-text"
+                    >
+                      {(currentName.trim() || user?.email || "?").charAt(0).toUpperCase()}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">{currentName.trim() || "No display name yet"}</p>
+                      <p className="truncate text-sm text-muted-foreground">
+                        {user?.isDemo ? "Temporary demo account" : user?.email}
+                      </p>
+                    </div>
+                  </div>
                   <div className="grid gap-5 sm:grid-cols-2">
                     <div className="space-y-2">
                       <Label htmlFor="settings-email">Email</Label>
@@ -158,6 +180,7 @@ export default function SettingsPage() {
 
                 <SettingsCard
                   id="preferences"
+                  icon={SlidersHorizontal}
                   title="Preferences"
                   description="How your money is shown and where new entries start."
                 >

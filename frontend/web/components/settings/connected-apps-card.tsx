@@ -6,10 +6,12 @@ import { Plug } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ConnectorLogo } from "@/components/common/connector-logo";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { SettingsCard } from "@/components/settings/settings-card";
 import { useConnectedApps, useDisconnectApp } from "@/hooks/useConnectedApps";
 import type { ConnectedApp } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 /** The AI apps the user approved, each with its state and a Disconnect button. */
 export function ConnectedAppsCard() {
@@ -21,6 +23,7 @@ export function ConnectedAppsCard() {
     <SettingsCard
       id="connected-apps"
       title="Connected AI apps"
+      icon={Plug}
       description="Apps you've approved to read your data and suggest transactions. Disconnecting stops an app from renewing access; a session it already holds can keep working for up to 15 minutes."
       action={
         <Button variant="outline" size="sm" asChild>
@@ -44,15 +47,11 @@ export function ConnectedAppsCard() {
         <ul className="divide-y divide-border rounded-xl border border-border">
           {apps.data.map((app) => (
             <li key={app.clientId} className="flex items-center gap-3 p-3">
-              <span
-                aria-hidden
-                className="grid size-9 shrink-0 place-items-center rounded-full bg-primary/15 text-sm font-semibold text-primary-text"
-              >
-                {(app.clientName ?? "?").charAt(0).toUpperCase()}
-              </span>
+              <ConnectorLogo clientName={app.clientName} />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">{app.clientName ?? "Unnamed app"}</p>
-                <Badge variant={app.active ? "secondary" : "outline"} className="mt-1">
+                <Badge variant="outline" className={cn("mt-1 gap-1.5", app.active ? "border-success/30 bg-success/10 text-success" : "text-muted-foreground")}>
+                  <span aria-hidden className={cn("size-1.5 rounded-full", app.active ? "bg-success" : "bg-muted-foreground/50")} />
                   {app.active ? "Active" : "Signed out"}
                 </Badge>
               </div>

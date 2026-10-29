@@ -25,6 +25,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
+import { Trash2 } from "lucide-react";
 import { SettingsCard } from "@/components/settings/settings-card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -67,6 +68,7 @@ export function DeleteAccountCard({ user, isLoading }: { user?: User; isLoading:
     return (
       <SettingsCard
         id="delete-account"
+        icon={Trash2}
         title="Delete account"
         description="This demo and everything in it are deleted automatically when it ends."
       />
@@ -76,6 +78,7 @@ export function DeleteAccountCard({ user, isLoading }: { user?: User; isLoading:
   return (
     <SettingsCard
       id="delete-account"
+      icon={Trash2}
       tone="danger"
       title="Delete account"
       description="Permanently deletes your account and everything in it. This can't be undone."

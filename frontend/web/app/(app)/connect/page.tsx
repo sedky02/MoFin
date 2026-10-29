@@ -6,7 +6,8 @@ import { ExternalLink, Plus, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CopyButton } from "@/components/common/copy-button";
-import { OpenAILogo, AnthropicLogo, GeminiLogo } from "@/components/common/ai-logos";
+import { AnthropicLogo } from "@/components/common/ai-logos";
+import { CONNECTOR_BRAND } from "@/components/common/connector-logo";
 import { useConnectedApps } from "@/hooks/useConnectedApps";
 import { useUser } from "@/hooks/useUser";
 import { connectedStates } from "@/lib/connected-apps";
@@ -27,22 +28,19 @@ const CLIENTS = [
     key: "claude",
     label: "Claude",
     description: "Anthropic Claude — web, desktop & mobile",
-    swatch: "bg-[#D97757] text-white",
-    Logo: AnthropicLogo,
+    ...CONNECTOR_BRAND.claude,
   },
   {
     key: "chatgpt",
     label: "ChatGPT",
     description: "OpenAI ChatGPT — custom connectors",
-    swatch: "bg-white text-black",
-    Logo: OpenAILogo,
+    ...CONNECTOR_BRAND.chatgpt,
   },
   {
     key: "gemini",
     label: "Gemini",
     description: "Google Gemini CLI & Enterprise",
-    swatch: "bg-gradient-to-br from-[#4285f4] via-[#9b72cb] to-[#d96570] text-white",
-    Logo: GeminiLogo,
+    ...CONNECTOR_BRAND.gemini,
   },
 ] as const;
 
