@@ -66,10 +66,22 @@ export class SearchService {
     if (query.categoryId)
       await this.categoriesService.assertAvailable(userId, query.categoryId);
 
+    // The amount bounds apply to a transaction's total, like the amount sort,
+    // so a 100 split into 60 + 40 matches "at least 80".
+    const idsInAmountRange =
+      query.minAmount || query.maxAmount
+        ? await this.idsWithTotalBetween(
+            userId,
+            query.minAmount,
+            query.maxAmount,
+          )
+        : null;
+
     const args = {
       where: {
         userId,
         deletedAt: null,
+        ...(idsInAmountRange ? { id: { in: idsInAmountRange } } : {}),
         description: { contains: query.q, mode: 'insensitive' },
         // A split files its categories on its lines, an unsplit transaction on itself; match either.
         // OR (not a second `items` key) so it composes with the account/amount filter below.
@@ -90,22 +102,8 @@ export class SearchService {
               },
             }
           : {}),
-        ...(query.accountId || query.minAmount || query.maxAmount
-          ? {
-              items: {
-                some: {
-                  ...(query.accountId ? { accountId: query.accountId } : {}),
-                  amount: {
-                    ...(query.minAmount
-                      ? { gte: new Prisma.Decimal(query.minAmount) }
-                      : {}),
-                    ...(query.maxAmount
-                      ? { lte: new Prisma.Decimal(query.maxAmount) }
-                      : {}),
-                  },
-                },
-              },
-            }
+        ...(query.accountId
+          ? { items: { some: { accountId: query.accountId } } }
           : {}),
         ...(query.type ? { type: query.type } : {}),
         // Under AND so it composes with the category OR above.
@@ -147,6 +145,35 @@ export class SearchService {
       );
     }
     return this.prisma.paginated.transaction.paginate(args);
+  }
+
+  /**
+   * Ids of the user's live transactions whose total (see transactionTotal) lies
+   * within the bounds. Prisma can't filter on a sum of related rows, so the
+   * totals are computed in the database.
+   */
+  private async idsWithTotalBetween(
+    userId: string,
+    min: string | undefined,
+    max: string | undefined,
+  ): Promise<string[]> {
+    const total = Prisma.sql`GREATEST(
+      COALESCE(SUM(CASE WHEN ti.direction = 'DEBIT' THEN ti.amount END), 0),
+      COALESCE(SUM(CASE WHEN ti.direction = 'CREDIT' THEN ti.amount END), 0)
+    )`;
+    const bounds = [
+      ...(min ? [Prisma.sql`${total} >= ${min}::numeric`] : []),
+      ...(max ? [Prisma.sql`${total} <= ${max}::numeric`] : []),
+    ];
+    const rows = await this.prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
+      SELECT ti."transactionId" AS id
+      FROM "TransactionItem" ti
+      JOIN "Transaction" t ON t.id = ti."transactionId"
+      WHERE t."userId" = ${userId} AND t."deletedAt" IS NULL
+      GROUP BY ti."transactionId"
+      HAVING ${Prisma.join(bounds, ' AND ')}
+    `);
+    return rows.map((row) => row.id);
   }
 
   /**

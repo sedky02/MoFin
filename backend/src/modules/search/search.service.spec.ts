@@ -518,6 +518,87 @@ describe('SearchService type, recurrence and sort', () => {
   });
 });
 
+describe('SearchService amount range', () => {
+  function setup(ids: string[]) {
+    const paginate = jest.fn(async () => ({
+      data: [],
+      total: 0,
+      limit: 20,
+      offset: 0,
+    }));
+    const queryRaw = jest.fn(async () => ids.map((id) => ({ id })));
+    const prisma = {
+      $queryRaw: queryRaw,
+      paginated: { transaction: { paginate } },
+    };
+    const service = new SearchService(
+      prisma as never,
+      { assertOwned: jest.fn(async () => ({})) } as never,
+      {} as never,
+    );
+    return { service, paginate, queryRaw };
+  }
+
+  const sqlOf = (queryRaw: jest.Mock) =>
+    (queryRaw.mock.calls[0][0] as Prisma.Sql).sql;
+
+  it('filters on the transaction total, not on a single line', async () => {
+    const { service, paginate, queryRaw } = setup(['t1', 't2']);
+    await service.searchTransactions('u1', {
+      limit: 20,
+      offset: 0,
+      minAmount: '80',
+    });
+
+    expect(sqlOf(queryRaw)).toContain('GROUP BY ti."transactionId"');
+    expect(sqlOf(queryRaw)).toContain('>=');
+    expect(sqlOf(queryRaw)).not.toContain('<=');
+    expect(paginate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ id: { in: ['t1', 't2'] } }),
+      }),
+    );
+  });
+
+  it('applies both bounds and still scopes by account on the lines', async () => {
+    const { service, paginate, queryRaw } = setup(['t1']);
+    await service.searchTransactions('u1', {
+      limit: 20,
+      offset: 0,
+      minAmount: '10',
+      maxAmount: '200',
+      accountId: 'a1',
+    });
+
+    expect(sqlOf(queryRaw)).toContain('>=');
+    expect(sqlOf(queryRaw)).toContain('<=');
+    const where = (
+      paginate.mock.calls[0] as unknown as [{ where: Record<string, unknown> }]
+    )[0].where;
+    expect(where.items).toEqual({ some: { accountId: 'a1' } });
+  });
+
+  it('matches nothing when no transaction total is in range', async () => {
+    const { service, paginate } = setup([]);
+    await service.searchTransactions('u1', {
+      limit: 20,
+      offset: 0,
+      maxAmount: '1',
+    });
+    expect(paginate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ id: { in: [] } }),
+      }),
+    );
+  });
+
+  it('runs no amount query without a bound', async () => {
+    const { service, queryRaw } = setup([]);
+    await service.searchTransactions('u1', { limit: 20, offset: 0 });
+    expect(queryRaw).not.toHaveBeenCalled();
+  });
+});
+
 describe('transactionTotal', () => {
   const d = (v: string) => new Prisma.Decimal(v);
 
