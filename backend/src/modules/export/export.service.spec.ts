@@ -30,6 +30,7 @@ function makeService(
           name: 'Wallet',
           type: 'CASH',
           currency: 'TND',
+          openingBalance: D('250.5'),
           archivedAt: null,
           createdAt: NOW,
         },
@@ -196,6 +197,7 @@ describe('ExportService', () => {
         name: 'Wallet',
         type: 'CASH',
         currency: 'TND',
+        openingBalance: '250.5',
         archivedAt: null,
         createdAt: NOW.toISOString(),
       });

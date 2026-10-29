@@ -127,6 +127,7 @@ export class ExportService {
         name: a.name,
         type: a.type,
         currency: a.currency,
+        openingBalance: money(a.openingBalance),
         archivedAt: iso(a.archivedAt),
         createdAt: iso(a.createdAt),
       })),
@@ -195,7 +196,8 @@ export class ExportService {
    * One row per transaction line, so a transfer is two rows (out of one
    * account, into the other) and a split expense is one row per part.
    * Amounts are signed from the account's side: money in is positive, money
-   * out negative, so summing a column per account gives its balance.
+   * out negative, so an account's opening balance (in the JSON export) plus
+   * the sum of its rows gives its balance.
    */
   toCsv({ transactions }: ExportRows): string {
     const rows = transactions.flatMap((t) =>
