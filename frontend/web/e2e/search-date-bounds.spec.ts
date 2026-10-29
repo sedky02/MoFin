@@ -68,6 +68,8 @@ test("From = To = today lists every transaction from today, and nothing either s
 
     await page.goto("/search");
     await page.getByLabel("Search transactions").fill(tag);
+    const filters = page.getByRole("button", { name: /^Filters/ });
+    if ((await filters.getAttribute("aria-expanded")) === "false") await filters.click();
     await page.getByLabel("From date").fill(day);
     await page.getByLabel("To date").fill(day);
     await expect(page).toHaveURL(new RegExp(`from=${day}.*to=${day}`));

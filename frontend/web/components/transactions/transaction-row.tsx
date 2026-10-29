@@ -40,6 +40,7 @@ export function TransactionRow({
   // once, as the dot in the meta line, so it isn't encoded twice.
   const tint = isIncome ? "var(--success)" : undefined;
   const filedUnder = transactionCategorySummary(tx);
+  const showCategory = !!tx.category || tx.type !== "TRANSFER";
 
   return (
     <Link
@@ -74,28 +75,36 @@ export function TransactionRow({
         </p>
         <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
           {/* Category and date share a line that never wraps; the category truncates instead. */}
-          <span className="flex min-w-0 max-w-full items-center gap-2">
-            {(tx.category || tx.type !== "TRANSFER") && (
-              <span className="flex min-w-0 items-center gap-1.5">
-                <CategoryDot color={filedUnder.category?.color} />
-                <span className="truncate">
-                  {filedUnder.split && (
-                    <>
-                      Split <span aria-hidden>·</span>{" "}
-                    </>
+          {(showCategory || !glance) && (
+            <span className="flex min-w-0 max-w-full items-center gap-2">
+              {showCategory && (
+                <span className="flex min-w-0 items-center gap-1.5">
+                  <CategoryDot color={filedUnder.category?.color} />
+                  <span className="truncate">
+                    {filedUnder.split && (
+                      <>
+                        Split <span aria-hidden>·</span>{" "}
+                      </>
+                    )}
+                    {filedUnder.label}
+                  </span>
+                  {/* Before the date, always; before the account, only where it fits beside the category (a wrapped account would leave the dot dangling). */}
+                  {(!glance || accountLabel) && (
+                    <span aria-hidden className={glance ? "hidden sm:inline" : undefined}>
+                      ·
+                    </span>
                   )}
-                  {filedUnder.label}
                 </span>
-                {(!glance || accountLabel) && <span aria-hidden>·</span>}
-              </span>
-            )}
-            {!glance && <span className="tabular shrink-0">{formatDate(tx.occurredAt)}</span>}
-          </span>
+              )}
+              {!glance && <span className="tabular shrink-0">{formatDate(tx.occurredAt)}</span>}
+            </span>
+          )}
           {accountLabel && (
             <>
-              {/* On a phone the account gets its own line, so category and date keep theirs. */}
+              {/* With a date on the row, a phone gives the account its own line so category and date keep theirs.
+                  Grouped under a day heading there is no date, so the account shares the category's line. */}
               {!glance && <span aria-hidden className="hidden sm:inline">·</span>}
-              <span className="min-w-0 basis-full truncate sm:basis-auto">{accountLabel}</span>
+              <span className={cn("min-w-0 truncate", !glance && "basis-full sm:basis-auto")}>{accountLabel}</span>
             </>
           )}
         </div>
@@ -104,7 +113,8 @@ export function TransactionRow({
       <MoneyAmount
         amount={tx.type === "TRANSFER" ? base : signedAmount}
         currency={tx.currency}
-        colorBySign={tx.type !== "TRANSFER"}
+        // Only income is coloured: a list of mostly spending shouldn't be a wall of red.
+        colorBySign={isIncome}
         className="text-sm font-semibold"
       />
       <ChevronRight className="size-4 shrink-0 text-muted-foreground/50 transition-transform group-hover:translate-x-0.5" />

@@ -21,7 +21,7 @@ export default function TransactionsPage({
     <div className="mx-auto max-w-3xl">
       <PageHeader
         title="Transactions"
-        description="Every transaction you have recorded. Search and filter by text, account, category, type, date, or amount, or see your recurring series."
+        description="Everything you have recorded. Search it, filter it, or see your recurring series."
       />
       <Suspense fallback={<SearchSkeleton />}>
         <SearchContent searchParams={searchParams} />

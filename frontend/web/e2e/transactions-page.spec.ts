@@ -41,7 +41,14 @@ async function settled(page: Page) {
   if (await footer.isVisible()) await expect(footer).not.toContainText("updating");
 }
 
+/** The filters start collapsed behind a "Filters" button (open already when the URL carries some). */
+async function openFilters(page: Page) {
+  const toggle = page.getByRole("button", { name: /^Filters/ });
+  if ((await toggle.getAttribute("aria-expanded")) === "false") await toggle.click();
+}
+
 async function choose(page: Page, field: string, option: string) {
+  await openFilters(page);
   await page.getByRole("combobox", { name: field, exact: true }).click();
   await page.getByRole("option", { name: option, exact: true }).click();
 }
