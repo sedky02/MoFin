@@ -49,7 +49,7 @@ describe("ConnectPage", () => {
   it("disables the ChatGPT button for a demo user too", async () => {
     user = { isDemo: true };
     await renderPage();
-    await userEvent.click(screen.getByRole("tab", { name: /ChatGPT/ }));
+    await userEvent.click(screen.getByRole("tab", { name: /^ChatGPT/ }));
     expect((screen.getByRole("button", { name: /Open ChatGPT connector settings/ }) as HTMLButtonElement).disabled).toBe(true);
   });
 
@@ -65,7 +65,7 @@ describe("ConnectPage", () => {
     await renderPage();
     expect(screen.getByText(/Claude is connected to your account/)).toBeTruthy();
     expect(screen.getByRole("link", { name: "Manage in Settings" }).getAttribute("href")).toBe("/settings#connected-apps");
-    expect(screen.getByRole("tab", { name: /Claude.*\(connected\)/ })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: /^Claude.*Connected/ })).toBeTruthy();
   });
 
   it("says when consent was kept but the app is signed out", async () => {
@@ -85,15 +85,15 @@ describe("ConnectPage", () => {
     const tabs = screen.getAllByRole("tab");
     expect(tabs).toHaveLength(4);
     // By accessible name: the logos inside are hidden from it.
-    for (const name of ["Claude", "ChatGPT", "Gemini", "Other"]) {
+    for (const name of [/^Claude/, /^ChatGPT/, /^Gemini/, /^Other/]) {
       expect(screen.getByRole("tab", { name })).toBeTruthy();
     }
     expect(tabs[0].getAttribute("aria-selected")).toBe("true");
-    expect(screen.getByRole("heading", { name: "Set up Claude" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Connect Claude" })).toBeTruthy();
 
-    await userEvent.click(screen.getByRole("tab", { name: "Other" }));
-    expect(screen.getByRole("tab", { name: "Other" }).getAttribute("aria-selected")).toBe("true");
-    expect(screen.getByRole("heading", { name: "Set up another MCP client" })).toBeTruthy();
+    await userEvent.click(screen.getByRole("tab", { name: /^Other/ }));
+    expect(screen.getByRole("tab", { name: /^Other/ }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByRole("heading", { name: "Connect another MCP client" })).toBeTruthy();
     expect(screen.getByText("Find the connector option")).toBeTruthy();
   });
 
