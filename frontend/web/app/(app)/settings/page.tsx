@@ -23,6 +23,7 @@ import { PageHeader } from "@/components/common/page-header";
 import { SubmitButton } from "@/components/common/submit-button";
 import { SettingsCard } from "@/components/settings/settings-card";
 import { SettingsNav } from "@/components/settings/settings-nav";
+import { SaveBar } from "@/components/settings/save-bar";
 import { ThemeSetting } from "@/components/settings/theme-setting";
 import { ConnectedAppsCard } from "@/components/settings/connected-apps-card";
 import { DataCard } from "@/components/settings/data-card";
@@ -250,20 +251,7 @@ export default function SettingsPage() {
                   </div>
                 </SettingsCard>
 
-                {changed && (
-                  <div
-                    role="status"
-                    className="sticky bottom-20 z-20 flex items-center justify-between gap-3 rounded-xl border border-border bg-card/95 p-3 shadow-lg backdrop-blur-md lg:bottom-4"
-                  >
-                    <p className="text-sm">You have unsaved changes.</p>
-                    <div className="flex shrink-0 gap-2">
-                      <Button type="button" variant="ghost" onClick={discard}>
-                        Discard
-                      </Button>
-                      <SubmitButton pendingText="Saving…">Save changes</SubmitButton>
-                    </div>
-                  </div>
-                )}
+                {changed && <SaveBar onDiscard={discard} />}
               </form>
             </Form>
           )}
@@ -275,6 +263,9 @@ export default function SettingsPage() {
           <DataCard />
 
           <DeleteAccountCard user={user} isLoading={isLoading} />
+
+          {/* Room for the fixed save bar, so it never covers the last card. */}
+          {changed && <div aria-hidden className="h-16" />}
         </div>
       </div>
     </div>

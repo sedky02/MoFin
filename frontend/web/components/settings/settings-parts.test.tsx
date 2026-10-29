@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { ConnectedAppsCard } from "@/components/settings/connected-apps-card";
+import { SaveBar } from "@/components/settings/save-bar";
 import { SettingsNav } from "@/components/settings/settings-nav";
 import { ThemeSetting } from "@/components/settings/theme-setting";
 import { SETTINGS_SECTIONS } from "@/lib/settings-sections";
@@ -197,5 +198,33 @@ describe("SettingsNav", () => {
     fireEvent.wheel(window);
     scrollTo([-1500, -1200, -900, -500, 300, 600]);
     expect(current()).toBe("Connected AI apps");
+  });
+});
+
+describe("SaveBar", () => {
+  afterEach(cleanup);
+
+  it("is fixed to the screen, not sticky inside the form, so it can't be left between cards", () => {
+    render(
+      <form>
+        <SaveBar onDiscard={() => {}} />
+      </form>,
+    );
+    const bar = document.querySelector('[data-slot="save-bar"]')!;
+    expect(bar.className).toContain("fixed");
+    expect(bar.className).not.toContain("sticky");
+    expect(bar.textContent).toContain("You have unsaved changes.");
+  });
+
+  it("discards on request and offers Save as a submit button", () => {
+    const onDiscard = vi.fn();
+    render(
+      <form>
+        <SaveBar onDiscard={onDiscard} />
+      </form>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Discard" }));
+    expect(onDiscard).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: "Save changes" }).getAttribute("type")).toBe("submit");
   });
 });
