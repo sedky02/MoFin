@@ -13,6 +13,7 @@ import {
   inclusiveUpperBound,
   lowerBound,
 } from '../../common/utils/date-bounds';
+import { withAdvisoryLock } from '../../common/utils/advisory-lock';
 import { PrismaService } from '../../database/prisma.service';
 import { AccountsService } from '../accounts/accounts.service';
 import {
@@ -91,6 +92,9 @@ function openInstancesOf(
 function startOfDay(now: Date): Date {
   return lowerBound(now.toISOString().slice(0, 10));
 }
+
+/** Arbitrary but stable key of the rollover's advisory lock (see withAdvisoryLock). */
+const ROLLOVER_LOCK_KEY = 727_002_002;
 
 @Injectable()
 export class GoalsService {
@@ -560,7 +564,18 @@ export class GoalsService {
    * recurring goals. Runs at most one period per day, so a goal left uncomputed for a long outage
    * catches up gradually rather than all at once.
    */
-  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT, { timeZone: 'UTC' })
+  async runRollover() {
+    const ran = await withAdvisoryLock(this.prisma, ROLLOVER_LOCK_KEY, () =>
+      this.rolloverExpiredInstances(),
+    );
+    if (!ran) {
+      this.logger.log(
+        'Another instance holds the goals-rollover lock; skipping this run.',
+      );
+    }
+  }
+
   async rolloverExpiredInstances() {
     const now = new Date();
 

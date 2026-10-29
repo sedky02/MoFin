@@ -1,27 +1,14 @@
 import { HttpException, Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { Prisma, RecurringStatus } from '@prisma/client';
+import { RecurringStatus } from '@prisma/client';
+import { withAdvisoryLock } from '../../common/utils/advisory-lock';
 import { PrismaService } from '../../database/prisma.service';
 import { computeNextOccurrence, isPastEndDate } from './recurrence';
 import { RecurringSeriesService } from './recurring-series.service';
 import { TransactionsService } from './transactions.service';
 
-/**
- * Fixed key for a Postgres transaction-level advisory lock, arbitrary but
- * stable. Only one process (across however many replicas) can hold it at a
- * time, so @nestjs/schedule firing this cron on every replica doesn't multiply
- * every recurring charge by the replica count.
- *
- * It is a transaction lock (pg_try_advisory_xact_lock), held by one interactive
- * transaction for the whole run. A session lock would be taken and released
- * through the connection pool, possibly on different connections, and could
- * stay held on the first one and silently skip every later run. A transaction
- * lock is released by Postgres on commit, rollback or a dropped connection.
- */
+/** Arbitrary but stable key of the run's advisory lock (see withAdvisoryLock). */
 const ADVISORY_LOCK_KEY = 727_002_001;
-
-/** The lock transaction idles while the run works, so it must outlive the run. */
-const LOCK_TRANSACTION_TIMEOUT_MS = 30 * 60 * 1000;
 
 /**
  * Generates the next Transaction(s) for each active recurring series. Runs
@@ -47,18 +34,14 @@ export class RecurringTransactionsCron {
   // UTC, like the occurrence dates the cron compares against.
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT, { timeZone: 'UTC' })
   async generateDueOccurrences() {
-    await this.prisma.$transaction(
-      async (lockDb) => {
-        if (!(await this.acquireLock(lockDb))) {
-          this.logger.log(
-            'Another instance holds the recurring-transactions lock; skipping this run.',
-          );
-          return;
-        }
-        await this.generate();
-      },
-      { timeout: LOCK_TRANSACTION_TIMEOUT_MS },
+    const ran = await withAdvisoryLock(this.prisma, ADVISORY_LOCK_KEY, () =>
+      this.generate(),
     );
+    if (!ran) {
+      this.logger.log(
+        'Another instance holds the recurring-transactions lock; skipping this run.',
+      );
+    }
   }
 
   private async generate() {
@@ -178,12 +161,5 @@ export class RecurringTransactionsCron {
     this.logger.warn(
       `Paused recurring series ${rootId} that can no longer post`,
     );
-  }
-
-  private async acquireLock(db: Prisma.TransactionClient): Promise<boolean> {
-    const rows = await db.$queryRaw<{ locked: boolean }[]>`
-      SELECT pg_try_advisory_xact_lock(${ADVISORY_LOCK_KEY}) AS locked
-    `;
-    return rows[0]?.locked === true;
   }
 }

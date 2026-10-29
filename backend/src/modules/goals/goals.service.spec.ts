@@ -662,3 +662,33 @@ describe('GoalsService', () => {
     });
   });
 });
+
+describe('GoalsService.runRollover lock', () => {
+  function setup(locked: boolean) {
+    const db = { $queryRaw: jest.fn(async () => [{ locked }]) };
+    const prisma = {
+      ...db,
+      $transaction: jest.fn(async (fn: (tx: unknown) => unknown) => fn(db)),
+    };
+    const service = new GoalsService(prisma as never, {} as never);
+    const rollover = jest
+      .spyOn(service, 'rolloverExpiredInstances')
+      .mockResolvedValue(undefined);
+    return { service, rollover, db };
+  }
+
+  it('rolls over when it holds the advisory lock', async () => {
+    const { service, rollover, db } = setup(true);
+    await service.runRollover();
+    expect(rollover).toHaveBeenCalledTimes(1);
+    expect(String(db.$queryRaw.mock.calls[0])).toContain(
+      'pg_try_advisory_xact_lock',
+    );
+  });
+
+  it('skips the run when another instance holds the lock', async () => {
+    const { service, rollover } = setup(false);
+    await service.runRollover();
+    expect(rollover).not.toHaveBeenCalled();
+  });
+});
