@@ -7,10 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CopyButton } from "@/components/common/copy-button";
 import { OpenAILogo, AnthropicLogo, GeminiLogo } from "@/components/common/ai-logos";
+import { useConnectedApps } from "@/hooks/useConnectedApps";
 import { useUser } from "@/hooks/useUser";
+import { connectedStates } from "@/lib/connected-apps";
 import { cn } from "@/lib/utils";
 
 const MCP_URL = process.env.NEXT_PUBLIC_MCP_URL ?? "";
+const NOT_AVAILABLE = "The AI connector isn't available on this server yet.";
 const CONNECTOR_NAME = "MoFin — Monitor your Finances";
 
 const GEMINI_CLI_CONFIG = JSON.stringify(
@@ -47,7 +50,14 @@ type ClientKey = (typeof CLIENTS)[number]["key"] | "other";
 
 export default function ConnectPage() {
   const { data: user } = useUser();
+  const apps = useConnectedApps();
   const [active, setActive] = React.useState<ClientKey>("claude");
+
+  // The demo can't connect an app (the backend refuses it), so don't send the
+  // visitor off to an assistant for nothing; the same goes for a server with no URL.
+  const unavailable = !MCP_URL || !!user?.isDemo;
+  const connected = connectedStates(apps.data);
+  const activeState = connected[active];
 
   const claudeDeepLink = MCP_URL
     ? `https://claude.ai/customize/connectors?modal=add-custom-connector&connectorName=${encodeURIComponent(
@@ -65,7 +75,7 @@ export default function ConnectPage() {
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1">
             <span className={cn("size-2 rounded-full", MCP_URL ? "bg-primary" : "bg-muted-foreground")} aria-hidden />
             <span className="label-sm text-primary-text! tracking-widest!">
-              {MCP_URL ? "Ready to connect" : "Not configured"}
+              {MCP_URL ? "Ready to connect" : "Not available"}
             </span>
           </div>
           <h1 className="font-heading text-4xl font-extrabold leading-none tracking-tight sm:text-5xl">
@@ -78,13 +88,13 @@ export default function ConnectPage() {
           </p>
         </div>
 
-        <div className="glass-panel w-full rounded-xl p-4 md:w-72">
+        <div className="glass-panel w-full rounded-xl p-4 md:w-72 lg:hidden">
           <div className="mb-3 flex items-center justify-between">
             <span className="label-sm">Your connector</span>
           </div>
           <div className="flex items-center gap-2">
             <code className="flex-1 truncate font-mono text-xs text-primary-text">
-              {MCP_URL || "Not configured"}
+              {MCP_URL || "Not available"}
             </code>
             {MCP_URL && <CopyButton value={MCP_URL} label="" ariaLabel="Copy connector URL" className="px-2" />}
           </div>
@@ -103,7 +113,6 @@ export default function ConnectPage() {
                 type="button"
                 onClick={() => setActive(key)}
                 aria-pressed={isActive}
-                title={label}
                 className={cn(
                   "glass-panel flex-1 rounded-2xl border-l-4 p-3 text-left transition-all duration-300 lg:w-full lg:flex-none lg:p-6 lg:hover:-translate-y-0.5",
                   isActive ? "border-l-primary" : "border-l-transparent",
@@ -118,14 +127,25 @@ export default function ConnectPage() {
                   >
                     <Logo className="size-5 lg:size-6" />
                   </div>
-                  {isActive && (
-                    <span className="hidden rounded-lg bg-primary/15 px-2 py-1 lg:inline-block">
-                      <span className="label-sm text-primary-text!">Selected</span>
-                    </span>
-                  )}
+                  <span className="hidden items-center gap-1.5 lg:flex">
+                    {connected[key] && (
+                      <span className="rounded-lg bg-success/15 px-2 py-1">
+                        <span className="label-sm text-success!">Connected</span>
+                      </span>
+                    )}
+                    {isActive && (
+                      <span className="rounded-lg bg-primary/15 px-2 py-1">
+                        <span className="label-sm text-primary-text!">Selected</span>
+                      </span>
+                    )}
+                  </span>
                 </div>
-                <h3 className="mt-3 hidden font-heading text-xl font-bold lg:block">{label}</h3>
-                <p className="mt-1 hidden text-sm text-muted-foreground lg:block">{description}</p>
+                <span className="mt-2 block text-center text-xs font-medium lg:mt-3 lg:text-left lg:font-heading lg:text-xl lg:font-bold">
+                  {label}
+                  {connected[key] && <span className="sr-only lg:hidden"> (connected)</span>}
+                  {connected[key] && <span aria-hidden className="ml-1 inline-block size-1.5 rounded-full bg-success align-middle lg:hidden" />}
+                </span>
+                <span className="mt-1 hidden text-sm text-muted-foreground lg:block">{description}</span>
               </button>
             );
           })}
@@ -133,7 +153,7 @@ export default function ConnectPage() {
           <button
             type="button"
             onClick={() => setActive("other")}
-            title="Other MCP client"
+            aria-pressed={active === "other"}
             className={cn(
               "glass-panel flex flex-1 flex-col items-center justify-center rounded-2xl border-2 border-dashed p-3 text-center transition-all duration-300 lg:w-full lg:flex-none lg:p-8 lg:hover:-translate-y-0.5",
               active === "other" ? "border-primary/50" : "border-border",
@@ -142,10 +162,14 @@ export default function ConnectPage() {
             <div className="flex size-10 items-center justify-center rounded-full border border-border lg:mb-3 lg:size-12">
               <Plus className="size-4 text-muted-foreground lg:size-5" />
             </div>
-            <h3 className="mt-3 hidden font-heading text-lg font-bold lg:block">Other MCP client</h3>
-            <p className="hidden text-sm text-muted-foreground lg:block">
+            <span className="mt-2 block text-xs font-medium lg:mt-3 lg:font-heading lg:text-lg lg:font-bold">
+              <span className="lg:hidden">Other</span>
+              <span className="hidden lg:inline">Other MCP client</span>
+              {connected.other && <span className="sr-only"> (connected)</span>}
+            </span>
+            <span className="hidden text-sm text-muted-foreground lg:block">
               Any assistant that supports remote MCP
-            </p>
+            </span>
           </button>
         </div>
 
@@ -183,40 +207,70 @@ export default function ConnectPage() {
                 </div>
               </div>
 
-              {user?.isDemo && (
-                <p role="status" className="mb-6 rounded-xl border border-border bg-accent px-4 py-3 text-sm text-accent-foreground">
-                  Connecting an AI app isn&apos;t available in the demo. Create your own account to connect Claude,
-                  ChatGPT or Gemini to your data.
+              {unavailable && (
+                <p id="connect-unavailable" role="status" className="mb-6 rounded-xl border border-border bg-accent px-4 py-3 text-sm text-accent-foreground">
+                  {user?.isDemo
+                    ? "Connecting an AI app isn't available in the demo. Create your own account to connect Claude, ChatGPT or Gemini to your data."
+                    : NOT_AVAILABLE}
+                </p>
+              )}
+
+              {!unavailable && activeState && (
+                <p className="mb-6 rounded-xl border border-success/30 bg-success/10 px-4 py-3 text-sm">
+                  {activeState === "active"
+                    ? `${activeClient?.label ?? "An app"} is connected to your account.`
+                    : `${activeClient?.label ?? "An app"} was approved but isn't signed in right now. Add it again to reconnect.`}{" "}
+                  <Link href="/settings#connected-apps" className="font-medium text-primary-text underline-offset-4 hover:underline">
+                    Manage in Settings
+                  </Link>
                 </p>
               )}
 
               <div className="space-y-7">
                 {/* Primary CTA */}
                 {active === "claude" && (
-                  <Button size="lg" className="w-full" asChild>
-                    <a
-                      // The demo can't connect an app (the backend refuses it), so
-                      // don't send the visitor off to Claude for nothing.
-                      href={(!user?.isDemo && claudeDeepLink) || undefined}
-                      aria-disabled={user?.isDemo || !claudeDeepLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <AnthropicLogo className="size-4" />
-                      Add to Claude
-                    </a>
+                  <Button
+                    size="lg"
+                    className="w-full"
+                    disabled={unavailable}
+                    aria-describedby={unavailable ? "connect-unavailable" : undefined}
+                    asChild={!unavailable}
+                  >
+                    {unavailable ? (
+                      <>
+                        <AnthropicLogo className="size-4" />
+                        Add to Claude
+                      </>
+                    ) : (
+                      <a href={claudeDeepLink} target="_blank" rel="noopener noreferrer">
+                        <AnthropicLogo className="size-4" />
+                        Add to Claude
+                        <ExternalLink aria-hidden />
+                        <span className="sr-only">(opens in a new tab)</span>
+                      </a>
+                    )}
                   </Button>
                 )}
                 {active === "chatgpt" && (
-                  <Button size="lg" className="w-full" asChild>
-                    <a
-                      href="https://chatgpt.com/#settings/Connectors"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <ExternalLink />
-                      Open ChatGPT connector settings
-                    </a>
+                  <Button
+                    size="lg"
+                    className="w-full"
+                    disabled={unavailable}
+                    aria-describedby={unavailable ? "connect-unavailable" : undefined}
+                    asChild={!unavailable}
+                  >
+                    {unavailable ? (
+                      <>
+                        <ExternalLink aria-hidden />
+                        Open ChatGPT connector settings
+                      </>
+                    ) : (
+                      <a href="https://chatgpt.com/#settings/Connectors" target="_blank" rel="noopener noreferrer">
+                        <ExternalLink aria-hidden />
+                        Open ChatGPT connector settings
+                        <span className="sr-only">(opens in a new tab)</span>
+                      </a>
+                    )}
                   </Button>
                 )}
 
@@ -228,7 +282,7 @@ export default function ConnectPage() {
                   <div className="flex gap-2">
                     <Input
                       id="mcp-endpoint"
-                      value={MCP_URL || "Not configured — set NEXT_PUBLIC_MCP_URL"}
+                      value={MCP_URL || "Not available"}
                       readOnly
                       className="bg-muted/50 font-mono text-xs"
                     />
@@ -246,7 +300,7 @@ export default function ConnectPage() {
                       {user?.isDemo ? "your account" : (user?.email ?? "your account")}
                     </span>{" "}
                     and approve access. You can disconnect it any time under{" "}
-                    <Link href="/settings" className="font-medium text-primary-text underline-offset-4 hover:underline">
+                    <Link href="/settings#connected-apps" className="font-medium text-primary-text underline-offset-4 hover:underline">
                       Settings → Connected AI apps
                     </Link>
                     .
