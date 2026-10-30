@@ -4,8 +4,10 @@ import * as React from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { X } from "lucide-react";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -22,20 +24,13 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectSeparator,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { TYPE_ICON } from "@/components/accounts/account-card";
+import { cn } from "@/lib/utils";
 import { SubmitButton } from "@/components/common/submit-button";
+import { CurrencyPicker } from "@/components/common/currency-picker";
 import { MoneyInput } from "@/components/common/money-input";
-import { ACCOUNT_TYPES, CURRENCIES } from "@/lib/constants";
+import { ACCOUNT_TYPES } from "@/lib/constants";
 import { formatMoneyInput, normalizeSignedMoneyTyping } from "@/lib/format";
 import { tryParse } from "@/lib/decimal";
 import {
@@ -107,6 +102,9 @@ export function AccountDialog({
     },
   });
   const currency = useWatch({ control: form.control, name: "currency" });
+  const type = useWatch({ control: form.control, name: "type" });
+  const nameRef = React.useRef<HTMLInputElement | null>(null);
+  const TypeIcon = TYPE_ICON[type];
 
   // Reset whenever we open with a (possibly different) account.
   React.useEffect(() => {
@@ -150,137 +148,153 @@ export function AccountDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>{isEdit ? "Edit account" : "New account"}</DialogTitle>
-          <DialogDescription>
-            {isEdit
-              ? "Update this account's name, type or opening balance."
-              : "Add an account to track its balance via the ledger."}
-          </DialogDescription>
+      <DialogContent
+        // Header and footer stay put; only the form body scrolls, so a short screen never clips the buttons.
+        className="flex max-h-[calc(100dvh-2rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-md"
+        showCloseButton={false}
+        // The name is the one thing everyone fills in, so the cursor starts there.
+        onOpenAutoFocus={(event) => {
+          event.preventDefault();
+          nameRef.current?.focus();
+        }}
+      >
+        <DialogHeader className="flex-row items-center gap-3 border-b px-4 py-3 sm:gap-3.5 sm:px-6 sm:py-4">
+          {/* How the account will look in the list, updating as you choose. */}
+          <span
+            aria-hidden
+            className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-secondary text-muted-foreground sm:size-12"
+          >
+            <TypeIcon className="size-5 sm:size-6" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <DialogTitle className="truncate text-base sm:text-lg">
+              {isEdit ? "Edit account" : "New account"}
+            </DialogTitle>
+            <DialogDescription className="mt-1 max-sm:hidden">
+              {isEdit
+                ? "Update this account's name, type or opening balance."
+                : "Add an account to track its balance via the ledger."}
+            </DialogDescription>
+          </div>
+          <DialogClose asChild>
+            <Button variant="ghost" size="icon" className="shrink-0 text-muted-foreground">
+              <X aria-hidden />
+              <span className="sr-only">Close</span>
+            </Button>
+          </DialogClose>
         </DialogHeader>
 
         <Form {...form}>
-          <form action={action} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Everyday checking" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="type"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Type</FormLabel>
-                  <Select value={field.value} onValueChange={field.onChange}>
+          <form action={action} className="flex min-h-0 flex-1 flex-col">
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:space-y-5 sm:px-6 sm:py-5">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Name</FormLabel>
                     <FormControl>
-                      <SelectTrigger className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
+                      <Input
+                        placeholder="e.g. Everyday checking"
+                        autoComplete="off"
+                        {...field}
+                        ref={(el) => {
+                          field.ref(el);
+                          nameRef.current = el;
+                        }}
+                      />
                     </FormControl>
-                    <SelectContent>
-                      {ACCOUNT_TYPES.map((t) => (
-                        <SelectItem key={t.value} value={t.value}>
-                          {t.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {isEdit && (
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="type"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Type</FormLabel>
+                    <div role="group" aria-label="Type" className="grid grid-cols-4 gap-2">
+                      {ACCOUNT_TYPES.map((t) => {
+                        const Icon = TYPE_ICON[t.value];
+                        const selected = field.value === t.value;
+                        return (
+                          <button
+                            key={t.value}
+                            type="button"
+                            aria-pressed={selected}
+                            onClick={() => field.onChange(t.value)}
+                            className={cn(
+                              "flex flex-col items-center gap-1.5 rounded-lg bg-card px-2 py-2.5 text-xs font-medium transition-shadow",
+                              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                              selected
+                                ? "text-foreground ring-2 ring-primary"
+                                : "text-muted-foreground ring-1 ring-border hover:text-foreground hover:ring-foreground/30",
+                            )}
+                          >
+                            <Icon className="size-5" aria-hidden />
+                            {t.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="currency"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Currency</FormLabel>
+                    <FormControl>
+                      <CurrencyPicker
+                        value={field.value}
+                        onChange={field.onChange}
+                        pinned={usedCurrencies}
+                        disabled={isEdit} // currency is fixed after creation
+                      />
+                    </FormControl>
+                    {isEdit && (
+                      <FormDescription>
+                        Currency can&apos;t be changed after an account is created.
+                      </FormDescription>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="openingBalance"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Opening balance (optional)</FormLabel>
+                    <FormControl>
+                      <MoneyInput
+                        value={field.value}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                        currency={currency}
+                        allowNegative
+                      />
+                    </FormControl>
                     <FormDescription>
-                      Currency can&apos;t be changed after an account is created.
+                      What the account held before you started tracking it. It
+                      isn&apos;t counted as income. Use a minus for money owed.
                     </FormDescription>
-                  )}
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="currency"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Currency</FormLabel>
-                  <Select
-                    value={field.value}
-                    onValueChange={field.onChange}
-                    disabled={isEdit} // currency is fixed after creation
-                  >
-                    <FormControl>
-                      <SelectTrigger className="w-full tabular">
-                        <SelectValue />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {usedCurrencies.length > 0 && (
-                        <>
-                          <SelectGroup>
-                            <SelectLabel>In use</SelectLabel>
-                            {usedCurrencies.map((c) => (
-                              <SelectItem
-                                key={`used-${c}`}
-                                value={c}
-                                className="tabular"
-                              >
-                                {c}
-                              </SelectItem>
-                            ))}
-                          </SelectGroup>
-                          <SelectSeparator />
-                        </>
-                      )}
-                      <SelectGroup>
-                        <SelectLabel>All currencies</SelectLabel>
-                        {CURRENCIES.filter((c) => !usedCurrencies.includes(c)).map((c) => (
-                          <SelectItem key={c} value={c} className="tabular">
-                            {c}
-                          </SelectItem>
-                        ))}
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="openingBalance"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Opening balance (optional)</FormLabel>
-                  <FormControl>
-                    <MoneyInput
-                      value={field.value}
-                      onChange={field.onChange}
-                      onBlur={field.onBlur}
-                      currency={currency}
-                      allowNegative
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    What the account held before you started tracking it. It
-                    isn&apos;t counted as income. Use a minus for money owed.
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <DialogFooter className="gap-2 sm:gap-0">
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => onOpenChange(false)}
-              >
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <DialogFooter className="m-0 flex-row justify-end gap-2 border-t px-4 py-3 sm:gap-2 sm:px-6 sm:py-4">
+              <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
               <SubmitButton pendingText="Saving…">

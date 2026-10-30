@@ -41,10 +41,7 @@ function toMilli(formatted: string): number {
 }
 
 function accountCard(page: Page, name: string) {
-  return page
-    .getByRole("tabpanel")
-    .locator('[data-slot="card"]')
-    .filter({ has: page.getByRole("heading", { name, exact: true }) });
+  return page.getByRole("listitem").filter({ has: page.getByRole("heading", { name, exact: true }) });
 }
 
 /** The card's balance in thousandths; MoneyAmount keeps the full formatted value in its title. */
@@ -143,8 +140,7 @@ test.describe("opening balance", () => {
     expect(Number(created!.openingBalance)).toBe(0);
     await expect.poll(() => cardBalance(page, name)).toBe(0);
 
-    await accountCard(page, name).getByRole("button", { name: `Actions for ${name}` }).click();
-    await page.getByRole("menuitem", { name: "Edit" }).click();
+    await accountCard(page, name).getByRole("button", { name: `Edit ${name}` }).click();
     const edit = page.getByRole("dialog", { name: "Edit account" });
     const opening = edit.getByLabel("Opening balance (optional)");
     await expect(opening).toHaveValue("");
@@ -155,8 +151,7 @@ test.describe("opening balance", () => {
     await expect.poll(() => cardBalance(page, name)).toBe(-250_000);
 
     // Reopening shows the stored value.
-    await accountCard(page, name).getByRole("button", { name: `Actions for ${name}` }).click();
-    await page.getByRole("menuitem", { name: "Edit" }).click();
+    await accountCard(page, name).getByRole("button", { name: `Edit ${name}` }).click();
     await expect(page.getByRole("dialog", { name: "Edit account" }).getByLabel("Opening balance (optional)")).toHaveValue("-250.00");
     await page.keyboard.press("Escape");
   });

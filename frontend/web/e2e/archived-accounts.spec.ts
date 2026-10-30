@@ -23,10 +23,7 @@ function toMilli(formatted: string): number {
 }
 
 function accountCard(page: Page, name: string) {
-  return page
-    .getByRole("tabpanel")
-    .locator('[data-slot="card"]')
-    .filter({ has: page.getByRole("heading", { name, exact: true }) });
+  return page.getByRole("listitem").filter({ has: page.getByRole("heading", { name, exact: true }) });
 }
 
 /** The balance a card shows; MoneyAmount keeps the full formatted value in its title. */
@@ -39,9 +36,18 @@ async function cardBalance(page: Page, name: string): Promise<string> {
   return (await amount.getAttribute("title")) ?? "";
 }
 
+/** Switch between the active list and the archived one (header buttons). */
+async function openView(page: Page, view: "Active" | "Archived") {
+  const button =
+    view === "Archived"
+      ? page.getByRole("button", { name: /^Archived/ })
+      : page.getByRole("button", { name: "Back to accounts" });
+  if (await button.isVisible()) await button.click();
+}
+
 /** Sum of the cards in the given tab for one currency, in thousandths. */
 async function sumCards(page: Page, tab: "Active" | "Archived", accounts: FixtureAccount[], currency: string) {
-  await page.getByRole("tab", { name: tab }).click();
+  await openView(page, tab);
   let total = 0;
   for (const account of accounts.filter((a) => a.currency === currency)) {
     total += toMilli(await cardBalance(page, account.name));
@@ -62,10 +68,10 @@ test.describe("archived accounts", () => {
     expect(Number(row.balance)).not.toBe(0);
 
     await page.goto("/accounts");
-    await page.getByRole("tab", { name: "Archived" }).click();
+    await openView(page, "Archived");
     const shown = await cardBalance(page, "Old savings");
     expect(toMilli(shown)).toBe(Math.round(Number(row.balance) * 1000));
-    await expect(accountCard(page, "Old savings").getByText("Archived", { exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Archived", exact: true })).toBeVisible();
 
     const all = await runAxe(page);
     await test.info().attach("axe archived tab", { body: formatViolations(all) || "no violations", contentType: "text/plain" });
@@ -84,7 +90,7 @@ test.describe("archived accounts", () => {
       const activeSum = await sumCards(page, "Active", active, currency);
       let archivedSum = 0;
       let archivedHolding = 0;
-      await page.getByRole("tab", { name: "Archived" }).click();
+      await openView(page, "Archived");
       for (const account of archived.filter((a) => a.currency === currency)) {
         const milli = toMilli(await cardBalance(page, account.name));
         archivedSum += milli;

@@ -1,99 +1,134 @@
 "use client";
 
-import { MoreVertical, Pencil, Archive, ArchiveRestore, AlertTriangle } from "lucide-react";
-import type { Account } from "@/lib/types";
+import {
+  AlertTriangle,
+  Archive,
+  ArchiveRestore,
+  Bitcoin,
+  Banknote,
+  Landmark,
+  PiggyBank,
+  Pencil,
+  type LucideIcon,
+} from "lucide-react";
+import type { Account, AccountType } from "@/lib/types";
 import { useLedgerBalance } from "@/hooks/useLedger";
 import { MoneyAmount } from "@/components/common/money-amount";
-import { AccountTypeBadge } from "@/components/common/badges";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { tryParse } from "@/lib/decimal";
+import { cn } from "@/lib/utils";
 
-export function AccountCard({
+export const TYPE_ICON: Record<AccountType, LucideIcon> = {
+  CASH: Banknote,
+  BANK: Landmark,
+  SAVINGS: PiggyBank,
+  CRYPTO: Bitcoin,
+};
+
+/** One account as its own card: type tile, name and currency, balance, and quiet actions. */
+export function AccountRow({
   account,
   onEdit,
   onArchive,
   onRestore,
-  readOnly = false,
+  busy = false,
 }: {
   account: Account;
   onEdit?: (account: Account) => void;
   onArchive?: (account: Account) => void;
   onRestore?: (account: Account) => void;
-  readOnly?: boolean;
+  busy?: boolean;
 }) {
   // Parallel per-account balance query (key = currency when accountId is passed).
   // Archived accounts are readable too, so a failed request is a real error and is
   // shown as one, never as a balance of 0. An empty result is an account with no
   // ledger entries yet, which really is 0.
-  const { data, isLoading, isError, refetch } = useLedgerBalance({ accountId: account.id });
+  const { data, isLoading, isError, refetch } = useLedgerBalance({
+    accountId: account.id,
+  });
   const balance =
-    data?.find((b) => b.key === account.currency)?.balance ?? data?.[0]?.balance ?? "0";
+    data?.find((b) => b.key === account.currency)?.balance ??
+    data?.[0]?.balance ??
+    "0";
+  const Icon = TYPE_ICON[account.type];
+  // Quiet until you point at the row or move focus into it; on touch screens there is no
+  // hover, so the actions stay visible there.
+  const reveal =
+    "transition-opacity sm:opacity-0 sm:group-hover/row:opacity-100 sm:group-focus-within/row:opacity-100 pointer-coarse:opacity-100";
+
+  const isZero = tryParse(balance)?.isZero() ?? false;
 
   return (
-    <Card className="group relative border-0 p-5 shadow-sm">
-      <div className="flex items-start justify-between">
-        <div className="min-w-0">
-          <h3 className="truncate font-semibold">{account.name}</h3>
-          <div className="mt-1.5 flex flex-wrap items-center gap-2">
-            <AccountTypeBadge type={account.type} />
-            <span className="text-xs text-muted-foreground tabular">
+    <li aria-busy={busy || undefined} className="min-w-0">
+      <Card
+        className={cn(
+          "group/row gap-4 border-0 p-5 shadow-sm transition-opacity",
+          busy && "opacity-60",
+        )}
+      >
+        <div className="flex items-center gap-3">
+          <span
+            aria-hidden
+            className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-secondary text-muted-foreground"
+          >
+            <Icon className="size-5" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <h3 className="truncate text-sm font-medium">{account.name}</h3>
+            <p className="text-xs text-muted-foreground tabular">
               {account.currency}
-            </span>
-            {readOnly && <Badge variant="secondary">Archived</Badge>}
+            </p>
           </div>
-        </div>
-        {readOnly ? (
-          onRestore && (
+          {onRestore ? (
             <Button
               variant="ghost"
-              size="icon"
-              className="size-8 text-muted-foreground"
+              size="sm"
+              className="-mr-1 gap-1.5 text-muted-foreground"
+              disabled={busy}
               onClick={() => onRestore(account)}
               aria-label={`Restore ${account.name}`}
             >
               <ArchiveRestore className="size-4" />
+              Restore
             </Button>
-          )
-        ) : (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-8 text-muted-foreground"
-                aria-label={`Actions for ${account.name}`}
-              >
-                <MoreVertical className="size-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => onEdit?.(account)}>
-                <Pencil className="size-4" />
-                Edit
-              </DropdownMenuItem>
-              <DropdownMenuItem variant="destructive" onClick={() => onArchive?.(account)}>
-                <Archive className="size-4" />
-                Archive
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-      </div>
+          ) : (
+            <div className={cn("-mr-1 flex shrink-0 items-center", reveal)}>
+              {onEdit && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-8 text-muted-foreground"
+                  onClick={() => onEdit(account)}
+                  aria-label={`Edit ${account.name}`}
+                >
+                  <Pencil className="size-4" />
+                </Button>
+              )}
+              {onArchive && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  onClick={() => onArchive(account)}
+                  aria-label={`Archive ${account.name}`}
+                  title="Archive"
+                >
+                  <Archive className="size-4" />
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
 
-      <div className="mt-5">
-        <p className="text-xs text-muted-foreground">Current balance</p>
         {isLoading ? (
-          <Skeleton className="mt-1.5 h-7 w-28" />
+          <Skeleton className="h-8 w-36" />
         ) : isError ? (
-          <div role="alert" className="mt-1 flex h-8 items-center gap-2 text-sm text-destructive">
+          <div
+            role="alert"
+            className="flex min-h-8 flex-wrap items-center gap-x-1 text-sm text-destructive"
+          >
             <AlertTriangle className="size-4 shrink-0" aria-hidden />
             <span>Couldn&apos;t load balance</span>
             <Button
@@ -110,11 +145,12 @@ export function AccountCard({
           <MoneyAmount
             amount={balance}
             currency={account.currency}
-            colorBySign
-            className="mt-1 block text-2xl font-semibold"
+            // Zero is neither good nor bad: plain text, not green.
+            colorBySign={!isZero}
+            className="block text-2xl font-semibold leading-8"
           />
         )}
-      </div>
-    </Card>
+      </Card>
+    </li>
   );
 }
