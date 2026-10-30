@@ -146,7 +146,7 @@ export interface GoalInstance {
 
 // Only on history rows: LIVE = the open period, computed now (same as the
 // card); PERIOD_END = recorded when the period ended, never recomputed;
-// ENDED = frozen when the goal was ended.
+// ENDED = frozen when the goal was cancelled.
 export type GoalProgressSource = "LIVE" | "PERIOD_END" | "ENDED";
 
 export interface GoalHistoryInstance extends GoalInstance {
@@ -156,8 +156,8 @@ export interface GoalHistoryInstance extends GoalInstance {
 // BALANCE/INCOME are "reach" goals: achieved once progress hits the target,
 // and it stays achieved for the rest of the period. EXPENSE is "stay under":
 // over the cap shows Failed, but it's only judged when the period ends.
-// `currentInstance` is the open period with live progress, or for an ended
-// goal the period as it was frozen when the goal was ended.
+// `currentInstance` is the open period with live progress, or for a cancelled
+// goal the period as it was frozen when the goal was cancelled.
 export interface Goal {
   id: string;
   accountId: string;

@@ -1,29 +1,31 @@
 "use client";
 
 import * as React from "react";
-import { Archive, ArrowLeft, Plus, Target } from "lucide-react";
+import { Ban, ArrowLeft, Plus, Target } from "lucide-react";
 import { useGoals, useArchiveGoal, useRestoreGoal } from "@/hooks/useGoals";
 import { useAccounts } from "@/hooks/useAccounts";
-import { GoalCard } from "@/components/goals/goal-card";
+import { GoalRow } from "@/components/goals/goal-row";
+import { GoalPanel } from "@/components/goals/goal-panel";
 import { GoalDialog } from "@/components/goals/goal-dialog";
-import { EndedGoalsList } from "@/components/goals/ended-goals-list";
+import { CancelledGoalsList } from "@/components/goals/cancelled-goals-list";
 import { GoalHistoryDialog } from "@/components/goals/goal-history-dialog";
 import { PageHeader } from "@/components/common/page-header";
 import { Button } from "@/components/ui/button";
-import { SkeletonCard, EmptyState, ErrorState } from "@/components/common/states";
+import { SkeletonRows, EmptyState, ErrorState } from "@/components/common/states";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
+import { groupGoalsByStanding, STANDING_LABEL } from "@/lib/goal-standing";
 import type { Goal } from "@/lib/types";
 
 export default function GoalsPage() {
-  // Two views of the same page: the active goals, or the ended ones on their own as a history.
-  const [view, setView] = React.useState<"active" | "ended">("active");
+  // Two views of the same page: the active goals, or the cancelled ones on their own as a history.
+  const [view, setView] = React.useState<"active" | "cancelled">("active");
 
   const active = useGoals("active");
-  const ended = useGoals("archived");
+  const cancelled = useGoals("archived");
   const { data: accounts } = useAccounts("all");
   const stopMut = useArchiveGoal();
   const restoreMut = useRestoreGoal();
-  const endedCount = ended.data?.length ?? 0;
+  const cancelledCount = cancelled.data?.length ?? 0;
 
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<Goal | undefined>();
@@ -69,9 +71,9 @@ export default function GoalsPage() {
           // The page's actions sit together: switch view on the left, the primary action last.
           <div className="flex flex-wrap items-center gap-2">
             {view === "active" ? (
-              <Button variant="outline" onClick={() => setView("ended")} className="gap-2">
-                <Archive className="size-4" aria-hidden />
-                {endedCount > 0 ? `Ended (${endedCount})` : "Ended"}
+              <Button variant="outline" onClick={() => setView("cancelled")} className="gap-2">
+                <Ban className="size-4" aria-hidden />
+                {cancelledCount > 0 ? `Cancelled (${cancelledCount})` : "Cancelled"}
               </Button>
             ) : (
               <Button variant="outline" onClick={() => setView("active")} className="gap-2">
@@ -89,11 +91,7 @@ export default function GoalsPage() {
 
       {view === "active" ? (
         active.isLoading ? (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <SkeletonCard key={i} />
-            ))}
-          </div>
+          <SkeletonRows rows={4} />
         ) : active.isError ? (
           <ErrorState description="Couldn't load your goals." onRetry={() => active.refetch()} />
         ) : optimisticActive.length === 0 ? (
@@ -109,32 +107,32 @@ export default function GoalsPage() {
             }
           />
         ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {optimisticActive.map((goal) => (
-              <GoalCard
-                key={goal.id}
-                goal={goal}
-                account={accountsById.get(goal.accountId)}
-                onEdit={openEdit}
-                onStop={setToStop}
-                onViewHistory={setHistoryGoal}
-              />
+          <div className="space-y-8">
+            {groupGoalsByStanding(optimisticActive).map(({ standing, goals }) => (
+              <GoalPanel key={standing} id={`goals-${standing}`} title={STANDING_LABEL[standing]}>
+                {goals.map((goal) => (
+                  <GoalRow
+                    key={goal.id}
+                    goal={goal}
+                    account={accountsById.get(goal.accountId)}
+                    onEdit={openEdit}
+                    onStop={setToStop}
+                    onViewHistory={setHistoryGoal}
+                  />
+                ))}
+              </GoalPanel>
             ))}
           </div>
         )
-      ) : ended.isLoading ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <SkeletonCard key={i} />
-          ))}
-        </div>
-      ) : ended.isError ? (
-        <ErrorState description="Couldn't load your ended goals." onRetry={() => ended.refetch()} />
-      ) : endedCount === 0 ? (
-        <EmptyState icon={Target} title="No ended goals" description="Goals you end will show up here, and can be restored." />
+      ) : cancelled.isLoading ? (
+        <SkeletonRows rows={4} />
+      ) : cancelled.isError ? (
+        <ErrorState description="Couldn't load your cancelled goals." onRetry={() => cancelled.refetch()} />
+      ) : cancelledCount === 0 ? (
+        <EmptyState icon={Target} title="No cancelled goals" description="Goals you cancel will show up here, and can be restored." />
       ) : (
-        <EndedGoalsList
-          goals={ended.data ?? []}
+        <CancelledGoalsList
+          goals={cancelled.data ?? []}
           accountsById={accountsById}
           onViewHistory={setHistoryGoal}
           onRestore={(g) => restoreMut.mutate(g.id)}
@@ -154,9 +152,10 @@ export default function GoalsPage() {
       <ConfirmDialog
         open={!!toStop}
         onOpenChange={(o) => !o && setToStop(undefined)}
-        title={`End "${toStop?.name}"?`}
-        description="Stops tracking and moves it to Ended, with its progress as it is now. Its history is kept. You can restore it later; it restarts from that day."
-        confirmLabel="End goal"
+        title={`Cancel "${toStop?.name}"?`}
+        description="Stops tracking and moves it to Cancelled, with its progress as it is now. Its history is kept. You can restore it later; it restarts from that day."
+        confirmLabel="Cancel goal"
+        cancelLabel="Keep goal"
         onConfirm={confirmStop}
       />
     </>

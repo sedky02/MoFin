@@ -2,8 +2,8 @@ import { expect, test, type Page } from "@playwright/test";
 import { formatViolations, runAxe } from "./helpers/axe";
 
 // B-26: the goals UI says how each goal type behaves, the history labels the
-// open period as live and finished ones as recorded, and the "End goal" confirm
-// says what ending really does. Read-only: nothing is created or ended here.
+// open period as live and finished ones as recorded, and the "Cancel goal" confirm
+// says what cancelling really does. Read-only: nothing is created or cancelled here.
 // Needs the UX fixture: `npm run e2e:seed`.
 
 const RULES = {
@@ -66,17 +66,17 @@ test("goal history labels the open period as live, matching the card", async ({ 
   await page.keyboard.press("Escape");
 });
 
-test("the End goal confirm says it stops tracking and restarts from the restore day", async ({ page }) => {
+test("the Cancel goal confirm says it stops tracking and restarts from the restore day", async ({ page }) => {
   await page.goto("/goals");
   const card = goalCard(page, "Monthly spending cap");
   await card.getByRole("button", { name: "Actions for Monthly spending cap" }).click();
-  await page.getByRole("menuitem", { name: "End goal" }).click();
+  await page.getByRole("menuitem", { name: "Cancel goal" }).click();
 
-  const confirm = page.getByRole("alertdialog", { name: 'End "Monthly spending cap"?' });
+  const confirm = page.getByRole("alertdialog", { name: 'Cancel "Monthly spending cap"?' });
   await expect(confirm).toContainText("Stops tracking");
   await expect(confirm).toContainText("You can restore it later; it restarts from that day.");
 
   // Leave the fixture as it was.
-  await confirm.getByRole("button", { name: "Cancel" }).click();
+  await confirm.getByRole("button", { name: "Keep goal" }).click();
   await expect(goalCard(page, "Monthly spending cap")).toBeVisible();
 });

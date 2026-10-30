@@ -3,8 +3,8 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 import { tryParse } from "@/lib/decimal";
-import type { TransactionType, DraftStatus, AccountType, GoalType, GoalStatus } from "@/lib/types";
-import { ArrowDownLeft, ArrowUpRight, ArrowLeftRight, PiggyBank, TrendingUp, TrendingDown } from "lucide-react";
+import type { TransactionType, DraftStatus, AccountType, GoalStatus } from "@/lib/types";
+import { ArrowDownLeft, ArrowUpRight, ArrowLeftRight } from "lucide-react";
 
 export function TypeBadge({
   type,
@@ -140,27 +140,6 @@ export function AccountTypeBadge({
       )}
     >
       {ACCOUNT_TYPE_LABEL[type]}
-    </span>
-  );
-}
-
-export function GoalTypeBadge({ type, className }: { type: GoalType; className?: string }) {
-  const map = {
-    BALANCE: { label: "Balance", icon: PiggyBank, cls: "bg-primary/12 text-primary-text" },
-    INCOME: { label: "Income", icon: TrendingUp, cls: "bg-success/12 text-success" },
-    EXPENSE: { label: "Expense", icon: TrendingDown, cls: "bg-destructive/12 text-destructive" },
-  } as const;
-  const { label, icon: Icon, cls } = map[type];
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-medium",
-        cls,
-        className,
-      )}
-    >
-      <Icon className="size-3" />
-      {label}
     </span>
   );
 }

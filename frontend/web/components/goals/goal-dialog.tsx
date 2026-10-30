@@ -4,7 +4,7 @@ import * as React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { PiggyBank, TrendingDown, TrendingUp, X, type LucideIcon } from "lucide-react";
+import { CircleHelp, PiggyBank, TrendingDown, TrendingUp, X, type LucideIcon } from "lucide-react";
 import {
   Dialog,
   DialogClose,
@@ -31,6 +31,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { SubmitButton } from "@/components/common/submit-button";
 import { MoneyInput } from "@/components/common/money-input";
@@ -40,14 +42,33 @@ import { useActiveAccount } from "@/hooks/useActiveAccount";
 import { useCreateGoal, useUpdateGoal } from "@/hooks/useGoals";
 import { parseMoneyInput } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { goalRuleHint, goalScopeLabel } from "@/lib/goal-scope";
+import { goalExplainer, goalRuleHint, goalScopeLabel } from "@/lib/goal-scope";
 import type { Goal, GoalType } from "@/lib/types";
+
+const TYPE_LABEL: Record<GoalType, string> = { BALANCE: "Balance", INCOME: "Income", EXPENSE: "Expense" };
 
 const GOAL_TYPES: { value: GoalType; label: string; hint: string; Icon: LucideIcon }[] = [
   { value: "BALANCE", label: "Balance", hint: "Save up", Icon: PiggyBank },
   { value: "INCOME", label: "Income", hint: "Earn more", Icon: TrendingUp },
   { value: "EXPENSE", label: "Expense", hint: "Spend less", Icon: TrendingDown },
 ];
+
+/** What the target and the progress mean for one goal type: shown on hover over the type, and in the help beside Target. */
+function GoalExplainer({ type, className }: { type: GoalType; className?: string }) {
+  const { target, progress } = goalExplainer(type);
+  return (
+    <dl className={cn("space-y-2", className)}>
+      <div>
+        <dt className="text-xs font-medium opacity-70">Target</dt>
+        <dd className="mt-0.5">{target}</dd>
+      </div>
+      <div>
+        <dt className="text-xs font-medium opacity-70">Progress</dt>
+        <dd className="mt-0.5">{progress}</dd>
+      </div>
+    </dl>
+  );
+}
 
 const schema = z
   .object({
@@ -235,31 +256,40 @@ export function GoalDialog({
                         {GOAL_TYPES.map(({ value, label, hint, Icon }) => {
                           const selected = field.value === value;
                           return (
-                            <button
-                              key={value}
-                              id={`goal-type-${value}`}
-                              type="button"
-                              role="radio"
-                              aria-checked={selected}
-                              tabIndex={selected ? 0 : -1}
-                              disabled={isEdit}
-                              onClick={() => field.onChange(value)}
-                              className={cn(
-                                "flex flex-col items-start gap-1 rounded-xl border p-3 text-left transition-colors",
-                                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                                "disabled:cursor-not-allowed disabled:opacity-60",
-                                selected
-                                  ? "border-primary bg-primary/5 ring-1 ring-primary/40"
-                                  : "border-border hover:bg-secondary",
-                              )}
-                            >
-                              <Icon
-                                className={cn("size-4", selected ? "text-primary-text" : "text-muted-foreground")}
-                                aria-hidden
-                              />
-                              <span className="text-sm font-medium">{label}</span>
-                              <span className="w-full truncate text-xs text-muted-foreground">{hint}</span>
-                            </button>
+                            <Tooltip key={value} delayDuration={400}>
+                              <TooltipTrigger asChild>
+                                {/* The wrapper takes the hover, so it still works while the buttons are disabled (editing). */}
+                                <div className="flex">
+                              <button
+                                id={`goal-type-${value}`}
+                                type="button"
+                                role="radio"
+                                aria-checked={selected}
+                                tabIndex={selected ? 0 : -1}
+                                disabled={isEdit}
+                                onClick={() => field.onChange(value)}
+                                className={cn(
+                                  "flex w-full flex-col items-start gap-1 rounded-xl border p-3 text-left transition-colors",
+                                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                                  "disabled:pointer-events-none disabled:opacity-60",
+                                  selected
+                                    ? "border-primary bg-primary/5 ring-1 ring-primary/40"
+                                    : "border-border hover:bg-secondary",
+                                )}
+                              >
+                                <Icon
+                                  className={cn("size-4", selected ? "text-primary-text" : "text-muted-foreground")}
+                                  aria-hidden
+                                />
+                                <span className="text-sm font-medium">{label}</span>
+                                <span className="w-full truncate text-xs text-muted-foreground">{hint}</span>
+                              </button>
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent side="bottom" sideOffset={8} className="block max-w-64 py-2 text-left">
+                                <GoalExplainer type={value} />
+                              </TooltipContent>
+                            </Tooltip>
                           );
                         })}
                       </div>
@@ -302,7 +332,24 @@ export function GoalDialog({
                 name="targetAmount"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Target amount</FormLabel>
+                    <div className="flex items-center gap-1.5">
+                      <FormLabel>Target amount</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <button
+                            type="button"
+                            aria-label="What the target means"
+                            className="inline-flex size-5 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring pointer-coarse:size-8"
+                          >
+                            <CircleHelp className="size-4" aria-hidden />
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent align="start" className="w-72 p-3" data-testid="goal-explainer">
+                          <p className="text-sm font-semibold">{TYPE_LABEL[watchedType]} goal</p>
+                          <GoalExplainer type={watchedType} className="text-sm" />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
                     <FormControl>
                       <MoneyInput value={field.value} onChange={field.onChange} onBlur={field.onBlur} />
                     </FormControl>

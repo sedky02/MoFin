@@ -32,12 +32,12 @@ const goal = (id: string, name: string, archivedAt: string | null = null, over: 
 });
 
 let active: Goal[];
-let endedGoals: Goal[];
+let cancelledGoals: Goal[];
 const restore = vi.fn();
 
 vi.mock("@/hooks/useGoals", () => ({
   useGoals: (status: string) => ({
-    data: status === "archived" ? endedGoals : active,
+    data: status === "archived" ? cancelledGoals : active,
     isLoading: false,
     isError: false,
     refetch: vi.fn(),
@@ -58,7 +58,7 @@ vi.mock("@/components/goals/goal-history-dialog", () => ({
 describe("GoalsPage", () => {
   beforeEach(() => {
     active = [goal("g1", "Emergency fund"), goal("g2", "Holiday trip")];
-    endedGoals = [
+    cancelledGoals = [
       goal("e1", "Old car fund", "2026-09-15T00:00:00Z"),
       goal("e2", "Wedding fund", "2026-10-12T00:00:00Z"),
       goal("e3", "Laptop", "2026-09-02T00:00:00Z"),
@@ -67,27 +67,27 @@ describe("GoalsPage", () => {
   });
   afterEach(cleanup);
 
-  it("has no tab control, just an Ended button with the count", () => {
+  it("has no tab control, just a Cancelled button with the count", () => {
     render(<GoalsPage />);
     expect(screen.queryByRole("tab")).toBeNull();
-    expect(screen.getByRole("button", { name: "Ended (3)" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Cancelled (3)" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Emergency fund" })).toBeTruthy();
   });
 
   it("sits beside New goal in the header", () => {
     render(<GoalsPage />);
-    const ended = screen.getByRole("button", { name: "Ended (3)" });
+    const cancelled = screen.getByRole("button", { name: "Cancelled (3)" });
     const created = screen.getAllByRole("button", { name: "New goal" })[0];
-    expect(ended.parentElement).toBe(created.parentElement);
+    expect(cancelled.parentElement).toBe(created.parentElement);
   });
 
-  it("shows the ended goals on their own as a history, newest first, grouped by month", async () => {
+  it("shows the cancelled goals on their own as a history, newest first, grouped by month", async () => {
     render(<GoalsPage />);
-    await userEvent.click(screen.getByRole("button", { name: "Ended (3)" }));
+    await userEvent.click(screen.getByRole("button", { name: "Cancelled (3)" }));
 
-    // On their own: the active goals and the Ended button are gone.
+    // On their own: the active goals and the Cancelled button are gone.
     expect(screen.queryByRole("heading", { name: "Emergency fund" })).toBeNull();
-    expect(screen.queryByRole("button", { name: /^Ended/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Cancelled/ })).toBeNull();
 
     const months = screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent);
     expect(months).toEqual(["October 2026", "September 2026"]);
@@ -98,39 +98,62 @@ describe("GoalsPage", () => {
     ]);
   });
 
-  it("shows where an ended goal stood when it was ended, without an 'In progress' badge", async () => {
+  it("shows where a cancelled goal stood when it was cancelled, without an 'In progress' badge", async () => {
     render(<GoalsPage />);
-    await userEvent.click(screen.getByRole("button", { name: "Ended (3)" }));
+    await userEvent.click(screen.getByRole("button", { name: "Cancelled (3)" }));
     const row = screen.getByRole("heading", { name: "Wedding fund" }).closest("li")!;
-    expect(within(row).getByText(/^Ended /)).toBeTruthy();
+    expect(within(row).getByText(/Cancelled Oct 12, 2026$/)).toBeTruthy();
     expect(within(row).getAllByText("$250.00").length).toBeGreaterThan(0);
     expect(within(row).getByText("25%")).toBeTruthy();
     expect(within(row).queryByText("In progress")).toBeNull();
   });
 
+  it("groups the active goals by where they stand, worst first", () => {
+    active = [
+      goal("g1", "Holiday trip", null, { currentInstance: { ...goal("x", "x").currentInstance!, status: "ACHIEVED", progressAmount: "1200" } }),
+      goal("g2", "Spending cap", null, {
+        type: "EXPENSE",
+        currentInstance: { ...goal("x", "x").currentInstance!, status: "FAILED", progressAmount: "1500" },
+      }),
+      goal("g3", "Emergency fund", null, { periodEnd: null, currentInstance: { ...goal("x", "x").currentInstance!, periodEnd: "2099-01-01T00:00:00Z" } }),
+    ];
+    render(<GoalsPage />);
+    const groups = screen.getAllByRole("heading", { level: 2 });
+    expect(groups.map((h) => h.textContent)).toEqual(["Needs attention", "On track", "Achieved"]);
+    const names = (title: string) =>
+      within(screen.getByRole("heading", { name: title }).closest("section")!)
+        .getAllByRole("heading", { level: 3 })
+        .map((h) => h.textContent);
+    expect(names("Needs attention")).toEqual(["Spending cap"]);
+    expect(names("On track")).toEqual(["Emergency fund"]);
+    expect(names("Achieved")).toEqual(["Holiday trip"]);
+  });
+
   it("goes back to the active goals", async () => {
     render(<GoalsPage />);
-    await userEvent.click(screen.getByRole("button", { name: "Ended (3)" }));
+    await userEvent.click(screen.getByRole("button", { name: "Cancelled (3)" }));
     await userEvent.click(screen.getByRole("button", { name: "Back to goals" }));
     expect(screen.getByRole("heading", { name: "Emergency fund" })).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "Wedding fund" })).toBeNull();
   });
 
-  it("restores an ended goal and opens its history from the list", async () => {
+  it("restores a cancelled goal and opens its history from the list", async () => {
     render(<GoalsPage />);
-    await userEvent.click(screen.getByRole("button", { name: "Ended (3)" }));
-    await userEvent.click(screen.getByRole("button", { name: "Restore Wedding fund" }));
+    await userEvent.click(screen.getByRole("button", { name: "Cancelled (3)" }));
+    await userEvent.click(screen.getByRole("button", { name: "Actions for Wedding fund" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Restore" }));
     expect(restore).toHaveBeenCalledWith("e2");
 
-    await userEvent.click(screen.getByRole("button", { name: "View history of Laptop" }));
+    await userEvent.click(screen.getByRole("button", { name: "Actions for Laptop" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "View history" }));
     expect(screen.getByRole("dialog").textContent).toBe("History of Laptop");
   });
 
   it("explains an empty history instead of hiding the button", async () => {
-    endedGoals = [];
+    cancelledGoals = [];
     render(<GoalsPage />);
-    await userEvent.click(screen.getByRole("button", { name: "Ended" }));
-    expect(screen.getByText("No ended goals")).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "Cancelled" }));
+    expect(screen.getByText("No cancelled goals")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Back to goals" })).toBeTruthy();
   });
 });

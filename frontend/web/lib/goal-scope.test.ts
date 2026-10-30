@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { goalProgressSourceLabel, goalRuleHint, goalScopeLabel } from "./goal-scope";
+import { goalExplainer, goalProgressSourceLabel, goalRuleHint, goalScopeLabel } from "./goal-scope";
 
 describe("goalScopeLabel", () => {
   it("says what an expense goal counts", () => {
@@ -42,6 +42,15 @@ describe("goalProgressSourceLabel", () => {
   it("labels the open period as live and finished ones as recorded", () => {
     expect(goalProgressSourceLabel("LIVE")).toBe("Current period (live)");
     expect(goalProgressSourceLabel("PERIOD_END")).toBe("Recorded at period end");
-    expect(goalProgressSourceLabel("ENDED")).toBe("Frozen when the goal was ended");
+    expect(goalProgressSourceLabel("ENDED")).toBe("Frozen when the goal was cancelled");
+  });
+});
+
+describe("goalExplainer", () => {
+  it("says what the target and the progress mean for each goal type", () => {
+    expect(goalExplainer("BALANCE").target).toBe("The balance you want the account to reach.");
+    expect(goalExplainer("INCOME").target).toContain("income you want to bring into the account");
+    expect(goalExplainer("EXPENSE").target).toContain("A spending limit");
+    expect(goalExplainer("EXPENSE").progress).toContain("Transfers out don't count");
   });
 });

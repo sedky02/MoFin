@@ -72,6 +72,29 @@ describe("GoalDialog", () => {
     expect(screen.getByTestId("goal-scope").textContent).toBe("Counts all income into Main checking");
   });
 
+  it("explains the target in a help beside it, following the chosen type", async () => {
+    render(<GoalDialog open onOpenChange={() => {}} />);
+    expect(screen.queryByTestId("goal-explainer")).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "What the target means" }));
+    expect(screen.getByTestId("goal-explainer").textContent).toContain("The balance you want the account to reach.");
+    await userEvent.keyboard("{Escape}");
+
+    await userEvent.click(screen.getByRole("radio", { name: /^Expense/ }));
+    await userEvent.click(screen.getByRole("button", { name: "What the target means" }));
+    const text = screen.getByTestId("goal-explainer").textContent ?? "";
+    expect(text).toContain("Expense goal");
+    expect(text).toContain("A spending limit: the most you want to spend during the period.");
+    expect(text).toContain("What you've spent so far");
+  });
+
+  it("explains each type when you hover or focus it", async () => {
+    render(<GoalDialog open onOpenChange={() => {}} />);
+    await userEvent.hover(screen.getByRole("radio", { name: /^Income/ }).parentElement!);
+    const tip = await screen.findByRole("tooltip");
+    expect(tip.textContent).toContain("The income you want to bring into the account");
+    expect(tip.textContent).toContain("Income received so far");
+  });
+
   it("moves between the types with the arrow keys", async () => {
     render(<GoalDialog open onOpenChange={() => {}} />);
     const balance = screen.getByRole("radio", { name: /^Balance/ });

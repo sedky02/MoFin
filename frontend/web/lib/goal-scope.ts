@@ -31,13 +31,37 @@ export function goalRuleHint(type: Goal["type"]): string {
   }
 }
 
+/**
+ * What the two figures on a goal row mean for each type: the target, and the progress counted
+ * against it. Shown under the type picker in the goal dialog. Matches GoalsService on the backend.
+ */
+export function goalExplainer(type: Goal["type"]): { target: string; progress: string } {
+  switch (type) {
+    case "INCOME":
+      return {
+        target: "The income you want to bring into the account during the period.",
+        progress: "Income received so far. Transfers in don't count.",
+      };
+    case "EXPENSE":
+      return {
+        target: "A spending limit: the most you want to spend during the period.",
+        progress: "What you've spent so far. Transfers out don't count. Going over the limit fails the goal.",
+      };
+    default:
+      return {
+        target: "The balance you want the account to reach.",
+        progress: "The account's balance right now, so transfers in count.",
+      };
+  }
+}
+
 /** Caption for a goal history row, saying where its progress comes from. */
 export function goalProgressSourceLabel(source: GoalProgressSource): string {
   switch (source) {
     case "LIVE":
       return "Current period (live)";
     case "ENDED":
-      return "Frozen when the goal was ended";
+      return "Frozen when the goal was cancelled";
     default:
       return "Recorded at period end";
   }
