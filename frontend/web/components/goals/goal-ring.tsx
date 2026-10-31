@@ -21,17 +21,13 @@ export const TONE_STYLE: Record<GoalTone, { ring: string; percent: string }> = {
   cancelled: { ring: "text-muted-foreground bg-muted/40", percent: "text-muted-foreground" },
 };
 
-const SIZE = 60;
-const STROKE = 5;
-const RADIUS = (SIZE - STROKE) / 2;
-const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
-
 /** A small ring that fills with a goal's progress, coloured by where the goal stands, with the percent inside. */
 export function GoalRing({
   ratio,
   percent,
   tone,
   overTarget = false,
+  size = 60,
   className,
 }: {
   /** 0-100, how much of the ring to fill. */
@@ -41,8 +37,13 @@ export function GoalRing({
   tone: GoalTone;
   /** An expense goal past its cap. */
   overTarget?: boolean;
+  /** Width and height in px: 60 on the Goals page, smaller on the dashboard tiles. */
+  size?: number;
   className?: string;
 }) {
+  const stroke = Math.round(size / 12);
+  const radius = (size - stroke) / 2;
+  const circumference = 2 * Math.PI * radius;
   return (
     <div
       role="progressbar"
@@ -52,24 +53,24 @@ export function GoalRing({
       aria-valuetext={`${Math.round(ratio)}%${overTarget ? ", over target" : ""}`}
       aria-label="Goal progress"
       className={cn("relative flex shrink-0 items-center justify-center rounded-full", TONE_STYLE[tone].ring, className)}
-      style={{ width: SIZE, height: SIZE }}
+      style={{ width: size, height: size }}
     >
-      <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} className="-rotate-90" aria-hidden>
-        <circle cx={SIZE / 2} cy={SIZE / 2} r={RADIUS} fill="none" strokeWidth={STROKE} className="stroke-current/15" />
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90" aria-hidden>
+        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" strokeWidth={stroke} className="stroke-current/15" />
         <circle
-          cx={SIZE / 2}
-          cy={SIZE / 2}
-          r={RADIUS}
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
           fill="none"
-          strokeWidth={STROKE}
+          strokeWidth={stroke}
           strokeLinecap="round"
           stroke="currentColor"
-          strokeDasharray={CIRCUMFERENCE}
-          strokeDashoffset={CIRCUMFERENCE * (1 - Math.min(100, Math.max(0, ratio)) / 100)}
+          strokeDasharray={circumference}
+          strokeDashoffset={circumference * (1 - Math.min(100, Math.max(0, ratio)) / 100)}
           className="transition-[stroke-dashoffset] duration-500 motion-reduce:transition-none"
         />
       </svg>
-      <span className={cn("absolute text-sm font-medium leading-none tabular", TONE_STYLE[tone].percent)}>{percent}%</span>
+      <span className={cn("absolute font-medium leading-none tabular", size < 50 ? "text-xs" : "text-sm", TONE_STYLE[tone].percent)}>{percent}%</span>
     </div>
   );
 }

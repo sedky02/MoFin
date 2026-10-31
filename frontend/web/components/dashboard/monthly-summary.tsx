@@ -220,7 +220,7 @@ export function MonthlySummaryCard({
     );
   } else {
     strip = (
-      <dl className="mt-4 flex h-37 flex-col justify-between rounded-xl bg-muted px-4 py-3">
+      <dl className="mt-4 flex h-37 flex-col justify-between rounded-xl bg-muted/35 px-4 py-3 dark:bg-muted">
         {/* Net is the answer to "how did this month go", so it leads. */}
         <div className="min-w-0">
           <dt className="flex items-baseline gap-1.5 text-xs text-muted-foreground">

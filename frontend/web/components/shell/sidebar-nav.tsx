@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { PanelLeftClose, PanelLeftOpen, PlusCircle } from "lucide-react";
+import { ChevronsLeft, ChevronsRight, PlusCircle } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { SIDEBAR_FOOTER_ITEM, SIDEBAR_GROUPS } from "./nav-items";
 import { NavLink } from "./nav-link";
@@ -38,9 +38,10 @@ export function SidebarNav({
             className="size-8 shrink-0 text-muted-foreground"
             onClick={onToggleCollapsed}
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             aria-expanded={!collapsed}
           >
-            {collapsed ? <PanelLeftOpen className="size-4" /> : <PanelLeftClose className="size-4" />}
+            {collapsed ? <ChevronsRight className="size-4" /> : <ChevronsLeft className="size-4" />}
           </Button>
         )}
       </div>
@@ -49,7 +50,7 @@ export function SidebarNav({
         {collapsed ? (
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button asChild size="icon" className="size-10">
+              <Button asChild size="icon" className="size-11">
                 <Link href="/transactions/new" onClick={onNavigate} aria-label="New transaction">
                   <PlusCircle className="size-4" />
                 </Link>
@@ -60,7 +61,7 @@ export function SidebarNav({
             </TooltipContent>
           </Tooltip>
         ) : (
-          <Button asChild className="w-full justify-start gap-2">
+          <Button asChild className="h-11 w-full justify-start gap-2.5">
             <Link href="/transactions/new" onClick={onNavigate}>
               <PlusCircle className="size-4" />
               New transaction
@@ -76,7 +77,7 @@ export function SidebarNav({
         )}
       </div>
 
-      <nav className={cn("flex flex-1 flex-col overflow-y-auto", collapsed ? "gap-2" : "gap-5")} aria-label="Primary">
+      <nav className={cn("flex flex-1 flex-col overflow-y-auto overscroll-contain", collapsed ? "gap-2" : "gap-5")} aria-label="Primary">
         {SIDEBAR_GROUPS.map((group, i) => (
           <div key={group.label ?? i} role="group" aria-label={group.label} className="flex flex-col gap-0.5">
             {group.label &&

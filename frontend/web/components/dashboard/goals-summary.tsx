@@ -22,10 +22,10 @@ export function GoalsSummary({ accountId }: { accountId?: string } = {}) {
   const visible = (goals ?? []).filter((g) => !accountId || g.accountId === accountId).slice(0, 4);
 
   return (
-    <Card className="h-full p-0">
-      <div className="flex items-center justify-between px-5 pb-2 pt-5">
+    <Card className="h-full gap-0 p-0">
+      <div className="flex items-center justify-between gap-3 px-5 pb-4 pt-5">
         <h2 className="label-sm text-foreground!">Goals</h2>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
           <Button
             variant="outline"
             size="icon"
@@ -43,7 +43,7 @@ export function GoalsSummary({ accountId }: { accountId?: string } = {}) {
         </div>
       </div>
 
-      <div className="flex flex-1 flex-col px-5 pb-5 pt-2">
+      <div className="flex flex-1 flex-col px-5 pb-5">
         {isLoading ? (
           <div className="grid grid-cols-1 gap-3">
             {Array.from({ length: 2 }).map((_, i) => (
