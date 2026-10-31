@@ -10,7 +10,8 @@ import { pickPrimaryCurrency } from "@/lib/format";
 import { tryParse } from "@/lib/decimal";
 import { allAccountsCaption, countArchivedHolding, totalsByCurrency, zeroTotals } from "@/lib/balances";
 import { BalanceOverview } from "@/components/dashboard/balance-overview";
-import { SkeletonCard, ErrorState, EmptyState } from "@/components/common/states";
+import { ErrorState, EmptyState } from "@/components/common/states";
+import { BalanceHeroSkeleton } from "@/components/dashboard/dashboard-skeleton";
 import { Wallet } from "lucide-react";
 
 const isOverdrawn = (amount: string) => tryParse(amount)?.isNegative() ?? false;
@@ -38,10 +39,8 @@ export function BalanceCards({
 
   if (isLoading || (accountsLoading && !data?.length)) {
     return (
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <SkeletonCard key={i} />
-        ))}
+      <div className="flex h-full flex-col">
+        <BalanceHeroSkeleton />
       </div>
     );
   }

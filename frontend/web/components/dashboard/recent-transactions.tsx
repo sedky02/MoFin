@@ -6,7 +6,8 @@ import Link from "next/link";
 import { useRecentTransactions } from "@/hooks/useSearch";
 import { TransactionRow } from "@/components/transactions/transaction-row";
 import { Card } from "@/components/ui/card";
-import { SkeletonRows, ErrorState, EmptyState } from "@/components/common/states";
+import { ErrorState, EmptyState } from "@/components/common/states";
+import { RecentRowsSkeleton } from "@/components/dashboard/dashboard-skeleton";
 import { Button } from "@/components/ui/button";
 import { Receipt, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -42,7 +43,7 @@ export function RecentTransactions({ accountId, className }: { accountId?: strin
       </div>
 
       {isLoading ? (
-        <SkeletonRows rows={6} />
+        <RecentRowsSkeleton />
       ) : isError ? (
         <div className="p-4">
           <ErrorState description="Couldn't load recent transactions." onRetry={() => refetch()} />

@@ -11,6 +11,7 @@ import { CategoryIcon } from "@/components/dashboard/category-icon";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SummaryBreakdownSkeleton } from "@/components/dashboard/dashboard-skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ErrorState, EmptyState } from "@/components/common/states";
 import { subtract, tryParse } from "@/lib/decimal";
@@ -199,16 +200,7 @@ export function MonthlySummaryCard({
 
   if (isLoading) {
     strip = <Skeleton className="mt-4 h-37 w-full rounded-xl" />;
-    content = (
-      <div className="flex w-full flex-col items-center gap-6 sm:flex-row">
-        <Skeleton className="size-44 shrink-0 rounded-full" />
-        <div className="w-full space-y-3">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-9 w-full" />
-          ))}
-        </div>
-      </div>
-    );
+    content = <SummaryBreakdownSkeleton />;
   } else if (isError || !data) {
     strip = <div className="mt-4 h-37" aria-hidden />;
     content = (

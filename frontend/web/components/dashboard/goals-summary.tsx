@@ -11,7 +11,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { goalScopeLabel } from "@/lib/goal-scope";
-import { SkeletonCard, EmptyState, ErrorState } from "@/components/common/states";
+import { EmptyState, ErrorState } from "@/components/common/states";
+import { GoalTilesSkeleton } from "@/components/dashboard/dashboard-skeleton";
 
 /** Glanceable goals for the dashboard; editing, history and ending a goal live on /goals. */
 export function GoalsSummary({ accountId }: { accountId?: string } = {}) {
@@ -45,11 +46,7 @@ export function GoalsSummary({ accountId }: { accountId?: string } = {}) {
 
       <div className="flex flex-1 flex-col px-5 pb-5">
         {isLoading ? (
-          <div className="grid grid-cols-1 gap-3">
-            {Array.from({ length: 2 }).map((_, i) => (
-              <SkeletonCard key={i} />
-            ))}
-          </div>
+          <GoalTilesSkeleton />
         ) : isError ? (
           <ErrorState description="Couldn't load your goals." onRetry={() => refetch()} />
         ) : visible.length === 0 ? (
