@@ -45,6 +45,19 @@ export type ServerGetOptions = {
 };
 
 /**
+ * Whether this render answers a full page load rather than a client-side
+ * navigation. Only a page load starts with an empty React Query cache, so only
+ * then is a server prefetch worth waiting for; on a navigation the client
+ * already holds the data and refetches what is stale in the background.
+ * Uses Fetch Metadata: browsers send `Sec-Fetch-Dest: document` for a page load
+ * and `empty` for the router's fetches (Next strips its own RSC headers before
+ * headers() sees them). A request without the header counts as a page load.
+ */
+export async function isDocumentRequest(): Promise<boolean> {
+  return (await headers()).get("sec-fetch-dest") !== "empty";
+}
+
+/**
  * Fetch JSON from the backend on the server. Returns null for a routine,
  * client-recoverable outcome: no access token cookie, a 401 from an expired
  * one (the client query re-fetches through the proxy, which performs the

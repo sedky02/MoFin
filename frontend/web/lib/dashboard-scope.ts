@@ -2,7 +2,8 @@
 // server prefetch (app/(app)/dashboard/page.tsx) and the client (useActiveAccount,
 // DashboardBody) so both always ask for the same query keys: a server-primed cache is only
 // useful when the client reads exactly what the server wrote.
-import type { Account } from "@/lib/types";
+import type { Account, LedgerBalance } from "@/lib/types";
+import { parseBalanceKey } from "@/lib/format";
 
 /** Cookie mirroring the client's active-account choice, so the server can prefetch for it. */
 export const ACTIVE_ACCOUNT_COOKIE = "mofin-active-account";
@@ -47,6 +48,18 @@ export function resolveCurrency(opts: {
     (currencies.includes(primaryCurrency) ? primaryCurrency : currencies[0]) ??
     primaryCurrency
   );
+}
+
+/**
+ * One account's balances, cut from the all-accounts ones: the same rows the API returns for
+ * `/ledger/balance?accountId=…`, keyed by currency alone. Saves the dashboard prefetch a
+ * request and a round trip.
+ */
+export function scopeBalances(all: LedgerBalance[], accountId: string): LedgerBalance[] {
+  return all.flatMap((b) => {
+    const { accountId: owner, currency } = parseBalanceKey(b.key);
+    return owner === accountId ? [{ ...b, key: currency }] : [];
+  });
 }
 
 /**

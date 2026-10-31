@@ -1,5 +1,24 @@
 import { describe, expect, it } from "vitest";
-import { summaryApiCurrency, summaryCurrencyOptions } from "@/lib/dashboard-scope";
+import { scopeBalances, summaryApiCurrency, summaryCurrencyOptions } from "@/lib/dashboard-scope";
+
+describe("scopeBalances", () => {
+  const all = [
+    { key: "acc-1:TND", balance: "120.500" },
+    { key: "acc-2:EUR", balance: "40.00" },
+    { key: "acc-1:EUR", balance: "-3.00" },
+  ];
+
+  it("keeps one account's rows, keyed by currency like the scoped API response", () => {
+    expect(scopeBalances(all, "acc-1")).toEqual([
+      { key: "TND", balance: "120.500" },
+      { key: "EUR", balance: "-3.00" },
+    ]);
+  });
+
+  it("is empty for an account with no balance", () => {
+    expect(scopeBalances(all, "acc-3")).toEqual([]);
+  });
+});
 
 describe("summaryApiCurrency", () => {
   it("always names the currency for an all-accounts summary, even with one active currency", () => {

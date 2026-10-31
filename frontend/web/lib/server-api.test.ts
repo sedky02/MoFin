@@ -1,13 +1,34 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 let cookieValue: string | undefined = "tok";
+let requestHeaders = new Headers();
 vi.mock("next/headers", () => ({
   cookies: async () => ({ get: () => (cookieValue ? { value: cookieValue } : undefined) }),
   // serverGet also reads the incoming request headers to forward the client IP.
-  headers: async () => new Headers(),
+  headers: async () => requestHeaders,
 }));
 
-import { serverGet, ServerPrefetchError } from "@/lib/server-api";
+import { isDocumentRequest, serverGet, ServerPrefetchError } from "@/lib/server-api";
+
+describe("isDocumentRequest", () => {
+  afterEach(() => {
+    requestHeaders = new Headers();
+  });
+
+  it("is true for a full page load", async () => {
+    requestHeaders = new Headers({ "sec-fetch-dest": "document" });
+    await expect(isDocumentRequest()).resolves.toBe(true);
+  });
+
+  it("is false for the router's fetch on a client-side navigation", async () => {
+    requestHeaders = new Headers({ "sec-fetch-dest": "empty" });
+    await expect(isDocumentRequest()).resolves.toBe(false);
+  });
+
+  it("treats a request without Fetch Metadata as a page load", async () => {
+    await expect(isDocumentRequest()).resolves.toBe(true);
+  });
+});
 
 function respond(status: number, body: unknown = {}) {
   return vi.fn().mockResolvedValue(new Response(JSON.stringify(body), { status }));
