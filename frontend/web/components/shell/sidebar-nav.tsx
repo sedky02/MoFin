@@ -60,7 +60,7 @@ export function SidebarNav({
             </TooltipContent>
           </Tooltip>
         ) : (
-          <Button asChild className="w-full justify-start gap-2 lg:h-10 lg:text-base">
+          <Button asChild className="w-full justify-start gap-2">
             <Link href="/transactions/new" onClick={onNavigate}>
               <PlusCircle className="size-4" />
               New transaction
@@ -84,7 +84,7 @@ export function SidebarNav({
                 // The names give way to a thin divider line when there is only room for icons.
                 <hr aria-hidden className="mx-2 mb-1.5 border-sidebar-border" />
               ) : (
-                <p className="px-3 pb-1 text-xs font-medium text-muted-foreground/80 lg:text-sm">{group.label}</p>
+                <p className="px-3 pb-1 text-xs font-medium text-muted-foreground/80">{group.label}</p>
               ))}
             {group.items.map((item) => (
               <NavLink key={item.href} item={item} onNavigate={onNavigate} collapsed={collapsed} />

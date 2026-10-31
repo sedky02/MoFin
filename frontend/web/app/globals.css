@@ -182,6 +182,22 @@
   }
 }
 
+/* On a desktop screen every text size steps up one notch (about 1px), across the whole platform.
+   The sizes are the theme's own variables, so text-sm, text-base and the rest all follow; spacing
+   stays as it was. Phones and tablets keep the standard sizes. Unlayered, so it beats the theme. */
+@media (min-width: 1024px) {
+  :root {
+    --text-xs: 0.8125rem;
+    --text-sm: 0.9375rem;
+    --text-base: 1.0625rem;
+    --text-lg: 1.1875rem;
+    --text-xl: 1.3125rem;
+    --text-2xl: 1.5625rem;
+    --text-3xl: 1.9375rem;
+    --text-4xl: 2.3125rem;
+  }
+}
+
 /* Subtle, brand-tinted scrollbars (precise, not decorative) */
 @layer base {
   * {

@@ -63,8 +63,8 @@ export function SidebarAccount({ collapsed = false }: { collapsed?: boolean }) {
     <div className={cn("flex items-center gap-2.5 border-t border-sidebar-border px-2 pt-3")}>
       {avatar}
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium lg:text-base">{user?.displayName || "Welcome"}</p>
-        {user?.email && <p className="truncate text-xs text-muted-foreground lg:text-sm">{user.email}</p>}
+        <p className="truncate text-sm font-medium">{user?.displayName || "Welcome"}</p>
+        {user?.email && <p className="truncate text-xs text-muted-foreground">{user.email}</p>}
       </div>
       {signOut}
     </div>

@@ -39,7 +39,7 @@ export function NavLink({
       aria-current={active ? "page" : undefined}
       aria-label={collapsed ? item.label : undefined}
       className={cn(
-        "group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors lg:py-2.5 lg:text-base",
+        "group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar",
         collapsed && "mx-auto size-10 justify-center px-0 py-0",
         // The current page is a soft pill; no lime rail.
@@ -48,7 +48,7 @@ export function NavLink({
           : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
       )}
     >
-      <Icon className="size-[18px] shrink-0 lg:size-5" />
+      <Icon className="size-[18px] shrink-0" />
       {!collapsed && <span className="flex-1">{item.label}</span>}
       {item.badge === "drafts" && <DraftBadge compact={collapsed} />}
     </Link>
