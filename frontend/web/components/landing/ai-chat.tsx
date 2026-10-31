@@ -1,12 +1,12 @@
 "use client";
 
 import * as React from "react";
-import { AnimatePresence, motion, useInView, useReducedMotion } from "motion/react";
-import { RotateCcw } from "lucide-react";
+import { AnimatePresence, motion, useMotionValueEvent, useReducedMotion, useScroll, useSpring } from "motion/react";
 import { AnthropicLogo, OpenAILogo } from "@/components/common/ai-logos";
 import { cn } from "@/lib/utils";
 import { ChatWindow, Composer, Reserve, Thinking, ToolChip, UserBubble } from "./chat-parts";
 import { SPRING, SPRING_SLOW } from "./motion";
+import { ANSWERED, CARD, SENT, THINKING, TOOL_CALL, TYPING, chatFrame } from "./chat-progress";
 import { useSequence, useTypewriter } from "./use-sequence";
 
 type Assistant = {
@@ -55,141 +55,115 @@ const ASSISTANTS: Assistant[] = [
   },
 ];
 
-// Stage reached after each delay (ms): 1 typing, 2 sent, 3 thinking, 4 tool call, 5 answer, 6 card
+// Timed conversation (ChatGPT's), as the delay before each stage (ms): 1 typing, 2 sent, 3 thinking,
+// 4 tool call, 5 answer, 6 card.
 const STAGES = [300, 1500, 500, 1100, 800, 1500] as const;
-const TYPING = 1;
-const SENT = 2;
-const THINKING = 3;
-const TOOL_CALL = 4;
-const ANSWERED = 5;
-const CARD = 6;
-const HOLD_MS = 3500; // how long a finished conversation stays before the next one plays
 
 /**
- * What asking your assistant about MoFin looks like: the question typed and
- * sent, the MoFin tool it reads, and an answer built from your real numbers.
- * Plays Claude, then ChatGPT, once, and stops (WCAG 2.2.2: nothing keeps
- * moving on its own); "Play again" or picking an assistant replays. The window
- * keeps the size of the longer conversation, so switching never moves the page.
+ * What asking your assistant about MoFin looks like: the question typed and sent, the MoFin tool it
+ * reads, and an answer built from your real numbers. Scrolling plays Claude's conversation: the
+ * section stays pinned while it plays, then lets go. Scrolling faster plays it faster, and scrolling
+ * back rewinds it. ChatGPT's plays only when you pick it, once, on its own clock. With reduced
+ * motion nothing is pinned or animated: each conversation shows finished.
  */
 export function AiChat() {
-  const ref = React.useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, amount: 0.35 });
+  const reduceMotion = Boolean(useReducedMotion());
+  const track = React.useRef<HTMLDivElement>(null);
+  const [progress, setProgress] = React.useState(0);
   const [active, setActive] = React.useState(0);
+  // Picking ChatGPT again plays it again.
   const [round, setRound] = React.useState(0);
-  // Autoplay runs through the assistants once; picking one by hand ends it.
-  const [auto, setAuto] = React.useState(true);
-  const [finished, setFinished] = React.useState(false);
+
+  // 0 when the section is about to be pinned, 1 when its scroll runs out.
+  const { scrollYProgress } = useScroll({ target: track, offset: ["start 0.6", "end end"] });
+  // A little spring, so a quick flick of the wheel still plays smoothly instead of jumping.
+  const smooth = useSpring(scrollYProgress, { stiffness: 140, damping: 28, mass: 0.4 });
+  useMotionValueEvent(smooth, "change", (v) => setProgress(Math.min(1, Math.max(0, v))));
 
   function pick(i: number) {
-    setAuto(false);
-    setFinished(false);
     setActive(i);
     setRound((n) => n + 1);
   }
 
-  function playAgain() {
-    setAuto(true);
-    setFinished(false);
-    setActive(0);
-    setRound((n) => n + 1);
-  }
-
-  function onDone() {
-    if (auto && active < ASSISTANTS.length - 1) setActive(active + 1);
-    else setFinished(true);
-  }
-
   return (
-    <div ref={ref} className="mx-auto w-full max-w-xl">
-      <div
-        role="group"
-        aria-label="Show a conversation with"
-        className="mb-4 inline-flex rounded-xl border border-border bg-card p-1 shadow-surface"
-      >
-        {ASSISTANTS.map((a, i) => (
-          <button
-            key={a.key}
-            type="button"
-            aria-pressed={i === active}
-            onClick={() => pick(i)}
-            className={cn(
-              "relative inline-flex min-h-10 items-center gap-2 rounded-lg px-3.5 text-sm font-medium transition-colors",
-              i === active ? "text-foreground" : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            {i === active && (
-              <motion.span layoutId="ai-tab" className="absolute inset-0 rounded-lg bg-muted" transition={SPRING} />
-            )}
-            <span className={cn("relative flex size-5 items-center justify-center rounded-md", a.badge)}>
-              <a.Logo className="size-3" />
-            </span>
-            <span className="relative">{a.name}</span>
-          </button>
-        ))}
+    <div ref={track} className={cn("mx-auto w-full max-w-xl", !reduceMotion && "h-[240vh]")}>
+      <div className={cn(!reduceMotion && "sticky top-20 lg:top-28")}>
+        <div
+          role="group"
+          aria-label="Show a conversation with"
+          className="mb-4 inline-flex rounded-xl border border-border bg-card p-1 shadow-surface"
+        >
+          {ASSISTANTS.map((a, i) => (
+            <button
+              key={a.key}
+              type="button"
+              aria-pressed={i === active}
+              onClick={() => pick(i)}
+              className={cn(
+                "relative inline-flex min-h-10 items-center gap-2 rounded-lg px-3.5 text-sm font-medium transition-colors",
+                i === active ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {i === active && (
+                <motion.span layoutId="ai-tab" className="absolute inset-0 rounded-lg bg-muted" transition={SPRING} />
+              )}
+              <span className={cn("relative flex size-5 items-center justify-center rounded-md", a.badge)}>
+                <a.Logo className="size-3" />
+              </span>
+              <span className="relative">{a.name}</span>
+            </button>
+          ))}
+        </div>
+
+        <Reserve
+          reserve={
+            <div className="grid">
+              {ASSISTANTS.map((a) => (
+                <div key={a.key} className="[grid-area:1/1]">
+                  <ConversationView assistant={a} stage={CARD} typed="" answer={a.answer} />
+                </div>
+              ))}
+            </div>
+          }
+        >
+          <AnimatePresence initial={false}>
+            <motion.div
+              key={active === 0 ? "claude" : `chatgpt-${round}`}
+              className="absolute inset-0"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              {active === 0 ? (
+                <ScrollConversation assistant={ASSISTANTS[0]} q={reduceMotion ? 1 : progress} />
+              ) : (
+                <TimedConversation assistant={ASSISTANTS[1]} />
+              )}
+            </motion.div>
+          </AnimatePresence>
+        </Reserve>
+
+        <p className="sr-only" aria-live="polite">
+          {ASSISTANTS[active].summary}
+        </p>
       </div>
-
-      <Reserve
-        reserve={
-          <div className="grid">
-            {ASSISTANTS.map((a) => (
-              <div key={a.key} className="[grid-area:1/1]">
-                <ConversationView assistant={a} stage={CARD} typed="" answer={a.answer} />
-              </div>
-            ))}
-          </div>
-        }
-      >
-        <AnimatePresence initial={false}>
-          <motion.div
-            key={`${active}-${round}`}
-            className="absolute inset-0"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.35 }}
-          >
-            <Conversation assistant={ASSISTANTS[active]} run={inView} onDone={onDone} />
-          </motion.div>
-        </AnimatePresence>
-      </Reserve>
-
-      <p className="sr-only" aria-live="polite">
-        {ASSISTANTS[active].summary}
-      </p>
-
-      {/* Always takes its space, so it appearing doesn't move anything. */}
-      <button
-        type="button"
-        onClick={playAgain}
-        disabled={!finished}
-        aria-hidden={!finished}
-        tabIndex={finished ? 0 : -1}
-        className={cn(
-          "mt-3 inline-flex min-h-11 items-center gap-1.5 rounded-lg px-3 text-sm text-muted-foreground transition-[color,opacity] hover:text-foreground active:scale-[0.97]",
-          finished ? "opacity-100" : "pointer-events-none opacity-0",
-        )}
-      >
-        <RotateCcw className="size-3.5" aria-hidden />
-        Play again
-      </button>
     </div>
   );
 }
 
-function Conversation({ assistant: a, run, onDone }: { assistant: Assistant; run: boolean; onDone: () => void }) {
+/** Plays as far as the scroll has gone. */
+function ScrollConversation({ assistant: a, q }: { assistant: Assistant; q: number }) {
+  const { stage, typed, answer } = chatFrame(q, a.question, a.answer);
+  return <ConversationView assistant={a} stage={stage} typed={typed} answer={answer} />;
+}
+
+/** Plays once on its own clock, from the moment it is shown. */
+function TimedConversation({ assistant: a }: { assistant: Assistant }) {
   const reduceMotion = Boolean(useReducedMotion());
-  const [stage] = useSequence(STAGES, run, reduceMotion);
+  const [stage] = useSequence(STAGES, true, reduceMotion);
   const typed = useTypewriter(a.question, stage >= TYPING, reduceMotion, 30);
   const answer = useTypewriter(a.answer, stage >= ANSWERED, reduceMotion, 14);
-
-  // Report back a while after this one finishes (the parent plays the next or stops).
-  React.useEffect(() => {
-    if (reduceMotion || stage < CARD) return;
-    const timer = setTimeout(onDone, HOLD_MS);
-    return () => clearTimeout(timer);
-  }, [stage, onDone, reduceMotion]);
-
   return <ConversationView assistant={a} stage={stage} typed={typed} answer={stage >= ANSWERED ? answer : ""} />;
 }
 

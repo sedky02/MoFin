@@ -1,24 +1,25 @@
 "use client";
 
 import * as React from "react";
-import { AnimatePresence, motion, useInView, useReducedMotion } from "motion/react";
+import { AnimatePresence, motion, useMotionValueEvent, useReducedMotion, useScroll, useSpring } from "motion/react";
 // Check marks are the app's own approve/done marks, as in the real UI. avoid-ai-design-ignore: I3
-import { Check, RotateCcw } from "lucide-react";
+import { Check } from "lucide-react";
 import { LogoMark } from "@/components/brand/logo";
 import { AnthropicLogo } from "@/components/common/ai-logos";
 import { MoneyAmount } from "@/components/common/money-amount";
 import { cn } from "@/lib/utils";
 import { ChatWindow, Composer, Reserve, Thinking, ToolChip, UserBubble } from "./chat-parts";
 import { SPRING } from "./motion";
-import { useSequence, useTypewriter } from "./use-sequence";
+import { marksFromDelays, stageAtMarks, typedBetween } from "./chat-progress";
 
 const QUESTION = "I just spent 12.50 on lunch at Panera, can you add it to MoFin?";
 const REPLY = "Done. I've added it to MoFin as a draft: $12.50, Dining out, from Everyday checking. Approve it there and it's saved.";
 const TOOL = "create_draft_transaction";
 
-// Stage reached after each delay (ms):
-// 1 typing, 2 sent, 3 thinking, 4 tool call, 5 reply, 6 draft in MoFin, 7 approved, 8 in the ledger
+// The stages, 1 typing, 2 sent, 3 thinking, 4 tool call, 5 reply, 6 draft in MoFin, 7 approved, 8 in
+// the ledger. These weights set how much of the scroll each one gets, in proportion.
 const STAGES = [300, 1900, 500, 1200, 900, 2700, 1500, 800] as const;
+const MARKS = marksFromDelays(STAGES);
 const TYPING = 1;
 const SENT = 2;
 const THINKING = 3;
@@ -41,18 +42,28 @@ const DESCRIPTION =
 /**
  * How an entry gets in, as it really happens: you ask Claude, Claude
  * calls MoFin's create_draft_transaction tool, and the draft waits in MoFin
- * until you approve it. The steps on the left follow along. Every area that
- * changes keeps the size of its largest state, so nothing on the page moves.
+ * until you approve it. The steps on the left follow along. The demo follows your scroll: on a
+ * desktop it stays pinned until the entry is in the ledger, and scrolling faster plays it
+ * faster. Every area that changes keeps the size of its largest state, so nothing on the page
+ * moves. With reduced motion nothing is pinned or animated: it shows the finished result.
  */
 export function HowItWorks() {
-  const ref = React.useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, amount: 0.35 });
   const reduceMotion = Boolean(useReducedMotion());
-  const [stage, restart] = useSequence(STAGES, inView, reduceMotion);
-  const typed = useTypewriter(QUESTION, stage >= TYPING, reduceMotion, 26);
-  const reply = useTypewriter(REPLY, stage >= REPLIED, reduceMotion, 14);
+  const track = React.useRef<HTMLDivElement>(null);
+  const [progress, setProgress] = React.useState(0);
+
+  // 0 as the demo is about to be pinned, 1 when its scroll runs out. Below a desktop width it isn't
+  // pinned; it plays as it passes through the screen.
+  const { scrollYProgress } = useScroll({ target: track, offset: ["start 0.6", "end end"] });
+  const smooth = useSpring(scrollYProgress, { stiffness: 140, damping: 28, mass: 0.4 });
+  useMotionValueEvent(smooth, "change", (v) => setProgress(Math.min(1, Math.max(0, v))));
+
+  const stage = reduceMotion ? STAGES.length : stageAtMarks(progress, MARKS);
+  const typed = stage === TYPING ? typedBetween(QUESTION, progress, MARKS[TYPING - 1], MARKS[SENT - 1]) : "";
+  // The reply is written out over most of the stretch before the draft appears.
+  const replyEnd = MARKS[REPLIED - 1] + (MARKS[DRAFT - 1] - MARKS[REPLIED - 1]) * 0.8;
+  const reply = reduceMotion ? REPLY : stage >= REPLIED ? typedBetween(REPLY, progress, MARKS[REPLIED - 1], replyEnd) : "";
   const activeStep = stage >= APPROVED ? 2 : stage >= DRAFT ? 1 : stage >= TYPING ? 0 : -1;
-  const canReplay = stage === SAVED && !reduceMotion;
 
   return (
     <div className="mx-auto grid max-w-6xl items-start gap-12 lg:grid-cols-[1fr_1.15fr] lg:gap-16">
@@ -93,112 +104,99 @@ export function HowItWorks() {
             );
           })}
         </ol>
-        {/* Always takes its space, so it appearing doesn't move anything. */}
-        <button
-          type="button"
-          onClick={restart}
-          disabled={!canReplay}
-          aria-hidden={!canReplay}
-          tabIndex={canReplay ? 0 : -1}
-          className={cn(
-            "mt-4 inline-flex min-h-11 items-center gap-1.5 rounded-lg px-3 text-sm text-muted-foreground transition-[color,opacity] hover:text-foreground active:scale-[0.97]",
-            canReplay ? "opacity-100" : "pointer-events-none opacity-0",
-          )}
-        >
-          <RotateCcw className="size-3.5" aria-hidden />
-          Play again
-        </button>
       </div>
 
-      {/* Starts when the conversation itself is on screen (below the steps on phones). */}
-      <div ref={ref} aria-hidden>
-        <ChatWindow
-          name="Claude"
-          Logo={AnthropicLogo}
-          badge="bg-[#d97757] text-white"
-          composer={
-            <Composer
-              text={stage === TYPING ? typed : ""}
-              full={QUESTION}
-              typing={stage === TYPING}
-              placeholder="Reply to Claude…"
-            />
-          }
-        >
-          <Reserve reserve={<Messages question reply={REPLY} slot="tool" toolDone />}>
-            <Messages
-              question={stage >= SENT}
-              slot={stage === THINKING ? "think" : stage >= TOOL_CALL ? "tool" : "none"}
-              toolDone={stage >= REPLIED}
-              reply={stage >= REPLIED ? reply : ""}
-            />
-          </Reserve>
-        </ChatWindow>
+      {/* Tall on a desktop, where the demo stays pinned while it plays (below the steps on phones). */}
+      <div ref={track} aria-hidden className={cn(!reduceMotion && "lg:h-[320vh]")}>
+        <div className={cn(!reduceMotion && "lg:sticky lg:top-20")}>
+          <ChatWindow
+            name="Claude"
+            Logo={AnthropicLogo}
+            badge="bg-[#d97757] text-white"
+            composer={
+              <Composer
+                text={stage === TYPING ? typed : ""}
+                full={QUESTION}
+                typing={stage === TYPING}
+                placeholder="Reply to Claude…"
+              />
+            }
+          >
+            <Reserve reserve={<Messages question reply={REPLY} slot="tool" toolDone />}>
+              <Messages
+                question={stage >= SENT}
+                slot={stage === THINKING ? "think" : stage >= TOOL_CALL ? "tool" : "none"}
+                toolDone={stage >= REPLIED}
+                reply={stage >= REPLIED ? reply : ""}
+              />
+            </Reserve>
+          </ChatWindow>
 
-        {/* The hand-off from Claude to MoFin */}
-        <div className="flex h-12 items-center justify-center">
-          <motion.div
-            className="h-full w-px origin-top bg-gradient-to-b from-border to-primary"
-            initial={{ scaleY: 0 }}
-            animate={stage >= DRAFT ? { scaleY: 1 } : { scaleY: 0 }}
-            transition={SPRING}
-          />
-        </div>
-
-        {/* MoFin */}
-        <div className="overflow-hidden rounded-hero border border-border bg-card shadow-hero">
-          <div className="flex items-center gap-2.5 border-b border-border px-5 py-3">
-            <LogoMark className="size-7" />
-            <span className="text-sm font-semibold">MoFin</span>
-            <span className="ml-auto text-xs text-muted-foreground">Drafts</span>
+          {/* The hand-off from Claude to MoFin */}
+          <div className="flex h-12 items-center justify-center">
+            <motion.div
+              className="h-full w-px origin-top bg-gradient-to-b from-border to-primary"
+              initial={{ scaleY: 0 }}
+              animate={stage >= DRAFT ? { scaleY: 1 } : { scaleY: 0 }}
+              transition={SPRING}
+            />
           </div>
 
-          <div className="space-y-3 p-5">
-            {/* Placeholder, draft and saved row all live in the draft card's space. */}
-            <Reserve reserve={<DraftCard approved={false} />}>
-              <AnimatePresence initial={false}>
-                {stage < DRAFT && (
-                  <motion.p
-                    key="waiting"
-                    className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground"
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    Waiting for something to check…
-                  </motion.p>
-                )}
-                {stage >= DRAFT && stage < SAVED && (
-                  <motion.div
-                    key="draft"
-                    className="absolute inset-0"
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.98 }}
-                    transition={SPRING}
-                  >
-                    <DraftCard approved={stage >= APPROVED} />
-                  </motion.div>
-                )}
-                {stage >= SAVED && (
-                  <motion.div
-                    key="saved"
-                    className="absolute inset-0 flex items-center"
-                    // The saved row arriving is the demo's state change, not a section reveal. avoid-ai-design-ignore: M1
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={SPRING}
-                  >
-                    <SavedRow />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </Reserve>
+          {/* MoFin */}
+          <div className="overflow-hidden rounded-hero border border-border bg-card shadow-hero">
+            <div className="flex items-center gap-2.5 border-b border-border px-5 py-3">
+              <LogoMark className="size-7" />
+              <span className="text-sm font-semibold">MoFin</span>
+              <span className="ml-auto text-xs text-muted-foreground">Drafts</span>
+            </div>
 
-            <div className="flex items-center justify-between rounded-2xl border border-border px-4 py-3">
-              <span className="text-sm text-muted-foreground">Everyday checking</span>
-              <span className="text-sm font-semibold">
-                <MoneyAmount amount={stage >= SAVED ? "4218.40" : "4230.90"} currency="USD" animate />
-              </span>
+            <div className="space-y-3 p-5">
+              {/* Placeholder, draft and saved row all live in the draft card's space. */}
+              <Reserve reserve={<DraftCard approved={false} />}>
+                <AnimatePresence initial={false}>
+                  {stage < DRAFT && (
+                    <motion.p
+                      key="waiting"
+                      className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground"
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      Waiting for something to check…
+                    </motion.p>
+                  )}
+                  {stage >= DRAFT && stage < SAVED && (
+                    <motion.div
+                      key="draft"
+                      className="absolute inset-0"
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.98 }}
+                      transition={SPRING}
+                    >
+                      <DraftCard approved={stage >= APPROVED} />
+                    </motion.div>
+                  )}
+                  {stage >= SAVED && (
+                    <motion.div
+                      key="saved"
+                      className="absolute inset-0 flex items-center"
+                      // The saved row arriving is the demo's state change, not a section reveal. avoid-ai-design-ignore: M1
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={SPRING}
+                    >
+                      <SavedRow />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </Reserve>
+
+              <div className="flex items-center justify-between rounded-2xl border border-border px-4 py-3">
+                <span className="text-sm text-muted-foreground">Everyday checking</span>
+                <span className="text-sm font-semibold">
+                  <MoneyAmount amount={stage >= SAVED ? "4218.40" : "4230.90"} currency="USD" animate />
+                </span>
+              </div>
             </div>
           </div>
         </div>
