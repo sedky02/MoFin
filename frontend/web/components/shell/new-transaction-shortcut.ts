@@ -29,3 +29,13 @@ export function useNewTransactionShortcut() {
     return () => window.removeEventListener("keydown", onKeyDown);
   });
 }
+
+/**
+ * The shortcut as a component that draws nothing. The hook reads the pathname, which is request data
+ * on a dynamic route, so under cacheComponents it has to sit inside a <Suspense> boundary: calling
+ * the hook straight in AppShell failed the prerender of /transactions/[id] (CLIENT_HOOK_DYNAMIC).
+ */
+export function NewTransactionShortcut(): null {
+  useNewTransactionShortcut();
+  return null;
+}

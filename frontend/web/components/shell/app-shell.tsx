@@ -15,7 +15,7 @@ import { DemoBanner } from "./demo-banner";
 import { AccountSwitcher } from "@/components/dashboard/account-switcher";
 import { useActiveAccount } from "@/hooks/useActiveAccount";
 import { useSidebarCollapsed } from "@/hooks/use-sidebar-collapsed";
-import { useNewTransactionShortcut } from "./new-transaction-shortcut";
+import { NewTransactionShortcut } from "./new-transaction-shortcut";
 import { BOTTOM_NAV_ITEMS, isNavActive } from "./nav-items";
 import { cn } from "@/lib/utils";
 
@@ -37,7 +37,6 @@ function ActiveAccountPicker() {
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = React.useState(false);
   const [collapsed, setCollapsed] = useSidebarCollapsed();
-  useNewTransactionShortcut();
 
   return (
     <div
@@ -46,6 +45,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         collapsed ? "lg:grid-cols-[4.5rem_1fr]" : "lg:grid-cols-[16rem_1fr]",
       )}
     >
+      {/* Own boundary: it reads the pathname, which can't be read at the top of the shell during prerender. */}
+      <Suspense fallback={null}>
+        <NewTransactionShortcut />
+      </Suspense>
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-md focus:bg-primary focus:px-3 focus:py-2 focus:text-sm focus:font-medium focus:text-primary-foreground"
