@@ -1,6 +1,6 @@
 "use client";
 
-import { normalizeMoneyTyping } from "@/lib/format";
+import { formatPeriodDate, normalizeMoneyTyping } from "@/lib/format";
 import * as React from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { Search as SearchIcon, X, SlidersHorizontal, ChevronDown } from "lucide-react";
@@ -91,18 +91,14 @@ export function SearchView({ initial, active = true }: { initial: SearchInitial;
     !!debouncedMax ||
     !!type ||
     !!recurrence;
+  // A non-default sort order is something to undo too, so it counts for "Clear all" and gets a chip.
+  const hasActive = hasFilters || sort !== DEFAULT_SORT;
 
-  // The filters beyond the search box, counted for the button that opens them. Each
-  // control counts once; the two ends of the amount range are one filter.
-  const panelFilterCount = [
-    categoryId,
-    accountId,
-    from,
-    to,
-    minAmount || maxAmount,
-    type,
-    recurrence,
-  ].filter(Boolean).length;
+  // The filters behind "More filters", counted for the button that opens them. Search, account and
+  // category sit in the toolbar. The two ends of a range are one filter, and so is a non-default sort.
+  const panelFilterCount = [type, recurrence, from || to, minAmount || maxAmount, sort !== DEFAULT_SORT].filter(
+    Boolean,
+  ).length;
   // Closed by default so the list is the first thing you see, but open when the URL already carries filters.
   const [filtersOpen, setFiltersOpen] = React.useState(panelFilterCount > 0);
 
@@ -181,7 +177,7 @@ export function SearchView({ initial, active = true }: { initial: SearchInitial;
     setMaxAmount("");
     setType("");
     setRecurrence("");
-    setLimit(25);
+    setSort(DEFAULT_SORT);
     setPage(1);
   }
 
@@ -190,17 +186,64 @@ export function SearchView({ initial, active = true }: { initial: SearchInitial;
   const byDay = sort === "newest" || sort === "oldest";
   const accountsById = accounts ? new Map(accounts.map((a) => [a.id, a])) : undefined;
 
+  // Every active filter as a chip that removes itself.
+  const chips: { key: string; label: string; clear: () => void }[] = [];
+  const account = accounts?.find((a) => a.id === accountId);
+  if (accountId) chips.push({ key: "account", label: account ? accountOptionLabel(account) : "Account", clear: () => setAccountId("") });
+  const category = categories?.find((c) => c.id === categoryId);
+  if (categoryId) chips.push({ key: "category", label: category?.name ?? "Category", clear: () => setCategoryId("") });
+  const typeLabel = TYPE_OPTIONS.find((o) => o.value === type)?.label;
+  if (typeLabel) chips.push({ key: "type", label: typeLabel, clear: () => setType("") });
+  const recurrenceLabel = RECURRENCE_OPTIONS.find((o) => o.value === recurrence)?.label;
+  if (recurrenceLabel) chips.push({ key: "recurrence", label: recurrenceLabel, clear: () => setRecurrence("") });
+  if (from || to) {
+    chips.push({
+      key: "dates",
+      label:
+        from && to
+          ? `${formatPeriodDate(from)} – ${formatPeriodDate(to)}`
+          : from
+            ? `From ${formatPeriodDate(from)}`
+            : `Until ${formatPeriodDate(to)}`,
+      clear: () => {
+        setFrom("");
+        setTo("");
+      },
+    });
+  }
+  if (minAmount || maxAmount) {
+    chips.push({
+      key: "amount",
+      label:
+        minAmount && maxAmount
+          ? `Amount ${minAmount} – ${maxAmount}`
+          : minAmount
+            ? `At least ${minAmount}`
+            : `At most ${maxAmount}`,
+      clear: () => {
+        setMinAmount("");
+        setMaxAmount("");
+      },
+    });
+  }
+  if (sort !== DEFAULT_SORT) {
+    chips.push({ key: "sort", label: SORT_OPTIONS.find((o) => o.value === sort)?.label ?? sort, clear: () => setSort(DEFAULT_SORT) });
+  }
+
+  const first = (page - 1) * limit + 1;
+  const last = (page - 1) * limit + rows.length;
+
   return (
     <div className="space-y-5">
-      {/* Search, with the filters one tap away */}
-      <div className="flex items-center gap-2">
-        <div className="relative flex-1">
+      {/* The common filters are always in reach: search, account and category, then the rest behind one button. */}
+      <div className="grid grid-cols-2 gap-2 lg:grid-cols-[minmax(0,2.4fr)_minmax(0,1fr)_minmax(0,1fr)_auto]">
+        <div className="relative col-span-2 lg:col-span-1">
           <SearchIcon className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search descriptions…"
-            className="pl-9"
+            className="bg-card pl-9 dark:bg-input/30"
             aria-label="Search transactions"
           />
           {q && (
@@ -214,16 +257,46 @@ export function SearchView({ initial, active = true }: { initial: SearchInitial;
             </button>
           )}
         </div>
+
+        <Select value={accountId || ALL} onValueChange={(v) => setAccountId(v === ALL ? "" : v)}>
+          <SelectTrigger className="w-full bg-card" aria-label="Account">
+            <SelectValue placeholder="All accounts" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL}>All accounts</SelectItem>
+            {(accounts ?? []).map((a) => (
+              <SelectItem key={a.id} value={a.id}>
+                {accountOptionLabel(a)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={categoryId || ALL} onValueChange={(v) => setCategoryId(v === ALL ? "" : v)}>
+          <SelectTrigger className="w-full bg-card" aria-label="Category">
+            <SelectValue placeholder="All categories" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL}>All categories</SelectItem>
+            {(categories ?? []).map((c) => (
+              <SelectItem key={c.id} value={c.id}>
+                {c.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
         <Button
           type="button"
           variant="outline"
           aria-expanded={filtersOpen}
           aria-controls="transaction-filters"
           onClick={() => setFiltersOpen((open) => !open)}
-          className="shrink-0 gap-2"
+          // The page is off-white, so the controls on it are white (bg-card), like the cards below.
+          className="col-span-2 shrink-0 gap-2 bg-card lg:col-span-1"
         >
           <SlidersHorizontal className="size-4" aria-hidden />
-          Filters
+          More filters
           {panelFilterCount > 0 && (
             <span
               className="grid min-w-5 place-items-center rounded-full bg-primary px-1.5 text-xs font-semibold tabular text-primary-foreground"
@@ -239,48 +312,6 @@ export function SearchView({ initial, active = true }: { initial: SearchInitial;
       {filtersOpen && (
         <Card id="transaction-filters" className="border-0 p-4 shadow-sm">
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-            <div className="col-span-2 lg:col-span-1">
-              <Field label="Account">
-                <Select
-                  value={accountId || ALL}
-                  onValueChange={(v) => setAccountId(v === ALL ? "" : v)}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="All accounts" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={ALL}>All accounts</SelectItem>
-                    {(accounts ?? []).map((a) => (
-                      <SelectItem key={a.id} value={a.id}>
-                        {accountOptionLabel(a)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
-            </div>
-
-            <div className="col-span-2 lg:col-span-1">
-              <Field label="Category">
-                <Select
-                  value={categoryId || ALL}
-                  onValueChange={(v) => setCategoryId(v === ALL ? "" : v)}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="All categories" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={ALL}>All categories</SelectItem>
-                    {(categories ?? []).map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
-            </div>
-
             <Field label="Type">
               <Select value={type || ALL} onValueChange={(v) => setType(v === ALL ? "" : (parseType(v) ?? ""))}>
                 <SelectTrigger className="w-full">
@@ -316,35 +347,22 @@ export function SearchView({ initial, active = true }: { initial: SearchInitial;
               </Select>
             </Field>
 
-            <Field label="Sort by">
-              <Select value={sort} onValueChange={(v) => setSort(parseSort(v) ?? DEFAULT_SORT)}>
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {SORT_OPTIONS.map((o) => (
-                    <SelectItem key={o.value} value={o.value}>
-                      {o.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
-
-            <Field label="Per page">
-              <Select value={String(limit)} onValueChange={(v) => setLimit(Number(v))}>
-                <SelectTrigger className="w-full tabular">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {[10, 25, 50].map((n) => (
-                    <SelectItem key={n} value={String(n)} className="tabular">
-                      {n}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
+            <div className="col-span-2 lg:col-span-1">
+              <Field label="Sort by">
+                <Select value={sort} onValueChange={(v) => setSort(parseSort(v) ?? DEFAULT_SORT)}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SORT_OPTIONS.map((o) => (
+                      <SelectItem key={o.value} value={o.value}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+            </div>
 
             <Field label="From date">
               <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="tabular" />
@@ -373,15 +391,32 @@ export function SearchView({ initial, active = true }: { initial: SearchInitial;
               </Field>
             </div>
           </div>
-          {hasFilters && (
-            <div className="mt-3 flex justify-end border-t border-border pt-3">
-              <Button variant="ghost" size="sm" className="gap-1 text-xs" onClick={clearFilters}>
-                <X className="size-3.5" />
-                Clear all
-              </Button>
-            </div>
-          )}
         </Card>
+      )}
+
+      {/* What is filtering the list right now, each one a click from gone. */}
+      {hasActive && (
+        <div className="flex flex-wrap items-center gap-2" aria-label="Active filters" role="group">
+          {chips.map((chip) => (
+            <button
+              key={chip.key}
+              type="button"
+              onClick={chip.clear}
+              aria-label={`Remove filter: ${chip.label}`}
+              className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1 text-xs font-medium transition-colors hover:bg-secondary/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring pointer-coarse:min-h-11"
+            >
+              {chip.label}
+              <X className="size-3 text-muted-foreground" aria-hidden />
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={clearFilters}
+            className="rounded-sm px-1 text-xs font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring pointer-coarse:min-h-11"
+          >
+            Clear all
+          </button>
+        </div>
       )}
 
       {/* Results */}
@@ -392,14 +427,14 @@ export function SearchView({ initial, active = true }: { initial: SearchInitial;
       ) : rows.length === 0 ? (
         <EmptyState
           icon={SearchIcon}
-          title="No matching transactions"
+          title={hasActive ? "No transactions match" : "No transactions yet"}
           description={
-            hasFilters
+            hasActive
               ? "Try widening your filters or clearing them."
               : "Record a transaction to see it here."
           }
           action={
-            hasFilters ? (
+            hasActive ? (
               <Button variant="outline" onClick={clearFilters}>
                 Clear filters
               </Button>
@@ -408,42 +443,61 @@ export function SearchView({ initial, active = true }: { initial: SearchInitial;
         />
       ) : (
         <>
-          <Card className="overflow-hidden border-0 p-0 shadow-sm">
-            {byDay ? (
-              // Sorted by date, so each day's rows sit together under one heading and drop their own date.
-              groupByDay(rows, new Date()).map((group) => (
+          {byDay ? (
+            // Sorted by date: each day is a heading, then one panel of that day's rows.
+            <div className="space-y-6">
+              {groupByDay(rows, new Date()).map((group) => (
                 <section key={group.key} aria-label={group.label}>
-                  <h2 className="bg-muted/40 px-4 py-1.5 text-xs font-medium text-muted-foreground">{group.label}</h2>
-                  {group.rows.map((tx) => (
-                    <TransactionRow
-                      key={tx.id}
-                      tx={tx}
-                      variant="glance"
-                      accountLabel={transactionAccountLabel(tx, accountsById)}
-                    />
-                  ))}
+                  <h2 className="mb-2 px-1 text-sm font-semibold text-muted-foreground">{group.label}</h2>
+                  <Card className="overflow-hidden border-0 p-0 shadow-sm">
+                    {group.rows.map((tx) => (
+                      <TransactionRow
+                        key={tx.id}
+                        tx={tx}
+                        variant="glance"
+                        accountLabel={transactionAccountLabel(tx, accountsById)}
+                      />
+                    ))}
+                  </Card>
                 </section>
-              ))
-            ) : (
-              // Sorted by amount or by next occurrence, the days jump around, so each row keeps its own date.
+              ))}
+            </div>
+          ) : (
+            // Sorted by amount or by next occurrence, the days jump around, so each row keeps its own date.
+            <Card className="overflow-hidden border-0 p-0 shadow-sm">
               <div className="divide-y divide-border">
                 {rows.map((tx) => (
                   <TransactionRow key={tx.id} tx={tx} accountLabel={transactionAccountLabel(tx, accountsById)} />
                 ))}
               </div>
-            )}
-          </Card>
+            </Card>
+          )}
 
-          {/* Page-number pagination */}
-          <div className="flex items-center justify-between">
-            <p role="status" className="text-xs text-muted-foreground tabular">
-              {data ? `${data.total} ${data.total === 1 ? "result" : "results"}, page ${page}` : `Page ${page}`}
-              {isFetching && ", updating…"}
-            </p>
+          {/* Count and paging, with how many to show per page */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <Select value={String(limit)} onValueChange={(v) => setLimit(Number(v))}>
+                <SelectTrigger size="sm" className="bg-card tabular" aria-label="Per page">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {[10, 25, 50].map((n) => (
+                    <SelectItem key={n} value={String(n)} className="tabular">
+                      {n} per page
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p role="status" className="text-xs text-muted-foreground tabular">
+                {data ? (first === last ? `${first} of ${data.total}` : `${first}–${last} of ${data.total}`) : `Page ${page}`}
+                {isFetching && ", updating…"}
+              </p>
+            </div>
             <div className="flex gap-2">
               <Button
                 variant="outline"
                 size="sm"
+                className="bg-card"
                 disabled={page <= 1}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
               >
@@ -452,6 +506,7 @@ export function SearchView({ initial, active = true }: { initial: SearchInitial;
               <Button
                 variant="outline"
                 size="sm"
+                className="bg-card"
                 disabled={!data?.hasNext}
                 onClick={() => setPage((p) => p + 1)}
               >

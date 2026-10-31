@@ -36,6 +36,9 @@ export const SORT_OPTIONS: { value: TransactionSort; label: string }[] = [
 export type SearchRecurrence = Recurrence | "series";
 export type SearchSort = TransactionSort | "next-occurrence";
 
+export const TRANSACTIONS_TITLE = "Transactions";
+export const TRANSACTIONS_DESCRIPTION = "Everything you have recorded. Search it, filter it, or see your recurring series.";
+
 /** The page's views: every transaction, or the recurring series (?view=recurring). */
 export type TransactionsView = "all" | "recurring";
 

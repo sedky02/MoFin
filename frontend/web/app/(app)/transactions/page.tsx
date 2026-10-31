@@ -4,7 +4,14 @@ import { PageHeader } from "@/components/common/page-header";
 import type { SearchInitial } from "@/components/search/search-view";
 import { TransactionsViews } from "@/components/transactions/transactions-views";
 import { Skeleton } from "@/components/ui/skeleton";
-import { parseRecurrence, parseSort, parseType, parseView } from "@/lib/transaction-list-params";
+import {
+  TRANSACTIONS_DESCRIPTION,
+  TRANSACTIONS_TITLE,
+  parseRecurrence,
+  parseSort,
+  parseType,
+  parseView,
+} from "@/lib/transaction-list-params";
 
 export const metadata: Metadata = { title: "Transactions" };
 
@@ -18,12 +25,10 @@ export default function TransactionsPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   return (
-    <div className="mx-auto max-w-3xl">
-      <PageHeader
-        title="Transactions"
-        description="Everything you have recorded. Search it, filter it, or see your recurring series."
-      />
-      <Suspense fallback={<SearchSkeleton />}>
+    <div className="mx-auto w-full max-w-3xl">
+      {/* The view toggle lives in the header, which needs the page's client state, so the header is
+          drawn there; this static copy holds its place until that has loaded. */}
+      <Suspense fallback={<TransactionsSkeleton />}>
         <SearchContent searchParams={searchParams} />
       </Suspense>
     </div>
@@ -56,16 +61,18 @@ async function SearchContent({
   return <TransactionsViews initialView={parseView(first(sp.view))} initial={initial} />;
 }
 
-function SearchSkeleton() {
+function TransactionsSkeleton() {
   return (
-    <div className="space-y-4">
-      <Skeleton className="h-10 w-full rounded-lg" />
-      <Skeleton className="h-24 w-full rounded-lg" />
-      <div className="space-y-2">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <Skeleton key={i} className="h-14 w-full rounded-lg" />
-        ))}
+    <>
+      <PageHeader title={TRANSACTIONS_TITLE} description={TRANSACTIONS_DESCRIPTION} className="mb-3" />
+      <div className="space-y-4">
+        <Skeleton className="h-10 w-full rounded-lg" />
+        <div className="space-y-2">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-14 w-full rounded-lg" />
+          ))}
+        </div>
       </div>
-    </div>
+    </>
   );
 }

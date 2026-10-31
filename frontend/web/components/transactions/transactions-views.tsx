@@ -5,8 +5,15 @@ import { Activity } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SearchView, type SearchInitial } from "@/components/search/search-view";
-import { RecurringSeriesList } from "@/components/transactions/recurring-series-list";
-import { parseView, recurringViewHref, type TransactionsView } from "@/lib/transaction-list-params";
+import { PageHeader } from "@/components/common/page-header";
+import { RecurringSeriesList, useRecurringSeriesCount } from "@/components/transactions/recurring-series-list";
+import {
+  TRANSACTIONS_DESCRIPTION,
+  TRANSACTIONS_TITLE,
+  parseView,
+  recurringViewHref,
+  type TransactionsView,
+} from "@/lib/transaction-list-params";
 
 /**
  * The /transactions page's two views: every transaction (searchable), and
@@ -24,6 +31,7 @@ export function TransactionsViews({
   const router = useRouter();
   const pathname = usePathname();
   const [view, setView] = React.useState(initialView);
+  const seriesCount = useRecurringSeriesCount();
 
   function changeView(next: string) {
     const value = parseView(next);
@@ -38,14 +46,21 @@ export function TransactionsViews({
 
   return (
     <Tabs value={view} onValueChange={changeView} className="gap-5">
-      <TabsList className="w-full">
-        <TabsTrigger value="all" className="flex-1">
-          All
-        </TabsTrigger>
-        <TabsTrigger value="recurring" className="flex-1">
-          Recurring
-        </TabsTrigger>
-      </TabsList>
+      <PageHeader
+        title={TRANSACTIONS_TITLE}
+        description={TRANSACTIONS_DESCRIPTION}
+        className="mb-3"
+        // A small toggle beside the title, not a bar across the page.
+        action={
+          <TabsList className="group-data-horizontal/tabs:h-10">
+            <TabsTrigger value="all" className="px-5">All</TabsTrigger>
+            <TabsTrigger value="recurring" className="gap-2 px-5">
+              Recurring
+              {!!seriesCount && <span className="tabular text-xs text-muted-foreground">{seriesCount}</span>}
+            </TabsTrigger>
+          </TabsList>
+        }
+      />
 
       <TabsContent value="all" forceMount className="text-base data-[state=inactive]:hidden">
         <Activity mode={view === "all" ? "visible" : "hidden"}>

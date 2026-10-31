@@ -3,7 +3,6 @@
 import * as React from "react";
 import Link from "next/link";
 import { Repeat } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -29,6 +28,11 @@ import type { Account, Transaction } from "@/lib/types";
 // first by their next date, then paused, then cancelled.
 const SERIES_QUERY: SearchParams = { recurrence: "series", sort: "next-occurrence" };
 const PAGE_SIZE = 25;
+
+/** How many recurring series there are, for the Recurring toggle. Shares its request with the list's first page. */
+export function useRecurringSeriesCount(): number | undefined {
+  return useSearchPage(SERIES_QUERY, 1, PAGE_SIZE).data?.total;
+}
 
 /** The Recurring view of /transactions: every recurring series, with its schedule and actions. */
 export function RecurringSeriesList() {
@@ -69,9 +73,10 @@ export function RecurringSeriesList() {
 
       <div className="flex items-center justify-between">
         <p role="status" className="text-xs text-muted-foreground tabular">
-          Page {page}
-          {data && ` · ${data.total} series`}
-          {isFetching && " · updating…"}
+          {data
+            ? `${(page - 1) * PAGE_SIZE + 1}–${(page - 1) * PAGE_SIZE + rows.length} of ${data.total} series`
+            : `Page ${page}`}
+          {isFetching && ", updating…"}
         </p>
         {(page > 1 || data?.hasNext) && (
           <div className="flex gap-2">
@@ -99,36 +104,46 @@ function SeriesRow({ tx, accountsById }: { tx: Transaction; accountsById?: Reado
   return (
     // Phone: name and amount on top, the actions below. From sm up: name, amount, actions in a row.
     <li className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-4 gap-y-3 bg-card px-4 py-3.5 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center">
-      <div className="min-w-0">
-        <Link
-          href={`/transactions/${tx.id}`}
-          className="block truncate rounded-sm text-sm font-medium underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          {tx.description}
-        </Link>
-        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-          <Badge variant={active ? "secondary" : "outline"} className="gap-1">
-            <Repeat className="size-3" aria-hidden="true" />
-            {seriesIntervalLabel(tx)}
-            {open ? "" : " · Cancelled"}
-          </Badge>
-          {next && <span className="tabular">Next on {formatDate(next)}</span>}
-          {pausedLabel && <SeriesPausedNote label={pausedLabel} />}
-          {open && tx.recurringEndDate && (
-            <>
-              <span aria-hidden>·</span>
-              <span className="tabular">Ends {formatDate(tx.recurringEndDate)}</span>
-            </>
-          )}
-          <span aria-hidden>·</span>
-          <span className="min-w-0 truncate">
-            {accountLabel ?? (
+      <div className="flex min-w-0 items-center gap-4">
+        <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-muted text-foreground/70">
+          <Repeat className="size-5" aria-hidden="true" />
+        </div>
+        <div className="min-w-0">
+          <Link
+            href={`/transactions/${tx.id}`}
+            className="block truncate rounded-sm text-sm font-medium underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {tx.description}
+          </Link>
+          {/* How often it repeats, the account, and when it posts next. */}
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+            <span className={active ? "font-medium text-foreground/80" : undefined}>
+              {seriesIntervalLabel(tx)}
+              {open ? "" : " · Cancelled"}
+            </span>
+            <span aria-hidden>·</span>
+            <span className="min-w-0 truncate">
+              {accountLabel ?? (
+                <>
+                  <Skeleton className="inline-block h-3 w-20 align-middle" aria-hidden="true" />
+                  <span className="sr-only">Loading account</span>
+                </>
+              )}
+            </span>
+            {next && (
               <>
-                <Skeleton className="inline-block h-3 w-20 align-middle" aria-hidden="true" />
-                <span className="sr-only">Loading account</span>
+                <span aria-hidden>·</span>
+                <span className="tabular">Next on {formatDate(next)}</span>
               </>
             )}
-          </span>
+            {pausedLabel && <SeriesPausedNote label={pausedLabel} />}
+            {open && tx.recurringEndDate && (
+              <>
+                <span aria-hidden>·</span>
+                <span className="tabular">Ends {formatDate(tx.recurringEndDate)}</span>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -136,7 +151,8 @@ function SeriesRow({ tx, accountsById }: { tx: Transaction; accountsById?: Reado
       <MoneyAmount
         amount={tx.type === "EXPENSE" ? multiply(amount, "-1") : amount}
         currency={tx.currency}
-        colorBySign={tx.type !== "TRANSFER"}
+        // Like the main list: no colour, income with a "+" and spending with its "−".
+        signed={tx.type === "INCOME"}
         className="text-right text-sm font-semibold"
       />
       {open && <RecurringSeriesActions tx={tx} className="col-span-2 sm:col-span-1 sm:justify-end" />}

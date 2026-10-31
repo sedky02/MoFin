@@ -65,39 +65,64 @@ describe("SearchView", () => {
   });
   afterEach(cleanup);
 
-  it("shows the list first, with the filters one button away and closed", () => {
+  it("keeps search, account and category always in reach, and the rest behind More filters", () => {
     show();
-    const toggle = screen.getByRole("button", { name: /^Filters/ });
+    expect(screen.getByRole("textbox", { name: "Search transactions" })).toBeTruthy();
+    expect(screen.getByRole("combobox", { name: "Account" })).toBeTruthy();
+    expect(screen.getByRole("combobox", { name: "Category" })).toBeTruthy();
+    const toggle = screen.getByRole("button", { name: /^More filters/ });
     expect(toggle.getAttribute("aria-expanded")).toBe("false");
     expect(screen.queryByLabelText("From date")).toBeNull();
-    expect(screen.queryByRole("combobox", { name: "Account" })).toBeNull();
+    expect(screen.queryByRole("combobox", { name: "Sort by" })).toBeNull();
     expect(screen.getByText("Whole Foods")).toBeTruthy();
   });
 
-  it("opens and closes the filters", async () => {
+  it("opens and closes More filters", async () => {
     show();
-    const toggle = screen.getByRole("button", { name: /^Filters/ });
+    const toggle = screen.getByRole("button", { name: /^More filters/ });
     await userEvent.click(toggle);
     expect(toggle.getAttribute("aria-expanded")).toBe("true");
     expect(screen.getByLabelText("From date")).toBeTruthy();
-    expect(screen.getByRole("combobox", { name: "Account" })).toBeTruthy();
+    expect(screen.getByRole("combobox", { name: "Type" })).toBeTruthy();
+    expect(screen.getByRole("combobox", { name: "Recurring" })).toBeTruthy();
+    expect(screen.getByRole("combobox", { name: "Sort by" })).toBeTruthy();
     await userEvent.click(toggle);
     expect(screen.queryByLabelText("From date")).toBeNull();
   });
 
-  it("starts open when the URL already carries filters, and counts them on the button", () => {
-    show({ type: "EXPENSE", from: "2026-10-01", minAmount: "5" });
-    const toggle = screen.getByRole("button", { name: /^Filters/ });
+  it("starts open when the URL already carries more filters, and counts them on the button", () => {
+    show({ type: "EXPENSE", from: "2026-10-01", to: "2026-10-31", minAmount: "5", sort: "oldest" });
+    const toggle = screen.getByRole("button", { name: /^More filters/ });
     expect(toggle.getAttribute("aria-expanded")).toBe("true");
-    // Type, From date, and the amount range (min and max count as one).
-    expect(within(toggle).getByLabelText("3 active")).toBeTruthy();
+    // Type, the date range, the amount range and the sort order: each counts once.
+    expect(within(toggle).getByLabelText("4 active")).toBeTruthy();
   });
 
-  it("does not count the search text as a panel filter", () => {
-    show({ q: "rent" });
-    const toggle = screen.getByRole("button", { name: /^Filters/ });
+  it("does not count search, account or category on the More filters button", () => {
+    show({ q: "rent", accountId: "a1" });
+    const toggle = screen.getByRole("button", { name: /^More filters/ });
     expect(toggle.getAttribute("aria-expanded")).toBe("false");
     expect(within(toggle).queryByLabelText(/active/)).toBeNull();
+  });
+
+  it("shows each active filter as a chip that removes itself, with Clear all", async () => {
+    show({ type: "EXPENSE", accountId: "a1", from: "2026-10-01", to: "2026-10-31" });
+    const chips = within(screen.getByRole("group", { name: "Active filters" }));
+    expect(chips.getByRole("button", { name: "Remove filter: Main checking" })).toBeTruthy();
+    expect(chips.getByRole("button", { name: "Remove filter: Expense" })).toBeTruthy();
+    expect(chips.getByRole("button", { name: /^Remove filter: Oct 1, 2026 – Oct 31, 2026/ })).toBeTruthy();
+
+    await userEvent.click(chips.getByRole("button", { name: "Remove filter: Expense" }));
+    expect(chips.queryByRole("button", { name: "Remove filter: Expense" })).toBeNull();
+    expect(chips.getByRole("button", { name: "Remove filter: Main checking" })).toBeTruthy();
+
+    await userEvent.click(chips.getByRole("button", { name: "Clear all" }));
+    expect(screen.queryByRole("group", { name: "Active filters" })).toBeNull();
+  });
+
+  it("shows no chips while nothing is filtered", () => {
+    show();
+    expect(screen.queryByRole("group", { name: "Active filters" })).toBeNull();
   });
 
   it("groups a date-sorted list by day, newest first, with the day above its rows", () => {
@@ -124,20 +149,34 @@ describe("SearchView", () => {
     expect(row.textContent).toMatch(/2026/);
   });
 
-  it("says how many results there are and which page", () => {
+  it("shows the range on this page out of the total, next to Per page and the page buttons", () => {
     show();
-    expect(screen.getByRole("status").textContent).toBe("57 results, page 1");
+    expect(screen.getByRole("status").textContent).toBe("1–3 of 57");
+    expect(screen.getByRole("combobox", { name: "Per page" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Previous" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Next" })).toBeTruthy();
   });
 
-  it("says 1 result for a single hit", () => {
+  it("says 1 of 1 for a single hit", () => {
+    rows = [tx("1", "Whole Foods", 28)];
     total = 1;
     show();
-    expect(screen.getByRole("status").textContent).toBe("1 result, page 1");
+    expect(screen.getByRole("status").textContent).toBe("1 of 1");
   });
 
-  it("clears every filter from inside the open panel", async () => {
-    show({ type: "EXPENSE", accountId: "a1" });
-    await userEvent.click(screen.getByRole("button", { name: "Clear all" }));
-    expect(within(screen.getByRole("button", { name: /^Filters/ })).queryByLabelText(/active/)).toBeNull();
+  it("shows no running total on a day heading", () => {
+    show();
+    const section = screen.getAllByRole("region")[1];
+    expect(within(section).queryByLabelText("Net for the day")).toBeNull();
+    expect(section.querySelector("h2")!.parentElement!.firstElementChild).toBe(section.querySelector("h2"));
+  });
+
+  it("explains an empty result when filters are on, and clears them from the button", async () => {
+    rows = [];
+    total = 0;
+    show({ type: "EXPENSE" });
+    expect(screen.getByText("No transactions match")).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "Clear filters" }));
+    expect(screen.queryByRole("group", { name: "Active filters" })).toBeNull();
   });
 });

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronRight, Repeat, ArrowDownLeft } from "lucide-react";
+import { ChevronRight, Repeat } from "lucide-react";
 import type { Transaction } from "@/lib/types";
 import { MoneyAmount } from "@/components/common/money-amount";
 import { formatDate, transactionAmount } from "@/lib/format";
@@ -9,6 +9,12 @@ import { multiply } from "@/lib/decimal";
 import { cn } from "@/lib/utils";
 import { CategoryIcon } from "@/components/dashboard/category-icon";
 import { transactionCategorySummary } from "@/lib/transaction-category";
+
+const TYPE_TILE: Record<Transaction["type"], string> = {
+  INCOME: "bg-green-500/15 text-green-700 dark:bg-green-400/15 dark:text-green-400",
+  EXPENSE: "bg-red-500/10 text-red-600 dark:bg-red-400/15 dark:text-red-400",
+  TRANSFER: "bg-muted text-foreground/70",
+};
 
 function CategoryDot({ color }: { color?: string | null }) {
   return (
@@ -36,9 +42,7 @@ export function TransactionRow({
   const signedAmount = tx.type === "EXPENSE" ? multiply(base, "-1") : base;
 
   const isIncome = tx.type === "INCOME";
-  // Only income is tinted. Spending stays neutral; the category's colour already appears
-  // once, as the dot in the meta line, so it isn't encoded twice.
-  const tint = isIncome ? "var(--success)" : undefined;
+  const isRecurring = tx.isRecurring || !!tx.parentTransactionId;
   const filedUnder = transactionCategorySummary(tx);
   const showCategory = !!tx.category || tx.type !== "TRANSFER";
 
@@ -51,28 +55,13 @@ export function TransactionRow({
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
       )}
     >
-      <div
-        className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-muted text-foreground/70"
-        style={
-          tint
-            ? { backgroundColor: `color-mix(in oklab, ${tint} 14%, transparent)`, color: tint }
-            : undefined
-        }
-      >
-        {isIncome ? (
-          <ArrowDownLeft className="size-5" />
-        ) : (
-          <CategoryIcon name={filedUnder.category?.name ?? tx.description} className="size-5" />
-        )}
+      {/* A light green tile for income, a light red one for spending, grey for a transfer. */}
+      <div className={cn("flex size-11 shrink-0 items-center justify-center rounded-xl", TYPE_TILE[tx.type])}>
+        <CategoryIcon name={filedUnder.category?.name ?? tx.description} className="size-5" />
       </div>
 
       <div className="min-w-0 flex-1">
-        <p className="flex items-center gap-1.5 truncate text-sm font-medium">
-          {tx.description}
-          {(tx.isRecurring || tx.parentTransactionId) && (
-            <Repeat className="size-3 shrink-0 text-muted-foreground" aria-label="Recurring" />
-          )}
-        </p>
+        <p className="truncate text-sm font-medium">{tx.description}</p>
         <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
           {/* Category and date share a line that never wraps; the category truncates instead. */}
           {(showCategory || !glance) && (
@@ -107,14 +96,16 @@ export function TransactionRow({
               <span className={cn("min-w-0 truncate", !glance && "basis-full sm:basis-auto")}>{accountLabel}</span>
             </>
           )}
+          {/* A repeat mark ends the line, after the category and account. */}
+          {isRecurring && <Repeat className="size-3 shrink-0" aria-label="Recurring" />}
         </div>
       </div>
 
       <MoneyAmount
         amount={tx.type === "TRANSFER" ? base : signedAmount}
         currency={tx.currency}
-        // Only income is coloured: a list of mostly spending shouldn't be a wall of red.
-        colorBySign={isIncome}
+        // No colour: income carries a "+" and spending its "−", all in the normal text colour.
+        signed={isIncome}
         className="text-sm font-semibold"
       />
       <ChevronRight className="size-4 shrink-0 text-muted-foreground/50 transition-transform group-hover:translate-x-0.5" />

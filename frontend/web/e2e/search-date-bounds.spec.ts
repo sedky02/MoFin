@@ -68,7 +68,7 @@ test("From = To = today lists every transaction from today, and nothing either s
 
     await page.goto("/search");
     await page.getByLabel("Search transactions").fill(tag);
-    const filters = page.getByRole("button", { name: /^Filters/ });
+    const filters = page.getByRole("button", { name: /^More filters/ });
     if ((await filters.getAttribute("aria-expanded")) === "false") await filters.click();
     await page.getByLabel("From date").fill(day);
     await page.getByLabel("To date").fill(day);
@@ -76,7 +76,7 @@ test("From = To = today lists every transaction from today, and nothing either s
 
     for (const tx of inside) await expect(page.getByText(tx.description, { exact: true })).toBeVisible();
     for (const tx of outside) await expect(page.getByText(tx.description, { exact: true })).toHaveCount(0);
-    await expect(page.getByRole("status").filter({ hasText: /results?/ })).toContainText("3 results");
+    await expect(page.getByRole("status").filter({ hasText: /of \d+/ })).toContainText("1–3 of 3");
   } finally {
     for (const id of ids) {
       const res = await page.request.delete(`/api/backend/transactions/${id}`);

@@ -36,14 +36,14 @@ function row(page: Page, description: string): Locator {
 /** Waits for the list to finish loading: the results footer (not "updating…") or the empty state. */
 async function settled(page: Page) {
   const footer = page.locator("main p[role=status]");
-  await expect(footer.or(page.getByText("No matching transactions"))).toBeVisible({ timeout: 15_000 });
+  await expect(footer.or(page.getByText(/^No transactions (match|yet)$/))).toBeVisible({ timeout: 15_000 });
   // No footer at all on the empty state.
   if (await footer.isVisible()) await expect(footer).not.toContainText("updating");
 }
 
-/** The filters start collapsed behind a "Filters" button (open already when the URL carries some). */
+/** The rarer filters start collapsed behind a "More filters" button (open already when the URL carries some). */
 async function openFilters(page: Page) {
-  const toggle = page.getByRole("button", { name: /^Filters/ });
+  const toggle = page.getByRole("button", { name: /^More filters/ });
   if ((await toggle.getAttribute("aria-expanded")) === "false") await toggle.click();
 }
 
