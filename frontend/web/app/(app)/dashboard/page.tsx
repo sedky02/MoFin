@@ -71,8 +71,9 @@ async function prefetchDashboard() {
   // cacheComponents; connection() opts this render out of prerendering.
   await connection();
   const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth() + 1;
+  // UTC, like the API's months and the client's (DashboardGate), whatever the server's zone.
+  const year = now.getUTCFullYear();
+  const month = now.getUTCMonth() + 1;
 
   // The account the user last picked in the header lives in a cookie (mirrored from
   // localStorage by useActiveAccount), so the server can prefetch for the account the

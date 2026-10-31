@@ -42,10 +42,14 @@ export function DashboardGate({ prefetch }: { prefetch: React.ReactNode }) {
   );
 }
 
-/** The cards for the current month. Only ever rendered in the browser, so the clock is the user's. */
+/**
+ * The cards for the current month, as the API counts months: in UTC. Taking the local month
+ * would show next month's (empty) summary for the first hours of the 1st east of UTC, while
+ * transactions recorded then still land in the previous month.
+ */
 function ThisMonthDashboard() {
   const [now] = React.useState(() => new Date());
-  return <DashboardBody year={now.getFullYear()} month={now.getMonth() + 1} />;
+  return <DashboardBody year={now.getUTCFullYear()} month={now.getUTCMonth() + 1} />;
 }
 
 /**
