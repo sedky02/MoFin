@@ -1,40 +1,102 @@
 "use client";
 
 import Link from "next/link";
+import { PanelLeftClose, PanelLeftOpen, PlusCircle } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
-import { NAV_ITEMS } from "./nav-items";
+import { SIDEBAR_FOOTER_ITEM, SIDEBAR_GROUPS } from "./nav-items";
 import { NavLink } from "./nav-link";
+import { SidebarAccount } from "./sidebar-account";
 import { Button } from "@/components/ui/button";
-import { PlusCircle } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 
-/** Shared nav body used by both the desktop rail and the mobile sheet. */
-export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
+/**
+ * Shared nav body used by both the desktop rail and the mobile sheet. On the desktop rail it can
+ * shrink to an icon-only strip; the sheet is always full.
+ */
+export function SidebarNav({
+  onNavigate,
+  collapsed = false,
+  onToggleCollapsed,
+}: {
+  onNavigate?: () => void;
+  collapsed?: boolean;
+  /** Present on the desktop rail only: shows the collapse button next to the logo. */
+  onToggleCollapsed?: () => void;
+}) {
   return (
-    <div className="flex h-full flex-col gap-2 bg-sidebar px-3 py-4">
-      <div className="px-2 py-2">
+    <div className={cn("flex h-full flex-col gap-2 bg-sidebar py-4", collapsed ? "px-2" : "px-3")}>
+      <div className={cn("flex py-2", collapsed ? "flex-col items-center gap-3" : "items-center justify-between gap-2 px-2")}>
         <Link href="/dashboard" onClick={onNavigate} aria-label="MoFin home">
-          <Logo />
+          <Logo showText={!collapsed} />
         </Link>
+        {onToggleCollapsed && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-8 shrink-0 text-muted-foreground"
+            onClick={onToggleCollapsed}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-expanded={!collapsed}
+          >
+            {collapsed ? <PanelLeftOpen className="size-4" /> : <PanelLeftClose className="size-4" />}
+          </Button>
+        )}
       </div>
 
-      <div className="px-1 py-2">
-        <Button asChild className="w-full justify-start gap-2">
-          <Link href="/transactions/new" onClick={onNavigate}>
-            <PlusCircle className="size-4" />
-            New transaction
-          </Link>
-        </Button>
+      <div className={cn("py-2", collapsed ? "flex justify-center" : "px-1")}>
+        {collapsed ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button asChild size="icon" className="size-10">
+                <Link href="/transactions/new" onClick={onNavigate} aria-label="New transaction">
+                  <PlusCircle className="size-4" />
+                </Link>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right" sideOffset={10}>
+              New transaction <kbd className="rounded bg-background/20 px-1 text-[11px]">N</kbd>
+            </TooltipContent>
+          </Tooltip>
+        ) : (
+          <Button asChild className="w-full justify-start gap-2 lg:h-10 lg:text-base">
+            <Link href="/transactions/new" onClick={onNavigate}>
+              <PlusCircle className="size-4" />
+              New transaction
+              {/* The N key does the same; there's no keyboard on a touch screen to press it. */}
+              <kbd
+                aria-hidden
+                className="ml-auto rounded bg-primary-foreground/15 px-1.5 text-[11px] font-medium pointer-coarse:hidden"
+              >
+                N
+              </kbd>
+            </Link>
+          </Button>
+        )}
       </div>
 
-      <nav className="flex flex-1 flex-col gap-0.5" aria-label="Primary">
-        {NAV_ITEMS.filter((i) => i.href !== "/transactions/new").map((item) => (
-          <NavLink key={item.href} item={item} onNavigate={onNavigate} />
+      <nav className={cn("flex flex-1 flex-col overflow-y-auto", collapsed ? "gap-2" : "gap-5")} aria-label="Primary">
+        {SIDEBAR_GROUPS.map((group, i) => (
+          <div key={group.label ?? i} role="group" aria-label={group.label} className="flex flex-col gap-0.5">
+            {group.label &&
+              (collapsed ? (
+                // The names give way to a thin divider line when there is only room for icons.
+                <hr aria-hidden className="mx-2 mb-1.5 border-sidebar-border" />
+              ) : (
+                <p className="px-3 pb-1 text-xs font-medium text-muted-foreground/80 lg:text-sm">{group.label}</p>
+              ))}
+            {group.items.map((item) => (
+              <NavLink key={item.href} item={item} onNavigate={onNavigate} collapsed={collapsed} />
+            ))}
+          </div>
         ))}
       </nav>
 
-      <div className="flex items-center gap-2 px-3 py-2 text-xs text-muted-foreground">
-        <span className="size-1.5 rounded-full bg-primary" aria-hidden />
-        <p className="tabular">Ledger-first · balances always exact</p>
+      {/* Settings is pinned to the bottom, and under it who is signed in, with Sign out. */}
+      <div className="flex flex-col gap-3">
+        <NavLink item={SIDEBAR_FOOTER_ITEM} onNavigate={onNavigate} collapsed={collapsed} />
+        <SidebarAccount collapsed={collapsed} />
       </div>
     </div>
   );

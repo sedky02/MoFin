@@ -14,6 +14,8 @@ import { UserMenu } from "./user-menu";
 import { DemoBanner } from "./demo-banner";
 import { AccountSwitcher } from "@/components/dashboard/account-switcher";
 import { useActiveAccount } from "@/hooks/useActiveAccount";
+import { useSidebarCollapsed } from "@/hooks/use-sidebar-collapsed";
+import { useNewTransactionShortcut } from "./new-transaction-shortcut";
 import { BOTTOM_NAV_ITEMS, isNavActive } from "./nav-items";
 import { cn } from "@/lib/utils";
 
@@ -34,9 +36,16 @@ function ActiveAccountPicker() {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = React.useState(false);
+  const [collapsed, setCollapsed] = useSidebarCollapsed();
+  useNewTransactionShortcut();
 
   return (
-    <div className="min-h-dvh lg:grid lg:grid-cols-[16rem_1fr]">
+    <div
+      className={cn(
+        "min-h-dvh lg:grid lg:transition-[grid-template-columns] lg:duration-200 motion-reduce:lg:transition-none",
+        collapsed ? "lg:grid-cols-[4.5rem_1fr]" : "lg:grid-cols-[16rem_1fr]",
+      )}
+    >
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-md focus:bg-primary focus:px-3 focus:py-2 focus:text-sm focus:font-medium focus:text-primary-foreground"
@@ -46,9 +55,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* Desktop sidebar. usePathname/usePendingDraftCount inside SidebarNav read
           per-request data, so this subtree needs its own Suspense boundary to keep
           the rest of the route shell statically prerenderable. */}
-      <aside className="sticky top-0 hidden h-dvh border-r border-sidebar-border lg:block">
+      <aside className="sticky top-0 hidden h-dvh overflow-hidden border-r border-sidebar-border lg:block">
         <Suspense fallback={<SidebarNavSkeleton />}>
-          <SidebarNav />
+          <SidebarNav collapsed={collapsed} onToggleCollapsed={() => setCollapsed(!collapsed)} />
         </Suspense>
       </aside>
 

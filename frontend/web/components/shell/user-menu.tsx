@@ -17,17 +17,17 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useUser } from "@/hooks/useUser";
 
-function initials(name?: string | null, email?: string): string {
+export function initials(name?: string | null, email?: string): string {
   const source = name?.trim() || email || "?";
   const parts = source.split(/\s+/).filter(Boolean);
   if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
   return source.slice(0, 2).toUpperCase();
 }
 
-export function UserMenu() {
+/** Signs out and returns to the login page. Stays put, with a toast, if the request fails. */
+export function useSignOut() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { data: user } = useUser();
   const [loggingOut, setLoggingOut] = React.useState(false);
 
   async function logout() {
@@ -46,6 +46,14 @@ export function UserMenu() {
     router.replace("/login");
     router.refresh();
   }
+
+  return { logout, loggingOut };
+}
+
+export function UserMenu() {
+  const router = useRouter();
+  const { data: user } = useUser();
+  const { logout, loggingOut } = useSignOut();
 
   const label = user?.displayName || user?.email || "Account";
 

@@ -33,6 +33,27 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
+export interface NavGroup {
+  /** The group's heading in the sidebar; none for the Dashboard on its own at the top. */
+  label?: string;
+  items: NavItem[];
+}
+
+const byHref = (href: string): NavItem => {
+  const item = NAV_ITEMS.find((i) => i.href === href);
+  if (!item) throw new Error(`No nav item for ${href}`);
+  return item;
+};
+
+/** The sidebar's menu: Dashboard alone, then Money and Assistant. Settings is pinned below them. */
+export const SIDEBAR_GROUPS: NavGroup[] = [
+  { items: [byHref("/dashboard")] },
+  { label: "Money", items: ["/transactions", "/accounts", "/categories", "/goals"].map(byHref) },
+  { label: "Assistant", items: ["/drafts", "/connect"].map(byHref) },
+];
+
+export const SIDEBAR_FOOTER_ITEM: NavItem = byHref("/settings");
+
 /**
  * Mobile bottom bar routes, in order; the "More" button follows them and opens
  * the nav sheet.
