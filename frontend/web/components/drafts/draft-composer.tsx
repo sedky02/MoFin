@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Sparkles, Loader2, CornerDownLeft } from "lucide-react";
+import { CornerDownRight, Loader2, Sparkles } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,6 +15,7 @@ import { useCreateDraftIntent } from "@/hooks/useDrafts";
 import { useAccounts } from "@/hooks/useAccounts";
 import { useActiveAccount } from "@/hooks/useActiveAccount";
 
+// Example sentences, shown whole so it is plain what a click puts in the box.
 const EXAMPLES = [
   "Spent 42.50 on groceries at the market yesterday",
   "Got paid 3200 salary into my bank account",
@@ -62,42 +63,27 @@ export function DraftComposer() {
   }
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-border bg-card p-5 shadow-sm">
-      {/* atmospheric accent */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -right-10 -top-10 size-32 rounded-full bg-primary/10 blur-3xl"
-      />
-      <div className="relative">
-        <div className="mb-3 flex items-center gap-2">
-          <span className="flex size-7 items-center justify-center rounded-lg bg-primary/15 text-primary-text">
-            <Sparkles className="size-4" />
-          </span>
-          <div>
-            <h2 className="text-sm font-semibold leading-tight">Describe a transaction</h2>
-            <p className="text-xs text-muted-foreground">
-              MoFin drafts it — you review before anything is recorded.
-            </p>
-          </div>
-        </div>
-
+    <div>
+      {/* One box: the sentence on top, the account and the button along its bottom edge. */}
+      <div className="rounded-2xl border border-border bg-card shadow-sm transition-shadow focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/30">
         <Textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={onKeyDown}
-          placeholder="e.g. Spent 42.50 on groceries yesterday"
+          placeholder="Describe a transaction, e.g. Spent 42.50 on groceries yesterday"
           rows={3}
-          className="resize-none bg-background text-base"
+          className="resize-none rounded-2xl border-0 bg-transparent px-4 pb-1 pt-4 text-base shadow-none focus-visible:ring-0 dark:bg-transparent"
           aria-label="Describe a transaction in plain language"
         />
 
-        <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <Select
-            value={defaultAccountId}
-            onValueChange={setDefaultAccountId}
-          >
-            <SelectTrigger className="h-9 w-full sm:w-56" aria-label="Default account">
-              <SelectValue placeholder="Default account (optional)" />
+        <div className="flex items-center justify-between gap-3 px-3 pb-3 pt-1">
+          <Select value={defaultAccountId} onValueChange={setDefaultAccountId}>
+            <SelectTrigger
+              size="sm"
+              className="w-auto max-w-[55%] border-transparent bg-secondary/70 hover:bg-secondary"
+              aria-label="Default account"
+            >
+              <SelectValue placeholder="Account (optional)" />
             </SelectTrigger>
             <SelectContent>
               {(accounts ?? []).map((a) => (
@@ -111,7 +97,7 @@ export function DraftComposer() {
             </SelectContent>
           </Select>
 
-          <Button onClick={submit} disabled={!input.trim() || createIntent.isPending} className="gap-2">
+          <Button onClick={submit} disabled={!input.trim() || createIntent.isPending} className="shrink-0 gap-2">
             {createIntent.isPending ? (
               <>
                 <Loader2 className="size-4 animate-spin" />
@@ -128,21 +114,23 @@ export function DraftComposer() {
             )}
           </Button>
         </div>
-
-        {/* Quick examples */}
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          {EXAMPLES.map((ex) => (
-            <button
-              key={ex}
-              type="button"
-              onClick={() => setInput(ex)}
-              className="inline-flex items-center rounded-full border border-border bg-background px-2.5 py-1 pointer-coarse:min-h-11 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
-            >
-              {ex}
-            </button>
-          ))}
-        </div>
       </div>
+
+      {/* Suggestions, like the follow-ups under a chat answer: a return arrow and the sentence. A click fills the box in. */}
+      <ul aria-label="Examples" className="mt-4 divide-y divide-border/60">
+        {EXAMPLES.map((text) => (
+          <li key={text}>
+            <button
+              type="button"
+              onClick={() => setInput(text)}
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm text-muted-foreground transition-colors pointer-coarse:min-h-11 hover:bg-secondary/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <CornerDownRight className="size-4 shrink-0" aria-hidden />
+              <span className="min-w-0 truncate">{text}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
