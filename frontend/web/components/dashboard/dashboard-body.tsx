@@ -17,34 +17,21 @@ import { Wallet } from "lucide-react";
 import Link from "next/link";
 
 /**
- * Client-driven body below the (server-rendered) greeting header. Holds which
+ * The dashboard's cards, rendered from the query cache. Holds which
  * account is selected and fans it out to every card — each card refetches its
  * own data scoped to that account via its existing hook, so switching accounts
  * never needs a full page reload.
  */
-export function DashboardBody({
-  year,
-  month,
-  initialPrimaryCurrency,
-  initialActiveAccount,
-}: {
-  year: number;
-  month: number;
-  initialPrimaryCurrency: string;
-  /** The active-account cookie as the server read it, so the first render matches the prefetch. */
-  initialActiveAccount?: string;
-}) {
+export function DashboardBody({ year, month }: { year: number; month: number }) {
   const { data: accounts } = useAccounts();
   const { data: user } = useUser();
   const { data: balances } = useLedgerBalance();
   // Same selection as the header's active-account picker, so the dashboard
   // shows the account that new transactions will default to.
-  const { accountId, account: selectedAccount } = useActiveAccount(initialActiveAccount);
-  // Re-derived from live query data (hydrated from the server prefetch when
-  // that succeeded, fetched fresh through the BFF's refresh-on-401 path when
-  // it didn't) so a guessed currency is never the final answer — it
-  // self-corrects the moment real data arrives.
-  const primaryCurrency = pickPrimaryCurrency(balances, user, initialPrimaryCurrency, accounts);
+  const { accountId, account: selectedAccount } = useActiveAccount();
+  // Derived from live query data (hydrated from the server prefetch when that
+  // succeeded, fetched fresh through the BFF's refresh-on-401 path when it didn't).
+  const primaryCurrency = pickPrimaryCurrency(balances, user, "", accounts);
 
   // The balance hero and the monthly summary each keep their own currency choice. Amounts
   // never mix currencies, so an all-accounts view is shown one currency at a time.

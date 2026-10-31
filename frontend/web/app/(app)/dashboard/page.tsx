@@ -32,33 +32,41 @@ import type {
   Transaction,
   User,
 } from "@/lib/types";
-import { DashboardBody } from "@/components/dashboard/dashboard-body";
-import { DashboardUnavailable } from "@/components/dashboard/dashboard-unavailable";
-import { Skeleton } from "@/components/ui/skeleton";
+import { DashboardGate, PrefetchSettled } from "@/components/dashboard/dashboard-gate";
 
-// Static shell. The dynamic, user-specific dashboard streams in via <Suspense>
-// (required under cacheComponents: runtime data access — cookies in serverGet,
-// new Date() — must live inside a Suspense boundary, not at the route top level).
+// Static shell: the gate (a client component) shows the dashboard from the browser's
+// cache straight away when arriving from another page. The server prefetch streams in
+// via <Suspense> (required under cacheComponents: runtime data access — cookies in
+// serverGet, new Date() — must live inside a Suspense boundary) and is only waited for
+// on a full page load, when that cache is empty.
 export default function DashboardPage() {
   return (
-    <Suspense fallback={<DashboardSkeleton />}>
-      <DashboardContent />
-    </Suspense>
+    <DashboardGate
+      prefetch={
+        <Suspense fallback={null}>
+          <DashboardPrefetch />
+        </Suspense>
+      }
+    />
   );
 }
 
 // Async Server Component performing the (dynamic) server-side prefetch.
-async function DashboardContent() {
+async function DashboardPrefetch() {
   try {
-    return await loadDashboard();
+    return await prefetchDashboard();
   } catch (err) {
     // Say which way the prefetch failed; anything else still reaches error.tsx.
-    if (err instanceof ServerPrefetchError) return <DashboardUnavailable kind={err.kind} />;
+    if (err instanceof ServerPrefetchError) return <PrefetchSettled outcome={err.kind} />;
     throw err;
   }
 }
 
-async function loadDashboard() {
+async function prefetchDashboard() {
+  // A client-side navigation: the browser already has the data and nothing waits on
+  // this. Skip the backend entirely.
+  if (!(await isDocumentRequest())) return <PrefetchSettled outcome="ready" />;
+
   // Reading the current time requires a request-data source first under
   // cacheComponents; connection() opts this render out of prerendering.
   await connection();
@@ -72,15 +80,6 @@ async function loadDashboard() {
   const cookieStore = await cookies();
   const rawStored = cookieStore.get(ACTIVE_ACCOUNT_COOKIE)?.value;
   const stored = rawStored ? decodeURIComponent(rawStored) : undefined;
-
-  // Coming back from another page, the client's cache already holds all of this: render
-  // straight away instead of keeping the skeleton up for the backend. The cards show what
-  // they have and refetch whatever is stale or was invalidated meanwhile.
-  if (!(await isDocumentRequest())) {
-    return (
-      <DashboardBody year={year} month={month} initialPrimaryCurrency="" initialActiveAccount={stored} />
-    );
-  }
 
   const queryClient = getQueryClient();
 
@@ -100,10 +99,8 @@ async function loadDashboard() {
   const scopedBalances = accountId && allBalances ? scopeBalances(allBalances, accountId) : undefined;
   const balances = accountId ? scopedBalances : allBalances;
 
-  // Best-guess only for the very first paint (and only when prefetch actually
-  // had data to guess from) — DashboardBody re-derives this from live
-  // useUser()/useLedgerBalance() query data and self-corrects once that
-  // resolves, rather than ever showing this guess as a final answer.
+  // The client derives the same from this data once it is hydrated; the server needs it
+  // first to know which currency to ask the summary and the chart series in.
   const initialPrimaryCurrency = pickPrimaryCurrency(allBalances, user, "", accounts);
 
   // Mirror the client's currency resolution (DashboardBody / BalanceCards) so the summary
@@ -153,42 +150,8 @@ async function loadDashboard() {
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
-      {/* <PageHeader
-        title={greeting(user?.displayName)}
-        description="Here's where your money stands today."
-      /> */}
-
-      <DashboardBody
-        year={year}
-        month={month}
-        initialPrimaryCurrency={initialPrimaryCurrency}
-        initialActiveAccount={stored}
-      />
+      <PrefetchSettled outcome="ready" />
     </HydrationBoundary>
-  );
-}
-
-// Mirrors the real layout (hero + goals, then summary + transactions) so nothing jumps
-// when the streamed content arrives: same grid, same radii, comparable heights.
-function DashboardSkeleton() {
-  return (
-    <>
-      <div className="mb-8 space-y-2">
-        <Skeleton className="h-8 w-64" />
-        <Skeleton className="h-4 w-72" />
-      </div>
-
-      <section className="space-y-8">
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-          <Skeleton className="h-104 w-full rounded-hero lg:col-span-8" />
-          <Skeleton className="h-104 w-full rounded-card lg:col-span-4" />
-        </div>
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <Skeleton className="h-136 w-full rounded-card" />
-          <Skeleton className="h-136 w-full rounded-card" />
-        </div>
-      </section>
-    </>
   );
 }
 
