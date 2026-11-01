@@ -530,7 +530,11 @@ export function buildDemoPlan(now: Date, seed = DEMO_SEED): DemoPlan {
   return {
     windowStart,
     now,
+    // The demo's spending is filed under these, which are no longer part of the starter set.
     extraCategories: [
+      { name: 'Groceries', type: CategoryType.EXPENSE, color: '#f59e0b' },
+      { name: 'Dining out', type: CategoryType.EXPENSE, color: '#fb923c' },
+      { name: 'Utilities', type: CategoryType.EXPENSE, color: '#eab308' },
       { name: 'Household', type: CategoryType.EXPENSE, color: '#a855f7' },
     ],
     accounts: ACCOUNTS.map((account) => ({ ...account })),

@@ -236,14 +236,15 @@ describe('Categories (e2e)', () => {
       );
       expect(names).toEqual(
         expect.arrayContaining([
-          'INCOME:Salary',
-          'INCOME:Freelance',
-          'EXPENSE:Groceries',
+          'EXPENSE:Food',
+          'EXPENSE:Drinks',
           'EXPENSE:Rent',
-          'EXPENSE:Dining out',
-          'EXPENSE:Transport',
           'EXPENSE:Subscriptions',
-          'EXPENSE:Utilities',
+          'EXPENSE:Transport',
+          'INCOME:Freelance',
+          'INCOME:Salary',
+          'INCOME:Allowance',
+          'INCOME:Trade',
         ]),
       );
       expect(
@@ -265,19 +266,19 @@ describe('Categories (e2e)', () => {
 
   describe('archiving a category in use', () => {
     let userId: string;
-    let groceries: CategoryRow;
+    let food: CategoryRow;
 
     beforeAll(async () => {
       await register('archiver@example.com').expect(201);
       userId = users.find((u) => u.email === 'archiver@example.com')!.id;
-      groceries = categories.find(
-        (c) => c.userId === userId && c.name === 'Groceries',
+      food = categories.find(
+        (c) => c.userId === userId && c.name === 'Food',
       )!;
       transactions.push(
         {
           id: 'tx-1',
           userId,
-          categoryId: groceries.id,
+          categoryId: food.id,
           deletedAt: null,
           items: [],
         },
@@ -287,13 +288,13 @@ describe('Categories (e2e)', () => {
           userId,
           categoryId: null,
           deletedAt: null,
-          items: [{ categoryId: groceries.id }, { categoryId: groceries.id }],
+          items: [{ categoryId: food.id }, { categoryId: food.id }],
         },
         // A deleted transaction doesn't.
         {
           id: 'tx-3',
           userId,
-          categoryId: groceries.id,
+          categoryId: food.id,
           deletedAt: new Date(),
           items: [],
         },
@@ -302,77 +303,77 @@ describe('Categories (e2e)', () => {
 
     it('reports how many live transactions use it', async () => {
       const res = await as(userId)
-        .get(`/categories/${groceries.id}/usage`)
+        .get(`/categories/${food.id}/usage`)
         .expect(200);
       expect(res.body).toEqual({ transactions: 2, budgets: 0 });
     });
 
     it('refuses to delete it', async () => {
-      await as(userId).delete(`/categories/${groceries.id}`).expect(409);
-      expect(categories.some((c) => c.id === groceries.id)).toBe(true);
+      await as(userId).delete(`/categories/${food.id}`).expect(409);
+      expect(categories.some((c) => c.id === food.id)).toBe(true);
     });
 
     it('archives it, drops it from the default list and keeps it with ?status=all', async () => {
       const archived = await as(userId)
-        .patch(`/categories/${groceries.id}/archive`)
+        .patch(`/categories/${food.id}/archive`)
         .expect(200);
       expect(archived.body.archivedAt).toEqual(expect.any(String));
 
       const active = await as(userId).get('/categories?limit=100').expect(200);
       expect(active.body.data.map((c: CategoryRow) => c.id)).not.toContain(
-        groceries.id,
+        food.id,
       );
 
       const all = await as(userId)
         .get('/categories?limit=100&status=all')
         .expect(200);
       expect(all.body.data.map((c: CategoryRow) => c.id)).toContain(
-        groceries.id,
+        food.id,
       );
 
       const onlyArchived = await as(userId)
         .get('/categories?status=archived')
         .expect(200);
       expect(onlyArchived.body.data.map((c: CategoryRow) => c.id)).toEqual([
-        groceries.id,
+        food.id,
       ]);
     });
 
     it('leaves the transactions that use it untouched', () => {
       expect(transactions.find((t) => t.id === 'tx-1')!.categoryId).toBe(
-        groceries.id,
+        food.id,
       );
       expect(
         transactions.find((t) => t.id === 'tx-2')!.items[0].categoryId,
-      ).toBe(groceries.id);
+      ).toBe(food.id);
     });
 
     it("can't be archived or restored by another user", async () => {
       await register('other@example.com').expect(201);
       const otherId = users.find((u) => u.email === 'other@example.com')!.id;
       await as(otherId)
-        .patch(`/categories/${groceries.id}/restore`)
+        .patch(`/categories/${food.id}/restore`)
         .expect(404);
       await as(otherId)
-        .patch(`/categories/${groceries.id}/archive`)
+        .patch(`/categories/${food.id}/archive`)
         .expect(404);
-      await as(otherId).get(`/categories/${groceries.id}/usage`).expect(404);
+      await as(otherId).get(`/categories/${food.id}/usage`).expect(404);
     });
 
     it('restores it to the default list', async () => {
       const restored = await as(userId)
-        .patch(`/categories/${groceries.id}/restore`)
+        .patch(`/categories/${food.id}/restore`)
         .expect(200);
       expect(restored.body.archivedAt).toBeNull();
 
       const active = await as(userId).get('/categories?limit=100').expect(200);
       expect(active.body.data.map((c: CategoryRow) => c.id)).toContain(
-        groceries.id,
+        food.id,
       );
     });
 
     it('404s a restore of a category that is not archived', async () => {
-      await as(userId).patch(`/categories/${groceries.id}/restore`).expect(404);
+      await as(userId).patch(`/categories/${food.id}/restore`).expect(404);
     });
   });
 });

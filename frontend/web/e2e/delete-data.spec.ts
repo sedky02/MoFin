@@ -75,7 +75,7 @@ test.describe("settings delete data", () => {
     expect(accounts.data).toHaveLength(0);
     const categories = await (await page.request.get("/api/backend/categories?status=active&limit=100&offset=0")).json();
     expect(categories.data.map((c: { name: string }) => c.name)).not.toContain("My own");
-    expect(categories.data.map((c: { name: string }) => c.name)).toContain("Groceries");
+    expect(categories.data.map((c: { name: string }) => c.name)).toContain("Food");
 
     // The dashboard starts over.
     await page.goto("/dashboard");

@@ -162,20 +162,20 @@ function RecentTransactionsSkeleton() {
 export function DashboardSkeleton() {
   return (
     <section className="space-y-8" aria-busy="true" aria-label="Loading your dashboard">
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-        <div className="lg:col-span-8">
+      {/* The same grid and order as the dashboard: below lg the summary comes before Goals. */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:gap-y-8">
+        <div className="order-1 lg:order-none lg:col-span-8">
           <div className="flex h-full flex-col">
             <BalanceHeroSkeleton />
           </div>
         </div>
-        <div className="lg:col-span-4">
+        <div className="order-3 lg:order-none lg:col-span-4">
           <GoalsCardSkeleton />
         </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <MonthlySummarySkeleton />
-        <div className="relative">
+        <div className="order-2 lg:order-none lg:col-span-6">
+          <MonthlySummarySkeleton />
+        </div>
+        <div className="relative order-4 lg:order-none lg:col-span-6">
           <RecentTransactionsSkeleton />
         </div>
       </div>

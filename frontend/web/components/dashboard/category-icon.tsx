@@ -12,6 +12,9 @@ import {
   Home,
   Receipt,
   Banknote,
+  Coffee,
+  Repeat,
+  Briefcase,
   type LucideIcon,
 } from "lucide-react";
 
@@ -23,10 +26,13 @@ const RULES: [RegExp, LucideIcon][] = [
   [/transport|fuel|car|uber|taxi/i, Car],
   [/travel|flight|trip|hotel/i, Plane],
   [/health|medical|pharmacy|doctor/i, HeartPulse],
-  [/invest|dividend|stock|brokerage/i, TrendingUp],
+  [/invest|dividend|stock|brokerage|trad(e|ing)\b/i, TrendingUp],
   [/electronic|tech|computer|laptop/i, Laptop],
   [/salary|wage|pay\b|paycheck|income|allowance|bonus/i, Banknote],
   [/rent|mortgage|home|deposit|house/i, Home],
+  [/drink|beverage|coffee|caf[eé]|juice/i, Coffee],
+  [/subscri|membership/i, Repeat],
+  [/freelance|contract|consult|gig\b/i, Briefcase],
 ];
 
 function iconFor(name?: string | null): LucideIcon {

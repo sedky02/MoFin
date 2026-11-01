@@ -209,16 +209,17 @@ describe('UsersService.createUser', () => {
     });
   });
 
-  it('defaults to Salary and Freelance income plus six everyday expense categories', () => {
+  it('defaults to five everyday expense categories and four income ones', () => {
     expect(DEFAULT_CATEGORIES.map((c) => `${c.type}:${c.name}`)).toEqual([
-      'INCOME:Salary',
-      'INCOME:Freelance',
-      'EXPENSE:Groceries',
+      'EXPENSE:Food',
+      'EXPENSE:Drinks',
       'EXPENSE:Rent',
-      'EXPENSE:Dining out',
-      'EXPENSE:Transport',
       'EXPENSE:Subscriptions',
-      'EXPENSE:Utilities',
+      'EXPENSE:Transport',
+      'INCOME:Freelance',
+      'INCOME:Salary',
+      'INCOME:Allowance',
+      'INCOME:Trade',
     ]);
   });
 });

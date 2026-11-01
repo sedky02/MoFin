@@ -80,11 +80,13 @@ export function DashboardBody({ year, month }: { year: number; month: number }) 
     <section className="space-y-8">
       {nudge.show && <AssistantNudge onClose={nudge.close} />}
 
-      {/* Bento grid, matching the Stitch "Refined Quanto Dark" layout: a large
-          balance hero paired with Goals, then Monthly Summary paired with
-          Recent Transactions. */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-        <div className="lg:col-span-8">
+      {/* Bento grid, matching the Stitch "Refined Quanto Dark" layout: a large balance hero
+          paired with Goals, then Monthly Summary paired with Recent Transactions. It is one
+          grid so that below lg, where everything stacks, the order can differ from the desktop
+          one: the summary comes before Goals (order-*), which matters more on a small screen.
+          From lg the order classes are off and the source order is the desktop layout. */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:gap-y-8">
+        <div className="order-1 lg:order-none lg:col-span-8">
           <BalanceCards
             accountId={accountId}
             accountName={selectedAccount?.name}
@@ -92,23 +94,22 @@ export function DashboardBody({ year, month }: { year: number; month: number }) 
             onCurrencyChange={setBalanceCurrencyPick}
           />
         </div>
-        <div className="lg:col-span-4">
+        <div className="order-3 lg:order-none lg:col-span-4">
           <GoalsSummary accountId={accountId} />
         </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <MonthlySummaryCard
-          year={year}
-          month={month}
-          currency={summaryCurrency}
-          currencies={selectedAccount ? [] : accountCurrencies}
-          onCurrencyChange={setSummaryCurrencyPick}
-          accountId={accountId}
-        />
+        <div className="order-2 lg:order-none lg:col-span-6">
+          <MonthlySummaryCard
+            year={year}
+            month={month}
+            currency={summaryCurrency}
+            currencies={selectedAccount ? [] : accountCurrencies}
+            onCurrencyChange={setSummaryCurrencyPick}
+            accountId={accountId}
+          />
+        </div>
         {/* The Monthly Summary alone sets this row's height; on large screens the list is pinned
             to it and scrolls inside. No minimum or maximum height of its own. */}
-        <div className="relative">
+        <div className="relative order-4 lg:order-none lg:col-span-6">
           <RecentTransactions accountId={accountId} className="lg:absolute lg:inset-0" />
         </div>
       </div>
