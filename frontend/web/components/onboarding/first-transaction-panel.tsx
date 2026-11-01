@@ -10,7 +10,11 @@ const WAYS = [
 /**
  * What the balance card shows in place of its chart while nothing is recorded: a chart of
  * nothing says nothing, so the space names the one next step and offers its two ways in as
- * equal, full-size choices. The lime one is the plain route; the other is the AI one.
+ * equal, full-size choices. The filled one is the plain route; the other is the AI one.
+ *
+ * The filled tile stays brand lime. Lime on a white card is only 1.4:1 at its edge, so in
+ * light mode it carries a thin olive outline (3.6:1 against the card); in dark mode lime on the
+ * dark card is already 14:1 and needs none. The other tile gets a border you can actually see.
  */
 export function FirstTransactionPanel() {
   return (
@@ -25,22 +29,22 @@ export function FirstTransactionPanel() {
             className={cn(
               "group flex items-center gap-3.5 rounded-xl p-4 outline-none transition-[background-color,box-shadow,filter] focus-visible:ring-2 focus-visible:ring-ring",
               primary
-                ? "bg-primary text-primary-foreground shadow-sm hover:brightness-95"
-                : "bg-muted/40 ring-1 ring-border hover:bg-muted/70 dark:bg-muted",
+                ? "bg-primary text-primary-foreground shadow-sm ring-1 ring-primary-text/70 hover:brightness-95 dark:ring-transparent"
+                : "bg-card ring-1 ring-foreground/40 hover:bg-muted/60 hover:ring-foreground/60 dark:bg-muted dark:ring-border dark:hover:bg-accent dark:hover:ring-border",
             )}
           >
             <span
               aria-hidden
               className={cn(
                 "grid size-10 shrink-0 place-items-center rounded-xl",
-                primary ? "bg-black/10" : "bg-primary/15 text-primary-text",
+                primary ? "bg-white/50 text-primary-foreground dark:bg-black/10" : "bg-primary/15 text-primary-text",
               )}
             >
               <Icon className="size-5" />
             </span>
             <span className="min-w-0">
               <span className="block text-sm font-semibold">{title}</span>
-              <span className={cn("block text-sm", primary ? "text-primary-foreground/80" : "text-muted-foreground")}>{text}</span>
+              <span className={cn("block text-sm", primary ? "text-primary-foreground/85" : "text-muted-foreground")}>{text}</span>
             </span>
           </Link>
         ))}

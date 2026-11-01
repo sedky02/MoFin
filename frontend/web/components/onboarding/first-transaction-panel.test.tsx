@@ -18,8 +18,12 @@ describe("FirstTransactionPanel", () => {
     render(<FirstTransactionPanel />);
     const record = screen.getByRole("link", { name: /Record a transaction/ });
     const describe = screen.getByRole("link", { name: /Describe it in words/ });
+    // Brand lime, with an outline so its edge shows on a white card (lime alone is 1.4:1 there).
     expect(record.className).toContain("bg-primary");
-    expect(describe.className).not.toContain("bg-primary ");
+    expect(record.className).toContain("ring-primary-text/70");
+    expect(record.className).not.toContain("bg-foreground");
+    expect(describe.className).not.toContain("bg-primary");
+    expect(describe.className).toContain("ring-foreground/40");
     // Same padding and layout: the two read as peers.
     expect(record.className).toContain("p-4");
     expect(describe.className).toContain("p-4");
