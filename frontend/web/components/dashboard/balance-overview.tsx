@@ -38,6 +38,7 @@ export function BalanceOverview({
   currencies = [],
   onCurrencyChange,
   emptyAction,
+  emptyPanel,
 }: {
   amount: string;
   currency: string;
@@ -49,6 +50,11 @@ export function BalanceOverview({
   onCurrencyChange?: (currency: string) => void;
   /** Shown under the headline when there is no activity yet (the first step to take). */
   emptyAction?: React.ReactNode;
+  /**
+   * Nothing is recorded at all: shown in place of the chart and its metric tabs, which would
+   * only chart nothing (and stands in for `emptyAction`).
+   */
+  emptyPanel?: React.ReactNode;
 }) {
   const [metric, setMetric] = React.useState<Metric>("balance");
   const { data, isLoading } = useMonthlySeries(currency, accountId);
@@ -73,15 +79,17 @@ export function BalanceOverview({
           )}
         </div>
         {/* The shared Tabs control: one tab stop, arrow keys move between metrics. */}
-        <Tabs value={metric} onValueChange={(v) => setMetric(v as Metric)}>
-          <TabsList aria-label="Chart metric">
-            {TABS.map((t) => (
-              <TabsTrigger key={t.value} value={t.value} className="px-3">
-                {t.label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
+        {!emptyPanel && (
+          <Tabs value={metric} onValueChange={(v) => setMetric(v as Metric)}>
+            <TabsList aria-label="Chart metric">
+              {TABS.map((t) => (
+                <TabsTrigger key={t.value} value={t.value} className="px-3">
+                  {t.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+        )}
       </div>
 
       {metric !== "balance" && isLoading ? (
@@ -99,7 +107,7 @@ export function BalanceOverview({
         {headline.caption}
         {metric === "balance" && overdrawn && <span className="font-medium text-destructive"> · Overdrawn</span>}
       </p>
-      {emptyAction && <div className="mt-5">{emptyAction}</div>}
+      {emptyAction && !emptyPanel && <div className="mt-5">{emptyAction}</div>}
       {headline.chip && (
         <span
           className={cn(
@@ -113,7 +121,9 @@ export function BalanceOverview({
         </span>
       )}
 
-      {isLoading ? (
+      {emptyPanel ? (
+        <div className="mt-8 border-t border-border pt-6">{emptyPanel}</div>
+      ) : isLoading ? (
         <Skeleton className="mt-6 flex-1 min-h-40 rounded-xl" />
       ) : points.length > 0 ? (
         <div className="mt-8 flex flex-1 gap-3" style={{ minHeight: 170 }}>

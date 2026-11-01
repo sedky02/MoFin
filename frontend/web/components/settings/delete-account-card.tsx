@@ -42,7 +42,7 @@ export function DeleteAccountCard({ user, isLoading }: { user?: User; isLoading:
       </ul>
       <p className="mt-3 text-sm text-muted-foreground">
         Export your data first if you want to keep a copy. To start over but stay signed in, use
-        Delete data above instead.
+        Delete data under Data instead.
       </p>
       <div className="mt-5 flex justify-end">
         {isLoading ? (

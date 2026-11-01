@@ -44,7 +44,11 @@ test("an account without activity shows its own zero and the next step", async (
   // First the setup asks for a first transaction; skipping it shows the dashboard as it is.
   await main.getByRole("button", { name: "Skip for now" }).click();
   await expect(main.getByText(/0\.000\s*TND|TND\s*0\.000/).first()).toBeVisible();
-  await expect(main.getByRole("link", { name: "Record your first transaction" })).toBeVisible();
+  await expect(main.getByRole("link", { name: /Record a transaction/ })).toBeVisible();
+  // Nothing recorded: no empty cards, just the balance.
+  for (const card of ["Goals", "Monthly summary", "Recent transactions"]) {
+    await expect(main.getByRole("heading", { name: card, exact: true })).toHaveCount(0);
+  }
   await expect(main.getByText("Create your first account")).toHaveCount(0);
   await expect(main.getByText("Add your first account")).toHaveCount(0);
 });

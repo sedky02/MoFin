@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { formatViolations, runAxe } from "./helpers/axe";
 
-// Settings → Delete data removes everything the user recorded and keeps the account:
+// Settings → Data → Delete all data removes everything the user recorded and keeps the account:
 // still signed in, same profile, starter categories back, and the dashboard starts over
 // from the first-run welcome.
 //
@@ -37,9 +37,13 @@ test.describe("settings delete data", () => {
     ).toBeTruthy();
 
     await page.goto("/settings");
-    await expect(page.getByRole("heading", { name: "Delete data", level: 2 })).toBeVisible();
+    // A row of the Data card, next to the exports: not a red card of its own.
+    const data = page.locator("#data");
+    await expect(data.getByText("Danger zone")).toBeVisible();
+    await expect(data.getByRole("heading", { name: "Delete all data", level: 3 })).toBeVisible();
+    await expect(page.locator("#delete-data")).toHaveCount(0);
 
-    await page.getByRole("button", { name: "Delete data…" }).click();
+    await data.getByRole("button", { name: "Delete data…" }).click();
     const dialog = page.getByRole("alertdialog", { name: "Delete all your data?" });
     await expect(dialog).toBeVisible();
 

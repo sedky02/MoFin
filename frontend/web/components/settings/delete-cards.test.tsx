@@ -23,7 +23,7 @@ vi.mock("@/lib/api", async (importOriginal) => ({
 vi.mock("sonner", () => ({ toast }));
 
 import { DeleteAccountCard } from "@/components/settings/delete-account-card";
-import { DeleteDataCard } from "@/components/settings/delete-data-card";
+import { DeleteDataRow } from "@/components/settings/delete-data-row";
 
 const user = (over: Partial<User> = {}): User => ({
   id: "u1",
@@ -52,15 +52,23 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("DeleteDataCard", () => {
+describe("DeleteDataRow", () => {
   it("is not offered to a demo, whose data goes when it ends", () => {
-    const { container } = renderCard(<DeleteDataCard user={user({ isDemo: true })} isLoading={false} />);
+    const { container } = renderCard(<DeleteDataRow user={user({ isDemo: true })} isLoading={false} />);
     expect(container.textContent).toBe("");
+  });
+
+  it("is a red warning row, with a red button, so it reads as the dangerous thing it is", () => {
+    renderCard(<DeleteDataRow user={user()} isLoading={false} />);
+    const row = screen.getByRole("heading", { name: "Delete all data", level: 3 }).closest("div[class*='border']");
+    expect(row?.className).toContain("border-destructive");
+    expect(screen.getByRole("heading", { level: 3 }).className).toContain("text-destructive");
+    expect(screen.getByRole("button", { name: "Delete data…" }).className).toContain("text-destructive");
   });
 
   it("asks for the word and nothing else, and deletes nothing until it is typed", async () => {
     const u = userEvent.setup();
-    renderCard(<DeleteDataCard user={user()} isLoading={false} />);
+    renderCard(<DeleteDataRow user={user()} isLoading={false} />);
 
     await u.click(screen.getByRole("button", { name: "Delete data…" }));
     const dialog = screen.getByRole("alertdialog", { name: "Delete all your data?" });
@@ -73,7 +81,7 @@ describe("DeleteDataCard", () => {
 
   it("deletes the data, refreshes what is cached, says so and closes", async () => {
     const u = userEvent.setup();
-    renderCard(<DeleteDataCard user={user({ hasPassword: false })} isLoading={false} />);
+    renderCard(<DeleteDataRow user={user({ hasPassword: false })} isLoading={false} />);
 
     await u.click(screen.getByRole("button", { name: "Delete data…" }));
     await u.type(screen.getByLabelText("Type DELETE to confirm"), "DELETE");
@@ -90,7 +98,7 @@ describe("DeleteDataCard", () => {
   it("stays open and says nothing was deleted when the request fails", async () => {
     post.mockRejectedValue(new Error("boom"));
     const u = userEvent.setup();
-    renderCard(<DeleteDataCard user={user()} isLoading={false} />);
+    renderCard(<DeleteDataRow user={user()} isLoading={false} />);
 
     await u.click(screen.getByRole("button", { name: "Delete data…" }));
     await u.type(screen.getByLabelText("Type DELETE to confirm"), "DELETE");

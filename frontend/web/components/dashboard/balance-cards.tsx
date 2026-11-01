@@ -21,9 +21,12 @@ export function BalanceCards({
   accountName,
   currency,
   onCurrencyChange,
+  emptyPanel,
 }: {
   accountId?: string;
   accountName?: string;
+  /** A dashboard with nothing recorded: shown under the balance in place of the chart. */
+  emptyPanel?: React.ReactNode;
   /** Controlled currency (shared with the Monthly Summary); falls back to local state when omitted. */
   currency?: string;
   onCurrencyChange?: (currency: string) => void;
@@ -103,6 +106,7 @@ export function BalanceCards({
             </Button>
           ) : undefined
         }
+        emptyPanel={emptyPanel}
       />
     </div>
   );

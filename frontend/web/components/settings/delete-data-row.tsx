@@ -2,17 +2,20 @@
 
 import * as React from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Eraser } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { SettingsCard } from "@/components/settings/settings-card";
+import { SettingsRow } from "@/components/settings/settings-card";
 import { CONFIRM_WORD, TypeToConfirmDialog } from "@/components/settings/type-to-confirm-dialog";
 import { api } from "@/lib/api";
 import type { User } from "@/lib/types";
 
-/** Deletes everything recorded in MoFin and keeps the account, its sign-ins and its connected AI apps. */
-export function DeleteDataCard({ user, isLoading }: { user?: User; isLoading: boolean }) {
+/**
+ * A row of the Data card: deletes everything recorded in MoFin and keeps the account, its
+ * sign-ins and its connected AI apps. A red warning, since it can't be undone, but kept with
+ * the data it deletes; the account's own card stays the louder of the two.
+ */
+export function DeleteDataRow({ user, isLoading }: { user?: User; isLoading: boolean }) {
   const [open, setOpen] = React.useState(false);
   const queryClient = useQueryClient();
 
@@ -20,31 +23,25 @@ export function DeleteDataCard({ user, isLoading }: { user?: User; isLoading: bo
   if (user?.isDemo) return null;
 
   return (
-    <SettingsCard
-      id="delete-data"
-      icon={Eraser}
-      tone="danger"
-      title="Delete data"
-      description="Permanently deletes everything you recorded and keeps your account. This can't be undone."
-    >
-      <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
-        <li>your accounts and their balances;</li>
-        <li>every transaction, including deleted and recurring ones;</li>
-        <li>your goals, your pending drafts and the categories you created (the starter set comes back).</li>
-      </ul>
-      <p className="mt-3 text-sm text-muted-foreground">
-        You stay signed in, and your profile, settings and connected AI apps stay as they are. Export your data first
-        if you want to keep a copy.
-      </p>
-      <div className="mt-5 flex justify-end">
+    <>
+      <SettingsRow
+        tone="danger"
+        title="Delete all data"
+        description="Wipes everything you recorded: accounts, transactions, goals and drafts. Keeps your account, your sign-in and your connected AI apps. This can't be undone."
+      >
         {isLoading ? (
-          <Skeleton className="h-9 w-36" />
+          <Skeleton className="h-9 w-32" />
         ) : (
-          <Button variant="destructive" onClick={() => setOpen(true)} disabled={!user}>
+          <Button
+            variant="outline"
+            className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+            onClick={() => setOpen(true)}
+            disabled={!user}
+          >
             Delete data…
           </Button>
         )}
-      </div>
+      </SettingsRow>
       <TypeToConfirmDialog
         open={open}
         onOpenChange={setOpen}
@@ -60,6 +57,6 @@ export function DeleteDataCard({ user, isLoading }: { user?: User; isLoading: bo
           toast.success("All your data was deleted.");
         }}
       />
-    </SettingsCard>
+    </>
   );
 }

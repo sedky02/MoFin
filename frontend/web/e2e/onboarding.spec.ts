@@ -56,19 +56,46 @@ test("set up the first account and the first transaction in one flow, then land 
 
   // Skipping goes to the dashboard, and stays skipped.
   await main.getByRole("button", { name: "Skip for now" }).click();
-  await expect(main.getByText(/120\.500\s*TND|TND\s*120\.500/).first()).toBeVisible();
+  const balance = main.getByText(/120\.500\s*TND|TND\s*120\.500/).first();
+  await expect(balance).toBeVisible();
   await expect(main.getByRole("heading", { level: 1 })).toHaveCount(0);
+
+  // Nothing recorded yet: just the balance, with one way forward and nothing else to press.
+  await expect(main.getByRole("heading", { level: 2, name: "Record your first transaction" })).toBeVisible();
+  await expect(main.getByRole("link", { name: /Record a transaction/ })).toHaveAttribute("href", "/transactions/new");
+  await expect(main.getByRole("link", { name: /Describe it in words/ })).toHaveAttribute("href", "/drafts");
+  await expect(main.getByRole("link")).toHaveCount(2);
+  // A chart of nothing is gone, with its metric tabs.
+  await expect(main.getByRole("tablist", { name: "Chart metric" })).toHaveCount(0);
+  const empty = await runAxe(page, { include: "main" });
+  await testInfo.attach("axe empty dashboard", { body: formatViolations(empty) || "no violations", contentType: "text/plain" });
+  expect(empty, `axe violations on the empty dashboard\n${formatViolations(empty)}`).toEqual([]);
+  for (const card of ["Goals", "Monthly summary", "Recent transactions"]) {
+    await expect(main.getByRole("heading", { name: card, exact: true })).toHaveCount(0);
+  }
+  await expect(main.getByRole("region", { name: "Connect an assistant" })).toHaveCount(0);
   await page.reload();
-  await expect(main.getByText(/120\.500\s*TND|TND\s*120\.500/).first()).toBeVisible();
+  await expect(balance).toBeVisible();
   await expect(main.getByText("Step 2 of 2")).toHaveCount(0);
 
-  // After setup, one quiet line suggests an assistant, and closing it sticks.
+  // Once something is recorded the rest of the dashboard appears, and one quiet line suggests an assistant.
+  const accounts = await (await page.request.get("/api/backend/accounts?status=active&limit=100&offset=0")).json();
+  const recorded = await page.request.post("/api/backend/transactions", {
+    data: { type: "EXPENSE", description: "Coffee", amount: "3", currency: "TND", occurredAt: new Date().toISOString().slice(0, 10), fromAccountId: accounts.data[0].id },
+  });
+  expect(recorded.ok()).toBeTruthy();
+  await page.reload();
+  for (const card of ["Goals", "Monthly summary", "Recent transactions"]) {
+    await expect(main.getByRole("heading", { name: card, exact: true })).toBeVisible();
+  }
+  // The chart and its tabs are back now that there is something to chart.
+  await expect(main.getByRole("tablist", { name: "Chart metric" })).toBeVisible();
   const nudge = main.getByRole("region", { name: "Connect an assistant" });
   await expect(nudge.getByRole("link", { name: "Connect" })).toHaveAttribute("href", "/connect");
   await nudge.getByRole("button", { name: "Dismiss this suggestion" }).click();
   await expect(nudge).toHaveCount(0);
   await page.reload();
-  await expect(main.getByText(/120\.500\s*TND|TND\s*120\.500/).first()).toBeVisible();
+  await expect(main.getByRole("heading", { name: "Recent transactions" })).toBeVisible();
   await expect(main.getByRole("region", { name: "Connect an assistant" })).toHaveCount(0);
 });
 

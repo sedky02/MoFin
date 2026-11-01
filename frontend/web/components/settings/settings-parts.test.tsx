@@ -151,7 +151,7 @@ describe("SettingsNav", () => {
       cb(0);
       return 0;
     });
-    scrollTo([300, 800, 1300, 1800, 2200, 2350, 2500]);
+    scrollTo([300, 800, 1300, 1800, 2200, 2500]);
   });
   afterEach(() => {
     cleanup();
@@ -169,11 +169,11 @@ describe("SettingsNav", () => {
   it("highlights the section being read as the page scrolls, down and back up", () => {
     renderWithSections();
     expect(current()).toBe("Profile");
-    scrollTo([-400, 100, 600, 1100, 1500, 1650, 1800]);
+    scrollTo([-400, 100, 600, 1100, 1500, 1800]);
     expect(current()).toBe("Preferences");
-    scrollTo([-1500, -1000, -400, 100, 500, 650, 800]);
+    scrollTo([-1500, -1000, -400, 100, 500, 800]);
     expect(current()).toBe("Connected AI apps");
-    scrollTo([-400, 100, 600, 1100, 1500, 1650, 1800]);
+    scrollTo([-400, 100, 600, 1100, 1500, 1800]);
     expect(current()).toBe("Preferences");
   });
 
@@ -181,7 +181,7 @@ describe("SettingsNav", () => {
     vi.spyOn(document.documentElement, "scrollHeight", "get").mockReturnValue(window.innerHeight + 500);
     Object.defineProperty(window, "scrollY", { value: 500, configurable: true });
     renderWithSections();
-    scrollTo([-1500, -1200, -900, -500, 200, 310, 420]);
+    scrollTo([-1500, -1200, -900, -500, 200, 420]);
     expect(current()).toBe("Delete account");
     Object.defineProperty(window, "scrollY", { value: 0, configurable: true });
   });
@@ -192,11 +192,11 @@ describe("SettingsNav", () => {
     expect(document.getElementById("data")!.scrollIntoView).toHaveBeenCalled();
     expect(current()).toBe("Data");
     // The page is still moving towards it: scroll events don't pull the highlight elsewhere.
-    scrollTo([-1500, -1200, -900, -500, 300, 450, 600]);
+    scrollTo([-1500, -1200, -900, -500, 300, 600]);
     expect(current()).toBe("Data");
     // The reader takes over.
     fireEvent.wheel(window);
-    scrollTo([-1500, -1200, -900, -500, 300, 450, 600]);
+    scrollTo([-1500, -1200, -900, -500, 300, 600]);
     expect(current()).toBe("Connected AI apps");
   });
 });

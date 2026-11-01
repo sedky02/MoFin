@@ -4,10 +4,12 @@ import * as React from "react";
 import { Database, Download, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { DeleteDataRow } from "@/components/settings/delete-data-row";
 import { SettingsCard, SettingsRow } from "@/components/settings/settings-card";
 import { ApiClientError } from "@/lib/api";
 import { downloadFile } from "@/lib/download";
 import { handleApiError } from "@/lib/form-errors";
+import type { User } from "@/lib/types";
 
 type Format = "json" | "csv";
 
@@ -26,8 +28,8 @@ const FORMATS: { format: Format; label: string; title: string; description: stri
   },
 ];
 
-/** Settings card that downloads everything the user has in MoFin. */
-export function DataCard() {
+/** Settings card that downloads everything the user has in MoFin, or deletes it and starts over. */
+export function DataCard({ user, isLoading }: { user?: User; isLoading: boolean }) {
   const [pending, setPending] = React.useState<Format | null>(null);
 
   async function exportAs(format: Format) {
@@ -51,7 +53,7 @@ export function DataCard() {
       id="data"
       icon={Database}
       title="Data"
-      description="Download your accounts, categories, transactions and goals. Deleted transactions are left out."
+      description="Download your accounts, categories, transactions and goals (deleted transactions are left out), or delete it all and start over."
     >
       <div className="space-y-3">
         {FORMATS.map(({ format, label, title, description }) => (
@@ -67,6 +69,13 @@ export function DataCard() {
             </Button>
           </SettingsRow>
         ))}
+        {/* Set apart from the exports: this one is not reversible. */}
+        <div className="pt-3">
+          {!user?.isDemo && (
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-destructive">Danger zone</p>
+          )}
+          <DeleteDataRow user={user} isLoading={isLoading} />
+        </div>
       </div>
     </SettingsCard>
   );

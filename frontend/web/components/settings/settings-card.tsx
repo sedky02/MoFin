@@ -1,5 +1,5 @@
 import * as React from "react";
-import type { LucideIcon } from "lucide-react";
+import { TriangleAlert, type LucideIcon } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
@@ -69,21 +69,29 @@ export function SettingsRow({
   description,
   children,
   className,
+  tone = "default",
 }: {
   title: string;
   description?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
+  /** "danger": a red warning row, for something that can't be undone. */
+  tone?: "default" | "danger";
 }) {
+  const danger = tone === "danger";
   return (
     <div
       className={cn(
-        "flex flex-col gap-3 rounded-xl border border-border p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4",
+        "flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4",
+        danger ? "border-destructive/30 bg-destructive/[0.04]" : "border-border",
         className,
       )}
     >
       <div className="min-w-0">
-        <h3 className="text-sm font-medium">{title}</h3>
+        <h3 className={cn("flex items-center gap-1.5 text-sm font-medium", danger && "text-destructive")}>
+          {danger && <TriangleAlert aria-hidden className="size-4 shrink-0" />}
+          {title}
+        </h3>
         {description && <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>}
       </div>
       <div className="shrink-0">{children}</div>
