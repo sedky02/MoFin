@@ -3,62 +3,13 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
-import { SettingsCard } from "@/components/settings/settings-card";
-import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { PasswordInput } from "@/components/common/password-input";
-import { SubmitButton } from "@/components/common/submit-button";
+import { SettingsCard } from "@/components/settings/settings-card";
+import { CONFIRM_WORD, TypeToConfirmDialog } from "@/components/settings/type-to-confirm-dialog";
 import { authApi } from "@/lib/api";
-import { handleApiError } from "@/lib/form-errors";
 import type { User } from "@/lib/types";
-
-const CONFIRM_WORD = "DELETE";
-
-// The password for a password account, the account's email for a Google-only
-// one (it has no password). The backend checks whichever applies.
-function deleteSchema(hasPassword: boolean) {
-  return z
-    .object({
-      confirmText: z.string(),
-      password: z.string(),
-      confirmEmail: z.string(),
-    })
-    .superRefine((v, ctx) => {
-      if (v.confirmText.trim() !== CONFIRM_WORD) {
-        ctx.addIssue({ code: "custom", path: ["confirmText"], message: `Type ${CONFIRM_WORD} to confirm.` });
-      }
-      if (hasPassword && !v.password) {
-        ctx.addIssue({ code: "custom", path: ["password"], message: "Enter your password." });
-      }
-      if (!hasPassword && !v.confirmEmail.trim()) {
-        ctx.addIssue({ code: "custom", path: ["confirmEmail"], message: "Type your account's email." });
-      }
-    });
-}
-type DeleteValues = z.infer<ReturnType<typeof deleteSchema>>;
 
 export function DeleteAccountCard({ user, isLoading }: { user?: User; isLoading: boolean }) {
   const [open, setOpen] = React.useState(false);
@@ -90,7 +41,8 @@ export function DeleteAccountCard({ user, isLoading }: { user?: User; isLoading:
         <li>connected AI apps and every signed-in session.</li>
       </ul>
       <p className="mt-3 text-sm text-muted-foreground">
-        Export your data first if you want to keep a copy.
+        Export your data first if you want to keep a copy. To start over but stay signed in, use
+        Delete data above instead.
       </p>
       <div className="mt-5 flex justify-end">
         {isLoading ? (
@@ -101,134 +53,33 @@ export function DeleteAccountCard({ user, isLoading }: { user?: User; isLoading:
           </Button>
         )}
       </div>
-      {user && (
-        <DeleteAccountDialog
-          open={open}
-          onOpenChange={setOpen}
-          email={user.email}
-          // Unknown (an older API) counts as a password account: the backend
-          // then answers with a field error if it isn't one.
-          hasPassword={user.hasPassword !== false}
-        />
-      )}
+      {user && <DeleteAccountDialog open={open} onOpenChange={setOpen} />}
     </SettingsCard>
   );
 }
 
-function DeleteAccountDialog({
-  open,
-  onOpenChange,
-  email,
-  hasPassword,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  email: string;
-  hasPassword: boolean;
-}) {
+function DeleteAccountDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const [pending, setPending] = React.useState(false);
-  const form = useForm<DeleteValues>({
-    resolver: zodResolver(deleteSchema(hasPassword)),
-    defaultValues: { confirmText: "", password: "", confirmEmail: "" },
-  });
-
-  function changeOpen(next: boolean) {
-    if (pending) return;
-    if (!next) form.reset();
-    onOpenChange(next);
-  }
-
-  async function action() {
-    const valid = await form.trigger(undefined, { shouldFocus: true });
-    if (!valid) return;
-    const { password, confirmEmail } = form.getValues();
-    setPending(true);
-    try {
-      await authApi.delete("/account", hasPassword ? { password } : { confirmEmail });
-    } catch (err) {
-      setPending(false);
-      handleApiError(err, { setError: form.setError, fallback: "Couldn't delete the account. Please try again." });
-      // Put the cursor on the field the server refused (e.g. a wrong password).
-      const refused = (["password", "confirmEmail"] as const).find((name) => form.getFieldState(name).error);
-      if (refused) form.setFocus(refused);
-      return;
-    }
-    // The session is gone with the account: drop everything cached for it.
-    queryClient.clear();
-    router.replace("/login?reason=account_deleted");
-    router.refresh();
-  }
 
   return (
-    <AlertDialog open={open} onOpenChange={changeOpen}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Delete your account?</AlertDialogTitle>
-          <AlertDialogDescription>
-            Your account and all of its data will be deleted for good, and you&apos;ll be signed out everywhere.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <Form {...form}>
-          <form action={action} className="grid gap-4" aria-label="Delete account">
-            {/* Tells password managers which account the password belongs to. */}
-            <input type="text" name="username" autoComplete="username" value={email} readOnly hidden />
-            <FormField
-              control={form.control}
-              name="confirmText"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Type {CONFIRM_WORD} to confirm</FormLabel>
-                  <FormControl>
-                    <Input autoComplete="off" autoCapitalize="characters" spellCheck={false} {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            {hasPassword ? (
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Password</FormLabel>
-                    <FormControl>
-                      <PasswordInput autoComplete="current-password" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            ) : (
-              <FormField
-                control={form.control}
-                name="confirmEmail"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Your email</FormLabel>
-                    <FormControl>
-                      <Input type="email" autoComplete="off" spellCheck={false} {...field} />
-                    </FormControl>
-                    <FormDescription>You sign in with Google, so type {email} instead of a password.</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
-            <AlertDialogFooter>
-              <AlertDialogCancel disabled={pending}>Cancel</AlertDialogCancel>
-              <SubmitButton
-                pendingText="Deleting…"
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                Delete account
-              </SubmitButton>
-            </AlertDialogFooter>
-          </form>
-        </Form>
-      </AlertDialogContent>
-    </AlertDialog>
+    <TypeToConfirmDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Delete your account?"
+      description="Your account and all of its data will be deleted for good, and you'll be signed out everywhere."
+      actionLabel="Delete account"
+      pendingText="Deleting…"
+      failureMessage="Couldn't delete the account. Please try again."
+      // The page is left for /login, so the dialog stays up (and busy) until it goes.
+      closeWhenDone={false}
+      onConfirm={async () => {
+        await authApi.delete("/account", { confirm: CONFIRM_WORD });
+        // The session is gone with the account: drop everything cached for it.
+        queryClient.clear();
+        router.replace("/login?reason=account_deleted");
+        router.refresh();
+      }}
+    />
   );
 }

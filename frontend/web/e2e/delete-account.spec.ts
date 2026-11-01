@@ -3,7 +3,9 @@ import { formatViolations, runAxe } from "./helpers/axe";
 
 // B-23c: Settings → Delete account removes the account and its data, then
 // lands on /login with a notice. The profile copy no longer suggests the
-// email can be changed somewhere else.
+// email can be changed somewhere else. Typing DELETE is the whole
+// confirmation: there is no password to ask for (a Google-only account has
+// none).
 //
 // Deletes a throwaway user per project, never the shared fixture user.
 // Credential routes are rate limited per email + IP, so this registers once
@@ -28,35 +30,34 @@ test.describe("settings delete account", () => {
     await expect(page.getByText(/can't be changed here/)).toHaveCount(0);
 
     await expect(page.getByRole("heading", { name: "Delete account", level: 2 })).toBeVisible();
-    await expect(page.getByText("Export your data first if you want to keep a copy.")).toBeVisible();
+    await expect(page.locator("#delete-account").getByText("Export your data first if you want to keep a copy.")).toBeVisible();
 
     await page.getByRole("button", { name: "Delete account…" }).click();
     const dialog = page.getByRole("alertdialog", { name: "Delete your account?" });
     await expect(dialog).toBeVisible();
 
-    const violations = await runAxe(page);
+    // Only the dialog: the page behind it is covered by its own specs.
+    const violations = await runAxe(page, { include: '[role="alertdialog"]' });
     await testInfo.attach("axe delete dialog", { body: formatViolations(violations) || "no violations", contentType: "text/plain" });
     expect(violations, `axe violations on the delete dialog\n${formatViolations(violations)}`).toEqual([]);
 
     const form = dialog.getByRole("form", { name: "Delete account" });
     const confirm = form.getByLabel("Type DELETE to confirm");
-    const passwordField = form.getByLabel("Password", { exact: true });
     const submit = form.getByRole("button", { name: "Delete account" });
 
-    // Nothing typed: both fields say what they need.
+    // No password or email to type: the word is the only field.
+    await expect(form.getByLabel("Password", { exact: true })).toHaveCount(0);
+    await expect(form.getByLabel("Your email")).toHaveCount(0);
+
+    // Nothing typed, or the wrong word: it says what it needs, and nothing is deleted.
     await submit.click();
     await expect(form.getByText("Type DELETE to confirm.")).toBeVisible();
-    await expect(form.getByText("Enter your password.")).toBeVisible();
-
-    // A wrong password is refused on the field, and nothing is deleted.
-    await confirm.fill("DELETE");
-    await passwordField.fill("not-my-password");
+    await confirm.fill("delete me");
     await submit.click();
-    await expect(form.getByText("The password is incorrect.")).toBeVisible();
-    await expect(passwordField).toBeFocused();
+    await expect(form.getByText("Type DELETE to confirm.")).toBeVisible();
     await expect(page).toHaveURL(/\/settings$/);
 
-    await passwordField.fill(password);
+    await confirm.fill("DELETE");
     await submit.click();
 
     await expect(page).toHaveURL(/\/login\?reason=account_deleted$/);

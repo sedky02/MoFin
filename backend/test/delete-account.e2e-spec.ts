@@ -1,5 +1,6 @@
 /**
- * Deleting an account, through the real controllers, guards (global
+ * Deleting an account, and deleting just its data (DELETE /users/me and
+ * POST /users/me/reset-data), through the real controllers, guards (global
  * throttler + web JWT, the per-user delete limit), validation, UsersService
  * and AuthService (to check the login afterwards).
  *
@@ -21,6 +22,7 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import * as request from 'supertest';
 import { App } from 'supertest/types';
+import { DEFAULT_CATEGORIES } from '../src/modules/categories/default-categories';
 import { DELETE_ACCOUNT_THROTTLE } from '../src/common/guards/auth-throttler.guard';
 import { GlobalJwtAuthGuard } from '../src/common/guards/jwt-auth.guard';
 import { PrismaService } from '../src/database/prisma.service';
@@ -152,6 +154,11 @@ function inMemoryPrisma() {
       tables[table].push(row);
       return { ...row };
     },
+    createMany: async ({ data }: { data: Record<string, unknown>[] }) => {
+      for (const fields of data)
+        tables[table].push({ id: `${table}-${++nextId}`, ...fields });
+      return { count: data.length };
+    },
     update: async ({
       where,
       data,
@@ -218,6 +225,7 @@ function seedUser(db: Db, id: string, passwordHash: string | null) {
     email: `${id}@example.com`,
     passwordHash,
     googleId: passwordHash ? null : `google-${id}`,
+    settings: { mainAccountId: `${id}-cash`, defaultCurrency: 'EUR' },
   });
   add('account', {
     id: `${id}-cash`,
@@ -360,7 +368,7 @@ function ownedBy(db: Db, userId: string): Record<string, number> {
   );
 }
 
-describe('DELETE /users/me (e2e)', () => {
+describe('deleting an account and its data (e2e)', () => {
   let app: INestApplication<App>;
   let db: Db;
   let ipCounter = 0;
@@ -423,13 +431,24 @@ describe('DELETE /users/me (e2e)', () => {
       .post('/api/v1/auth/login')
       .set('X-Forwarded-For', nextIp())
       .send({ email, password });
+  const CONFIRM = { confirm: 'DELETE' };
   const deleteAccount = (
     accessToken: string,
-    body: object,
+    body: object = CONFIRM,
     ip = '203.0.113.7',
   ) =>
     http()
       .delete('/api/v1/users/me')
+      .set('X-Forwarded-For', ip)
+      .auth(accessToken, { type: 'bearer' })
+      .send(body);
+  const resetData = (
+    accessToken: string,
+    body: object = CONFIRM,
+    ip = '203.0.113.7',
+  ) =>
+    http()
+      .post('/api/v1/users/me/reset-data')
       .set('X-Forwarded-For', ip)
       .auth(accessToken, { type: 'bearer' })
       .send(body);
@@ -445,10 +464,8 @@ describe('DELETE /users/me (e2e)', () => {
   });
 
   it('needs a web session', async () => {
-    await http()
-      .delete('/api/v1/users/me')
-      .send({ password: 'right-password' })
-      .expect(401);
+    await http().delete('/api/v1/users/me').send(CONFIRM).expect(401);
+    await http().post('/api/v1/users/me/reset-data').send(CONFIRM).expect(401);
     expect(ownedBy(db, 'u1').user).toBe(1);
   });
 
@@ -460,9 +477,7 @@ describe('DELETE /users/me (e2e)', () => {
     const otherBefore = ownedBy(db, 'u2');
     const googleBefore = ownedBy(db, 'g1');
 
-    await deleteAccount(session.accessToken, {
-      password: 'right-password',
-    }).expect(204, '');
+    await deleteAccount(session.accessToken).expect(204, '');
 
     const left = Object.entries(ownedBy(db, 'u1')).filter(
       ([, rows]) => rows > 0,
@@ -490,18 +505,18 @@ describe('DELETE /users/me (e2e)', () => {
     await login('u2@example.com').expect(201);
   });
 
-  it('refuses a wrong password with a field error and deletes nothing', async () => {
+  it.each([
+    ['an empty body', {}],
+    ['the word in lower case', { confirm: 'delete' }],
+    ['a password instead', { password: 'right-password' }],
+  ])('refuses %s and deletes nothing', async (_label, body) => {
     const before = structuredClone(db.tables());
 
-    for (const body of [
-      { password: 'wrong-password' },
-      {},
-      { confirmEmail: 'u1@example.com' },
-    ]) {
-      const res = await deleteAccount(tokenFor('u1'), body);
+    for (const send of [deleteAccount, resetData]) {
+      const res = await send(tokenFor('u1'), body);
       expect(res.status).toBe(400);
       expect(res.body.errors).toEqual([
-        { path: 'password', message: expect.any(String) },
+        { path: 'confirm', message: expect.any(String) },
       ]);
     }
 
@@ -509,19 +524,8 @@ describe('DELETE /users/me (e2e)', () => {
     await login('u1@example.com').expect(201);
   });
 
-  it('asks a Google-only account to type its email instead', async () => {
-    const wrong = await deleteAccount(tokenFor('g1'), {
-      confirmEmail: 'u1@example.com',
-    });
-    expect(wrong.status).toBe(400);
-    expect(wrong.body.errors).toEqual([
-      { path: 'confirmEmail', message: expect.any(String) },
-    ]);
-    expect(ownedBy(db, 'g1').user).toBe(1);
-
-    await deleteAccount(tokenFor('g1'), {
-      confirmEmail: 'G1@example.com',
-    }).expect(204);
+  it('deletes a Google-only account the same way, with no password or email to type', async () => {
+    await deleteAccount(tokenFor('g1')).expect(204);
     expect(Object.values(ownedBy(db, 'g1')).every((rows) => rows === 0)).toBe(
       true,
     );
@@ -537,31 +541,113 @@ describe('DELETE /users/me (e2e)', () => {
       throw new Error('connection lost');
     };
 
-    await deleteAccount(tokenFor('u1'), { password: 'right-password' }).expect(
-      500,
-    );
+    await deleteAccount(tokenFor('u1')).expect(500);
 
     expect(db.tables()).toEqual(before);
   });
 
   it('limits attempts per user, across IPs', async () => {
     for (let i = 0; i < DELETE_ACCOUNT_THROTTLE.limit; i++) {
-      await deleteAccount(
-        tokenFor('u1'),
-        { password: 'guess' },
-        `198.51.100.${i + 1}`,
-      ).expect(400);
+      await deleteAccount(tokenFor('u1'), {}, `198.51.100.${i + 1}`).expect(
+        400,
+      );
     }
-    const res = await deleteAccount(
-      tokenFor('u1'),
-      { password: 'right-password' },
-      '198.51.100.99',
-    );
+    const res = await deleteAccount(tokenFor('u1'), CONFIRM, '198.51.100.99');
     expect(res.status).toBe(429);
     expect(Number(res.headers['retry-after'])).toBeGreaterThan(0);
     expect(ownedBy(db, 'u1').user).toBe(1);
 
     // Another user is unaffected.
-    await deleteAccount(tokenFor('u2'), { password: 'guess' }).expect(400);
+    await deleteAccount(tokenFor('u2'), {}).expect(400);
+  });
+
+  describe('POST /users/me/reset-data', () => {
+    /** What survives a reset: the user row, sign-ins and connected apps. */
+    const KEPT = [
+      'user',
+      'refreshToken',
+      'authSession',
+      'passwordResetToken',
+      'oAuthRefreshToken',
+      'authorizationCode',
+      'oAuthGrant',
+    ];
+
+    it("deletes everything recorded, soft-deleted rows included, keeps the profile, sign-ins and connected apps, and touches nobody else's", async () => {
+      const session = (await login('u1@example.com').expect(201)).body as {
+        accessToken: string;
+        refreshToken: string;
+      };
+      const before = ownedBy(db, 'u1');
+      const otherBefore = ownedBy(db, 'u2');
+      const googleBefore = ownedBy(db, 'g1');
+
+      await resetData(session.accessToken).expect(204, '');
+
+      const after = ownedBy(db, 'u1');
+      for (const table of KEPT) {
+        // Signing in added a session and a refresh token; nothing was removed.
+        expect(after[table]).toBeGreaterThanOrEqual(before[table]);
+      }
+      const gone = Object.entries(after).filter(
+        ([table, rows]) =>
+          !KEPT.includes(table) && table !== 'category' && rows > 0,
+      );
+      expect(gone).toEqual([]);
+      expect(ownedBy(db, 'u2')).toEqual(otherBefore);
+      expect(ownedBy(db, 'g1')).toEqual(googleBefore);
+      expect(
+        db.tables().category.find((c) => c.id === 'global-cat'),
+      ).toBeDefined();
+
+      // Still signed in, with the same session: renewing it works, and so does a fresh login.
+      await http()
+        .post('/api/v1/auth/refresh')
+        .send({ refreshToken: session.refreshToken })
+        .expect(201);
+      await login('u1@example.com').expect(201);
+    });
+
+    it('gives the starter categories back in place of the old ones, and unsets the main account', async () => {
+      await resetData(tokenFor('u1')).expect(204);
+
+      const mine = db.tables().category.filter((c) => c.userId === 'u1');
+      expect(mine.map((c) => c.name).sort()).toEqual(
+        DEFAULT_CATEGORIES.map((c) => c.name).sort(),
+      );
+      expect(mine.find((c) => c.id === 'u1-cat')).toBeUndefined();
+      expect(db.tables().user.find((u) => u.id === 'u1')?.settings).toEqual({
+        defaultCurrency: 'EUR',
+      });
+      // Nothing left points at a deleted row of theirs.
+      const rest = JSON.stringify(
+        Object.entries(db.tables()).filter(
+          ([table]) => !['user', 'category'].includes(table),
+        ),
+      );
+      expect(rest).not.toMatch(/u1-(cash|bank|cat|tx|root|goal|draft|budget)/);
+    });
+
+    it('works for a Google-only account, and can run twice', async () => {
+      await resetData(tokenFor('g1')).expect(204);
+      await resetData(tokenFor('g1')).expect(204);
+      expect(ownedBy(db, 'g1').account).toBe(0);
+      expect(ownedBy(db, 'g1').user).toBe(1);
+      expect(ownedBy(db, 'g1').oAuthGrant).toBe(1);
+    });
+
+    it('rolls back everything if any step fails', async () => {
+      const before = structuredClone(db.tables());
+      const analyticsCache = (
+        db as unknown as Record<string, { deleteMany: () => Promise<unknown> }>
+      ).analyticsCache;
+      analyticsCache.deleteMany = async () => {
+        throw new Error('connection lost');
+      };
+
+      await resetData(tokenFor('u1')).expect(500);
+
+      expect(db.tables()).toEqual(before);
+    });
   });
 });

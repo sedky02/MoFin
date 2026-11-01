@@ -6,6 +6,7 @@ import {
   HttpCode,
   HttpStatus,
   Patch,
+  Post,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
@@ -16,9 +17,9 @@ import { ApiZodBody } from '../../common/swagger/api-zod';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import { AuthenticatedUser } from '../../common/types/authenticated-user';
 import {
-  DeleteAccountDto,
+  ConfirmDeleteDto,
   UpdateProfileDto,
-  deleteAccountSchema,
+  confirmDeleteSchema,
   updateProfileSchema,
 } from './dto/users.dto';
 import { UsersService } from './users.service';
@@ -46,20 +47,35 @@ export class UsersController {
   }
 
   /**
-   * Deletes the caller's account and all of its data. Needs the current
-   * password (or the typed email for a Google-only account), and is limited
-   * per user like a password change, so a stolen session can't use it to
-   * guess the password.
+   * Deletes the caller's account and all of its data. Needs `confirm: "DELETE"`
+   * in the body, and is limited per user.
    */
   @UseGuards(DeleteAccountThrottlerGuard)
   @DemoBlocked()
   @Delete('me')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiZodBody(deleteAccountSchema)
+  @ApiZodBody(confirmDeleteSchema)
   remove(
     @CurrentUser() user: AuthenticatedUser,
-    @Body(new ZodValidationPipe(deleteAccountSchema)) dto: DeleteAccountDto,
+    @Body(new ZodValidationPipe(confirmDeleteSchema)) _dto: ConfirmDeleteDto,
   ) {
-    return this.usersService.deleteAccount(user.id, dto);
+    return this.usersService.deleteAccount(user.id);
+  }
+
+  /**
+   * Deletes everything the caller recorded and keeps the account: profile,
+   * sign-in methods, sessions and connected AI apps all stay. Needs
+   * `confirm: "DELETE"` in the body, and shares the delete limit.
+   */
+  @UseGuards(DeleteAccountThrottlerGuard)
+  @DemoBlocked()
+  @Post('me/reset-data')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiZodBody(confirmDeleteSchema)
+  resetData(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body(new ZodValidationPipe(confirmDeleteSchema)) _dto: ConfirmDeleteDto,
+  ) {
+    return this.usersService.resetData(user.id);
   }
 }

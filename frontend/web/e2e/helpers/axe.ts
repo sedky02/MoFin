@@ -9,12 +9,15 @@ export async function settle(page: Page) {
   await page.waitForTimeout(1500);
 }
 
-export async function runAxe(page: Page, opts: { skipSettle?: boolean } = {}) {
+/** `include`: a selector to check only that part of the page, e.g. an open dialog. */
+export async function runAxe(page: Page, opts: { skipSettle?: boolean; include?: string } = {}) {
   if (!opts.skipSettle) await settle(page);
   // The dev-only Next indicator and query devtools button sit over the bottom
   // nav's first tab; they aren't part of the app and don't ship to production.
   await page.addStyleTag({ content: "nextjs-portal, .tsqd-parent-container { display: none !important; }" });
-  const results = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze();
+  const axe = new AxeBuilder({ page }).withTags(AXE_TAGS);
+  if (opts.include) axe.include(opts.include);
+  const results = await axe.analyze();
   return results.violations;
 }
 

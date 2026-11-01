@@ -108,12 +108,12 @@ export class ChangePasswordThrottlerGuard extends AuthThrottlerGuard {
   }
 }
 
-/** Per-user limit on DELETE /users/me. */
+/** Per-user limit on the destructive routes: DELETE /users/me and POST /users/me/reset-data. */
 export const DELETE_ACCOUNT_THROTTLE = { limit: 5, ttl: 60_000 } as const;
 
 /**
- * DELETE_ACCOUNT_THROTTLE per userTracker key. The route checks the current
- * password, so it gets the same per-user cap as a password change.
+ * DELETE_ACCOUNT_THROTTLE per userTracker key: a stolen session can't hammer
+ * the destructive routes.
  */
 @Injectable()
 export class DeleteAccountThrottlerGuard extends ChangePasswordThrottlerGuard {

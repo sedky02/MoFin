@@ -6,14 +6,11 @@ export const updateProfileSchema = z.object({
 });
 export type UpdateProfileDto = z.infer<typeof updateProfileSchema>;
 
-// Proof that the caller means to delete the account: the current password,
-// or, for an account that only signs in with Google (no password), the
-// account's email typed out. The service decides which one applies.
-export const deleteAccountSchema = z.object({
-  password: z.string().max(1024).optional(),
-  confirmEmail: z.string().max(320).optional(),
-});
-export type DeleteAccountDto = z.infer<typeof deleteAccountSchema>;
+// The two destructive routes (delete the account, delete its data) both need the
+// word typed out, so a bare request (a stray client, a replayed URL) deletes
+// nothing. No password: a Google-only account has none to ask for.
+export const confirmDeleteSchema = z.object({ confirm: z.literal('DELETE') });
+export type ConfirmDeleteDto = z.infer<typeof confirmDeleteSchema>;
 
 export interface CreateUserInput {
   email: string;

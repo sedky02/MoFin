@@ -3,6 +3,7 @@
 import * as React from "react";
 import {
   Database,
+  Eraser,
   Plug,
   ShieldCheck,
   SlidersHorizontal,
@@ -23,6 +24,7 @@ const ICONS: Record<SettingsSectionId, LucideIcon> = {
   security: ShieldCheck,
   "connected-apps": Plug,
   data: Database,
+  "delete-data": Eraser,
   "delete-account": Trash2,
 };
 

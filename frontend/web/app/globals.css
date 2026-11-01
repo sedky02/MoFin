@@ -75,7 +75,8 @@
   --muted-foreground: #5c5f5c;
   --accent: #eef7bf;
   --accent-foreground: #4a5a00;
-  --destructive: #d92020;
+  /* Text on its own 10-20% tint passes 4.5:1 (#d92020 only reached 4.3 and 3.6). */
+  --destructive: #b91c1c;
   --destructive-foreground: #ffffff;
   --success: #5d6b00;
   --warning: #b45309;

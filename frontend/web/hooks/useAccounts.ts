@@ -7,6 +7,7 @@ import { STALE } from "@/lib/query-client";
 import type { Account, AccountType, Paginated } from "@/lib/types";
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/form-errors";
+import { useHydrationSafe } from "@/hooks/use-hydrating";
 
 export type AccountListStatus = "active" | "archived" | "all";
 
@@ -15,20 +16,25 @@ export type AccountListStatus = "active" | "archived" | "all";
 // "everything" while the endpoint itself is never actually unbounded.
 const ACCOUNTS_PAGE_SIZE = 100;
 
+// The app shell fetches the active list too, so a page reading it hydrates after it is
+// cached: see useHydrationSafe.
 export function useAccounts(status: AccountListStatus = "active", enabled = true) {
-  return useQuery({
-    queryKey: accountKeys.list(status),
-    queryFn: async () => {
-      const result = await api.get<Paginated<Account>>("/accounts", {
-        status,
-        limit: ACCOUNTS_PAGE_SIZE,
-        offset: 0,
-      });
-      return result.data;
-    },
-    staleTime: STALE.accounts,
+  return useHydrationSafe(
+    useQuery({
+      queryKey: accountKeys.list(status),
+      queryFn: async () => {
+        const result = await api.get<Paginated<Account>>("/accounts", {
+          status,
+          limit: ACCOUNTS_PAGE_SIZE,
+          offset: 0,
+        });
+        return result.data;
+      },
+      staleTime: STALE.accounts,
+      enabled,
+    }),
     enabled,
-  });
+  );
 }
 
 /**

@@ -1,6 +1,5 @@
 import { DEFAULT_CATEGORIES } from '../categories/default-categories';
-import { BadRequestException, UnauthorizedException } from '@nestjs/common';
-import * as bcrypt from 'bcrypt';
+import { UnauthorizedException } from '@nestjs/common';
 import { UsersService } from './users.service';
 
 describe('UsersService profile', () => {
@@ -42,9 +41,9 @@ describe('UsersService profile', () => {
   );
 });
 
-describe('UsersService.deleteAccount', () => {
-  // Every user-owned table, in the order the service must clear them.
-  const TABLES = [
+describe('UsersService.deleteAccount and resetData', () => {
+  // The user-owned tables a data reset clears, in the order the service must clear them.
+  const DATA_TABLES = [
     'transactionItem',
     'transaction',
     'draftTransaction',
@@ -54,6 +53,9 @@ describe('UsersService.deleteAccount', () => {
     'account',
     'category',
     'analyticsCache',
+  ] as const;
+  // Sign-ins: cleared with the account, kept by a reset.
+  const SIGN_IN_TABLES = [
     'refreshToken',
     'authSession',
     'passwordResetToken',
@@ -63,17 +65,28 @@ describe('UsersService.deleteAccount', () => {
   ] as const;
 
   function makeService(
-    user: { email: string; passwordHash: string | null } | null,
+    user: { settings: Record<string, unknown> } | null = { settings: {} },
   ) {
-    const calls: { table: string; where: unknown }[] = [];
-    const record = (table: string) =>
-      jest.fn(async ({ where }: { where: unknown }) =>
-        calls.push({ table, where }),
-      );
-    const tx: Record<string, unknown> = { user: { delete: record('user') } };
-    for (const table of TABLES) tx[table] = { deleteMany: record(table) };
+    const calls: { table: string; op: string; arg: unknown }[] = [];
+    const record = (table: string, op: string) =>
+      jest.fn(async (arg: unknown) => calls.push({ table, op, arg }));
+    const tx: Record<string, unknown> = {
+      user: {
+        findUnique: jest.fn(async () => user),
+        update: record('user', 'update'),
+        delete: record('user', 'delete'),
+      },
+      category: {
+        deleteMany: record('category', 'deleteMany'),
+        createMany: record('category', 'createMany'),
+      },
+    };
+    for (const table of [...DATA_TABLES, ...SIGN_IN_TABLES]) {
+      if (table !== 'category')
+        tx[table] = { deleteMany: record(table, 'deleteMany') };
+    }
     const prisma = {
-      user: { findUnique: jest.fn(async () => user) },
+      user: { findUnique: jest.fn(async () => user && { id: 'u1' }) },
       $transaction: jest.fn(async (run: (client: unknown) => unknown) =>
         run(tx),
       ),
@@ -81,85 +94,101 @@ describe('UsersService.deleteAccount', () => {
     return { service: new UsersService(prisma as never), prisma, calls };
   }
 
-  async function errorsOf(promise: Promise<unknown>) {
-    const err = await promise.then(
-      () => null,
-      (e: unknown) => e,
-    );
-    expect(err).toBeInstanceOf(BadRequestException);
-    return (
-      (err as BadRequestException).getResponse() as {
-        errors?: { path: string }[];
+  const cleared = (calls: { table: string; op: string }[]) =>
+    calls.filter((c) => c.op === 'deleteMany').map((c) => c.table);
+
+  describe('deleteAccount', () => {
+    it('clears every user-owned table for this user only, children first, then the user, in one transaction', async () => {
+      const { service, prisma, calls } = makeService();
+
+      await service.deleteAccount('u1');
+
+      expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+      expect(calls.map((c) => c.table)).toEqual([
+        ...DATA_TABLES,
+        ...SIGN_IN_TABLES,
+        'user',
+      ]);
+      for (const call of calls) {
+        const { arg } = call as { arg: { where: unknown } };
+        if (call.table === 'user') expect(arg.where).toEqual({ id: 'u1' });
+        else if (call.table === 'goalInstance')
+          expect(arg.where).toEqual({ goal: { userId: 'u1' } });
+        // Exactly the user's rows: no deletedAt filter (soft-deleted go too), and
+        // never `userId: null`, so global categories stay.
+        else expect(arg.where).toEqual({ userId: 'u1' });
       }
-    ).errors;
-  }
-
-  const hash = bcrypt.hashSync('right-password', 4);
-
-  it('clears every user-owned table for this user only, children first, then the user, in one transaction', async () => {
-    const { service, prisma, calls } = makeService({
-      email: 'a@b.com',
-      passwordHash: hash,
     });
 
-    await service.deleteAccount('u1', { password: 'right-password' });
-
-    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
-    expect(calls.map((c) => c.table)).toEqual([...TABLES, 'user']);
-    for (const call of calls) {
-      if (call.table === 'user') expect(call.where).toEqual({ id: 'u1' });
-      else if (call.table === 'goalInstance')
-        expect(call.where).toEqual({ goal: { userId: 'u1' } });
-      // Exactly the user's rows: no deletedAt filter (soft-deleted go too), and
-      // never `userId: null`, so global categories stay.
-      else expect(call.where).toEqual({ userId: 'u1' });
-    }
+    it('answers 401 when the account is already gone', async () => {
+      const { service, prisma } = makeService(null);
+      await expect(service.deleteAccount('u1')).rejects.toBeInstanceOf(
+        UnauthorizedException,
+      );
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
   });
 
-  it.each([
-    ['a wrong password', { password: 'wrong-password' }],
-    ['no password', {}],
-    ['the email instead of the password', { confirmEmail: 'a@b.com' }],
-  ])(
-    'refuses %s with a field error on password, and deletes nothing',
-    async (_label, dto) => {
-      const { service, prisma } = makeService({
-        email: 'a@b.com',
-        passwordHash: hash,
+  describe('resetData', () => {
+    it('clears what the user recorded, children first, and leaves sessions, connected apps and the user alone', async () => {
+      const { service, prisma, calls } = makeService();
+
+      await service.resetData('u1');
+
+      expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+      expect(cleared(calls)).toEqual([...DATA_TABLES]);
+      expect(calls.some((c) => c.op === 'delete')).toBe(false);
+      for (const call of calls.filter((c) => c.op === 'deleteMany')) {
+        const { arg } = call as { arg: { where: unknown } };
+        expect(arg.where).toEqual(
+          call.table === 'goalInstance'
+            ? { goal: { userId: 'u1' } }
+            : { userId: 'u1' },
+        );
+      }
+    });
+
+    it('gives the starter categories back, owned by the user, after the old ones are gone', async () => {
+      const { service, calls } = makeService();
+
+      await service.resetData('u1');
+
+      const clearedAt = calls.findIndex(
+        (c) => c.table === 'category' && c.op === 'deleteMany',
+      );
+      const createdAt = calls.findIndex(
+        (c) => c.table === 'category' && c.op === 'createMany',
+      );
+      expect(createdAt).toBeGreaterThan(clearedAt);
+      const { data } = calls[createdAt].arg as {
+        data: { name: string; userId: string }[];
+      };
+      expect(data.map((c) => c.name)).toEqual(
+        DEFAULT_CATEGORIES.map((c) => c.name),
+      );
+      expect(data.every((c) => c.userId === 'u1')).toBe(true);
+    });
+
+    it('unsets the main account but keeps every other setting', async () => {
+      const { service, calls } = makeService({
+        settings: { mainAccountId: 'acc-1', defaultCurrency: 'EUR' },
       });
 
-      expect(await errorsOf(service.deleteAccount('u1', dto))).toEqual([
-        expect.objectContaining({ path: 'password' }),
-      ]);
-      expect(prisma.$transaction).not.toHaveBeenCalled();
-    },
-  );
+      await service.resetData('u1');
 
-  it('asks a Google-only account for its email instead, ignoring case and spaces', async () => {
-    const { service, prisma, calls } = makeService({
-      email: 'g@b.com',
-      passwordHash: null,
+      expect(calls.find((c) => c.table === 'user')?.arg).toEqual({
+        where: { id: 'u1' },
+        data: { settings: { defaultCurrency: 'EUR' } },
+      });
     });
 
-    for (const dto of [
-      { confirmEmail: 'other@b.com' },
-      { password: 'anything' },
-    ]) {
-      expect(await errorsOf(service.deleteAccount('g1', dto))).toEqual([
-        expect.objectContaining({ path: 'confirmEmail' }),
-      ]);
-    }
-    expect(prisma.$transaction).not.toHaveBeenCalled();
-
-    await service.deleteAccount('g1', { confirmEmail: ' G@B.com ' });
-    expect(calls.at(-1)).toEqual({ table: 'user', where: { id: 'g1' } });
-  });
-
-  it('answers 401 when the account is already gone', async () => {
-    const { service } = makeService(null);
-    await expect(
-      service.deleteAccount('u1', { password: 'x' }),
-    ).rejects.toBeInstanceOf(UnauthorizedException);
+    it('answers 401 when the account is already gone', async () => {
+      const { service, prisma } = makeService(null);
+      await expect(service.resetData('u1')).rejects.toBeInstanceOf(
+        UnauthorizedException,
+      );
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
   });
 });
 

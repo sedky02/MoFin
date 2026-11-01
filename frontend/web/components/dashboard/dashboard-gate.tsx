@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import type { PrefetchFailureKind } from "@/lib/server-api";
+import { useHydrating } from "@/hooks/use-hydrating";
 import { DashboardBody } from "@/components/dashboard/dashboard-body";
 import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
 import { DashboardUnavailable } from "@/components/dashboard/dashboard-unavailable";
@@ -11,8 +12,6 @@ export type PrefetchOutcome = "ready" | PrefetchFailureKind;
 
 const SettleContext = React.createContext<(outcome: PrefetchOutcome) => void>(() => {});
 
-const subscribeNever = () => () => {};
-
 /**
  * Decides when the dashboard shows. Arriving from another page, the browser's query
  * cache already holds the data, so the dashboard renders at once and the cards refetch
@@ -21,9 +20,8 @@ const subscribeNever = () => () => {};
  * of every card fetching the same data a second time.
  */
 export function DashboardGate({ prefetch }: { prefetch: React.ReactNode }) {
-  // True only while hydrating the server's HTML, i.e. on a full page load. A component
-  // mounted by a client-side navigation reads the client snapshot straight away.
-  const hydrating = React.useSyncExternalStore(subscribeNever, () => false, () => true);
+  // A component mounted by a client-side navigation isn't hydrating, so it shows at once.
+  const hydrating = useHydrating();
   const [status, setStatus] = React.useState<"pending" | PrefetchOutcome>(() =>
     hydrating ? "pending" : "ready",
   );

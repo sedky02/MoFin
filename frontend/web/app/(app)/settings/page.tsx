@@ -28,6 +28,7 @@ import { ThemeSetting } from "@/components/settings/theme-setting";
 import { ConnectedAppsCard } from "@/components/settings/connected-apps-card";
 import { DataCard } from "@/components/settings/data-card";
 import { DeleteAccountCard } from "@/components/settings/delete-account-card";
+import { DeleteDataCard } from "@/components/settings/delete-data-card";
 import { useUser, useUpdateUser } from "@/hooks/useUser";
 import { useAccounts } from "@/hooks/useAccounts";
 import { Button } from "@/components/ui/button";
@@ -261,6 +262,8 @@ export default function SettingsPage() {
           <ConnectedAppsCard />
 
           <DataCard />
+
+          <DeleteDataCard user={user} isLoading={isLoading} />
 
           <DeleteAccountCard user={user} isLoading={isLoading} />
 

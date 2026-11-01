@@ -1,18 +1,12 @@
 import {
-  BadRequestException,
   Injectable,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../database/prisma.service';
 import { DEFAULT_CATEGORIES } from '../categories/default-categories';
-import {
-  CreateUserInput,
-  DeleteAccountDto,
-  UpdateProfileDto,
-} from './dto/users.dto';
+import { CreateUserInput, UpdateProfileDto } from './dto/users.dto';
 
 @Injectable()
 export class UsersService {
@@ -80,67 +74,58 @@ export class UsersService {
   }
 
   /**
-   * Deletes the account and everything that belongs to it, for good.
+   * Deletes the account and everything that belongs to it, for good. The
+   * caller has already confirmed (the controller needs the typed word); there
+   * is no password to check, since a Google-only account has none.
    *
-   * The caller proves intent with the current password, or, for a Google-only
-   * account (no password), by typing the account's email. A wrong proof is a
-   * 400 field error and nothing is touched.
-   *
-   * Every user-owned table is cleared explicitly, children before parents, in
-   * one transaction, before the user row goes. The schema cascades most of
-   * these from User, but not all in a safe order: ledger items and recurring
-   * roots reference accounts with RESTRICT, which Postgres checks at once
-   * rather than at the end of the statement, so a single cascading
-   * `user.delete` can fail depending on which branch it walks first. Soft-deleted transactions go too (no `deletedAt` filter).
-   * Global categories (`userId: null`) never match `userId`, so they stay.
-   *
+   * See `clearOwnedData` for why every table is cleared by hand, in order.
    * Access tokens already issued (web and MCP) are stateless and stay valid
    * until their short TTL ends, but there is nothing left for them to read,
    * and no refresh token survives to renew them.
    */
-  async deleteAccount(userId: string, dto: DeleteAccountDto): Promise<void> {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { email: true, passwordHash: true },
-    });
-    if (!user) throw new UnauthorizedException();
-
-    if (user.passwordHash) {
-      if (!dto.password)
-        throw fieldError('password', 'Enter your password to confirm.');
-      if (!(await bcrypt.compare(dto.password, user.passwordHash))) {
-        throw fieldError('password', 'The password is incorrect.');
-      }
-    } else if (
-      dto.confirmEmail?.trim().toLowerCase() !== user.email.toLowerCase()
-    ) {
-      throw fieldError('confirmEmail', "Type your account's email to confirm.");
-    }
-
+  async deleteAccount(userId: string): Promise<void> {
+    await this.requireUser(userId);
     await this.deleteUserData(userId);
   }
 
   /**
+   * Starts the account over: everything it recorded is deleted for good, and
+   * the account itself stays. Kept: the user row (email, name, sign-in
+   * methods, settings), web sessions, and the connected AI apps (OAuth
+   * grants and their tokens), so nobody is signed out and no app has to be
+   * connected again. Like a new account, it gets the starter categories back,
+   * and its main account (a setting that pointed at a deleted account) is unset.
+   */
+  async resetData(userId: string): Promise<void> {
+    await this.requireUser(userId);
+    await this.prisma.$transaction(async (tx) => {
+      await this.clearOwnedData(tx, userId);
+      await tx.category.createMany({
+        data: DEFAULT_CATEGORIES.map((category) => ({ ...category, userId })),
+      });
+      const user = await tx.user.findUnique({
+        where: { id: userId },
+        select: { settings: true },
+      });
+      const { mainAccountId: _gone, ...settings } = (user?.settings ??
+        {}) as Record<string, unknown>;
+      void _gone;
+      await tx.user.update({
+        where: { id: userId },
+        data: { settings: settings as Prisma.InputJsonValue },
+      });
+    });
+  }
+
+  /**
    * Clears every user-owned table, children before parents, then the user
-   * row, in one transaction (see `deleteAccount` for why the order matters).
-   * No proof of intent here: callers check it first. The demo seed uses this
-   * to reset its account.
+   * row, in one transaction. No proof of intent here: callers check it
+   * first. The demo seed uses this to reset its account.
    */
   async deleteUserData(userId: string): Promise<void> {
     await this.prisma.$transaction(async (tx) => {
+      await this.clearOwnedData(tx, userId);
       const mine = { userId };
-      // Ledger first: items reference accounts (RESTRICT) and transactions.
-      await tx.transactionItem.deleteMany({ where: mine });
-      // Live and soft-deleted, occurrences and recurring roots (whose
-      // template accounts are RESTRICT too). Drafts are unlinked by this.
-      await tx.transaction.deleteMany({ where: mine });
-      await tx.draftTransaction.deleteMany({ where: mine });
-      await tx.goalInstance.deleteMany({ where: { goal: mine } });
-      await tx.goal.deleteMany({ where: mine });
-      await tx.budget.deleteMany({ where: mine });
-      await tx.account.deleteMany({ where: mine });
-      await tx.category.deleteMany({ where: mine });
-      await tx.analyticsCache.deleteMany({ where: mine });
       // Sessions and credentials: web, OAuth (MCP connectors) and reset links.
       await tx.refreshToken.deleteMany({ where: mine });
       await tx.authSession.deleteMany({ where: mine });
@@ -152,6 +137,44 @@ export class UsersService {
       await tx.user.delete({ where: { id: userId } });
     });
   }
+
+  /**
+   * Deletes what the user recorded: ledger, transactions, drafts, goals,
+   * budgets, accounts, categories and cached summaries; sign-ins and the
+   * profile are left to the caller.
+   *
+   * Every table is cleared explicitly, children before parents. The schema
+   * cascades most of these from User, but not all in a safe order: ledger
+   * items and recurring roots reference accounts with RESTRICT, which
+   * Postgres checks at once rather than at the end of the statement, so a
+   * single cascading `user.delete` can fail depending on which branch it
+   * walks first. Soft-deleted transactions go too (no `deletedAt` filter).
+   * Global categories (`userId: null`) never match `userId`, so they stay.
+   */
+  private async clearOwnedData(tx: Prisma.TransactionClient, userId: string) {
+    const mine = { userId };
+    // Ledger first: items reference accounts (RESTRICT) and transactions.
+    await tx.transactionItem.deleteMany({ where: mine });
+    // Live and soft-deleted, occurrences and recurring roots (whose
+    // template accounts are RESTRICT too). Drafts are unlinked by this.
+    await tx.transaction.deleteMany({ where: mine });
+    await tx.draftTransaction.deleteMany({ where: mine });
+    await tx.goalInstance.deleteMany({ where: { goal: mine } });
+    await tx.goal.deleteMany({ where: mine });
+    await tx.budget.deleteMany({ where: mine });
+    await tx.account.deleteMany({ where: mine });
+    await tx.category.deleteMany({ where: mine });
+    await tx.analyticsCache.deleteMany({ where: mine });
+  }
+
+  /** A 401 when the account is already gone (its access token outlives it by minutes). */
+  private async requireUser(userId: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true },
+    });
+    if (!user) throw new UnauthorizedException();
+  }
 }
 
 /**
@@ -161,12 +184,4 @@ export class UsersService {
 function withHasPassword<T extends { passwordHash: string | null }>(user: T) {
   const { passwordHash, ...profile } = user;
   return { ...profile, hasPassword: passwordHash !== null };
-}
-
-/** A 400 shaped like the validation pipe's, so the web form shows it on the field. */
-function fieldError(path: string, message: string): BadRequestException {
-  return new BadRequestException({
-    message: 'Validation failed',
-    errors: [{ path, message }],
-  });
 }
