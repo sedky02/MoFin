@@ -1,6 +1,6 @@
 import { expect, test, type APIRequestContext } from "@playwright/test";
 
-// B-25: the empty dashboard names the right first step. Needs fresh users, not the fixture
+// B-25: the empty dashboard names the right first step (now the first-run welcome, see onboarding.spec.ts). Needs fresh users, not the fixture
 // user, so each test registers a throwaway one. Register and login are rate limited: this
 // spec creates two users and signs each in once.
 test.use({ locale: "en-US", storageState: { cookies: [], origins: [] } });
@@ -17,19 +17,19 @@ async function newUser(request: APIRequestContext, tag: string, project: string)
   expect(login.ok(), `login failed with ${login.status()}`).toBeTruthy();
 }
 
-test("a new user with no accounts is offered one step: add an account", async ({ page }, testInfo) => {
+test("a new user with no accounts is walked through adding one, right on the dashboard", async ({ page }, testInfo) => {
   await newUser(page.request, "none", testInfo.project.name);
   await page.goto("/dashboard");
 
   const main = page.getByRole("main");
-  const cta = main.getByRole("link", { name: "Add your first account" });
-  await expect(cta).toBeVisible();
-  await expect(cta).toHaveAttribute("href", "/accounts");
-  await expect(main.getByRole("link")).toHaveCount(1);
-  await expect(main.getByRole("button")).toHaveCount(0);
+  await expect(main.getByRole("heading", { level: 1, name: "Add your first account" })).toBeVisible();
+  // The one thing to do is in front of them: no hop to another page first.
+  const form = main.getByRole("form", { name: "Add your first account" });
+  await expect(form.getByRole("button", { name: "Create account" })).toBeVisible();
+  // Nothing that needs an account to work, and no fake balance.
   await expect(main.getByText("Record an expense")).toHaveCount(0);
   await expect(main.getByText("Create your first account")).toHaveCount(0);
-  expect(await main.innerText()).not.toContain("$");
+  await expect(main.getByText(/Across all/)).toHaveCount(0);
 });
 
 test("an account without activity shows its own zero and the next step", async ({ page }, testInfo) => {
@@ -41,6 +41,8 @@ test("an account without activity shows its own zero and the next step", async (
 
   await page.goto("/dashboard");
   const main = page.getByRole("main");
+  // First the setup asks for a first transaction; skipping it shows the dashboard as it is.
+  await main.getByRole("button", { name: "Skip for now" }).click();
   await expect(main.getByText(/0\.000\s*TND|TND\s*0\.000/).first()).toBeVisible();
   await expect(main.getByRole("link", { name: "Record your first transaction" })).toBeVisible();
   await expect(main.getByText("Create your first account")).toHaveCount(0);

@@ -3,7 +3,6 @@
 import * as React from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { X } from "lucide-react";
 import {
   Dialog,
@@ -26,12 +25,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { TYPE_ICON } from "@/components/accounts/account-card";
-import { cn } from "@/lib/utils";
+import { AccountTypePicker } from "@/components/accounts/account-type-picker";
 import { SubmitButton } from "@/components/common/submit-button";
 import { CurrencyPicker } from "@/components/common/currency-picker";
 import { MoneyInput } from "@/components/common/money-input";
-import { ACCOUNT_TYPES } from "@/lib/constants";
-import { formatMoneyInput, normalizeSignedMoneyTyping } from "@/lib/format";
+import { accountFormSchema, openingBalanceValue, type AccountFormValues } from "@/lib/account-form";
+import { formatMoneyInput } from "@/lib/format";
+import { guessCurrency } from "@/lib/onboarding";
 import { tryParse } from "@/lib/decimal";
 import {
   useAccounts,
@@ -39,26 +39,6 @@ import {
   useUpdateAccount,
 } from "@/hooks/useAccounts";
 import type { Account } from "@/lib/types";
-
-const schema = z.object({
-  name: z.string().trim().min(1, "Name is required.").max(60),
-  type: z.enum(["CASH", "BANK", "SAVINGS", "CRYPTO"]),
-  currency: z.string().trim().min(2, "Select a currency.").max(10),
-  // Optional and may be negative (money owed on a card). Blank means 0.
-  openingBalance: z
-    .string()
-    .refine(
-      (v) => v.trim() === "" || normalizeSignedMoneyTyping(v) !== null,
-      "Enter an amount, like 5000 or -250.",
-    ),
-});
-type Values = z.infer<typeof schema>;
-
-/** The opening balance to send: blank is 0, otherwise rounded to the currency's decimals. */
-function openingBalanceValue(raw: string, currency: string): string {
-  const normalized = raw.trim() === "" ? null : normalizeSignedMoneyTyping(raw);
-  return normalized === null ? "0" : formatMoneyInput(normalized, currency);
-}
 
 /** What the field starts with: blank for 0, so a new or untouched account shows the placeholder. */
 function openingBalanceDefault(account?: Account): string {
@@ -92,8 +72,8 @@ export function AccountDialog({
     );
   }, [accounts]);
 
-  const form = useForm<Values>({
-    resolver: zodResolver(schema),
+  const form = useForm<AccountFormValues>({
+    resolver: zodResolver(accountFormSchema),
     defaultValues: {
       name: account?.name ?? "",
       type: account?.type ?? "BANK",
@@ -112,7 +92,8 @@ export function AccountDialog({
       form.reset({
         name: account?.name ?? "",
         type: account?.type ?? "BANK",
-        currency: account?.currency ?? "USD",
+        // A new account starts in the currency of where the device is, not always USD.
+        currency: account?.currency ?? guessCurrency(),
         openingBalance: openingBalanceDefault(account),
       });
     }
@@ -215,30 +196,7 @@ export function AccountDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Type</FormLabel>
-                    <div role="group" aria-label="Type" className="grid grid-cols-4 gap-2">
-                      {ACCOUNT_TYPES.map((t) => {
-                        const Icon = TYPE_ICON[t.value];
-                        const selected = field.value === t.value;
-                        return (
-                          <button
-                            key={t.value}
-                            type="button"
-                            aria-pressed={selected}
-                            onClick={() => field.onChange(t.value)}
-                            className={cn(
-                              "flex flex-col items-center gap-1.5 rounded-lg bg-card px-2 py-2.5 text-xs font-medium transition-shadow",
-                              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                              selected
-                                ? "text-foreground ring-2 ring-primary"
-                                : "text-muted-foreground ring-1 ring-border hover:text-foreground hover:ring-foreground/30",
-                            )}
-                          >
-                            <Icon className="size-5" aria-hidden />
-                            {t.label}
-                          </button>
-                        );
-                      })}
-                    </div>
+                    <AccountTypePicker value={field.value} onChange={field.onChange} />
                     <FormMessage />
                   </FormItem>
                 )}

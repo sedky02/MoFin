@@ -75,7 +75,7 @@ function stripEmpty(params: SearchParams): SearchParams {
 }
 
 /** Simple single-page fetch used for the dashboard's "recent 10". */
-export function useRecentTransactions(limit = 10, accountId?: string) {
+export function useRecentTransactions(limit = 10, accountId?: string, enabled = true) {
   return useQuery({
     queryKey: searchKeys.list({ recent: limit, accountId }),
     queryFn: async () => {
@@ -87,5 +87,6 @@ export function useRecentTransactions(limit = 10, accountId?: string) {
       return result.data;
     },
     staleTime: STALE.transactions,
+    enabled,
   });
 }

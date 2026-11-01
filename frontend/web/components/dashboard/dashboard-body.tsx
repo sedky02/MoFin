@@ -11,10 +11,10 @@ import { BalanceCards } from "@/components/dashboard/balance-cards";
 import { MonthlySummaryCard } from "@/components/dashboard/monthly-summary";
 import { RecentTransactions } from "@/components/dashboard/recent-transactions";
 import { GoalsSummary } from "@/components/dashboard/goals-summary";
-import { EmptyState } from "@/components/common/states";
-import { Button } from "@/components/ui/button";
-import { Wallet } from "lucide-react";
-import Link from "next/link";
+import { AssistantNudge } from "@/components/onboarding/assistant-nudge";
+import { Setup } from "@/components/onboarding/setup";
+import { useAssistantNudge, useSetup } from "@/hooks/useSetup";
+import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
 
 /**
  * The dashboard's cards, rendered from the query cache. Holds which
@@ -29,6 +29,8 @@ export function DashboardBody({ year, month }: { year: number; month: number }) 
   // Same selection as the header's active-account picker, so the dashboard
   // shows the account that new transactions will default to.
   const { accountId, account: selectedAccount } = useActiveAccount();
+  const setup = useSetup();
+  const nudge = useAssistantNudge(setup.status === "off");
   // Derived from live query data (hydrated from the server prefetch when that
   // succeeded, fetched fresh through the BFF's refresh-on-401 path when it didn't).
   const primaryCurrency = pickPrimaryCurrency(balances, user, "", accounts);
@@ -45,26 +47,17 @@ export function DashboardBody({ year, month }: { year: number; month: number }) 
   // archived account's, say), so its pick stands even when no active account holds it.
   const summaryCurrency = selectedAccount?.currency ?? summaryCurrencyPick ?? resolve();
 
-  // No account yet: nothing below can work (no balance, no summary, no transaction to
-  // record), so the page offers the one step that does.
-  if (accounts && accounts.length === 0) {
-    return (
-      <EmptyState
-        icon={Wallet}
-        title="Welcome to MoFin"
-        description="Add an account to start tracking your balances, then record your first transaction."
-        action={
-          <Button asChild>
-            <Link href="/accounts">Add your first account</Link>
-          </Button>
-        }
-        className="py-20"
-      />
-    );
+  // A new user is walked through the first account and the first transaction in place of the
+  // dashboard, which has nothing to show yet (and, with no account, nothing that can work).
+  if (setup.status === "loading") return <DashboardSkeleton />;
+  if (setup.status === "step") {
+    return <Setup step={setup.step} accounts={setup.accounts} skip={setup.skip} name={user?.displayName ?? undefined} />;
   }
 
   return (
     <section className="space-y-8">
+      {nudge.show && <AssistantNudge onClose={nudge.close} />}
+
       {/* Bento grid, matching the Stitch "Refined Quanto Dark" layout: a large
           balance hero paired with Goals, then Monthly Summary paired with
           Recent Transactions. */}

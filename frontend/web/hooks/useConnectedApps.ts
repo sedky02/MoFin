@@ -8,11 +8,12 @@ import { connectedAppKeys } from "@/lib/query-keys";
 import { STALE } from "@/lib/query-client";
 import type { ConnectedApp } from "@/lib/types";
 
-export function useConnectedApps() {
+export function useConnectedApps(enabled = true) {
   return useQuery({
     queryKey: connectedAppKeys.all,
     queryFn: () => api.get<ConnectedApp[]>("/oauth/grants"),
     staleTime: STALE.accounts,
+    enabled,
   });
 }
 

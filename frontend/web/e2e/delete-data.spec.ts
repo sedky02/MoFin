@@ -3,7 +3,7 @@ import { formatViolations, runAxe } from "./helpers/axe";
 
 // Settings → Delete data removes everything the user recorded and keeps the account:
 // still signed in, same profile, starter categories back, and the dashboard starts over
-// from the "add an account" welcome.
+// from the first-run welcome.
 //
 // Uses a throwaway user per project, never the shared fixture user.
 
@@ -75,6 +75,7 @@ test.describe("settings delete data", () => {
 
     // The dashboard starts over.
     await page.goto("/dashboard");
-    await expect(page.getByRole("link", { name: "Add your first account" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Add your first account" })).toBeVisible();
+    await expect(page.getByRole("form", { name: "Add your first account" })).toBeVisible();
   });
 });
