@@ -31,6 +31,14 @@ const DUMMY_PASSWORD_HASH = bcrypt.hashSync(
 // instead of counting as reuse (B-22).
 const ROTATION_GRACE_MS = 30_000;
 
+/** A Google account whose ID token has been checked. */
+export interface GoogleIdentity {
+  /** Google's stable account id (`sub`). */
+  googleId: string;
+  email: string;
+  displayName?: string;
+}
+
 export const GOOGLE_ONLY_PASSWORD_MESSAGE =
   'This account signs in with Google, so it has no password to change.';
 
@@ -368,12 +376,24 @@ export class AuthService {
       throw new UnauthorizedException('Invalid Google identity token');
     }
 
-    const googleId = claims.sub;
-    const email = claims.email.trim().toLowerCase();
-    const displayName =
-      typeof claims.name === 'string' ? claims.name : undefined;
+    return this.signInWithGoogle({
+      googleId: claims.sub,
+      email: claims.email,
+      displayName: typeof claims.name === 'string' ? claims.name : undefined,
+    });
+  }
 
-    // Link by googleId, else by existing email, else create a passwordless user.
+  /**
+   * Starts a session for a Google account whose identity was already
+   * verified: by the code flow (`loginWithGoogle`) or by the mobile ID token
+   * route (GoogleIdTokenVerifier). Links by googleId, else by an existing
+   * account with the same email (Google vouched for it), else creates a
+   * passwordless user.
+   */
+  async signInWithGoogle(identity: GoogleIdentity) {
+    const { googleId, displayName } = identity;
+    const email = identity.email.trim().toLowerCase();
+
     let user = await this.prisma.user.findUnique({ where: { googleId } });
     if (!user) {
       const byEmail = await this.prisma.user.findUnique({ where: { email } });
@@ -385,11 +405,7 @@ export class AuthService {
         : await this.usersService.createUser({ email, googleId, displayName });
     }
 
-    return this.issueTokens(
-      user.id,
-      user.email,
-      randomBytes(16).toString('hex'),
-    );
+    return this.startSession(user);
   }
 
   /** A new session (fresh token family) for a user created without a password. */

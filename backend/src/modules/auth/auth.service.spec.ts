@@ -554,3 +554,186 @@ describe('AuthService.register uniform response (audit SEC-XX)', () => {
     expect(fresh).toEqual(existing);
   });
 });
+
+describe('AuthService.signInWithGoogle (shared by the code flow and the mobile ID token route)', () => {
+  type User = {
+    id: string;
+    email: string;
+    googleId: string | null;
+    passwordHash: string | null;
+    displayName?: string;
+  };
+  const config = {
+    getOrThrow: (key: string) =>
+      key === 'OAUTH_ISSUER' ? 'http://localhost:3000' : `${key}-secret`,
+    get: (key: string, fallback?: string) =>
+      ({
+        GOOGLE_CLIENT_ID: 'web-client',
+        GOOGLE_CLIENT_SECRET: 'secret',
+        GOOGLE_TOKEN_URL: 'https://google.example/token',
+      })[key] ?? fallback,
+  };
+
+  function makeService(seed: User[] = []) {
+    const users = [...seed];
+    const sessions: { userId: string; familyId: string }[] = [];
+    const prisma = {
+      user: {
+        findUnique: jest.fn(
+          async ({ where }: { where: Partial<User> }) =>
+            users.find((u) =>
+              Object.entries(where).every(([k, v]) => u[k as keyof User] === v),
+            ) ?? null,
+        ),
+        update: jest.fn(
+          async ({ where, data }: { where: { id: string }; data: object }) =>
+            Object.assign(users.find((u) => u.id === where.id)!, data),
+        ),
+      },
+      refreshToken: {
+        create: jest.fn(
+          async ({ data }: { data: { userId: string; familyId: string } }) => {
+            sessions.push(data);
+            return data;
+          },
+        ),
+      },
+    };
+    const usersService = {
+      createUser: jest.fn(async (input: Omit<User, 'id' | 'passwordHash'>) => {
+        const user = {
+          id: `u${users.length + 1}`,
+          passwordHash: null,
+          ...input,
+        };
+        users.push(user);
+        return user;
+      }),
+    };
+    const jwtService = {
+      signAsync: jest.fn(
+        async (payload: { sub: string }) => `jwt-${payload.sub}`,
+      ),
+    };
+    const service = new AuthService(
+      prisma as never,
+      usersService as never,
+      jwtService as never,
+      config as never,
+    );
+    return { service, users, sessions, prisma };
+  }
+
+  const identity = {
+    googleId: 'google-sub-1',
+    email: ' Jane@Example.com',
+    displayName: 'Jane',
+  };
+
+  it('creates a passwordless user for a new Google account and signs it in', async () => {
+    const { service, users, sessions } = makeService();
+
+    const tokens = await service.signInWithGoogle(identity);
+
+    expect(users).toEqual([
+      {
+        id: 'u1',
+        email: 'jane@example.com',
+        googleId: 'google-sub-1',
+        displayName: 'Jane',
+        passwordHash: null,
+      },
+    ]);
+    expect(tokens).toEqual({
+      accessToken: 'jwt-u1',
+      refreshToken: expect.any(String),
+    });
+    expect(sessions).toEqual([
+      expect.objectContaining({ userId: 'u1', familyId: expect.any(String) }),
+    ]);
+  });
+
+  it('links the Google id to an existing account with the same email', async () => {
+    const { service, users } = makeService([
+      {
+        id: 'existing',
+        email: 'jane@example.com',
+        googleId: null,
+        passwordHash: 'hash',
+      },
+    ]);
+
+    const tokens = await service.signInWithGoogle(identity);
+
+    expect(users).toHaveLength(1);
+    expect(users[0]).toMatchObject({
+      id: 'existing',
+      googleId: 'google-sub-1',
+      passwordHash: 'hash',
+    });
+    expect(tokens.accessToken).toBe('jwt-existing');
+  });
+
+  it('signs the same Google account (sub) into the same user, even after an email change', async () => {
+    const { service, users, sessions } = makeService();
+
+    await service.signInWithGoogle(identity);
+    const again = await service.signInWithGoogle({
+      ...identity,
+      email: 'jane.new@example.com',
+    });
+
+    expect(users).toHaveLength(1);
+    expect(again.accessToken).toBe('jwt-u1');
+    // Each sign-in is its own session (token family).
+    expect(sessions).toHaveLength(2);
+    expect(sessions[0].familyId).not.toBe(sessions[1].familyId);
+  });
+
+  describe('code flow (POST /auth/google) goes through it unchanged', () => {
+    let originalFetch: typeof fetch;
+    beforeEach(() => {
+      originalFetch = global.fetch;
+    });
+    afterEach(() => {
+      global.fetch = originalFetch;
+    });
+
+    const idTokenWith = (claims: object) =>
+      `header.${Buffer.from(JSON.stringify(claims)).toString('base64url')}.sig`;
+
+    it('links the code-flow identity to the existing email account', async () => {
+      global.fetch = jest.fn(async () => ({
+        ok: true,
+        json: async () => ({
+          id_token: idTokenWith({
+            aud: 'web-client',
+            iss: 'https://accounts.google.com',
+            exp: Math.floor(Date.now() / 1000) + 600,
+            sub: 'google-sub-1',
+            email: 'Jane@Example.com',
+            email_verified: true,
+            name: 'Jane',
+          }),
+        }),
+      })) as never;
+      const { service, users } = makeService([
+        {
+          id: 'existing',
+          email: 'jane@example.com',
+          googleId: null,
+          passwordHash: 'hash',
+        },
+      ]);
+
+      const tokens = await service.loginWithGoogle(
+        'code',
+        'https://web.example/callback',
+      );
+
+      expect(users).toHaveLength(1);
+      expect(users[0].googleId).toBe('google-sub-1');
+      expect(tokens.accessToken).toBe('jwt-existing');
+    });
+  });
+});

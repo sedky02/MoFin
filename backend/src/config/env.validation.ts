@@ -56,6 +56,11 @@ const envSchema = z
     GOOGLE_CLIENT_ID: z.string().optional(),
     GOOGLE_CLIENT_SECRET: z.string().optional(),
     GOOGLE_TOKEN_URL: z.string().url().optional(),
+    // Native sign-in from the mobile app (POST /auth/google/id-token): the
+    // client ids a Google ID token may be issued for (its `aud`), comma-
+    // separated. The web client id (the Android app's `webClientId`) and later
+    // the iOS client id. Unset: that route answers 503.
+    GOOGLE_MOBILE_CLIENT_IDS: z.string().optional(),
 
     // --- Observability (OBS-01) ---
     // Unset in dev: Sentry.init is skipped and errors just log, no client needed.

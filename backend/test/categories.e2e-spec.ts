@@ -21,6 +21,7 @@ import { JwtAuthGuard } from '../src/common/guards/jwt-auth.guard';
 import { PrismaService } from '../src/database/prisma.service';
 import { AuthController } from '../src/modules/auth/auth.controller';
 import { AuthService } from '../src/modules/auth/auth.service';
+import { GoogleIdTokenVerifier } from '../src/modules/auth/id-token-verifier.service';
 import { PasswordResetService } from '../src/modules/auth/password-reset.service';
 import { CategoriesController } from '../src/modules/categories/categories.controller';
 import { CategoriesService } from '../src/modules/categories/categories.service';
@@ -187,6 +188,7 @@ describe('Categories (e2e)', () => {
         { provide: JwtService, useValue: {} },
         { provide: ConfigService, useValue: { get: () => undefined } },
         { provide: PasswordResetService, useValue: {} },
+        { provide: GoogleIdTokenVerifier, useValue: {} },
       ],
     })
       .overrideGuard(JwtAuthGuard)

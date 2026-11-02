@@ -16,6 +16,7 @@ import { App } from 'supertest/types';
 import { REFRESH_THROTTLE } from '../src/common/guards/refresh-throttler.guard';
 import { AuthController } from '../src/modules/auth/auth.controller';
 import { AuthService } from '../src/modules/auth/auth.service';
+import { GoogleIdTokenVerifier } from '../src/modules/auth/id-token-verifier.service';
 import { PasswordResetService } from '../src/modules/auth/password-reset.service';
 
 describe('POST /auth/refresh rate limiting (e2e)', () => {
@@ -35,6 +36,7 @@ describe('POST /auth/refresh rate limiting (e2e)', () => {
         { provide: APP_GUARD, useClass: ThrottlerGuard },
         { provide: AuthService, useValue: authService },
         { provide: PasswordResetService, useValue: {} },
+        { provide: GoogleIdTokenVerifier, useValue: {} },
       ],
     }).compile();
 

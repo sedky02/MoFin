@@ -133,6 +133,7 @@ Defaults and examples are in `backend/.env.example`.
 | `OAUTH_RESOURCE_URI` | backend | no | MCP resource URL. Defaults to `${OAUTH_ISSUER}/api/v1/mcp`. |
 | `WEB_URL` | backend | yes | Web app URL, used by the OAuth login bridge and email links. |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_TOKEN_URL` | backend | no | Google sign-in. Without them `/auth/google` returns 503. |
+| `GOOGLE_MOBILE_CLIENT_IDS` | backend | no | Native Google sign-in from the mobile app: comma-separated client ids accepted as the ID token audience (the web client id, later the iOS one). Without it `/auth/google/id-token` returns 503. |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | backend | no | Outgoing email for password reset. Without `SMTP_HOST`, emails are logged outside production. |
 | `PASSWORD_RESET_TTL` | backend | no | Reset link lifetime (`30m`). |
 | `MAIL_CAPTURE_DIR` | backend | no | Development and test only. Writes emails as JSON files for the E2E suite. |

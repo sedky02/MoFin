@@ -6,6 +6,7 @@ import { MailModule } from '../mail/mail.module';
 import { UsersModule } from '../users/users.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { googleIdTokenProviders } from './id-token-verifier.service';
 import { PasswordResetService } from './password-reset.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 
@@ -18,7 +19,12 @@ import { JwtStrategy } from './strategies/jwt.strategy';
     JwtModule.register({}),
   ],
   controllers: [AuthController],
-  providers: [AuthService, PasswordResetService, JwtStrategy],
+  providers: [
+    AuthService,
+    PasswordResetService,
+    JwtStrategy,
+    ...googleIdTokenProviders,
+  ],
   exports: [AuthService],
 })
 export class AuthModule {}

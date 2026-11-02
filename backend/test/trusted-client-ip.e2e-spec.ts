@@ -23,6 +23,7 @@ import {
 } from '../src/common/middleware/trusted-client-ip.middleware';
 import { AuthController } from '../src/modules/auth/auth.controller';
 import { AuthService } from '../src/modules/auth/auth.service';
+import { GoogleIdTokenVerifier } from '../src/modules/auth/id-token-verifier.service';
 import { PasswordResetService } from '../src/modules/auth/password-reset.service';
 
 const GLOBAL_LIMIT = 300;
@@ -51,6 +52,7 @@ describe('Trusted client IP from the BFF (e2e)', () => {
         { provide: APP_GUARD, useClass: ThrottlerGuard },
         { provide: AuthService, useValue: authService },
         { provide: PasswordResetService, useValue: passwordResetService },
+        { provide: GoogleIdTokenVerifier, useValue: {} },
       ],
     }).compile();
 

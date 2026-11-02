@@ -26,6 +26,7 @@ import {
   AuthService,
   GOOGLE_ONLY_PASSWORD_MESSAGE,
 } from '../src/modules/auth/auth.service';
+import { GoogleIdTokenVerifier } from '../src/modules/auth/id-token-verifier.service';
 import { PasswordResetService } from '../src/modules/auth/password-reset.service';
 import { JwtStrategy } from '../src/modules/auth/strategies/jwt.strategy';
 import { UsersService } from '../src/modules/users/users.service';
@@ -134,6 +135,7 @@ describe('Password change and sign-out everywhere (e2e)', () => {
         { provide: JwtService, useValue: new JwtService() },
         { provide: PrismaService, useValue: prisma },
         { provide: PasswordResetService, useValue: {} },
+        { provide: GoogleIdTokenVerifier, useValue: {} },
         JwtStrategy,
         UsersService,
         AuthService,

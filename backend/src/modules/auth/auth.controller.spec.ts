@@ -6,7 +6,11 @@ describe('AuthController.forgotPassword', () => {
     // The handler is synchronous: it returns the plain body, not a Promise
     // that depends on the lookup or the email.
     const passwordReset = { requestResetInBackground: jest.fn() };
-    const controller = new AuthController({} as never, passwordReset as never);
+    const controller = new AuthController(
+      {} as never,
+      passwordReset as never,
+      {} as never,
+    );
 
     const known = controller.forgotPassword({ email: 'a@b.com' });
     const unknown = controller.forgotPassword({ email: 'nobody@example.com' });

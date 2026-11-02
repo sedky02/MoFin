@@ -47,6 +47,7 @@ import { HealthController } from '../src/health/health.controller';
 import { WEB_AUDIENCE } from '../src/modules/auth/auth.constants';
 import { AuthController } from '../src/modules/auth/auth.controller';
 import { AuthService } from '../src/modules/auth/auth.service';
+import { GoogleIdTokenVerifier } from '../src/modules/auth/id-token-verifier.service';
 import { PasswordResetService } from '../src/modules/auth/password-reset.service';
 import { JwtStrategy } from '../src/modules/auth/strategies/jwt.strategy';
 import { McpServerFactory } from '../src/modules/mcp/mcp-server.factory';
@@ -223,6 +224,7 @@ describe('Global web JWT guard (e2e)', () => {
         OAuthMcpAuthGuard,
         { provide: AuthService, useValue: authService },
         { provide: PasswordResetService, useValue: passwordResetService },
+        { provide: GoogleIdTokenVerifier, useValue: {} },
         { provide: OAuthService, useValue: oauthService },
         { provide: McpServerFactory, useValue: mcpFactory },
         { provide: PrismaService, useValue: prisma },
@@ -401,6 +403,7 @@ describe('Public routes across every controller', () => {
     'POST /auth/password/reset',
     'POST /auth/logout',
     'POST /auth/google',
+    'POST /auth/google/id-token',
     'POST /auth/demo',
     'POST /oauth/register',
     'GET /oauth/authorize',

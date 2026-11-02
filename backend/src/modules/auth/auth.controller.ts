@@ -28,9 +28,11 @@ import {
   FORGOT_PASSWORD_MESSAGE,
   PasswordResetService,
 } from './password-reset.service';
+import { GoogleIdTokenVerifier } from './id-token-verifier.service';
 import {
   ChangePasswordDto,
   ForgotPasswordDto,
+  GoogleIdTokenDto,
   GoogleLoginDto,
   LoginDto,
   LogoutDto,
@@ -39,6 +41,7 @@ import {
   ResetPasswordDto,
   changePasswordSchema,
   forgotPasswordSchema,
+  googleIdTokenSchema,
   googleLoginSchema,
   loginSchema,
   logoutSchema,
@@ -53,6 +56,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly passwordResetService: PasswordResetService,
+    private readonly googleIdTokenVerifier: GoogleIdTokenVerifier,
   ) {}
 
   // Tighter limit on credential endpoints to blunt brute-force / abuse (audit
@@ -157,6 +161,24 @@ export class AuthController {
   @ApiZodBody(googleLoginSchema)
   google(@Body(new ZodValidationPipe(googleLoginSchema)) dto: GoogleLoginDto) {
     return this.authService.loginWithGoogle(dto.code, dto.redirectUri);
+  }
+
+  /**
+   * Native Google sign-in from the mobile app: the body is the ID token the
+   * device got from Google, so it is verified here (signature against
+   * Google's keys, issuer, audience, expiry, verified email) before anyone is
+   * signed in. Same response as login. Limited per IP by AuthThrottlerGuard
+   * (the body has no email), so forged tokens can't be tried in bulk.
+   */
+  @Public()
+  @UseGuards(AuthThrottlerGuard)
+  @Post('google/id-token')
+  @ApiZodBody(googleIdTokenSchema)
+  async googleIdToken(
+    @Body(new ZodValidationPipe(googleIdTokenSchema)) dto: GoogleIdTokenDto,
+  ) {
+    const identity = await this.googleIdTokenVerifier.verify(dto.idToken);
+    return this.authService.signInWithGoogle(identity);
   }
 
   @UseGuards(JwtAuthGuard)
