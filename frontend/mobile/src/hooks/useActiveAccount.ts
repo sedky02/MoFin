@@ -25,6 +25,12 @@ function notify() {
   listeners.forEach((l) => l());
 }
 
+/** Starts reading the stored pick. Call it behind the splash so it is known before the first screen. */
+export function loadActiveAccount(): Promise<void> {
+  load();
+  return loading ?? Promise.resolve();
+}
+
 function load() {
   if (loaded || loading) return;
   loading = AsyncStorage.getItem(STORAGE_KEY)
@@ -64,6 +70,9 @@ export function resetActiveAccountCache() {
  * of pre-filling a stale id. `undefined` = "All accounts".
  */
 export function useActiveAccount(): {
+  /** False until the stored pick has been read. Until then `account` is the main-account fallback,
+   *  so anything that copies it once (a form default) should wait for `ready`. */
+  ready: boolean;
   account: Account | undefined;
   accountId: string | undefined;
   setAccountId: (id?: string) => void;
@@ -80,6 +89,11 @@ export function useActiveAccount(): {
     () => stored,
     () => undefined,
   );
+  const ready = React.useSyncExternalStore(
+    subscribe,
+    () => loaded,
+    () => false,
+  );
   const account = resolveActiveAccount(current, accounts, user?.settings?.mainAccountId);
-  return { account, accountId: account?.id, setAccountId: setActiveAccountId, accounts };
+  return { ready, account, accountId: account?.id, setAccountId: setActiveAccountId, accounts };
 }

@@ -22,10 +22,11 @@ function load(key: string): void {
   if (cache.has(key) || loading.has(key)) return;
   const p = AsyncStorage.getItem(key)
     .then((v) => {
-      cache.set(key, v === "1");
+      // A set() made while the read was in flight wins over what was on disk.
+      if (!cache.has(key)) cache.set(key, v === "1");
     })
     .catch(() => {
-      cache.set(key, false);
+      if (!cache.has(key)) cache.set(key, false);
     })
     .finally(() => {
       loading.delete(key);

@@ -25,6 +25,7 @@ Run `npm run core:drift` to compare (report only, it never overwrites).
 - `src/lib/toast.ts`: a `sonner`-shaped facade; Phase 5 connects it to a real toast view.
 - `src/api/client.ts`: `ApiClientError` and a placeholder `api`; Phase 4 makes it real.
 - `src/hooks/useActiveAccount.ts`, `src/hooks/useStoredFlag.ts`: rewritten on AsyncStorage (no cookie mirror, no `storage` event).
+- `src/lib/intl-polyfill.ts`: a `formatToParts` stand-in for Hermes on iOS (installed in the root layout), so `format.ts` stays a verbatim copy.
 - `src/core/currency-names.ts`: `Intl.DisplayNames` with a generated fallback table for runtimes without it (Hermes).
 - `src/core/golden-money.ts` and `format.golden.test.ts`: golden strings for `formatMoney`.
 
@@ -34,3 +35,7 @@ Run `npm run core:drift` to compare (report only, it never overwrites).
 
 ## Known notes
 - `decimal.ts` triggers the lint warning `import/no-named-as-default`. It is a verbatim copy, so the warning stays.
+- Hermes vs V8 (from the Phase 2 review, to confirm on a device): iOS ignores `notation: "compact"`; `Intl.Locale` and `Intl.DisplayNames` may be missing; `moneyInputHint` passes a decimal string to `format()`, which Hermes may round as a number beyond ~15 digits.
+- `onboarding.guessCurrency` reads `navigator.languages`, which React Native lacks. Pass `DeviceHints` built from `expo-localization` (time zone, `regionCode`) from the setup screen (Phase 6c).
+- `useSuggestedAccountId` (a verbatim copy) reads `useActiveAccount().accountId` before the stored pick is loaded. Forms that copy a default once must wait for `useActiveAccount().ready`, or call `loadActiveAccount()` behind the splash (Phase 4/6b).
+- Golden tests run with the ICU locale pinned to en-US (`jest.global-setup.js`).

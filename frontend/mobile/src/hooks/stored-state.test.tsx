@@ -34,6 +34,15 @@ describe('useStoredFlag', () => {
     expect(result.current[0]).toBe(true);
   });
 
+  it('keeps a flag set while the stored value is still being read', async () => {
+    let release: (v: string | null) => void = () => {};
+    (AsyncStorage.getItem as jest.Mock).mockImplementationOnce(() => new Promise((r) => (release = r)));
+    const { result } = await renderHook(() => useStoredFlag('race'));
+    await act(async () => result.current[1]());
+    await act(async () => release(null)); // the old value (unset) arrives after the set
+    expect(result.current[0]).toBe(true);
+  });
+
   it('sets the flag in memory and in storage', async () => {
     const { result } = await renderHook(() => useStoredFlag('tip'));
     await waitFor(() => expect(result.current[0]).toBe(false));
@@ -68,10 +77,18 @@ describe('useActiveAccount', () => {
     await waitFor(() => expect(result.current.accountId).toBe('a1'));
   });
 
-  it('restores the stored pick', async () => {
-    await AsyncStorage.setItem('mofin-active-account', 'a2');
+  it('restores the stored pick, and is not ready until it has been read', async () => {
+    let release: () => void = () => {};
+    (AsyncStorage.getItem as jest.Mock).mockImplementationOnce(
+      () => new Promise((r) => (release = () => r('a2'))),
+    );
     const { result } = await renderHook(() => useActiveAccount(), { wrapper: wrapper() });
+    await waitFor(() => expect(result.current.accounts.length).toBe(2)); // accounts known, pick still unread
+    expect(result.current.ready).toBe(false);
+    expect(result.current.accountId).toBe('a1'); // the main-account fallback
+    await act(async () => release());
     await waitFor(() => expect(result.current.accountId).toBe('a2'));
+    expect(result.current.ready).toBe(true);
   });
 
   it('remembers "All accounts" as an explicit choice instead of falling back to main', async () => {

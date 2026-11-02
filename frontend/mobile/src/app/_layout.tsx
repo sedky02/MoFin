@@ -9,7 +9,11 @@ import { useEffect } from 'react';
 
 import { useInterFont } from '@/hooks/use-inter-font';
 import { useWebColorSchemeSync } from '@/hooks/use-web-color-scheme-sync';
+import { installNumberFormatToParts } from '@/lib/intl-polyfill';
 import { NAV_THEME } from '@/lib/theme';
+
+// Hermes on iOS lacks NumberFormat.formatToParts, which the money formatting needs.
+installNumberFormatToParts();
 
 SplashScreen.preventAutoHideAsync();
 
