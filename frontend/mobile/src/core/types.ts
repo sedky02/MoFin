@@ -1,0 +1,243 @@
+// Hand-written domain types mirroring the MoFin REST backend (no codegen).
+// Money values are ALWAYS decimal strings — never numbers. See lib/decimal.ts.
+
+export type AccountType = "CASH" | "BANK" | "SAVINGS" | "CRYPTO";
+export type CategoryType = "INCOME" | "EXPENSE";
+export type TransactionType = "INCOME" | "EXPENSE" | "TRANSFER";
+export type DraftStatus = "PENDING" | "APPROVED" | "REJECTED";
+export type LedgerItemType = "DEBIT" | "CREDIT";
+export type GoalType = "BALANCE" | "INCOME" | "EXPENSE";
+export type GoalRecurrenceUnit = "MONTH" | "YEAR";
+export type GoalStatus = "IN_PROGRESS" | "ACHIEVED" | "FAILED";
+export type RecurringInterval = "MONTHLY" | "YEARLY";
+export type RecurringStatus = "ACTIVE" | "PAUSED" | "CANCELLED";
+
+export interface User {
+  id: string;
+  email: string;
+  displayName?: string | null;
+  settings?: UserSettings | null;
+  /** False for an account that only signs in with Google (no password to change). */
+  hasPassword?: boolean;
+  /** A temporary "Try the demo" user, deleted at `expiresAt`. */
+  isDemo?: boolean;
+  expiresAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UserSettings {
+  defaultCurrency?: string;
+  /** Account the dashboard summary defaults to; absent = all accounts. */
+  mainAccountId?: string;
+  // open-ended; backend stores arbitrary JSON settings
+  [key: string]: unknown;
+}
+
+export interface Account {
+  id: string;
+  name: string;
+  type: AccountType;
+  currency: string;
+  /** Decimal string in the account's currency, added to its balance. Never a transaction. */
+  openingBalance?: string;
+  metadata?: Record<string, unknown> | null;
+  archivedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  type: CategoryType;
+  color?: string | null;
+  icon?: string | null;
+  isSystem: boolean;
+  /** Set when archived: hidden from pickers, still shown on the transactions that use it. */
+  archivedAt?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface LedgerItem {
+  id: string;
+  transactionId: string;
+  accountId: string;
+  account?: Account;
+  categoryId?: string | null;
+  category?: Category | null;
+  // Backend field name; DEBIT = out of account, CREDIT = into account.
+  direction: LedgerItemType;
+  amount: string;
+  currency: string;
+  memo?: string | null;
+}
+
+// A Transaction is the business event; it has NO amount of its own — the money
+// lives in `items` (double-entry ledger legs). Use transactionAmount() in
+// lib/format to derive the display amount.
+export interface Transaction {
+  id: string;
+  type: TransactionType;
+  description: string;
+  currency: string;
+  occurredAt: string;
+  categoryId?: string | null;
+  category?: Category | null;
+  items: LedgerItem[];
+  createdAt: string;
+  updatedAt: string;
+
+  // Recurrence — only meaningful on the root transaction that started a
+  // series (isRecurring true, parentTransactionId null). Generated
+  // occurrences carry parentTransactionId pointing back to that root.
+  isRecurring: boolean;
+  recurringInterval?: RecurringInterval | null;
+  recurringStatus?: RecurringStatus | null;
+  recurringEndDate?: string | null;
+  nextOccurrenceAt?: string | null;
+  recurringAmount?: string | null;
+  recurringFromAccountId?: string | null;
+  recurringToAccountId?: string | null;
+  // Why the series was paused when it couldn't post (an archived account...);
+  // empty for a manual pause, cleared on resume.
+  recurringError?: string | null;
+  lastFailedAt?: string | null;
+  parentTransactionId?: string | null;
+
+}
+
+// Shape the AI parser fills in and the review form edits.
+export interface ParsedTransactionData {
+  type: TransactionType;
+  description: string;
+  amount: string;
+  currency: string;
+  occurredAt?: string;
+  fromAccountId?: string | null;
+  toAccountId?: string | null;
+  categoryId?: string | null;
+}
+
+export interface DraftTransaction {
+  id: string;
+  rawInput: string;
+  parsedData: ParsedTransactionData;
+  // Prisma Decimal serializes to a string over the wire, not a number.
+  confidenceScore: string;
+  status: DraftStatus;
+  reason?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// A single period's snapshot — history is a series of these per goal.
+export interface GoalInstance {
+  id: string;
+  goalId: string;
+  periodStart: string;
+  periodEnd: string;
+  targetAmount: string;
+  progressAmount: string;
+  status: GoalStatus;
+  computedAt: string;
+}
+
+// Only on history rows: LIVE = the open period, computed now (same as the
+// card); PERIOD_END = recorded when the period ended, never recomputed;
+// ENDED = frozen when the goal was cancelled.
+export type GoalProgressSource = "LIVE" | "PERIOD_END" | "ENDED";
+
+export interface GoalHistoryInstance extends GoalInstance {
+  progressSource: GoalProgressSource;
+}
+
+// BALANCE/INCOME are "reach" goals: achieved once progress hits the target,
+// and it stays achieved for the rest of the period. EXPENSE is "stay under":
+// over the cap shows Failed, but it's only judged when the period ends.
+// `currentInstance` is the open period with live progress, or for a cancelled
+// goal the period as it was frozen when the goal was cancelled.
+export interface Goal {
+  id: string;
+  accountId: string;
+  name: string;
+  type: GoalType;
+  targetAmount: string;
+  isRecurring: boolean;
+  recurrenceUnit?: GoalRecurrenceUnit | null;
+  periodStart: string;
+  periodEnd?: string | null;
+  archivedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  currentInstance: GoalInstance | null;
+}
+
+export interface LedgerBalance {
+  // key = currency (when queried with accountId) OR "<accountId>:<currency>" (without)
+  key: string;
+  balance: string;
+}
+
+export interface CategoryBreakdownItem {
+  category: string;
+  color?: string | null;
+  amount: string;
+}
+
+export interface MonthlySummary {
+  year: number;
+  month: number;
+  income: string;
+  expenses: string;
+  // analytics.service.ts computes this via `.toFixed(4)` — a decimal string, not a number.
+  savingsRate: string;
+  categoryBreakdown: CategoryBreakdownItem[];
+  /** Currencies with income/expense this month (any currency, within the account scope). */
+  activeCurrencies?: string[];
+  /** Income by category; absent on payloads cached before it existed. */
+  incomeBreakdown?: CategoryBreakdownItem[];
+}
+
+// ---- Error shapes ----
+
+export interface ApiError400 {
+  message: string;
+  errors: { path: string; message: string }[];
+}
+
+export interface ApiError {
+  statusCode: number;
+  message: string;
+}
+
+// Paginated list responses (search/transactions, draft-transactions).
+export interface Paginated<T> {
+  data: T[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+/** An AI app (MCP client) the user has approved via OAuth. */
+export interface ConnectedApp {
+  clientId: string;
+  clientName: string | null;
+  scope: string;
+  /** Still holds a live refresh token, i.e. can currently renew access. */
+  active: boolean;
+}
+
+export interface MonthlySeriesPoint {
+  /** "YYYY-MM" (UTC) */
+  month: string;
+  income: string;
+  expenses: string;
+  /** Closing balance at the end of the month. */
+  balance: string;
+}
+export interface MonthlySeries {
+  currency: string;
+  points: MonthlySeriesPoint[];
+}
