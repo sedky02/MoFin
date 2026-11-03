@@ -1,0 +1,30 @@
+appId: com.sedky02.mofin
+name: Sign in with email
+# Needs: an existing user that has finished setup (the local seed account works).
+# Env: MAESTRO_EMAIL, MAESTRO_PASSWORD
+---
+- runFlow: subflows/launch-clean.yaml
+- runFlow: subflows/sign-in.yaml
+- extendedWaitUntil:
+    visible: "Dashboard"
+    timeout: 30000
+- assertVisible: "Transactions"
+# A wrong password stays on the sign-in screen with the error (after signing out is not needed: new launch).
+- runFlow: subflows/launch-clean.yaml
+- extendedWaitUntil:
+    visible: "Email"
+    timeout: 20000
+- tapOn:
+    id: "login-email"
+- inputText: ${MAESTRO_EMAIL}
+- tapOn:
+    id: "login-password"
+- inputText: "definitely-wrong-password"
+- hideKeyboard
+- tapOn:
+    id: "login-submit"
+- assertVisible:
+    text: ".*(ncorrect|nvalid).*"
+    optional: true
+- assertVisible:
+    id: "login-submit"

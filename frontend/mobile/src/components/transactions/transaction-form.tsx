@@ -477,6 +477,7 @@ function TransactionFormBody({
                 onBlur={field.onBlur}
                 placeholder={DESCRIPTION_PLACEHOLDER[type] ?? DESCRIPTION_PLACEHOLDER.EXPENSE}
                 accessibilityLabel="Description"
+                testID="transaction-description"
                 aria-invalid={!!fieldState.error}
                 returnKeyType="done"
                 maxLength={140}
@@ -800,6 +801,7 @@ function TransactionFormBody({
         </Button>
       )}
       <SubmitButton
+        testID="transaction-submit"
         pending={pending}
         pendingText="Saving…"
         className="min-h-12 flex-1 rounded-xl"

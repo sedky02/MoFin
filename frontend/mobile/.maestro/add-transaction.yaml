@@ -1,0 +1,21 @@
+appId: com.sedky02.mofin
+name: Add a transaction
+# Needs: a user with at least one account. Env: MAESTRO_EMAIL, MAESTRO_PASSWORD
+---
+- runFlow: subflows/launch-clean.yaml
+- runFlow: subflows/sign-in.yaml
+- extendedWaitUntil:
+    visible: "Dashboard"
+    timeout: 30000
+- tapOn: "Add"
+- extendedWaitUntil:
+    visible: "Save transaction"
+    timeout: 15000
+- runFlow:
+    file: subflows/record-expense.yaml
+    env:
+      TX_AMOUNT: "7.25"
+      TX_DESCRIPTION: "Maestro add test"
+- assertVisible: "Transaction recorded."
+- tapOn: "Transactions"
+- assertVisible: "Maestro add test.*"

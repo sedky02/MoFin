@@ -42,6 +42,7 @@ export function ConfirmDialog({
             <Text>{cancelLabel}</Text>
           </AlertDialogCancel>
           <AlertDialogAction
+            testID="confirm-dialog-action"
             onPress={() => {
               if (destructive) haptics.warning();
               onConfirm();

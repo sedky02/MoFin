@@ -1,0 +1,36 @@
+appId: com.sedky02.mofin
+name: Delete all data (throwaway user only)
+# DESTRUCTIVE: wipes every account, transaction and goal of the signed-in user. This flow creates its
+# own throwaway user and never signs in with MAESTRO_EMAIL, so it cannot touch your real account.
+# Env: MAESTRO_NEW_PASSWORD
+---
+- runFlow: subflows/launch-clean.yaml
+- runFlow: subflows/register-throwaway.yaml
+- extendedWaitUntil:
+    visible: "Add your first account.*"
+    timeout: 30000
+- tapOn: "Create account"
+- extendedWaitUntil:
+    visible: "Skip for now"
+    timeout: 30000
+- tapOn: "Skip for now"
+- extendedWaitUntil:
+    visible: "Dashboard"
+    timeout: 30000
+# More > Settings > Data > Delete data...
+- tapOn: "More"
+- tapOn: "Settings"
+- tapOn: "Data"
+- scrollUntilVisible:
+    element: "Delete data…"
+- tapOn: "Delete data…"
+- assertVisible: "Delete all your data?"
+# The action stays disabled until the word is typed.
+- tapOn: "Type DELETE to confirm"
+- inputText: "DELETE"
+- hideKeyboard
+- tapOn: "Delete data"
+# The user is kept signed in and sent back to the first-run setup.
+- extendedWaitUntil:
+    visible: "Add your first account.*"
+    timeout: 45000

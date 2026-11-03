@@ -1,0 +1,12 @@
+appId: com.sedky02.mofin
+# On the transaction form (Add tab or setup step 2): records an expense. Env: TX_DESCRIPTION, TX_AMOUNT.
+---
+- tapOn:
+    id: "transaction-amount"
+- inputText: ${TX_AMOUNT}
+- tapOn:
+    id: "transaction-description"
+- inputText: ${TX_DESCRIPTION}
+- hideKeyboard
+- tapOn:
+    id: "transaction-submit"

@@ -26,3 +26,13 @@ npm start                # then press a / w, or scan the QR with Expo Go (iPhone
 - Colors come from the generated theme; don't hand-edit `src/global.css` or `src/theme/colors.ts`.
 - App identity (name, bundle id, package, scheme) is in `app.config.ts`; environment values are in `.env` (see `.env.example`) and read only in `src/config.ts`. Anything `EXPO_PUBLIC_*` ships inside the app: never put a secret there.
 - UI components come from React Native Reusables: `npx @react-native-reusables/cli@latest add <component> -y --styling-library nativewind`.
+
+## End-to-end tests (Maestro)
+Flows live in [`.maestro/`](.maestro/README.md) (YAML, app id `com.sedky02.mofin`): sign in with email, first-run setup, add a transaction, edit/delete/undo, and Delete all data. **They have NOT been run yet** (no emulator was available when they were written), so expect small selector fixes on the first run.
+```bash
+# Android emulator running + a preview or development build installed (Maestro is an external CLI: https://maestro.dev)
+export MAESTRO_EMAIL=... MAESTRO_PASSWORD=... MAESTRO_NEW_PASSWORD=...   # never commit these
+maestro test .maestro                      # from frontend/mobile
+```
+- Sign-in, add and edit flows need a user that already finished setup (the local seed account `demo@mofin.app` works; use its password from the backend seed).
+- `first-run-setup` and `delete-all-data` register a throwaway user. **Delete all data only ever runs on that throwaway user**; do not point `MAESTRO_EMAIL` at a real account for any flow, and use a local or test backend.

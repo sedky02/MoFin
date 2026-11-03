@@ -60,6 +60,7 @@ export default function RegisterScreen() {
           control={form.control}
           name="displayName"
           label="Display name"
+          testID="register-name"
           labelHint="(optional)"
           placeholder="Alex Rivera"
           autoComplete="name"
@@ -72,6 +73,7 @@ export default function RegisterScreen() {
           control={form.control}
           name="email"
           label="Email"
+          testID="register-email"
           inputRef={emailRef}
           placeholder="you@example.com"
           autoCapitalize="none"
@@ -87,6 +89,7 @@ export default function RegisterScreen() {
           control={form.control}
           name="password"
           label="Password"
+          testID="register-password"
           password
           inputRef={passwordRef}
           placeholder="At least 8 characters"
@@ -110,7 +113,7 @@ export default function RegisterScreen() {
             </Text>
           </View>
         </FormField>
-        <SubmitButton pending={isSubmitting} pendingText="Creating account…" onPress={() => onSubmit()}>
+        <SubmitButton testID="register-submit" pending={isSubmitting} pendingText="Creating account…" onPress={() => onSubmit()}>
           Create account
         </SubmitButton>
       </View>

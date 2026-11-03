@@ -1,0 +1,6 @@
+appId: com.sedky02.mofin
+---
+# Fresh install state: no session, no stored flags. (clearKeychain matters on iOS only.)
+- launchApp:
+    clearState: true
+    clearKeychain: true

@@ -1,0 +1,25 @@
+appId: com.sedky02.mofin
+name: First-run setup (new user)
+# Registers a throwaway user, creates the first account, records the first transaction.
+# Env: MAESTRO_NEW_PASSWORD. Leaves one throwaway user behind on the backend you point the app at.
+---
+- runFlow: subflows/launch-clean.yaml
+- runFlow: subflows/register-throwaway.yaml
+# Step 1: the account.
+- extendedWaitUntil:
+    visible: "Add your first account.*"
+    timeout: 30000
+- tapOn: "Create account"
+# Step 2: the first transaction.
+- extendedWaitUntil:
+    visible: "Save transaction"
+    timeout: 30000
+- runFlow:
+    file: subflows/record-expense.yaml
+    env:
+      TX_AMOUNT: "12.50"
+      TX_DESCRIPTION: "Maestro first coffee"
+# Setup ends by itself once a transaction exists.
+- extendedWaitUntil:
+    visible: "Dashboard"
+    timeout: 30000

@@ -153,7 +153,7 @@ export function TransactionDetail({ id }: { id: string }) {
 
         {/* It's the user's own record: change it or remove it. */}
         <View className="mt-4 flex-row flex-wrap gap-2 border-t border-border pt-4">
-          <Button variant="outline" className="min-h-11 gap-1.5" accessibilityLabel="Edit" onPress={() => router.push(`/transactions/${tx.id}/edit`)}>
+          <Button variant="outline" className="min-h-11 gap-1.5" accessibilityLabel="Edit" testID="transaction-edit" onPress={() => router.push(`/transactions/${tx.id}/edit`)}>
             <Icon as={Pencil} size={16} aria-hidden />
             <Text>Edit</Text>
           </Button>
@@ -161,6 +161,7 @@ export function TransactionDetail({ id }: { id: string }) {
             variant="outline"
             className="min-h-11 gap-1.5"
             accessibilityLabel="Delete"
+            testID="transaction-delete"
             disabled={deleteMut.isPending}
             onPress={() => setConfirmDelete(true)}>
             <Icon as={Trash2} size={16} aria-hidden className="text-destructive" />

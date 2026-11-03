@@ -1,0 +1,57 @@
+appId: com.sedky02.mofin
+name: Edit, delete and undo a transaction
+# Needs: a user with at least one account. Creates its own transaction first.
+# Env: MAESTRO_EMAIL, MAESTRO_PASSWORD
+---
+- runFlow: subflows/launch-clean.yaml
+- runFlow: subflows/sign-in.yaml
+- extendedWaitUntil:
+    visible: "Dashboard"
+    timeout: 30000
+- tapOn: "Add"
+- extendedWaitUntil:
+    visible: "Save transaction"
+    timeout: 15000
+- runFlow:
+    file: subflows/record-expense.yaml
+    env:
+      TX_AMOUNT: "3.00"
+      TX_DESCRIPTION: "Maestro edit me"
+# Open it from the list.
+- tapOn: "Transactions"
+- tapOn: "Maestro edit me.*"
+# Edit.
+- tapOn:
+    id: "transaction-edit"
+- extendedWaitUntil:
+    visible: "Save changes"
+    timeout: 15000
+- tapOn:
+    id: "transaction-description"
+- eraseText: 30
+- inputText: "Maestro edited"
+- hideKeyboard
+- tapOn:
+    id: "transaction-submit"
+- assertVisible: "Transaction updated."
+- extendedWaitUntil:
+    visible: "Maestro edited"
+    timeout: 15000
+# Delete, then take it back with Undo.
+- tapOn:
+    id: "transaction-delete"
+- assertVisible: "Delete this transaction?"
+- tapOn:
+    id: "confirm-dialog-action"
+- assertVisible: "Transaction deleted."
+- tapOn: "Undo"
+- assertVisible: "Transaction restored."
+- extendedWaitUntil:
+    visible: "Maestro edited"
+    timeout: 15000
+# Delete for good (no Undo this time) so the account is left as it was.
+- tapOn:
+    id: "transaction-delete"
+- tapOn:
+    id: "confirm-dialog-action"
+- assertVisible: "Transaction deleted."

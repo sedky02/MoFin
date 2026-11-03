@@ -1,0 +1,34 @@
+appId: com.sedky02.mofin
+# Creates a brand-new user with a unique email and signs in as it. Needs MAESTRO_NEW_PASSWORD
+# (>= 8 characters). The generated address is available as ${output.newEmail}.
+---
+- evalScript: ${output.newEmail = 'maestro+' + Date.now() + '@example.com'}
+- extendedWaitUntil:
+    visible: "Create an account"
+    timeout: 20000
+- tapOn: "Create an account"
+- extendedWaitUntil:
+    visible: "Display name.*"
+    timeout: 10000
+- tapOn:
+    id: "register-name"
+- inputText: "Maestro Test"
+- tapOn:
+    id: "register-email"
+- inputText: ${output.newEmail}
+- tapOn:
+    id: "register-password"
+- inputText: ${MAESTRO_NEW_PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: "register-submit"
+# Registering returns to the sign-in screen with the email filled in.
+- extendedWaitUntil:
+    visible: "Password"
+    timeout: 20000
+- tapOn:
+    id: "login-password"
+- inputText: ${MAESTRO_NEW_PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: "login-submit"

@@ -62,6 +62,7 @@ export default function LoginScreen() {
           control={form.control}
           name="email"
           label="Email"
+          testID="login-email"
           placeholder="you@example.com"
           autoCapitalize="none"
           autoCorrect={false}
@@ -76,6 +77,7 @@ export default function LoginScreen() {
           control={form.control}
           name="password"
           label="Password"
+          testID="login-password"
           password
           inputRef={passwordRef}
           autoCapitalize="none"
@@ -89,7 +91,7 @@ export default function LoginScreen() {
             Forgot password?
           </Link>
         </View>
-        <SubmitButton pending={isSubmitting} pendingText="Signing in…" onPress={() => onSubmit()}>
+        <SubmitButton testID="login-submit" pending={isSubmitting} pendingText="Signing in…" onPress={() => onSubmit()}>
           Sign in
         </SubmitButton>
       </View>
