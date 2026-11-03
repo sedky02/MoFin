@@ -5,10 +5,11 @@
 // On a 401 the client asks session.ts for a new access token (one shared refresh for every waiting
 // request) and retries the request once. If the refresh is refused, the session ends and the root
 // layout's route guard shows sign-in; there is no redirect from here.
-import { ApiClientError, send, newRequestId, type SearchParams } from '@/api/http';
+import { ApiClientError, send, newRequestId, type SearchParams, type TextResponse } from '@/api/http';
 import { getAccessToken, hasSession, refreshSession, signOut, type AuthTokens } from '@/api/session';
 
 export { ApiClientError } from '@/api/http';
+export type { TextResponse } from '@/api/http';
 export type { AuthTokens } from '@/api/session';
 
 const SESSION_EXPIRED = 'Session expired.';
@@ -18,7 +19,7 @@ const REFRESH_UNAVAILABLE = "Couldn't refresh your session right now. Please try
 // Seeding a demo writes a few hundred rows, so it gets longer than a login (as on the web).
 const DEMO_TIMEOUT_MS = 30_000;
 
-type RequestOpts = { body?: unknown; searchParams?: SearchParams };
+type RequestOpts = { body?: unknown; searchParams?: SearchParams; responseType?: 'json' | 'text' };
 
 /** A fresh access token, or an ApiClientError for the caller when there is none to be had. */
 async function renewAccessToken(): Promise<string> {
@@ -56,6 +57,9 @@ export const api = {
   patch: <T>(path: string, body?: unknown) => request<T>('PATCH', path, { body }),
   put: <T>(path: string, body?: unknown) => request<T>('PUT', path, { body }),
   delete: <T>(path: string, body?: unknown) => request<T>('DELETE', path, { body }),
+  /** GET a file (e.g. the data export): the raw body and its Content-Type / Content-Disposition. */
+  download: (path: string, searchParams?: SearchParams) =>
+    request<TextResponse>('GET', path, { searchParams, responseType: 'text' }),
 };
 
 /** POST /auth/demo: a temporary demo user (or the visitor's existing one). */

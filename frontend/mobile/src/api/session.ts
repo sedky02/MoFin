@@ -74,6 +74,15 @@ export function getAccessToken(): string | undefined {
   return accessToken;
 }
 
+/**
+ * This device's refresh token, for the one signed-in route that has to name its own session:
+ * POST /auth/password/change keeps that token's family and revokes every other one. Never log,
+ * toast or store it anywhere else.
+ */
+export function currentRefreshToken(): string | undefined {
+  return refreshToken;
+}
+
 /** True while there is a refresh token to use (signed in, possibly without a live access token). */
 export function hasSession(): boolean {
   return refreshToken !== undefined;

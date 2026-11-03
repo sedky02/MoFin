@@ -25,10 +25,27 @@ function setup(onConfirm: () => Promise<void>, onOpenChange = jest.fn()) {
 beforeEach(() => resetToasts());
 
 describe('TypeToConfirmDialog', () => {
-  it('refuses until DELETE is typed', async () => {
+  it('keeps the action disabled until DELETE is typed', async () => {
     const onConfirm = jest.fn().mockResolvedValue(undefined);
     await setup(onConfirm);
-    await fireEvent.press(await screen.findByLabelText('Delete everything'));
+    const action = await screen.findByLabelText('Delete everything');
+    expect(action).toBeDisabled();
+    await fireEvent.press(action);
+    for (const wrong of ['delete', 'DELET', 'DELETE!', 'D E L E T E']) {
+      await fireEvent.changeText(screen.getByLabelText('Type DELETE to confirm'), wrong);
+      expect(screen.getByLabelText('Delete everything')).toBeDisabled();
+    }
+    await fireEvent.changeText(screen.getByLabelText('Type DELETE to confirm'), 'DELETE');
+    expect(screen.getByLabelText('Delete everything')).toBeEnabled();
+    expect(onConfirm).not.toHaveBeenCalled();
+  });
+
+  it('refuses a keyboard submit until DELETE is typed', async () => {
+    const onConfirm = jest.fn().mockResolvedValue(undefined);
+    await setup(onConfirm);
+    const input = await screen.findByLabelText('Type DELETE to confirm');
+    await fireEvent.changeText(input, 'delete');
+    await fireEvent(input, 'submitEditing');
     expect(await screen.findByText('Type DELETE to confirm.')).toBeTruthy();
     expect(onConfirm).not.toHaveBeenCalled();
   });

@@ -21,7 +21,8 @@ export const CONFIRM_WORD = 'DELETE';
 
 /**
  * A destructive action behind a typed word. There is no password to ask for (a Google-only
- * account has none), so the word is what stops a stray tap. `onConfirm` does the work and
+ * account has none), so the word is what stops a stray tap: the action button stays disabled until
+ * it is typed (surrounding spaces are ignored, as on the web). `onConfirm` does the work and
  * throws on failure, which shows as a toast; on success the dialog closes itself unless
  * `closeWhenDone` is false, for an action that navigates away.
  */
@@ -49,6 +50,8 @@ export function TypeToConfirmDialog({
   const [pending, setPending] = React.useState(false);
   const [text, setText] = React.useState('');
   const [error, setError] = React.useState<string | undefined>();
+  // The action stays disabled until the word is typed, so a stray tap can't reach it at all.
+  const typed = text.trim() === CONFIRM_WORD;
 
   function reset() {
     setText('');
@@ -63,7 +66,7 @@ export function TypeToConfirmDialog({
 
   async function action() {
     if (pending) return;
-    if (text.trim() !== CONFIRM_WORD) {
+    if (!typed) {
       setError(`Type ${CONFIRM_WORD} to confirm.`);
       return;
     }
@@ -122,7 +125,7 @@ export function TypeToConfirmDialog({
           {/* A plain Button, not AlertDialogAction: the dialog must stay open while this runs or fails. */}
           <Button
             variant="destructive"
-            disabled={pending}
+            disabled={pending || !typed}
             aria-busy={pending}
             accessibilityLabel={pending ? pendingText : actionLabel}
             onPress={action}>

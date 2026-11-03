@@ -33,7 +33,12 @@ export type SendOpts = {
   /** Reused by a retry so both backend log lines correlate to one call. */
   requestId?: string;
   timeoutMs?: number;
+  /** 'text': resolve with the raw body and its file headers (a download), not parsed JSON. Errors are the same. */
+  responseType?: 'json' | 'text';
 };
+
+/** What `responseType: 'text'` resolves with: the body as sent, and the headers that name the file. */
+export type TextResponse = { text: string; contentType: string | null; contentDisposition: string | null };
 
 // The web's BFF gave up on the backend after 8 s. The app talks to it directly over a phone
 // network, and a cold-starting serverless backend can take longer, so allow a little more.
@@ -71,7 +76,14 @@ export function newRequestId(): string {
  * failure rejects with fetch's own error, which never contains the request headers.
  */
 export async function send<T>(method: string, path: string, opts: SendOpts = {}): Promise<T> {
-  const { body, searchParams, accessToken, requestId = newRequestId(), timeoutMs = DEFAULT_TIMEOUT_MS } = opts;
+  const {
+    body,
+    searchParams,
+    accessToken,
+    requestId = newRequestId(),
+    timeoutMs = DEFAULT_TIMEOUT_MS,
+    responseType = 'json',
+  } = opts;
   const headers: Record<string, string> = {
     Accept: 'application/json',
     'x-request-id': requestId,
@@ -104,6 +116,16 @@ export async function send<T>(method: string, path: string, opts: SendOpts = {})
   if (res.status === 204) return undefined as T;
 
   const text = await res.text();
+
+  if (res.ok && responseType === 'text') {
+    const file: TextResponse = {
+      text,
+      contentType: res.headers.get('content-type'),
+      contentDisposition: res.headers.get('content-disposition'),
+    };
+    return file as T;
+  }
+
   const data = text ? safeJson(text) : undefined;
 
   if (!res.ok) {

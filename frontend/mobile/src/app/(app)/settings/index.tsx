@@ -1,8 +1,10 @@
-import { Settings } from 'lucide-react-native';
+import { SettingsScreen } from '@/components/settings/settings-screen';
+import { SettingsMenu } from '@/components/settings/settings-menu';
 
-import { PlaceholderScreen } from '@/components/shell/placeholder-screen';
-
-// Placeholder: filled in by a later phase.
-export default function SettingsScreen() {
-  return <PlaceholderScreen icon={Settings} title="Settings" description="Your profile, theme and data options will appear here." />;
+export default function SettingsIndexScreen() {
+  return (
+    <SettingsScreen title="Settings">
+      <SettingsMenu />
+    </SettingsScreen>
+  );
 }
