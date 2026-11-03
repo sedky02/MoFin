@@ -6,6 +6,10 @@ import type { Account } from '@/core/types';
 
 const mockPush = jest.fn();
 jest.mock('expo-router', () => ({ router: { push: (...a: unknown[]) => mockPush(...a) } }));
+jest.mock('@/components/transactions/transaction-form', () => {
+  const { View } = jest.requireActual('react-native');
+  return { TransactionForm: (props: { compact?: boolean }) => <View testID="setup-transaction-slot" accessibilityLabel={props.compact ? 'compact form' : 'form'} /> };
+});
 jest.mock('@/components/onboarding/first-account-form', () => {
   const { View } = jest.requireActual('react-native');
   return { FirstAccountForm: () => <View accessibilityLabel="Add your first account" /> };
@@ -28,13 +32,13 @@ describe('Setup', () => {
     expect(screen.getByText(/^Welcome to MoFin\./)).toBeTruthy();
   });
 
-  it('step 2: confirms the account, marks the form slot, and can be skipped', async () => {
+  it('step 2: confirms the account, embeds the compact transaction form, and can be skipped', async () => {
     const skip = jest.fn();
     await render(<Setup step="transaction" accounts={[account()]} skip={skip} />);
     expect(screen.getByText('Record your first transaction')).toBeTruthy();
     expect(screen.getByText('Step 2 of 2')).toBeTruthy();
     expect(screen.getByText('Main bank account (TND) is ready.')).toBeTruthy();
-    expect(screen.getByTestId('setup-transaction-slot')).toBeTruthy();
+    expect(screen.getByLabelText('compact form')).toBeTruthy();
     await fireEvent.press(screen.getByLabelText('Skip for now'));
     expect(skip).toHaveBeenCalledTimes(1);
   });

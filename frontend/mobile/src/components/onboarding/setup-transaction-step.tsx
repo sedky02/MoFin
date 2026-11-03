@@ -1,10 +1,13 @@
 import { Check } from 'lucide-react-native';
 import { View } from 'react-native';
 
+import { TransactionForm } from '@/components/transactions/transaction-form';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import type { Account } from '@/core/types';
+
+const noop = () => {};
 
 export function accountsRecap(accounts: Account[]): string {
   const [only] = accounts;
@@ -12,12 +15,9 @@ export function accountsRecap(accounts: Account[]): string {
 }
 
 /**
- * Step 2 of the setup: record the first transaction, or skip it.
- *
- * SLOT: the transaction form (src/components/transactions/transaction-form.tsx) is built by
- * another phase; the orchestrator replaces the placeholder card below with it. Whatever is
- * rendered there should call `skip` or leave the setup by recording something: the setup ends
- * by itself once a transaction exists (see useSetup).
+ * Step 2 of the setup: record the first transaction, or skip it. The setup ends by itself once a
+ * transaction exists (useSetup), so saving needs no navigation here: `onSaved` is a no-op that
+ * only stops the form from going back.
  */
 export function SetupTransactionStep({ accounts, skip }: { accounts: Account[]; skip: () => void }) {
   return (
@@ -28,10 +28,7 @@ export function SetupTransactionStep({ accounts, skip }: { accounts: Account[]; 
         </View>
         <Text className="flex-1 text-sm text-muted-foreground">{accountsRecap(accounts)}</Text>
       </View>
-      {/* SLOT: transaction form goes here. */}
-      <View testID="setup-transaction-slot" className="items-center rounded-xl border border-dashed border-border px-4 py-10">
-        <Text className="text-sm text-muted-foreground">Transaction form lands here</Text>
-      </View>
+      <TransactionForm compact onSaved={noop} />
       <Button variant="ghost" size="lg" accessibilityLabel="Skip for now" onPress={skip}>
         <Text className="text-muted-foreground">Skip for now</Text>
       </Button>
