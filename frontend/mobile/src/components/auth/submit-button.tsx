@@ -19,7 +19,7 @@ export function SubmitButton({
       variant={variant}
       disabled={pending || props.disabled}
       aria-busy={pending}
-      className={cn('h-11 w-full sm:h-11', className)}
+      className={cn('min-h-11 w-full', className)}
       {...props}>
       {pending ? <ActivityIndicator size="small" /> : null}
       <Text className="text-sm font-semibold">{pending ? pendingText : children}</Text>

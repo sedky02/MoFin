@@ -47,7 +47,7 @@ export function CurrencyPicker({ value, onChange, pinned = [], disabled, classNa
           setOpen(true);
         }}
         className={cn(
-          'dark:bg-input/30 border-input bg-background h-11 w-full min-w-0 flex-row items-center justify-between gap-2 rounded-md border px-3 shadow-sm shadow-black/5 active:bg-accent',
+          'dark:bg-input/30 border-input bg-background min-h-11 w-full min-w-0 flex-row items-center justify-between gap-2 rounded-md border px-3 shadow-sm shadow-black/5 active:bg-accent',
           disabled && 'opacity-50',
           className,
         )}>
@@ -82,7 +82,7 @@ export function CurrencyPicker({ value, onChange, pinned = [], disabled, classNa
               autoComplete="off"
               spellCheck={false}
               returnKeyType="search"
-              className="border-input bg-background text-foreground h-11 rounded-md border pl-9 pr-3 text-base"
+              className="border-input bg-background text-foreground min-h-11 rounded-md border pl-9 pr-3 text-base"
               placeholderTextColor="rgba(128,128,128,0.7)"
             />
           </View>

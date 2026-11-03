@@ -125,7 +125,7 @@ export default function CategoriesScreen() {
             role="searchbox"
             autoCapitalize="none"
             autoCorrect={false}
-            className="border-input bg-background text-foreground h-11 rounded-md border pl-9 pr-3 text-base"
+            className="border-input bg-background text-foreground min-h-11 rounded-md border pl-9 pr-3 text-base"
             placeholderTextColor="rgba(128,128,128,0.7)"
           />
         </View>

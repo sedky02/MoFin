@@ -53,7 +53,7 @@ function UrlField({ label = 'Connector URL' }: { label?: string }) {
           editable={false}
           selectTextOnFocus
           accessibilityLabel={label}
-          className="h-11 min-w-0 flex-1 bg-muted/50 font-mono text-xs sm:h-11"
+          className="min-h-11 min-w-0 flex-1 bg-muted/50 font-mono text-xs"
         />
         {MCP_URL ? <CopyButton value={MCP_URL} accessibilityLabel="Copy connector URL" /> : null}
       </View>

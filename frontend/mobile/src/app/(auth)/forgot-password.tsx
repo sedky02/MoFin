@@ -61,7 +61,7 @@ export default function ForgotPasswordScreen() {
           </SubmitButton>
           <Button
             variant="ghost"
-            className="h-11"
+            className="min-h-11"
             onPress={() => {
               setSentTo(null);
               form.reset({ email: '' });

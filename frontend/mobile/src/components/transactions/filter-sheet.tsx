@@ -98,7 +98,7 @@ export function FilterSheet({
                   keyboardType="decimal-pad"
                   placeholder="0"
                   accessibilityLabel="Min amount"
-                  className="h-12 rounded-xl border-0 bg-muted/50 sm:h-12"
+                  className="min-h-12 rounded-xl border-0 bg-muted/50"
                   style={{ fontVariant: ['tabular-nums'] }}
                 />
               </Field>
@@ -111,7 +111,7 @@ export function FilterSheet({
                   keyboardType="decimal-pad"
                   placeholder="∞"
                   accessibilityLabel="Max amount"
-                  className="h-12 rounded-xl border-0 bg-muted/50 sm:h-12"
+                  className="min-h-12 rounded-xl border-0 bg-muted/50"
                   style={{ fontVariant: ['tabular-nums'] }}
                 />
               </Field>

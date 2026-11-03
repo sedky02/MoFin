@@ -70,7 +70,7 @@ export function RecentTransactions({ accountId }: { accountId?: string }) {
         <Text role="heading" aria-level={2} className="text-xs font-semibold uppercase tracking-wider text-foreground">
           Recent transactions
         </Text>
-        <Button variant="ghost" size="sm" className="-mr-2 h-11 gap-1" accessibilityLabel="View all transactions" onPress={() => router.push('/transactions')}>
+        <Button variant="ghost" size="sm" className="-mr-2 min-h-11 gap-1" accessibilityLabel="View all transactions" onPress={() => router.push('/transactions')}>
           <Text className="text-xs">View all</Text>
           <Icon as={ArrowRight} size={14} aria-hidden />
         </Button>

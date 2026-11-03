@@ -173,7 +173,7 @@ export function PreferencesSection() {
                 <SubmitButton pending={update.isPending} pendingText="Saving…" onPress={save}>
                   Save changes
                 </SubmitButton>
-                <Button variant="ghost" className="h-11 sm:h-11" disabled={update.isPending} onPress={() => setDraft(null)}>
+                <Button variant="ghost" className="min-h-11" disabled={update.isPending} onPress={() => setDraft(null)}>
                   <Text>Discard</Text>
                 </Button>
               </View>

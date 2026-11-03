@@ -192,7 +192,7 @@ function EditSeriesDialog({ tx, onClose }: { tx: Transaction; onClose: () => voi
               onChangeText={(v) => set('description', v)}
               accessibilityLabel="Description"
               autoComplete="off"
-              className={errors.description ? 'h-11 border-destructive sm:h-11' : 'h-11 sm:h-11'}
+              className={errors.description ? 'min-h-11 border-destructive' : 'min-h-11'}
             />
             <FieldError message={errors.description} />
           </View>

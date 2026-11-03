@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 import * as DialogPrimitive from '@rn-primitives/dialog';
 import { X } from 'lucide-react-native';
 import * as React from 'react';
-import { Platform, Text, View, type GestureResponderEvent, type ViewProps } from 'react-native';
+import { KeyboardAvoidingView, Platform, Text, View, type GestureResponderEvent, type ViewProps } from 'react-native';
 import { FadeIn, FadeOut, ReduceMotion } from 'react-native-reanimated';
 import { FullWindowOverlay as RNFullWindowOverlay } from 'react-native-screens';
 
@@ -55,7 +55,10 @@ function DialogOverlay({
           <NativeOnlyAnimatedView
             entering={FadeIn.delay(50).reduceMotion(ReduceMotion.System)}
             exiting={FadeOut.duration(150).reduceMotion(ReduceMotion.System)}>
-            <>{children}</>
+            {/* iOS does not resize the window for the keyboard; padding lifts a dialog whose field is covered. */}
+            <KeyboardAvoidingView behavior="padding" enabled={Platform.OS === 'ios'} style={{ width: '100%' }}>
+              {children}
+            </KeyboardAvoidingView>
           </NativeOnlyAnimatedView>
         </NativeOnlyAnimatedView>
       </DialogPrimitive.Overlay>
@@ -90,6 +93,8 @@ function DialogContent({
                 web: 'ring-offset-background focus:ring-ring data-[state=open]:bg-accent transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-offset-2',
               })
             )}
+            role="button"
+            accessibilityLabel="Close"
             hitSlop={16}>
             <Icon
               as={X}

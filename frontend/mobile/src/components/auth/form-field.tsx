@@ -62,7 +62,7 @@ export function FormField<T extends FieldValues>({
                 secureTextEntry={password && !revealed}
                 accessibilityLabel={label}
                 accessibilityHint={error}
-                className={cn('h-11 sm:h-11', password && 'pr-16', error && 'border-destructive')}
+                className={cn('min-h-11', password && 'pr-16', error && 'border-destructive')}
                 {...inputProps}
               />
               {password ? (

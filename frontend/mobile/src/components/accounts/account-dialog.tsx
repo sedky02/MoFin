@@ -106,7 +106,7 @@ function AccountDialogBody({
               autoComplete="off"
               accessibilityLabel="Name"
               returnKeyType="done"
-              className={errors.name ? 'h-11 border-destructive sm:h-11' : 'h-11 sm:h-11'}
+              className={errors.name ? 'min-h-11 border-destructive' : 'min-h-11'}
             />
             {errors.name ? (
               <Text role="alert" className="text-sm text-destructive">

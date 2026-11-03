@@ -45,7 +45,7 @@ export function DataSection() {
           <SettingsRow key={format} title={title} description={description}>
             <Button
               variant="outline"
-              className="h-11 self-start sm:h-11"
+              className="min-h-11 self-start"
               onPress={() => exportAs(format)}
               disabled={pending !== null}
               aria-busy={pending === format}
@@ -85,11 +85,11 @@ export function DeleteDataRow({ user, isLoading }: { user?: User; isLoading: boo
         title="Delete all data"
         description="Wipes everything you recorded: accounts, transactions, goals and drafts. Keeps your account, your sign-in and your connected AI apps. This can't be undone.">
         {isLoading ? (
-          <Skeleton className="h-11 w-36" />
+          <Skeleton className="min-h-11 w-36" />
         ) : (
           <Button
             variant="outline"
-            className="h-11 self-start border-destructive/40 sm:h-11"
+            className="min-h-11 self-start border-destructive/40"
             onPress={() => setOpen(true)}
             disabled={!canDeleteData(user)}
             accessibilityLabel="Delete data…">

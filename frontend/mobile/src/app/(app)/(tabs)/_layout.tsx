@@ -5,6 +5,7 @@ import { useColorScheme } from 'nativewind';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppHeader } from '@/components/shell/app-header';
+import { haptics } from '@/lib/haptics';
 import { COLORS } from '@/theme/colors';
 
 export default function TabsLayout() {
@@ -17,9 +18,10 @@ export default function TabsLayout() {
         header: (props) => <AppHeader {...props} />,
         tabBarActiveTintColor: colorScheme === 'dark' ? c.primary : c['primary-text'],
         tabBarInactiveTintColor: c['muted-foreground'],
-        // Explicit height: the web tab bar otherwise clips its labels, and this keeps all targets >= 44pt.
-        tabBarStyle: { backgroundColor: c.card, borderTopColor: c.border, height: 60 + insets.bottom, paddingTop: 6, paddingBottom: 6 + insets.bottom },
-        tabBarLabelStyle: { fontFamily: 'Inter_500Medium', fontSize: 11 },
+        // A minimum, not a fixed height: labels clip on the web otherwise, targets stay >= 44pt, and the bar grows with large text.
+        tabBarStyle: { backgroundColor: c.card, borderTopColor: c.border, minHeight: 60 + insets.bottom, paddingTop: 6, paddingBottom: 6 + insets.bottom },
+        tabBarItemStyle: { height: 'auto', minHeight: 48 },
+        tabBarLabelStyle: { fontFamily: 'Inter_500Medium', fontSize: 11, lineHeight: 14 },
       }}>
       <Tabs.Screen
         name="dashboard"
@@ -41,6 +43,7 @@ export default function TabsLayout() {
           // Add is an action, not a place: it opens the form over the tabs instead of selecting a tab.
           tabPress: (e) => {
             e.preventDefault();
+            haptics.tap();
             router.push('/transactions/new');
           },
         }}

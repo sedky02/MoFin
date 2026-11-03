@@ -4,7 +4,7 @@ import { TextClassContext } from '@/components/ui/text';
 import { cn } from '@/lib/utils';
 import * as AlertDialogPrimitive from '@rn-primitives/alert-dialog';
 import * as React from 'react';
-import { Platform, View, type ViewProps } from 'react-native';
+import { KeyboardAvoidingView, Platform, View, type ViewProps } from 'react-native';
 import { FadeIn, FadeOut, ReduceMotion } from 'react-native-reanimated';
 import { FullWindowOverlay as RNFullWindowOverlay } from 'react-native-screens';
 
@@ -39,7 +39,10 @@ function AlertDialogOverlay({
           entering={FadeIn.duration(200).delay(50).reduceMotion(ReduceMotion.System)}
           exiting={FadeOut.duration(150).reduceMotion(ReduceMotion.System)}
           as="Pressable">
-          <>{children}</>
+          {/* The type-to-confirm dialog has a field; iOS needs the padding to keep it above the keyboard. */}
+          <KeyboardAvoidingView behavior="padding" enabled={Platform.OS === 'ios'} style={{ width: '100%', alignItems: 'center' }}>
+            {children}
+          </KeyboardAvoidingView>
         </NativeOnlyAnimatedView>
       </AlertDialogPrimitive.Overlay>
     </FullWindowOverlay>

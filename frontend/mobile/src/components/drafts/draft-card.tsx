@@ -15,6 +15,9 @@ import { cn } from '@/lib/utils';
 import { confidenceTier, draftAccountSummary, draftDisplayAmount, quickApproveState, rejectionReasonOf } from './draft-model';
 import { DraftReviewForm } from './draft-review-form';
 
+// Amber text on its own 15% tint is 4.1:1 in the light theme; this darker amber (amber-800) is 6+.
+const WARNING_ON_TINT = 'text-[#92400e] dark:text-warning';
+
 const TYPE_STYLE: Record<TransactionType, { label: string; bg: string; text: string }> = {
   EXPENSE: { label: 'Expense', bg: 'bg-destructive/10', text: 'text-destructive' },
   INCOME: { label: 'Income', bg: 'bg-success/15', text: 'text-success' },
@@ -23,13 +26,13 @@ const TYPE_STYLE: Record<TransactionType, { label: string; bg: string; text: str
 
 const TIER_STYLE = {
   high: { bg: 'bg-success/15', text: 'text-success' },
-  medium: { bg: 'bg-warning/15', text: 'text-warning' },
+  medium: { bg: 'bg-warning/15', text: WARNING_ON_TINT },
   low: { bg: 'bg-destructive/15', text: 'text-destructive' },
   none: { bg: 'bg-muted', text: 'text-muted-foreground' },
 } as const;
 
 const STATUS_STYLE: Record<DraftStatus, { label: string; bg: string; text: string }> = {
-  PENDING: { label: 'Pending', bg: 'bg-warning/15', text: 'text-warning' },
+  PENDING: { label: 'Pending', bg: 'bg-warning/15', text: WARNING_ON_TINT },
   APPROVED: { label: 'Approved', bg: 'bg-success/15', text: 'text-success' },
   REJECTED: { label: 'Rejected', bg: 'bg-destructive/15', text: 'text-destructive' },
 };
@@ -142,7 +145,7 @@ export function DraftCard({
               onChangeText={setReason}
               placeholder="Reason (optional)"
               accessibilityLabel="Reason (optional)"
-              className="h-11 bg-background sm:h-11"
+              className="min-h-11 bg-background"
             />
             <View className="flex-row justify-end gap-2">
               <Button variant="ghost" className="min-h-11" accessibilityLabel="Keep" onPress={() => setRejectOpen(false)}>

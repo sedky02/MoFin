@@ -178,11 +178,11 @@ function FormSkeleton({ compact }: { compact?: boolean }) {
   return (
     <FormFrame compact={compact}>
       <View accessibilityLabel="Loading" aria-busy className="gap-4">
-        <Skeleton className="h-12 w-full rounded-xl" />
+        <Skeleton className="min-h-12 w-full rounded-xl" />
         <Skeleton className="h-28 w-full rounded-2xl" />
         <Skeleton className="h-24 w-full rounded-2xl" />
-        <Skeleton className="h-12 w-full rounded-xl" />
-        <Skeleton className="h-12 w-full rounded-xl" />
+        <Skeleton className="min-h-12 w-full rounded-xl" />
+        <Skeleton className="min-h-12 w-full rounded-xl" />
       </View>
     </FormFrame>
   );
@@ -480,7 +480,7 @@ function TransactionFormBody({
                 aria-invalid={!!fieldState.error}
                 returnKeyType="done"
                 maxLength={140}
-                className="h-11 border-0 bg-transparent px-0 text-base shadow-none dark:bg-transparent"
+                className="min-h-11 border-0 bg-transparent px-0 text-base shadow-none dark:bg-transparent"
               />
               <FieldError message={fieldState.error?.message} />
             </View>
@@ -613,7 +613,7 @@ function TransactionFormBody({
                         placeholder="Item description (optional)"
                         accessibilityLabel={`Item ${i + 1} note`}
                         maxLength={140}
-                        className="h-11 text-sm sm:h-11"
+                        className="min-h-11 text-sm"
                       />
                       <FieldError message={fieldState.error?.message} />
                     </View>
@@ -786,14 +786,14 @@ function TransactionFormBody({
   const buttons = (
     <View className="flex-row gap-3">
       {onCancel ? (
-        <Button variant="secondary" size="lg" className="h-12 flex-1 rounded-xl" onPress={onCancel}>
+        <Button variant="secondary" size="lg" className="min-h-12 flex-1 rounded-xl" onPress={onCancel}>
           <Text className="text-base">Cancel</Text>
         </Button>
       ) : (
         <Button
           variant="secondary"
           size="lg"
-          className="h-12 flex-1 rounded-xl"
+          className="min-h-12 flex-1 rounded-xl"
           onPress={resetForm}
           disabled={!isDirty || pending}>
           <Text className="text-base">Reset</Text>
@@ -802,7 +802,7 @@ function TransactionFormBody({
       <SubmitButton
         pending={pending}
         pendingText="Saving…"
-        className="h-12 flex-1 rounded-xl sm:h-12"
+        className="min-h-12 flex-1 rounded-xl"
         onPress={() => void submit()}>
         {editing ? 'Save changes' : 'Save transaction'}
       </SubmitButton>

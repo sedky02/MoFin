@@ -1,3 +1,4 @@
+import { announce } from '@/lib/a11y';
 import { cn } from '@/lib/utils';
 import { Slot } from '@rn-primitives/slot';
 import { cva, type VariantProps } from 'class-variance-authority';
@@ -62,6 +63,13 @@ const ARIA_LEVEL: Partial<Record<TextVariant, string>> = {
   h4: '4',
 };
 
+/** The plain text of string children, for announcing alerts. */
+function plainText(children: React.ReactNode): string {
+  if (typeof children === 'string' || typeof children === 'number') return String(children);
+  if (Array.isArray(children)) return children.map(plainText).join('');
+  return '';
+}
+
 const TextClassContext = React.createContext<string | undefined>(undefined);
 
 function Text({
@@ -76,6 +84,12 @@ function Text({
   }) {
   const textClass = React.useContext(TextClassContext);
   const Component = asChild ? Slot : RNText;
+  // Form errors are `role="alert"` text. Web turns that into a live region; native needs the
+  // message spoken when it appears or changes.
+  const alertMessage = props.role === 'alert' ? plainText(props.children) : '';
+  React.useEffect(() => {
+    if (alertMessage) announce(alertMessage);
+  }, [alertMessage]);
   return (
     <Component
       className={cn(textVariants({ variant }), textClass, className)}

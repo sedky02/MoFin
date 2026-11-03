@@ -56,11 +56,11 @@ export function DeleteAccountSection() {
       </Text>
       <View className="mt-5">
         {isLoading ? (
-          <Skeleton className="h-11 w-full" />
+          <Skeleton className="min-h-11 w-full" />
         ) : (
           <Button
             variant="destructive"
-            className="h-11 sm:h-11"
+            className="min-h-11"
             onPress={() => setOpen(true)}
             disabled={!canDeleteAccount(user)}
             accessibilityLabel="Delete account…">

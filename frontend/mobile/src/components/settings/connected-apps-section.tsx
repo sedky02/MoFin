@@ -27,7 +27,7 @@ export function ConnectedAppsSection() {
       description="Apps you've approved to read your data and suggest transactions. Disconnecting stops an app from renewing access; a session it already holds can keep working for up to 15 minutes."
       action={
         <Link href="/connect" asChild>
-          <Button variant="outline" role="link" className="h-11 self-start sm:h-11">
+          <Button variant="outline" role="link" className="min-h-11 self-start">
             <Text>Connect an app</Text>
           </Button>
         </Link>
@@ -75,7 +75,7 @@ export function ConnectedAppsSection() {
                   </View>
                   <Button
                     variant="outline"
-                    className="h-11 sm:h-11"
+                    className="min-h-11"
                     disabled={busy}
                     accessibilityLabel={`Disconnect ${app.clientName ?? 'this app'}`}
                     onPress={() => setToDisconnect(app)}>

@@ -133,7 +133,7 @@ export function MoneyInput({
           {...common}
           style={{ fontVariant: ['tabular-nums'] }}
           className={cn(
-            'h-11 sm:h-11',
+            'min-h-11',
             !symbol ? 'pl-3' : symbol.length > 1 ? 'pl-9' : 'pl-7',
             currency && 'pr-14',
             invalid && 'border-destructive',

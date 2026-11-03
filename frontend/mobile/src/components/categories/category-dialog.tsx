@@ -106,7 +106,7 @@ function CategoryDialogBody({
               maxLength={CATEGORY_NAME_MAX + 10}
               autoComplete="off"
               accessibilityLabel="Name"
-              className={cn('h-11 sm:h-11', error && 'border-destructive')}
+              className={cn('min-h-11', error && 'border-destructive')}
             />
             {error ? (
               <Text role="alert" className="text-sm text-destructive">

@@ -102,7 +102,7 @@ export function FirstAccountForm() {
               value={field.value}
               accessibilityLabel="Name"
               autoComplete="off"
-              className="h-11 sm:h-11"
+              className="min-h-11"
               onBlur={field.onBlur}
               onChangeText={(t) => {
                 nameEdited.current = true;

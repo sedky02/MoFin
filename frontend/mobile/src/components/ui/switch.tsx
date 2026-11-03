@@ -17,6 +17,8 @@ function Switch({
         props.disabled && 'opacity-50',
         className
       )}
+      // The track is 18pt tall; the slop brings the touch target to 44pt.
+      hitSlop={{ top: 13, bottom: 13, left: 8, right: 8 }}
       {...props}>
       <SwitchPrimitives.Thumb
         className={cn(

@@ -80,7 +80,7 @@ export function ProfileSection() {
               editable={false}
               accessibilityLabel="Email"
               aria-disabled
-              className="h-11 bg-muted/50 opacity-70 sm:h-11"
+              className="min-h-11 bg-muted/50 opacity-70"
             />
           </View>
 
@@ -103,7 +103,7 @@ export function ProfileSection() {
               </SubmitButton>
               <Button
                 variant="ghost"
-                className="h-11 sm:h-11"
+                className="min-h-11"
                 disabled={update.isPending}
                 onPress={() => form.reset({ displayName: user.displayName ?? '' })}>
                 <Text>Discard</Text>

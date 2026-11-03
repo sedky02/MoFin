@@ -14,7 +14,7 @@ export default function NewTransactionScreen() {
             <Button
               variant="ghost"
               size="sm"
-              className="h-11 px-2"
+              className="min-h-11 px-2"
               accessibilityLabel="Cancel"
               onPress={() => (router.canGoBack() ? router.back() : router.replace('/dashboard'))}>
               <Text className="text-base">Cancel</Text>
