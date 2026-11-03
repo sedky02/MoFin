@@ -70,8 +70,12 @@ export type GoogleLoginDto = z.infer<typeof googleLoginSchema>;
 
 // Sent by the mobile app after native Google sign-in: the ID token Google gave
 // the device. Untrusted until GoogleIdTokenVerifier checks it. Google's tokens
-// are around 1–2 KB; the cap only stops an arbitrarily large string.
-export const googleIdTokenSchema = z.object({
-  idToken: z.string().min(1).max(8192),
-});
+// are around 1–2 KB; the cap only stops an arbitrarily large string. Strict:
+// the app sends `{ idToken }` and nothing else, so any other field is a 400
+// rather than being silently dropped.
+export const googleIdTokenSchema = z
+  .object({
+    idToken: z.string().min(1).max(8192),
+  })
+  .strict();
 export type GoogleIdTokenDto = z.infer<typeof googleIdTokenSchema>;

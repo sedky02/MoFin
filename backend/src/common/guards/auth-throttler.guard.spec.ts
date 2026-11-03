@@ -7,7 +7,10 @@ import {
   ChangePasswordThrottlerGuard,
   FORGOT_PASSWORD_THROTTLE,
   ForgotPasswordThrottlerGuard,
+  GOOGLE_ID_TOKEN_THROTTLE,
+  GoogleIdTokenThrottlerGuard,
   authTracker,
+  googleIdTokenTracker,
   userTracker,
 } from './auth-throttler.guard';
 
@@ -131,6 +134,73 @@ describe('AuthThrottlerGuard', () => {
       user: { id: 'user-1' },
     });
     expect(tracker).toBe('user:user-1');
+  });
+});
+
+describe('GoogleIdTokenThrottlerGuard', () => {
+  const parent = Object.getPrototypeOf(AuthThrottlerGuard.prototype) as {
+    handleRequest(props: ThrottlerRequest): Promise<boolean>;
+  };
+
+  it('applies GOOGLE_ID_TOKEN_THROTTLE (30/min), not AUTH_THROTTLE', async () => {
+    const guard = Object.create(
+      GoogleIdTokenThrottlerGuard.prototype,
+    ) as GoogleIdTokenThrottlerGuard;
+    const spy = jest.spyOn(parent, 'handleRequest').mockResolvedValue(true);
+    await (
+      guard as unknown as {
+        handleRequest(p: ThrottlerRequest): Promise<boolean>;
+      }
+    ).handleRequest({
+      limit: 300,
+      ttl: 1_000,
+      blockDuration: 1_000,
+    } as ThrottlerRequest);
+    const [forwarded] = spy.mock.calls[0];
+    spy.mockRestore();
+
+    expect(GOOGLE_ID_TOKEN_THROTTLE).toEqual({ limit: 30, ttl: 60_000 });
+    expect(forwarded).toMatchObject({
+      limit: GOOGLE_ID_TOKEN_THROTTLE.limit,
+      ttl: GOOGLE_ID_TOKEN_THROTTLE.ttl,
+      blockDuration: GOOGLE_ID_TOKEN_THROTTLE.ttl,
+    });
+  });
+
+  it('uses googleIdTokenTracker as its tracker', async () => {
+    const guard = Object.create(
+      GoogleIdTokenThrottlerGuard.prototype,
+    ) as GoogleIdTokenThrottlerGuard;
+    const tracker = await (
+      guard as unknown as {
+        getTracker(req: Record<string, unknown>): Promise<string>;
+      }
+    ).getTracker({ ip: '1.2.3.4', body: { idToken: 't', email: 'a@x.com' } });
+    expect(tracker).toBe('google-id-token:1.2.3.4');
+  });
+});
+
+describe('googleIdTokenTracker', () => {
+  it('keys on the IP alone, whatever the body carries', () => {
+    const ip = '1.2.3.4';
+    const keys = [
+      { idToken: 'token-a' },
+      { idToken: 'token-b' },
+      { idToken: 'token-a', email: 'random-1@x.com' },
+      { idToken: 'token-a', email: 'random-2@x.com' },
+      { idToken: 'token-a', token: 'reset-looking' },
+      undefined,
+    ].map((body) => googleIdTokenTracker({ ip, body }));
+    expect(new Set(keys)).toEqual(new Set(['google-id-token:1.2.3.4']));
+  });
+
+  it('gives each IP its own key, apart from the other auth routes', () => {
+    expect(googleIdTokenTracker({ ip: '5.6.7.8' })).toBe(
+      'google-id-token:5.6.7.8',
+    );
+    expect(googleIdTokenTracker({ ip: '5.6.7.8' })).not.toBe(
+      authTracker({ ip: '5.6.7.8' }),
+    );
   });
 });
 

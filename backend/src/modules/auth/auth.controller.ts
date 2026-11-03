@@ -17,6 +17,7 @@ import {
   ChangePasswordThrottlerGuard,
   FORGOT_PASSWORD_IP_THROTTLE,
   ForgotPasswordThrottlerGuard,
+  GoogleIdTokenThrottlerGuard,
 } from '../../common/guards/auth-throttler.guard';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RefreshThrottlerGuard } from '../../common/guards/refresh-throttler.guard';
@@ -167,11 +168,13 @@ export class AuthController {
    * Native Google sign-in from the mobile app: the body is the ID token the
    * device got from Google, so it is verified here (signature against
    * Google's keys, issuer, audience, expiry, verified email) before anyone is
-   * signed in. Same response as login. Limited per IP by AuthThrottlerGuard
-   * (the body has no email), so forged tokens can't be tried in bulk.
+   * signed in. Same response as login. Limited per IP only, never per body
+   * field (see GoogleIdTokenThrottlerGuard for the limit and why it suits
+   * carrier NAT), so forged tokens can't be tried in bulk. No @Throttle here:
+   * the global guard keeps its 300/min per-IP baseline on top.
    */
   @Public()
-  @UseGuards(AuthThrottlerGuard)
+  @UseGuards(GoogleIdTokenThrottlerGuard)
   @Post('google/id-token')
   @ApiZodBody(googleIdTokenSchema)
   async googleIdToken(

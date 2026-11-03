@@ -108,6 +108,47 @@ export class ChangePasswordThrottlerGuard extends AuthThrottlerGuard {
   }
 }
 
+/**
+ * Per-IP limit on POST /auth/google/id-token (native Google sign-in from the
+ * mobile app).
+ *
+ * Why 30 a minute: phones on mobile data sit behind carrier-grade NAT, where
+ * one public IPv4 is shared by hundreds or thousands of subscribers. At the
+ * old AUTH_THROTTLE (5/min) the sixth person on that IP to tap "Continue with
+ * Google" within a minute locked everyone on it out for 60 s. A user signs in
+ * here once per install or sign-out (refresh tokens keep them signed in
+ * after that), so 30/min (one every 2 s, sustained) leaves room for a busy
+ * carrier IP while still capping what one client can push through.
+ *
+ * This limit is not what stops forged tokens: GoogleIdTokenVerifier's RS256
+ * signature check against Google's keys does that, and no number of tries
+ * gets past it. The cap only bounds the CPU (signature checks) and database
+ * work (user lookup, refresh token write) one IP can cause, alongside the
+ * global 300/min per-IP baseline.
+ */
+export const GOOGLE_ID_TOKEN_THROTTLE = { limit: 30, ttl: 60_000 } as const;
+
+/**
+ * Throttle key for POST /auth/google/id-token: the client IP only. It never
+ * reads the body, which this guard sees before validation, so no field a
+ * client adds (an `email`, say) can move it into a fresh bucket.
+ */
+export function googleIdTokenTracker(req: Record<string, unknown>): string {
+  return `google-id-token:${String(req.ip)}`;
+}
+
+/** GOOGLE_ID_TOKEN_THROTTLE per googleIdTokenTracker key. */
+@Injectable()
+export class GoogleIdTokenThrottlerGuard extends AuthThrottlerGuard {
+  protected throttle(): { limit: number; ttl: number } {
+    return GOOGLE_ID_TOKEN_THROTTLE;
+  }
+
+  protected getTracker(req: Record<string, unknown>): Promise<string> {
+    return Promise.resolve(googleIdTokenTracker(req));
+  }
+}
+
 /** Per-user limit on the destructive routes: DELETE /users/me and POST /users/me/reset-data. */
 export const DELETE_ACCOUNT_THROTTLE = { limit: 5, ttl: 60_000 } as const;
 

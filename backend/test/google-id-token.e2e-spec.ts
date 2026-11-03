@@ -33,7 +33,10 @@ import {
 } from 'jose';
 import * as request from 'supertest';
 import { App } from 'supertest/types';
-import { AUTH_THROTTLE } from '../src/common/guards/auth-throttler.guard';
+import {
+  AUTH_THROTTLE,
+  GOOGLE_ID_TOKEN_THROTTLE,
+} from '../src/common/guards/auth-throttler.guard';
 import { GlobalJwtAuthGuard } from '../src/common/guards/jwt-auth.guard';
 import { PrismaService } from '../src/database/prisma.service';
 import { AuthController } from '../src/modules/auth/auth.controller';
@@ -232,17 +235,91 @@ describe('POST /auth/google/id-token (e2e)', () => {
       .expect(400);
   });
 
-  it(`limits a client to ${AUTH_THROTTLE.limit} attempts a minute`, async () => {
-    const ip = nextIp();
-    const forged = await idToken({}, google.attackerKey);
-    for (let i = 0; i < AUTH_THROTTLE.limit; i++)
-      await signIn(forged, ip).expect(401);
-    // Even a valid token is refused once the limit is hit.
-    await signIn(await idToken(), ip).expect(429);
+  it('rejects a body with any field besides idToken with 400', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/auth/google/id-token')
+      .set('X-Forwarded-For', nextIp())
+      .send({ idToken: await idToken(), email: 'random@example.com' })
+      .expect(400);
+    expect(res.body.message).toBe('Validation failed');
     expect(db.tables().user).toHaveLength(0);
+  });
 
-    // Another client is unaffected.
-    await signIn(await idToken(), nextIp()).expect(201);
+  describe(`per-IP limit (${GOOGLE_ID_TOKEN_THROTTLE.limit}/min)`, () => {
+    it('lets 30 anonymous sign-ins from one IP through and answers 429 to the 31st', async () => {
+      expect(GOOGLE_ID_TOKEN_THROTTLE.limit).toBe(30);
+      const ip = nextIp();
+      // Thirty different people behind one carrier-NAT address, no
+      // Authorization header on any of them.
+      for (let i = 0; i < GOOGLE_ID_TOKEN_THROTTLE.limit; i++) {
+        await signIn(
+          await idToken({ sub: `nat-${i}`, email: `nat${i}@example.com` }),
+          ip,
+        ).expect(201);
+      }
+      const res = await signIn(
+        await idToken({ sub: 'nat-31', email: 'nat31@example.com' }),
+        ip,
+      );
+      expect(res.status).toBe(429);
+      expect(Number(res.headers['retry-after'])).toBeGreaterThan(0);
+      expect(db.tables().user).toHaveLength(GOOGLE_ID_TOKEN_THROTTLE.limit);
+
+      // Another IP is unaffected.
+      await signIn(
+        await idToken({ sub: 'nat-31', email: 'nat31@example.com' }),
+        nextIp(),
+      ).expect(201);
+    });
+
+    it('counts forged tokens too, so they cannot be tried in bulk', async () => {
+      const ip = nextIp();
+      const forged = await idToken({}, google.attackerKey);
+      for (let i = 0; i < GOOGLE_ID_TOKEN_THROTTLE.limit; i++)
+        await signIn(forged, ip).expect(401);
+      // Even a valid token is refused once the limit is hit.
+      await signIn(await idToken(), ip).expect(429);
+      expect(db.tables().user).toHaveLength(0);
+    });
+
+    it('gives no fresh bucket to a body with a random email field', async () => {
+      const ip = nextIp();
+      const forged = await idToken({}, google.attackerKey);
+      // Each request carries a different email: under the old email+IP key
+      // each would have had a bucket of its own. Now they are all 400s and
+      // all count against the one per-IP bucket.
+      for (let i = 0; i < GOOGLE_ID_TOKEN_THROTTLE.limit; i++) {
+        await request(app.getHttpServer())
+          .post('/api/v1/auth/google/id-token')
+          .set('X-Forwarded-For', ip)
+          .send({ idToken: forged, email: `random-${i}@example.com` })
+          .expect(400);
+      }
+      await request(app.getHttpServer())
+        .post('/api/v1/auth/google/id-token')
+        .set('X-Forwarded-For', ip)
+        .send({ idToken: forged, email: 'random-last@example.com' })
+        .expect(429);
+      await signIn(await idToken(), ip).expect(429);
+      expect(db.tables().user).toHaveLength(0);
+    });
+
+    it('leaves the login limit on the same IP as it was', async () => {
+      const ip = nextIp();
+      for (let i = 0; i < GOOGLE_ID_TOKEN_THROTTLE.limit; i++)
+        await signIn(await idToken(), ip).expect(201);
+      await signIn(await idToken(), ip).expect(429);
+
+      // Login keeps its own AUTH_THROTTLE per email + IP: still open after
+      // the Google bucket is full, and still closes after its own limit.
+      const login = () =>
+        request(app.getHttpServer())
+          .post('/api/v1/auth/login')
+          .set('X-Forwarded-For', ip)
+          .send({ email: 'nobody@example.com', password: 'wrong-password' });
+      for (let i = 0; i < AUTH_THROTTLE.limit; i++) await login().expect(401);
+      await login().expect(429);
+    });
   });
 
   it('answers 503 when GOOGLE_MOBILE_CLIENT_IDS is not set', async () => {
