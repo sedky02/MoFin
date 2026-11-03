@@ -3,7 +3,7 @@
 // turning it into a query, chips and counts are in transactions-list-model.
 import { Receipt, Search, SlidersHorizontal, X } from 'lucide-react-native';
 import * as React from 'react';
-import { FlatList, Pressable, RefreshControl, View } from 'react-native';
+import { FlatList, Platform, Pressable, RefreshControl, View } from 'react-native';
 
 import { EmptyState, ErrorState, SkeletonRows } from '@/components/common/states';
 import { FilterSheet } from '@/components/transactions/filter-sheet';
@@ -36,6 +36,7 @@ import { useAccounts } from '@/hooks/useAccounts';
 import { useCategories } from '@/hooks/useCategories';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { useSearchPage } from '@/hooks/useSearch';
+import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { cn } from '@/lib/utils';
 
 type ListItem =
@@ -135,6 +136,7 @@ export function TransactionsScreen() {
   }, [filterKey]);
 
   const { data, isLoading, isFetching, isError, refetch } = useSearchPage(params, page, limit);
+  const pull = usePullToRefresh(refetch);
   const listRef = React.useRef<FlatList<ListItem>>(null);
   React.useEffect(() => {
     listRef.current?.scrollToOffset({ offset: 0, animated: false });
@@ -173,7 +175,7 @@ export function TransactionsScreen() {
                 returnKeyType="search"
                 autoCapitalize="none"
                 autoCorrect={false}
-                className="h-12 rounded-xl border-0 bg-card pl-10 pr-11 sm:h-12"
+                className="min-h-12 rounded-xl border-0 bg-card pl-10 pr-11"
               />
               <View pointerEvents="none" className="absolute left-3.5">
                 <Icon as={Search} size={16} aria-hidden className="text-muted-foreground" />
@@ -302,8 +304,13 @@ export function TransactionsScreen() {
             </View>
           )
         }
-        refreshControl={<RefreshControl refreshing={false} onRefresh={async () => void (await refetch())} />}
+        refreshControl={<RefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} />}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        // A page is at most 100 rows: render a screenful first and keep the window small.
+        initialNumToRender={12}
+        windowSize={7}
+        removeClippedSubviews={Platform.OS === 'android'}
         className="flex-1 bg-background"
         contentContainerClassName="mx-auto w-full max-w-3xl p-4"
         accessibilityLabel="Transactions"

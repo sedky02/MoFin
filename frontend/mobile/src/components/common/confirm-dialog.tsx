@@ -9,6 +9,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Text } from '@/components/ui/text';
+import { haptics } from '@/lib/haptics';
 
 export function ConfirmDialog({
   open,
@@ -40,7 +41,11 @@ export function ConfirmDialog({
           <AlertDialogCancel>
             <Text>{cancelLabel}</Text>
           </AlertDialogCancel>
-          <AlertDialogAction onPress={onConfirm} className={destructive ? 'bg-destructive active:bg-destructive/90' : undefined}>
+          <AlertDialogAction
+            onPress={() => {
+              if (destructive) haptics.warning();
+              onConfirm();
+            }} className={destructive ? 'bg-destructive active:bg-destructive/90' : undefined}>
             <Text className={destructive ? 'text-white' : undefined}>{confirmLabel}</Text>
           </AlertDialogAction>
         </AlertDialogFooter>

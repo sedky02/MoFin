@@ -36,7 +36,7 @@ export function rowMeta(tx: Transaction, accountLabel: string | undefined, withD
  * A transaction in a list. Expenses show negative, income with a "+", a transfer unsigned.
  * `glance` is for lists already grouped under a day heading, so the row carries no date.
  */
-export function TransactionRow({
+function TransactionRowView({
   tx,
   accountLabel,
   variant = 'default',
@@ -78,3 +78,6 @@ export function TransactionRow({
     </Pressable>
   );
 }
+
+/** Memoised: a list re-renders on every filter keystroke, and rows only change when their transaction does. */
+export const TransactionRow = React.memo(TransactionRowView);

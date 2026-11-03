@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Text } from '@/components/ui/text';
 import { handleApiError } from '@/core/form-errors';
+import { haptics } from '@/lib/haptics';
 import { cn } from '@/lib/utils';
 
 /** The word to type, and the value the backend's `confirm` field must carry. */
@@ -72,6 +73,7 @@ export function TypeToConfirmDialog({
     }
     setError(undefined);
     setPending(true);
+    haptics.warning();
     try {
       await onConfirm();
     } catch (err) {
@@ -110,7 +112,7 @@ export function TypeToConfirmDialog({
             accessibilityHint={error}
             returnKeyType="done"
             onSubmitEditing={action}
-            className={cn('h-11 sm:h-11', error && 'border-destructive')}
+            className={cn('min-h-11', error && 'border-destructive')}
           />
           {error ? (
             <Text role="alert" className="text-sm text-destructive">

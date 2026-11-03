@@ -1,5 +1,7 @@
 // Toast store with the call shape the web's `sonner` has, so the copied hooks need no changes.
 // The view is src/components/toast-host.tsx, which subscribes to this store.
+import { haptics } from "@/lib/haptics";
+
 export type ToastKind = "success" | "error";
 
 export type ToastAction = { label: string; onClick: () => void };
@@ -49,6 +51,8 @@ export function getToasts(): ToastItem[] {
 }
 
 function show(kind: ToastKind, message: string, options?: ToastOptions): string {
+  if (kind === "success") haptics.success();
+  else haptics.error();
   counter += 1;
   const id = options?.id ?? `toast-${counter}`;
   const item: ToastItem = {

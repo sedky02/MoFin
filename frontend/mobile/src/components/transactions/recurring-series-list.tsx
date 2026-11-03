@@ -25,6 +25,7 @@ import {
 import type { Account, Transaction } from '@/core/types';
 import { useAccounts } from '@/hooks/useAccounts';
 import { useSearchPage, type SearchParams } from '@/hooks/useSearch';
+import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { cn } from '@/lib/utils';
 
 // Each series once, by its root (deleted roots never come back): active ones first by their next
@@ -42,6 +43,7 @@ export function RecurringSeriesList({ header }: { header: React.ReactElement }) 
   // Archived accounts too, so a series on one still names it.
   const { data: accounts } = useAccounts('all');
   const { data, isLoading, isFetching, isError, refetch } = useSearchPage(SERIES_QUERY, page, SERIES_PAGE_SIZE);
+  const pull = usePullToRefresh(refetch);
   const rows = data?.rows ?? [];
   const accountsById = React.useMemo(() => (accounts ? new Map(accounts.map((a) => [a.id, a])) : undefined), [accounts]);
 
@@ -94,7 +96,7 @@ export function RecurringSeriesList({ header }: { header: React.ReactElement }) 
           <SeriesRow tx={item} accountsById={accountsById} last={index === rows.length - 1} />
         </View>
       )}
-      refreshControl={<RefreshControl refreshing={false} onRefresh={async () => void (await refetch())} />}
+      refreshControl={<RefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} />}
       keyboardShouldPersistTaps="handled"
       className="flex-1 bg-background"
       contentContainerClassName="mx-auto w-full max-w-3xl p-4"
