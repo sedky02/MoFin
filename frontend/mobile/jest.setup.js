@@ -23,3 +23,23 @@ jest.mock('expo-secure-store', () => {
 });
 
 jest.mock('@react-native-community/netinfo', () => require('@react-native-community/netinfo/jest/netinfo-mock.js'));
+
+// Reanimated needs its native module, which jest has none of. Components only use it for enter/exit
+// animations, so a plain View stands in and the animation builders are inert.
+jest.mock('react-native-reanimated', () => {
+  const { View } = require('react-native');
+  const builder = () => {
+    const b = new Proxy(() => b, { get: (_t, prop) => (prop === 'build' ? () => ({}) : () => b) });
+    return b;
+  };
+  const anim = new Proxy({}, { get: () => builder() });
+  return {
+    __esModule: true,
+    default: { View, createAnimatedComponent: (c) => c },
+    ReduceMotion: { System: 'system', Always: 'always', Never: 'never' },
+    FadeIn: builder(), FadeOut: builder(), FadeInDown: builder(), FadeOutDown: builder(),
+    ...anim,
+  };
+});
+
+jest.mock('react-native-safe-area-context', () => require('react-native-safe-area-context/jest/mock').default);

@@ -22,7 +22,7 @@ Run `npm run core:drift` to compare (report only, it never overwrites).
 
 ## Mobile-only counterparts (not copies, not compared)
 - `src/lib/query-client.ts`: `STALE` and a `QueryClient` without the SSR dehydration settings.
-- `src/lib/toast.ts`: a `sonner`-shaped facade; Phase 5 connects it to a real toast view.
+- `src/lib/toast.ts`: a `sonner`-shaped store (`id`, `description`, `duration`, `action`, `cancel`, `dismiss`); `src/components/toast-host.tsx` renders it.
 - `src/api/client.ts`: `ApiClientError` and a placeholder `api`; Phase 4 makes it real.
 - `src/hooks/useActiveAccount.ts`, `src/hooks/useStoredFlag.ts`: rewritten on AsyncStorage (no cookie mirror, no `storage` event).
 - `src/lib/intl-polyfill.ts`: a `formatToParts` stand-in for Hermes on iOS (installed in the root layout), so `format.ts` stays a verbatim copy.
