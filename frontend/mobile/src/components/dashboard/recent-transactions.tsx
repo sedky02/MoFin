@@ -37,7 +37,7 @@ function Row({ tx, accountLabel }: { tx: Transaction; accountLabel?: string }) {
     <Pressable
       role="link"
       accessibilityLabel={`${tx.description}, ${meta}`}
-      onPress={() => router.push(`/transactions/${tx.id}` as never)}
+      onPress={() => router.push(`/transactions/${tx.id}`)}
       className="min-h-[68px] flex-row items-center gap-4 px-4 py-3 active:bg-secondary">
       <View className={cn('size-11 items-center justify-center rounded-xl', TILE[tx.type])}>
         <CategoryIcon name={filed.category?.name ?? tx.description} size={20} />
