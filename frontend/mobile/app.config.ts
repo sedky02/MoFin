@@ -11,6 +11,7 @@ const config: ExpoConfig = {
   orientation: 'portrait',
   icon: './assets/images/icon.png',
   userInterfaceStyle: 'automatic',
+  // Status bar: expo-status-bar in the root layout follows the theme (light icons on dark).
   ios: {
     bundleIdentifier: 'com.sedky02.mofin',
     supportsTablet: true,
@@ -18,7 +19,7 @@ const config: ExpoConfig = {
   android: {
     package: 'com.sedky02.mofin',
     adaptiveIcon: {
-      backgroundColor: '#fafaf9',
+      backgroundColor: '#D7F205', // the brand lime, behind the bars (the adaptive background image is the same colour)
       foregroundImage: './assets/images/android-icon-foreground.png',
       backgroundImage: './assets/images/android-icon-background.png',
       monochromeImage: './assets/images/android-icon-monochrome.png',
@@ -37,7 +38,7 @@ const config: ExpoConfig = {
         backgroundColor: '#fafaf9',
         dark: { backgroundColor: '#050505' },
         image: './assets/images/splash-icon.png',
-        imageWidth: 76,
+        imageWidth: 144,
       },
     ],
   ],

@@ -1,0 +1,25 @@
+// Incoming `mofin://` links. They may only ever open a screen (the transaction detail or the add
+// form): never a settings or delete screen, and never anything that acts on open. Everything else
+// lands on the app's home route. The signed-out guard lives in the root layout (`Stack.Protected`):
+// a signed-out user is sent to the sign-in screen and the app opens normally after signing in.
+export const HOME_PATH = '/';
+
+const TRANSACTION_ID = /^[A-Za-z0-9_-]{1,64}$/;
+
+/** Maps a path from an incoming link to a screen the link may open. */
+export function safeDeepLinkPath(path: string): string {
+  let pathname = path;
+  try {
+    // `mofin://transactions/abc` arrives as a full URL on some platforms and as a path on others.
+    const afterScheme = path.replace(/^[a-z][a-z0-9+.-]*:\/\//i, '');
+    pathname = afterScheme.split(/[?#]/)[0] ?? '';
+  } catch {
+    return HOME_PATH;
+  }
+  const parts = pathname.split('/').filter(Boolean);
+  if (parts[0] === 'transactions') {
+    if (parts.length === 2 && parts[1] === 'new') return '/transactions/new';
+    if (parts.length === 2 && parts[1] !== 'edit' && TRANSACTION_ID.test(parts[1]!)) return `/transactions/${parts[1]}`;
+  }
+  return HOME_PATH;
+}
