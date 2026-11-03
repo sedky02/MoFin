@@ -6,6 +6,11 @@ if (!apiUrl) {
   throw new Error('EXPO_PUBLIC_API_URL is not set. Copy .env.example to .env and restart Expo.');
 }
 
+// A release build only ever talks HTTPS. (Local dev may use http://localhost or a LAN address.)
+if (!__DEV__ && !/^https:\/\//i.test(apiUrl)) {
+  throw new Error('EXPO_PUBLIC_API_URL must be an https:// URL in a release build.');
+}
+
 export const config = {
   /** Backend base URL including `/api/v1`, no trailing slash. */
   apiUrl: apiUrl.replace(/\/+$/, ''),

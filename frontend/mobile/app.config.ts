@@ -25,6 +25,13 @@ const config: ExpoConfig = {
       monochromeImage: './assets/images/android-icon-monochrome.png',
     },
     predictiveBackGestureEnabled: false,
+    // Exports go to the cache folder and the share sheet, so no storage permission is needed, and the
+    // overlay permission has no use here. (INTERNET and VIBRATE stay: the API and haptics.)
+    blockedPermissions: [
+      'android.permission.SYSTEM_ALERT_WINDOW',
+      'android.permission.READ_EXTERNAL_STORAGE',
+      'android.permission.WRITE_EXTERNAL_STORAGE',
+    ],
   },
   web: {
     output: 'single',
@@ -32,6 +39,8 @@ const config: ExpoConfig = {
   },
   plugins: [
     'expo-router',
+    // Adds the Android backup rules that keep the stored session out of cloud backups and device transfers.
+    'expo-secure-store',
     [
       'expo-splash-screen',
       {
