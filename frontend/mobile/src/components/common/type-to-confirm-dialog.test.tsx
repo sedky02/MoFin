@@ -50,6 +50,15 @@ describe('TypeToConfirmDialog', () => {
     expect(onConfirm).not.toHaveBeenCalled();
   });
 
+  it('accepts full-width letters from an IME, and the keyboard key is Go, not Done', async () => {
+    const onConfirm = jest.fn(async () => {});
+    await setup(onConfirm);
+    const input = screen.getByLabelText('Type DELETE to confirm');
+    expect(input.props.returnKeyType).toBe('go');
+    await fireEvent.changeText(input, '\uFF24\uFF25\uFF2C\uFF25\uFF34\uFF25'); // DELETE, full-width
+    expect(screen.getByLabelText('Delete everything')).toBeEnabled();
+  });
+
   it('runs the action and closes when DELETE is typed', async () => {
     const onConfirm = jest.fn().mockResolvedValue(undefined);
     const onOpenChange = jest.fn();

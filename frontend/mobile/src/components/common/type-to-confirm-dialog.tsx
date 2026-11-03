@@ -52,7 +52,7 @@ export function TypeToConfirmDialog({
   const [text, setText] = React.useState('');
   const [error, setError] = React.useState<string | undefined>();
   // The action stays disabled until the word is typed, so a stray tap can't reach it at all.
-  const typed = text.trim() === CONFIRM_WORD;
+  const typed = text.normalize('NFKC').trim() === CONFIRM_WORD; // NFKC: full-width IME letters count
 
   function reset() {
     setText('');
@@ -110,7 +110,7 @@ export function TypeToConfirmDialog({
             spellCheck={false}
             accessibilityLabel={`Type ${CONFIRM_WORD} to confirm`}
             accessibilityHint={error}
-            returnKeyType="done"
+            returnKeyType="go"
             onSubmitEditing={action}
             className={cn('min-h-11', error && 'border-destructive')}
           />

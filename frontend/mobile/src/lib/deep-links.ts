@@ -6,6 +6,11 @@ export const HOME_PATH = '/';
 
 const TRANSACTION_ID = /^[A-Za-z0-9_-]{1,64}$/;
 
+/** True for an id that can safely go into an API path (screens reached by a typed or pasted URL). */
+export function isTransactionId(id: unknown): id is string {
+  return typeof id === 'string' && TRANSACTION_ID.test(id);
+}
+
 /** Maps a path from an incoming link to a screen the link may open. */
 export function safeDeepLinkPath(path: string): string {
   let pathname = path;

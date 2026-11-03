@@ -25,6 +25,10 @@ import {
 } from '@/components/settings/settings-logic';
 import { toast } from '@/lib/toast';
 
+// Deleting a lot of data can take longer than a normal request. A client-side timeout would show
+// "too slow" while the server finishes, so these two calls wait longer.
+const DESTRUCTIVE_TIMEOUT_MS = 45_000;
+
 export const SETTINGS_TOASTS = {
   passwordChanged: 'Password changed. Other devices were signed out.',
   dataDeleted: 'All your data was deleted.',
@@ -58,7 +62,7 @@ export async function signOutEverywhere(): Promise<void> {
 
 /** Deletes everything recorded and keeps the account and its session; every cached query starts over. */
 export async function deleteAllData(queryClient: QueryClient): Promise<void> {
-  await api.post<void>('/users/me/reset-data', { confirm: CONFIRM_WORD });
+  await api.post<void>('/users/me/reset-data', { confirm: CONFIRM_WORD }, { timeoutMs: DESTRUCTIVE_TIMEOUT_MS });
   // Every cached balance, list and setting is stale now: start from what the server says.
   await queryClient.resetQueries();
   toast.success(SETTINGS_TOASTS.dataDeleted);
@@ -70,7 +74,7 @@ export async function deleteAllData(queryClient: QueryClient): Promise<void> {
  * memory, SecureStore and the query cache first, and its logout request may fail without effect.
  */
 export async function deleteAccount(): Promise<void> {
-  await api.delete<void>('/users/me', { confirm: CONFIRM_WORD });
+  await api.delete<void>('/users/me', { confirm: CONFIRM_WORD }, { timeoutMs: DESTRUCTIVE_TIMEOUT_MS });
   toast.success(SETTINGS_TOASTS.accountDeleted);
   await signOut();
 }

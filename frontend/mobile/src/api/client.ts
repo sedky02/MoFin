@@ -53,10 +53,10 @@ async function request<T>(method: string, path: string, opts: RequestOpts = {}):
 
 export const api = {
   get: <T>(path: string, searchParams?: SearchParams) => request<T>('GET', path, { searchParams }),
-  post: <T>(path: string, body?: unknown) => request<T>('POST', path, { body }),
+  post: <T>(path: string, body?: unknown, opts?: { timeoutMs?: number }) => request<T>('POST', path, { body, ...opts }),
   patch: <T>(path: string, body?: unknown) => request<T>('PATCH', path, { body }),
   put: <T>(path: string, body?: unknown) => request<T>('PUT', path, { body }),
-  delete: <T>(path: string, body?: unknown) => request<T>('DELETE', path, { body }),
+  delete: <T>(path: string, body?: unknown, opts?: { timeoutMs?: number }) => request<T>('DELETE', path, { body, ...opts }),
   /** GET a file (e.g. the data export): the raw body and its Content-Type / Content-Disposition. */
   download: (path: string, searchParams?: SearchParams) =>
     request<TextResponse>('GET', path, { searchParams, responseType: 'text' }),

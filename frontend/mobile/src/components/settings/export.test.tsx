@@ -1,4 +1,5 @@
 // Export: the request per format, the file name and type handed to the share sheet, and the errors.
+import { clearExportCache } from '@/components/settings/save-export';
 import { fireEvent, screen, waitFor } from '@testing-library/react-native';
 
 import { DataSection } from '@/components/settings/data-section';
@@ -8,8 +9,10 @@ import { getQueryClient } from '@/lib/query-client';
 import { getToasts } from '@/lib/toast';
 
 const mockFile = { create: jest.fn(), write: jest.fn(async () => {}), uri: '' };
+const mockDir = { uri: 'file:///cache/exports/', exists: true, create: jest.fn(), delete: jest.fn() };
 jest.mock('expo-file-system', () => ({
   Paths: { cache: { uri: 'file:///cache/' } },
+  Directory: jest.fn().mockImplementation(() => mockDir),
   File: jest.fn().mockImplementation((dir: { uri: string }, name: string) => {
     mockFile.uri = `${dir.uri}${name}`;
     return mockFile;
@@ -43,7 +46,7 @@ describe('exportData', () => {
     expect(calls).toEqual([{ path: '/export?format=csv', method: 'GET', auth: 'Bearer access-1', body: undefined }]);
     expect(mockFile.create).toHaveBeenCalledWith({ overwrite: true });
     expect(mockFile.write).toHaveBeenCalledWith(csv);
-    expect(mockSharing.shareAsync).toHaveBeenCalledWith('file:///cache/mofin-export-2026-11-03.csv', {
+    expect(mockSharing.shareAsync).toHaveBeenCalledWith('file:///cache/exports/mofin-export-2026-11-03.csv', {
       mimeType: 'text/csv',
       UTI: 'public.comma-separated-values-text',
       dialogTitle: 'mofin-export-2026-11-03.csv',
@@ -56,7 +59,17 @@ describe('exportData', () => {
     await exportData('json');
     expect(calls[0].path).toBe('/export?format=json');
     expect(mockFile.write).toHaveBeenCalledWith(body);
-    expect(mockSharing.shareAsync).toHaveBeenCalledWith('file:///cache/mofin-export.json', expect.objectContaining({ mimeType: 'application/json', UTI: 'public.json' }));
+    expect(mockSharing.shareAsync).toHaveBeenCalledWith('file:///cache/exports/mofin-export.json', expect.objectContaining({ mimeType: 'application/json', UTI: 'public.json' }));
+  });
+
+  it('keeps exports in their own folder, emptied before each export and cleared on sign-out', async () => {
+    mockFetch(() => file('{}', 'application/json'));
+    await exportData('json');
+    expect(mockDir.delete).toHaveBeenCalled(); // emptied before writing
+    expect(mockDir.create).toHaveBeenCalledWith({ intermediates: true, idempotent: true });
+    mockDir.delete.mockClear();
+    clearExportCache();
+    expect(mockDir.delete).toHaveBeenCalledTimes(1);
   });
 
   it('writes nothing when sharing is unavailable', async () => {

@@ -4,7 +4,7 @@ import { act, renderHook, waitFor } from '@testing-library/react-native';
 import type { ReactNode } from 'react';
 import { api } from '@/api/client';
 import type { Account } from '@/core/types';
-import { resetActiveAccountCache, useActiveAccount } from '@/hooks/useActiveAccount';
+import { clearActiveAccount, resetActiveAccountCache, useActiveAccount } from '@/hooks/useActiveAccount';
 import { resetStoredFlagCache, useStoredFlag } from '@/hooks/useStoredFlag';
 
 jest.mock('@/api/client', () => {
@@ -97,6 +97,16 @@ describe('useActiveAccount', () => {
     await act(async () => result.current.setAccountId(undefined));
     expect(result.current.accountId).toBeUndefined();
     expect(await AsyncStorage.getItem('mofin-active-account')).toBe('all');
+  });
+
+  it('forgets the pick when asked (sign-out), in memory and on disk', async () => {
+    await AsyncStorage.setItem('mofin-active-account', 'all');
+    const { result } = await renderHook(() => useActiveAccount(), { wrapper: wrapper() });
+    await waitFor(() => expect(result.current.ready).toBe(true));
+    expect(result.current.accountId).toBeUndefined();
+    await act(async () => clearActiveAccount());
+    expect(await AsyncStorage.getItem('mofin-active-account')).toBeNull();
+    await waitFor(() => expect(result.current.accountId).toBe('a1')); // main account again
   });
 
   it('ignores a stored id that is no longer an account', async () => {

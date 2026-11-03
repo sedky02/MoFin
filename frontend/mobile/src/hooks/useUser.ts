@@ -21,7 +21,8 @@ export function useUpdateUser() {
     mutationFn: (body: { displayName?: string; settings?: Record<string, unknown> }) =>
       api.patch<User>("/users/me", body),
     onSuccess: (user) => {
-      queryClient.setQueryData(userKeys.me, user);
+      // PATCH /users/me returns a partial user (no isDemo, expiresAt...): merge, never replace.
+      queryClient.setQueryData<User>(userKeys.me, (prev) => (prev ? { ...prev, ...user } : user));
       queryClient.invalidateQueries({ queryKey: userKeys.me });
       toast.success("Settings saved.");
     },

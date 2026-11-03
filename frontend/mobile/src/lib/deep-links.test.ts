@@ -1,4 +1,4 @@
-import { safeDeepLinkPath } from '@/lib/deep-links';
+import { isTransactionId, safeDeepLinkPath } from '@/lib/deep-links';
 
 describe('safeDeepLinkPath', () => {
   it('opens the add form and a transaction detail', () => {
@@ -22,6 +22,15 @@ describe('safeDeepLinkPath', () => {
       'mofin://reset-password?token=abc',
     ]) {
       expect(safeDeepLinkPath(p)).toBe('/');
+    }
+  });
+});
+
+describe('isTransactionId', () => {
+  it('accepts plain ids only, so a pasted URL cannot walk the API path', () => {
+    expect(isTransactionId('8f14e45f-ceea-467a-9575-4b7fd25cd5c1')).toBe(true);
+    for (const bad of ['../users/me', '..%2Fusers%2Fme', 'a/b', '', 'x'.repeat(65), undefined, ['a']]) {
+      expect(isTransactionId(bad)).toBe(false);
     }
   });
 });

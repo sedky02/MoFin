@@ -17,10 +17,13 @@ type Backend = {
   remove(): Promise<void>;
 };
 
+// Only readable while the phone is unlocked, and never copied to another device through a backup.
+const OPTIONS: SecureStore.SecureStoreOptions = { keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY };
+
 const secureBackend: Backend = {
-  get: () => SecureStore.getItemAsync(KEY),
-  set: (value) => SecureStore.setItemAsync(KEY, value),
-  remove: () => SecureStore.deleteItemAsync(KEY),
+  get: () => SecureStore.getItemAsync(KEY, OPTIONS),
+  set: (value) => SecureStore.setItemAsync(KEY, value, OPTIONS),
+  remove: () => SecureStore.deleteItemAsync(KEY, OPTIONS),
 };
 
 function webBackend(): Backend {

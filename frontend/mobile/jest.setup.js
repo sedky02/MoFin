@@ -12,6 +12,7 @@ jest.mock('expo-secure-store', () => {
   const store = new Map();
   return {
     __store: store,
+    WHEN_UNLOCKED_THIS_DEVICE_ONLY: 'WHEN_UNLOCKED_THIS_DEVICE_ONLY',
     getItemAsync: jest.fn(async (key) => (store.has(key) ? store.get(key) : null)),
     setItemAsync: jest.fn(async (key, value) => {
       store.set(key, value);

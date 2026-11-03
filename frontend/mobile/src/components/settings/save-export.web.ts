@@ -3,6 +3,9 @@ import { EXPORT_FILE_TYPES, type ExportFormat } from '@/components/settings/sett
 
 export type SaveOutcome = 'shared' | 'unavailable';
 
+/** Nothing is cached on web. */
+export function clearExportCache(): void {}
+
 export async function saveExport(filename: string, text: string, format: ExportFormat): Promise<SaveOutcome> {
   const blob = new Blob([text], { type: EXPORT_FILE_TYPES[format].mimeType });
   const href = URL.createObjectURL(blob);

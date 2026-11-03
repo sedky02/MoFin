@@ -55,6 +55,14 @@ export function setActiveAccountId(id?: string) {
   });
 }
 
+/** Forgets the pick (memory and disk). The next user to sign in on this device must not inherit it. */
+export function clearActiveAccount(): void {
+  stored = undefined;
+  loaded = true;
+  notify();
+  AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
+}
+
 /** Test helper: forget the in-memory copy. */
 export function resetActiveAccountCache() {
   stored = undefined;
