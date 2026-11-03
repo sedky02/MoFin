@@ -1,8 +1,28 @@
-import { PlusCircle } from 'lucide-react-native';
+import { router, Stack } from 'expo-router';
 
-import { PlaceholderScreen } from '@/components/shell/placeholder-screen';
+import { TransactionForm } from '@/components/transactions/transaction-form';
+import { Button } from '@/components/ui/button';
+import { Text } from '@/components/ui/text';
 
-// PLACEHOLDER: the new-transaction form is built in Phase 6b.
+// Presented as a modal over the tabs ((app)/_layout.tsx). Saving closes it; the toast offers Undo and View.
 export default function NewTransactionScreen() {
-  return <PlaceholderScreen icon={PlusCircle} title="New Transaction" description="The form for recording a transaction arrives in the next update." />;
+  return (
+    <>
+      <Stack.Screen
+        options={{
+          headerLeft: () => (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-11 px-2"
+              accessibilityLabel="Cancel"
+              onPress={() => (router.canGoBack() ? router.back() : router.replace('/dashboard'))}>
+              <Text className="text-base">Cancel</Text>
+            </Button>
+          ),
+        }}
+      />
+      <TransactionForm mode="create" />
+    </>
+  );
 }
