@@ -18,9 +18,10 @@ Run `npm run core:drift` to compare (report only, it never overwrites).
 - `form-errors.ts`: only the rewrites above (toast and `ApiClientError` come from mobile modules).
 - `hooks/useAccounts.ts`: no `useHydrationSafe` wrapper. It exists for server-rendered HTML; the app has no SSR.
 - `hooks/useUser.ts`: no `useHydrationSafe`; and `useUpdateUser` merges the PATCH /users/me answer into the cached user instead of replacing it. That endpoint returns no `isDemo`/`expiresAt`/`createdAt`, so the web (which replaces) briefly shows demo-hidden controls too. Proper fix: select those fields in `backend/src/modules/users/users.service.ts` `updateProfile`, then drop this difference.
-- `hooks/useDrafts.ts`: the "View" toast action calls `router.push` (expo-router) instead of `window.location.assign`.
+- `hooks/useDrafts.ts`: the "View" toast action calls `router.push` (expo-router) instead of `window.location.assign`. `useCreateDraftIntent` passes a 60 s `timeoutMs` (the model answers slower than the 15 s default; the web raises the same limit in its BFF proxy for `ai/*`).
 
 ## Mobile-only counterparts (not copies, not compared)
+- `src/hooks/useAiChat.ts`: the "Ask" chat hook. Same shape as `frontend/web/hooks/useAiChat.ts`, with a 60 s `timeoutMs` and `@/api/client` imports. Keep the two in step by hand.
 - `src/lib/query-client.ts`: `STALE` and a `QueryClient` without the SSR dehydration settings.
 - `src/lib/toast.ts`: a `sonner`-shaped store (`id`, `description`, `duration`, `action`, `cancel`, `dismiss`); `src/components/toast-host.tsx` renders it.
 - `src/api/client.ts`: `ApiClientError` and a placeholder `api`; Phase 4 makes it real.

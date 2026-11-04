@@ -23,5 +23,7 @@ import { McpService } from './mcp.service';
   ],
   controllers: [McpController],
   providers: [McpService, McpServerFactory, OAuthMcpAuthGuard],
+  // The in-app chat reuses the same read-only tools.
+  exports: [McpService],
 })
 export class McpModule {}

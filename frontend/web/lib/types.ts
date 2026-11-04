@@ -210,6 +210,21 @@ export interface ApiError400 {
 export interface ApiError {
   statusCode: number;
   message: string;
+  /** Machine-readable reason on some errors, e.g. AI_UNAVAILABLE or DEMO_LIMIT. */
+  code?: string;
+}
+
+// The "Ask" chat on the Drafts page. The client keeps the conversation and
+// sends it whole; the server stores nothing.
+export interface AiChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface AiChatReply {
+  message: string;
+  /** Tools the assistant read from to answer, e.g. "get_monthly_summary". */
+  usedTools: string[];
 }
 
 // Paginated list responses (search/transactions, draft-transactions).

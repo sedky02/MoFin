@@ -60,7 +60,7 @@ export function usePendingDraftCount() {
   });
 }
 
-/** NL input → AI parse → PENDING draft. */
+/** NL input → AI parse → one PENDING draft per transaction found in the sentence. */
 export function useCreateDraftIntent() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -68,9 +68,10 @@ export function useCreateDraftIntent() {
       input: string;
       defaultAccountId?: string;
       defaultCurrency?: string;
-    }) => api.post<DraftTransaction>("/ai/transaction-intents", body),
-    onSuccess: () => {
+    }) => api.post<DraftTransaction[]>("/ai/transaction-intents", body),
+    onSuccess: (drafts) => {
       queryClient.invalidateQueries({ queryKey: draftKeys.all });
+      if (drafts.length > 1) toast.success(`${drafts.length} drafts created. Review each one below.`);
     },
     onError: (err) => handleApiError(err, { fallback: "Could not parse that input." }),
   });

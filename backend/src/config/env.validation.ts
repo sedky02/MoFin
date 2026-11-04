@@ -94,6 +94,18 @@ const envSchema = z
     DEMO_MAX_ACTIVE: z.coerce.number().int().positive().default(200),
     // AI drafts one demo user can create.
     DEMO_AI_CAP: z.coerce.number().int().positive().default(30),
+
+    // --- AI assistant (draft parsing + data chat) ---
+    // Any OpenAI-compatible chat-completions endpoint works (Groq, Gemini,
+    // OpenRouter, OpenAI). With AI_API_KEY unset the assistant runs in
+    // fallback mode: drafts use the local regex parser, chat answers 503.
+    AI_API_KEY: z.string().min(1).optional(),
+    AI_BASE_URL: z.string().url().default('https://api.groq.com/openai/v1'),
+    AI_MODEL: z.string().min(1).default('openai/gpt-oss-120b'),
+    AI_TIMEOUT_MS: z.coerce.number().int().positive().default(30_000),
+    // Chat messages one demo visitor can send (held in memory, so it resets
+    // when the server restarts).
+    DEMO_AI_CHAT_CAP: z.coerce.number().int().positive().default(15),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV === 'production' && !env.BFF_SHARED_SECRET) {

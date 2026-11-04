@@ -21,6 +21,13 @@ type Ctx = { params: Promise<{ path: string[] }> };
 // hang every dashboard load — a short timeout turns "spinner forever" into an
 // explicit, actionable 504 (audit PERF-XX).
 const PROXY_TIMEOUT_MS = 8_000;
+// The assistant calls a language model (the chat may make several round trips
+// to it), which routinely takes longer than 8 s.
+const AI_PROXY_TIMEOUT_MS = 60_000;
+
+function timeoutFor(targetPath: string): number {
+  return targetPath === "ai" || targetPath.startsWith("ai/") ? AI_PROXY_TIMEOUT_MS : PROXY_TIMEOUT_MS;
+}
 
 // ---- Module-level refresh lock ----
 // Concurrent 401s for the SAME refresh token share one in-flight refresh so we
@@ -81,7 +88,7 @@ async function forward(
       headers,
       body: body && body.byteLength > 0 ? body : undefined,
       cache: "no-store",
-      signal: AbortSignal.timeout(PROXY_TIMEOUT_MS),
+      signal: AbortSignal.timeout(timeoutFor(targetPath)),
     });
   } catch (err) {
     // Explicit 504 instead of letting the route handler throw (which Next
