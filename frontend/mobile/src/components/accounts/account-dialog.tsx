@@ -26,10 +26,13 @@ function AccountDialogBody({
   open,
   onOpenChange,
   account,
+  onCreated,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   account?: Account;
+  /** After a new account is saved (the dashboard selects it). */
+  onCreated?: (account: Account) => void;
 }) {
   const isEdit = !!account;
   const createMut = useCreateAccount();
@@ -63,13 +66,14 @@ function AccountDialogBody({
       if (account) {
         await updateMut.mutateAsync({ id: account.id, name: values.name, type: values.type, openingBalance });
       } else {
-        await createMut.mutateAsync({
+        const created = await createMut.mutateAsync({
           name: values.name,
           type: values.type,
           currency: values.currency,
           // Left out when blank: the account starts at 0.
           ...(values.openingBalance.trim() ? { openingBalance } : {}),
         });
+        onCreated?.(created);
       }
       onOpenChange(false);
     } catch {

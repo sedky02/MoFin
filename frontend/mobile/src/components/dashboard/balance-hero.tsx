@@ -6,7 +6,8 @@ import { MoneyAmount } from '@/components/common/money-amount';
 import { EmptyState, ErrorState } from '@/components/common/states';
 import { BalanceHeroSkeleton } from '@/components/dashboard/dashboard-skeleton';
 import { CurrencySwitch } from '@/components/dashboard/currency-switch';
-import { HERO_CHART_HEIGHT, HeroChart } from '@/components/dashboard/hero-chart';
+import { WEEK_CHART_HEIGHT, WeekChart } from '@/components/dashboard/week-chart';
+import { HeaderIconButton } from '@/components/shell/header-bar';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -14,11 +15,12 @@ import { Text } from '@/components/ui/text';
 import { allAccountsCaption, countArchivedHolding, totalsByCurrency, zeroTotals } from '@/core/balances';
 import { tryParse } from '@/core/decimal';
 import { pickPrimaryCurrency } from '@/core/format';
-import { heroHeadline, type HeroMetric } from '@/core/hero-headline';
-import { Wallet } from '@/lib/icons';
+import type { HeroMetric } from '@/core/hero-headline';
+import { addDaysIso, deviceTimeZone, localIso, mondayOf, weekHeadline, weekRange, weekTitle } from '@/core/week';
+import { ChevronLeft, ChevronRight, Wallet } from '@/lib/icons';
 import { cn } from '@/lib/utils';
 import { useAccounts } from '@/hooks/useAccounts';
-import { useMonthlySeries } from '@/hooks/useAnalytics';
+import { useDailySeries } from '@/hooks/useAnalytics';
 import { useLedgerBalance } from '@/hooks/useLedger';
 import { useUser } from '@/hooks/useUser';
 
@@ -32,8 +34,8 @@ const isOverdrawn = (amount: string) => tryParse(amount)?.isNegative() ?? false;
 
 /**
  * The balance hero: the balance for the dashboard's account (or all accounts, one currency at a
- * time), a metric switch, the change chip and the six-month chart. With nothing recorded the chart
- * gives way to `emptyPanel`.
+ * time), a metric switch, a week pager, the change chip and the week's chart (a bar per day). With
+ * nothing recorded the chart gives way to `emptyPanel`.
  */
 export function BalanceHero({
   accountId,
@@ -128,9 +130,18 @@ function HeroCard({
   emptyPanel?: React.ReactNode;
 }) {
   const [metric, setMetric] = React.useState<HeroMetric>('balance');
-  const { data, isLoading } = useMonthlySeries(currency, accountId);
-  const points = data?.points ?? [];
-  const headline = heroHeadline(metric, points, { amount, caption });
+  const [today] = React.useState(() => localIso(new Date()));
+  const [timeZone] = React.useState(deviceTimeZone);
+  const thisMonday = mondayOf(today);
+  const [monday, setMonday] = React.useState(thisMonday);
+  // Two weeks: the one shown and the one before it, for the "vs the week before" chip.
+  const { data, isLoading, isError, refetch } = useDailySeries(currency, addDaysIso(monday, -7), 14, timeZone, accountId);
+  const all = data?.points ?? [];
+  // While the next week loads the previous one stays on screen (dimmed); its figures aren't this week's.
+  const ready = all[7]?.date === monday;
+  const weekPoints = ready ? all.slice(7) : [];
+  const headline = weekHeadline(metric, ready ? all : [], monday, today, { amount, caption });
+  const atCurrent = monday === thisMonday;
 
   return (
     <View className="overflow-hidden rounded-2xl bg-card p-5 shadow-sm shadow-black/5">
@@ -153,7 +164,24 @@ function HeroCard({
         ) : null}
       </View>
 
-      {metric !== 'balance' && isLoading ? (
+      {!emptyPanel ? (
+        <View className="mt-4 flex-row items-center justify-between gap-2">
+          <HeaderIconButton icon={ChevronLeft} accessibilityLabel="Previous week" onPress={() => setMonday((m) => addDaysIso(m, -7))} />
+          <View accessibilityLiveRegion="polite" className="min-w-0 flex-1 items-center">
+            <Text className="text-sm font-semibold">{weekTitle(monday, today)}</Text>
+            <Text className="text-xs text-muted-foreground">{weekRange(monday)}</Text>
+          </View>
+          <HeaderIconButton
+            icon={ChevronRight}
+            accessibilityLabel="Next week"
+            onPress={() => setMonday((m) => addDaysIso(m, 7))}
+            // No weeks after this one.
+            disabled={atCurrent}
+          />
+        </View>
+      ) : null}
+
+      {!ready && (metric !== 'balance' || !atCurrent) ? (
         <Skeleton className="mt-6 h-12 w-56 rounded-xl" />
       ) : (
         <MoneyAmount
@@ -193,13 +221,17 @@ function HeroCard({
 
       {emptyPanel ? (
         <View className="mt-6 border-t border-border pt-5">{emptyPanel}</View>
-      ) : isLoading ? (
-        <Skeleton className="mt-6 rounded-xl" style={{ height: HERO_CHART_HEIGHT + 130 }} />
-      ) : points.length > 0 ? (
+      ) : isError ? (
         <View className="mt-6">
-          <HeroChart points={points} metric={metric} currency={currency} />
+          <ErrorState description="Couldn't load this week." onRetry={() => refetch()} />
         </View>
-      ) : null}
+      ) : isLoading && !data ? (
+        <Skeleton className="mt-6 rounded-xl" style={{ height: WEEK_CHART_HEIGHT + 24 }} />
+      ) : (
+        <View className="mt-6" style={{ opacity: ready ? 1 : 0.5 }}>
+          <WeekChart key={monday} points={ready ? weekPoints : all.slice(7)} metric={metric} currency={currency} today={today} />
+        </View>
+      )}
     </View>
   );
 }

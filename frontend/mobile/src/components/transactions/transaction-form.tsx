@@ -414,11 +414,6 @@ function TransactionFormBody({
 
   const fields = (
     <View className="gap-5">
-      {!compact ? (
-        <Text className="text-center text-sm text-muted-foreground">
-          {editing ? 'Change any detail. Balances, summaries and goals follow.' : 'Record an expense, income or transfer.'}
-        </Text>
-      ) : null}
 
       <View>
         <TypeSwitcher

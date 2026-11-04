@@ -63,6 +63,11 @@ export function AppTabBar({ state, descriptors, emitter, navigateToTab, insets }
             className="min-h-[52px] flex-1 items-center justify-center gap-1 rounded-xl active:opacity-70">
             <View className={cn('h-8 w-14 items-center justify-center rounded-full', focused && 'bg-primary/15')}>
               {options.tabBarIcon?.({ focused, color, size: 22 })}
+              {options.tabBarBadge !== undefined ? (
+                <View aria-hidden className="absolute right-1.5 top-0 min-w-[18px] items-center rounded-full border-2 border-card bg-destructive px-1">
+                  <Text className="text-[10px] font-bold leading-[14px] text-destructive-foreground">{String(options.tabBarBadge)}</Text>
+                </View>
+              ) : null}
             </View>
             <Text numberOfLines={1} style={{ color }} className={cn('text-[11px] leading-[14px]', focused ? 'font-semibold' : 'font-medium')}>
               {label}

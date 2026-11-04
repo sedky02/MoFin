@@ -1,7 +1,5 @@
-import { barLabel, chartTableRows } from '@/core/hero-chart-a11y';
 import {
   buildSegments,
-  chartBars,
   currentUtcMonth,
   donutArcs,
   donutDescription,
@@ -54,35 +52,5 @@ describe('donutArcs', () => {
     const [a, b] = donutArcs([1, 1], 100);
     expect(a).toEqual({ dash: 47, gap: 53, offset: -0 });
     expect(b.offset).toBe(-50);
-  });
-});
-
-describe('hero chart', () => {
-  const points = [
-    { month: '2026-09', income: '100.00', expenses: '40.00', balance: '60.00' },
-    { month: '2026-10', income: '0.00', expenses: '80.00', balance: '-20.00' },
-  ];
-  it('scales bars to the largest absolute value and marks the current month', () => {
-    const { bars, max } = chartBars(points, 'balance');
-    expect(max).toBe(60);
-    expect(bars.map((b) => b.pct)).toEqual([100, (20 / 60) * 100]);
-    expect(bars.map((b) => b.isNow)).toEqual([false, true]);
-  });
-  it('keeps a tiny non-zero bar visible and a zero bar flat', () => {
-    const { bars } = chartBars(
-      [
-        { month: '2026-09', income: '1000', expenses: '0', balance: '0' },
-        { month: '2026-10', income: '1', expenses: '0', balance: '0' },
-      ],
-      'income',
-    );
-    expect(bars[1].pct).toBe(3);
-    expect(chartBars(points, 'income').bars[1].pct).toBe(0);
-  });
-  it('names each bar and mirrors the chart as table rows (a11y text)', () => {
-    expect(barLabel('October 2026', 'balance', points[1], 'USD')).toContain('October 2026: balance');
-    const rows = chartTableRows(points, 'USD', (m) => m);
-    expect(rows[0][0]).toBe('2026-09');
-    expect(rows[1]).toHaveLength(4);
   });
 });

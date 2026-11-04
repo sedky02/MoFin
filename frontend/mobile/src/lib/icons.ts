@@ -49,6 +49,7 @@ export { default as House } from 'lucide-react-native/icons/house';
 export { default as Inbox } from 'lucide-react-native/icons/inbox';
 export { default as Landmark } from 'lucide-react-native/icons/landmark';
 export { default as Laptop } from 'lucide-react-native/icons/laptop';
+export { default as Layers } from 'lucide-react-native/icons/layers';
 export { default as LayoutDashboard } from 'lucide-react-native/icons/layout-dashboard';
 export { default as Lock } from 'lucide-react-native/icons/lock';
 export { default as LogOut } from 'lucide-react-native/icons/log-out';

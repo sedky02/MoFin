@@ -1,6 +1,8 @@
 import * as React from 'react';
 import { View } from 'react-native';
 
+import { AccountDialog } from '@/components/accounts/account-dialog';
+import { AccountChips } from '@/components/dashboard/account-chips';
 import { BalanceHero } from '@/components/dashboard/balance-hero';
 import { DashboardSkeleton } from '@/components/dashboard/dashboard-skeleton';
 import { DraftsBanner } from '@/components/dashboard/drafts-banner';
@@ -28,7 +30,7 @@ export function DashboardBody({ year, month }: { year: number; month: number }) 
   const { data: accounts } = useAccounts();
   const { data: user } = useUser();
   const { data: balances } = useLedgerBalance();
-  const { accountId, account: selectedAccount } = useActiveAccount();
+  const { accountId, account: selectedAccount, accounts: switchable, setAccountId } = useActiveAccount();
   const setup = useSetup();
   const { data: anyRecent } = useRecentTransactions(accountId ? 1 : DASHBOARD_RECENT_LIMIT);
   // Setup is over (or skipped) and there is still nothing to show: the dashboard stays a single
@@ -40,6 +42,7 @@ export function DashboardBody({ year, month }: { year: number; month: number }) 
   // The hero and the summary each keep their own currency choice; amounts never mix currencies.
   const [balancePick, setBalancePick] = React.useState<string | undefined>();
   const [summaryPick, setSummaryPick] = React.useState<string | undefined>();
+  const [addingAccount, setAddingAccount] = React.useState(false);
   const accountCurrencies = orderCurrencies(accounts ?? [], primaryCurrency);
   const resolve = (pick?: string) => resolveCurrency({ pick, account: selectedAccount, currencies: accountCurrencies, primaryCurrency });
   const balanceCurrency = resolve(balancePick);
@@ -50,15 +53,33 @@ export function DashboardBody({ year, month }: { year: number; month: number }) 
     return <Setup step={setup.step} accounts={setup.accounts} skip={setup.skip} name={user?.displayName ?? undefined} />;
   }
 
+  // The account scope sits right above what it changes (it was a dropdown in the header).
+  const chips = (
+    <AccountChips
+      accounts={switchable}
+      value={accountId}
+      onChange={setAccountId}
+      // + opens the new-account sheet right here; the new account is then selected.
+      onAdd={() => setAddingAccount(true)}
+    />
+  );
+  const addAccountSheet = (
+    <AccountDialog open={addingAccount} onOpenChange={setAddingAccount} onCreated={(a) => setAccountId(a.id)} />
+  );
+
   if (nothingRecorded) {
     return (
-      <BalanceHero
-        accountId={accountId}
-        accountName={selectedAccount?.name}
-        currency={balanceCurrency}
-        onCurrencyChange={setBalancePick}
-        emptyPanel={<FirstTransactionPanel />}
-      />
+      <View className="gap-4">
+        {chips}
+        {addAccountSheet}
+        <BalanceHero
+          accountId={accountId}
+          accountName={selectedAccount?.name}
+          currency={balanceCurrency}
+          onCurrencyChange={setBalancePick}
+          emptyPanel={<FirstTransactionPanel />}
+        />
+      </View>
     );
   }
 
@@ -66,7 +87,11 @@ export function DashboardBody({ year, month }: { year: number; month: number }) 
     <View className="gap-6">
       {nudge.show ? <AssistantNudge onClose={nudge.close} /> : null}
       <DraftsBanner />
-      <BalanceHero accountId={accountId} accountName={selectedAccount?.name} currency={balanceCurrency} onCurrencyChange={setBalancePick} />
+      <View className="gap-4">
+        {chips}
+        {addAccountSheet}
+        <BalanceHero accountId={accountId} accountName={selectedAccount?.name} currency={balanceCurrency} onCurrencyChange={setBalancePick} />
+      </View>
       <MonthlySummaryCard
         year={year}
         month={month}

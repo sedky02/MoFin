@@ -2,8 +2,7 @@ import { Link } from 'expo-router';
 import * as React from 'react';
 import { Pressable, View } from 'react-native';
 
-import { PageHeader } from '@/components/common/page-header';
-import { SETTINGS_COPY, settingsSections } from '@/components/settings/settings-logic';
+import { settingsSections } from '@/components/settings/settings-logic';
 import { Icon } from '@/components/ui/icon';
 import { Separator } from '@/components/ui/separator';
 import { Text } from '@/components/ui/text';
@@ -23,7 +22,6 @@ export function SettingsMenu() {
 
   return (
     <View>
-      <PageHeader description={SETTINGS_COPY.description} />
       <View className="overflow-hidden rounded-xl border border-border bg-card">
         {main.map((s, i) => (
           <React.Fragment key={s.id}>

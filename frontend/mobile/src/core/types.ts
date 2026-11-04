@@ -241,3 +241,17 @@ export interface MonthlySeries {
   currency: string;
   points: MonthlySeriesPoint[];
 }
+
+export interface DailySeriesPoint {
+  /** "YYYY-MM-DD" in the series' time zone. */
+  date: string;
+  income: string;
+  expenses: string;
+  /** Closing balance at the end of the day. */
+  balance: string;
+}
+export interface DailySeries {
+  currency: string;
+  timeZone: string;
+  points: DailySeriesPoint[];
+}

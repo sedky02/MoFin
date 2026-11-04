@@ -4,7 +4,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
 
-import { PageHeader } from '@/components/common/page-header';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Text } from '@/components/ui/text';
 import { draftKeys } from '@/core/query-keys';
@@ -42,10 +41,6 @@ export function DraftsScreen() {
       contentContainerClassName="mx-auto w-full max-w-2xl p-4"
       contentContainerStyle={{ paddingBottom: 16 + insets.bottom }}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} />}>
-      <PageHeader
-        description="Write what you spent or earned in your own words. MoFin turns it into a draft, and nothing is recorded until you approve it."
-        className="mb-4"
-      />
       <DraftComposer autoFocus={compose === '1'} />
       <View className="mt-8">
         <Tabs value={tab} onValueChange={(v) => setTab(v as DraftStatus)}>

@@ -1,12 +1,13 @@
 import { usePhoneFrameOverlayStyle } from '@/components/shell/web-phone-frame';
 import { Icon } from '@/components/ui/icon';
 import { NativeOnlyAnimatedView } from '@/components/ui/native-only-animated-view';
+import { SheetBottomInset, SheetHandle, useSheetDrag, useSheetMaxHeight } from '@/components/ui/sheet-parts';
 import { X } from '@/lib/icons';
 import { cn } from '@/lib/utils';
 import * as DialogPrimitive from '@rn-primitives/dialog';
 import * as React from 'react';
-import { KeyboardAvoidingView, Platform, Text, View, type GestureResponderEvent, type ViewProps } from 'react-native';
-import { FadeIn, FadeOut, ReduceMotion } from 'react-native-reanimated';
+import { Animated, KeyboardAvoidingView, Platform, StyleSheet, Text, View, type GestureResponderEvent, type ViewProps } from 'react-native';
+import { FadeIn, FadeOut, ReduceMotion, SlideInDown, SlideOutDown } from 'react-native-reanimated';
 import { FullWindowOverlay as RNFullWindowOverlay } from 'react-native-screens';
 
 const Dialog = DialogPrimitive.Root;
@@ -23,9 +24,12 @@ function DialogOverlay({
   className,
   children,
   onPress,
+  sheet = false,
   ...props
 }: Omit<React.ComponentProps<typeof DialogPrimitive.Overlay>, 'asChild'> & {
   children?: React.ReactNode;
+  /** Anchor the content to the bottom edge and slide it up (a bottom sheet) instead of centring it. */
+  sheet?: boolean;
 }) {
   const { onOpenChange } = DialogPrimitive.useRootContext();
   const frameStyle = usePhoneFrameOverlayStyle();
@@ -41,7 +45,8 @@ function DialogOverlay({
     <FullWindowOverlay>
       <DialogPrimitive.Overlay
         className={cn(
-          'absolute bottom-0 left-0 right-0 top-0 flex items-center justify-center bg-black/50 p-2',
+          'absolute bottom-0 left-0 right-0 top-0 flex bg-black/50',
+          sheet ? 'items-stretch justify-end p-0' : 'items-center justify-center p-2',
           Platform.select({
             web: 'animate-in fade-in-0 fixed cursor-default [&>*]:cursor-auto',
           }),
@@ -56,8 +61,8 @@ function DialogOverlay({
           exiting={FadeOut.duration(150).reduceMotion(ReduceMotion.System)}
           as="Pressable">
           <NativeOnlyAnimatedView
-            entering={FadeIn.delay(50).reduceMotion(ReduceMotion.System)}
-            exiting={FadeOut.duration(150).reduceMotion(ReduceMotion.System)}>
+            entering={(sheet ? SlideInDown.duration(260) : FadeIn.delay(50)).reduceMotion(ReduceMotion.System)}
+            exiting={(sheet ? SlideOutDown.duration(200) : FadeOut.duration(150)).reduceMotion(ReduceMotion.System)}>
             {/* iOS does not resize the window for the keyboard; padding lifts a dialog whose field is covered. */}
             <KeyboardAvoidingView behavior="padding" enabled={Platform.OS === 'ios'} style={{ width: '100%' }}>
               {children}
@@ -68,53 +73,66 @@ function DialogOverlay({
     </FullWindowOverlay>
   );
 }
+
+/**
+ * A dialog's panel. On a phone every dialog is a bottom sheet by default: full width, rounded top,
+ * slides up, a grab handle that closes it when pulled down, room for the home indicator, and a
+ * height cap below the status bar. `sheet={false}` gives the centred card instead.
+ */
 function DialogContent({
   className,
   portalHost,
-  sheet = false,
+  sheet = true,
+  style,
   children,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   portalHost?: string;
-  /** A bottom sheet: anchored to the bottom edge, full width, rounded top with a grab handle. */
   sheet?: boolean;
 }) {
+  const { onOpenChange } = DialogPrimitive.useRootContext();
+  const close = React.useCallback(() => onOpenChange(false), [onOpenChange]);
+  const drag = useSheetDrag(sheet ? close : undefined);
+  const maxHeight = useSheetMaxHeight();
   return (
     <DialogPortal hostName={portalHost}>
-      <DialogOverlay className={sheet ? 'items-stretch justify-end p-0' : undefined}>
-        <DialogPrimitive.Content
-          className={cn(
-            'bg-background border-border z-50 mx-auto flex w-full max-w-[calc(100%-2rem)] flex-col gap-4 rounded-lg border p-6 shadow-lg shadow-black/5 sm:max-w-lg',
-            Platform.select({
-              web: 'animate-in fade-in-0 zoom-in-95 duration-200',
-            }),
-            sheet &&
-              cn(
-                'max-w-full rounded-b-none rounded-t-2xl border-x-0 border-b-0 sm:max-w-full',
-                Platform.select({ web: 'slide-in-from-bottom-8 zoom-in-100' })
-              ),
-            className
-          )}
-          {...props}>
-          {sheet ? <View aria-hidden className="mx-auto mt-2 h-1 w-10 rounded-full bg-muted-foreground/30" /> : null}
-          <>{children}</>
-          <DialogPrimitive.Close
+      <DialogOverlay sheet={sheet}>
+        <Animated.View style={sheet ? { width: '100%', transform: [{ translateY: drag.translateY }] } : { width: '100%' }}>
+          <DialogPrimitive.Content
             className={cn(
-              'absolute right-4 top-4 rounded opacity-70 active:opacity-100',
+              'bg-background border-border z-50 mx-auto flex w-full max-w-[calc(100%-2rem)] flex-col gap-4 rounded-lg border p-6 shadow-lg shadow-black/5 sm:max-w-lg',
               Platform.select({
-                web: 'ring-offset-background focus:ring-ring data-[state=open]:bg-accent transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-offset-2',
-              })
+                web: 'animate-in fade-in-0 zoom-in-95 duration-200',
+              }),
+              sheet &&
+                cn(
+                  'max-w-full rounded-b-none rounded-t-3xl border-x-0 border-b-0 pt-0 sm:max-w-full',
+                  Platform.select({ web: 'slide-in-from-bottom-full zoom-in-100 duration-300' })
+                ),
+              className
             )}
-            role="button"
-            accessibilityLabel="Close"
-            hitSlop={16}>
-            <Icon
-              as={X}
-              className={cn('text-accent-foreground web:pointer-events-none size-4 shrink-0')}
-            />
-            <Text className="sr-only">Close</Text>
-          </DialogPrimitive.Close>
-        </DialogPrimitive.Content>
+            // The sheet never reaches under the status bar, whatever cap the caller asked for.
+            style={[style, sheet ? { maxHeight: Math.min(maxHeight, Number(StyleSheet.flatten(style)?.maxHeight) || Infinity) } : null]}
+            {...props}>
+            {sheet ? <SheetHandle handlers={drag.handlers} /> : null}
+            <>{children}</>
+            {sheet ? <SheetBottomInset /> : null}
+            <DialogPrimitive.Close
+              className={cn(
+                'absolute right-3 size-9 items-center justify-center rounded-full bg-secondary active:bg-accent',
+                sheet ? 'top-5' : 'top-3',
+                Platform.select({
+                  web: 'ring-offset-background focus:ring-ring transition-opacity focus:outline-none focus:ring-2 focus:ring-offset-2',
+                })
+              )}
+              role="button"
+              accessibilityLabel="Close"
+              hitSlop={8}>
+              <Icon as={X} className={cn('text-foreground web:pointer-events-none size-4 shrink-0')} />
+              <Text className="sr-only">Close</Text>
+            </DialogPrimitive.Close>
+          </DialogPrimitive.Content>
+        </Animated.View>
       </DialogOverlay>
     </DialogPortal>
   );

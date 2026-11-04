@@ -3,10 +3,12 @@ import { router } from 'expo-router';
 
 import { AppHeader } from '@/components/shell/app-header';
 import { ADD_ROUTE, AppTabBar } from '@/components/shell/app-tab-bar';
+import { usePendingDraftCount } from '@/hooks/useDrafts';
 import { haptics } from '@/lib/haptics';
-import { LayoutDashboard, Menu, ReceiptText, Target } from '@/lib/icons';
+import { LayoutDashboard, Menu, ReceiptText, Sparkles } from '@/lib/icons';
 
 export default function TabsLayout() {
+  const { data: pending } = usePendingDraftCount();
   return (
     <Tabs
       tabBar={(props) => <AppTabBar {...props} />}
@@ -33,7 +35,16 @@ export default function TabsLayout() {
           },
         }}
       />
-      <Tabs.Screen name="goals" options={{ title: 'Goals', tabBarIcon: ({ color, size }) => <Target color={color} size={size} /> }} />
+      {/* AI drafts get a tab (with the waiting count) so the assistant is one tap away; Goals moved to More. */}
+      <Tabs.Screen
+        name="drafts"
+        options={{
+          title: 'AI drafts',
+          tabBarBadge: pending ? (pending > 99 ? '99+' : pending) : undefined,
+          tabBarAccessibilityLabel: pending ? `AI drafts, ${pending} to review` : 'AI drafts',
+          tabBarIcon: ({ color, size }) => <Sparkles color={color} size={size} />,
+        }}
+      />
       <Tabs.Screen name="more" options={{ title: 'More', tabBarIcon: ({ color, size }) => <Menu color={color} size={size} /> }} />
     </Tabs>
   );

@@ -14,7 +14,7 @@ const CORE = [
   'account-form', 'hero-headline', 'hero-chart-a11y', 'transaction-days', 'transaction-list-params',
   'transaction-schema', 'transaction-edit', 'transaction-category', 'transaction-accounts',
   'recurring-edit', 'recurring-series', 'goal-scope', 'goal-standing', 'cancelled-goals', 'balances',
-  'draft-review', 'category-icons', 'password-strength', 'connected-apps', 'form-errors', 'utils',
+  'draft-review', 'category-icons', 'password-strength', 'connected-apps', 'form-errors', 'utils', 'week',
 ];
 // Copied tests: src/core/<name>.test.ts  <-  web/lib/<name>.test.ts (web name in the value)
 const TESTS = {
@@ -25,7 +25,7 @@ const TESTS = {
   'recurring-series': 'recurring-series', 'goal-scope': 'goal-scope', 'goal-standing': 'goal-standing',
   'cancelled-goals': 'cancelled-goals', balances: 'balances', 'draft-review': 'draft-review',
   'category-icons': 'category-icons', 'password-strength': 'password-strength',
-  'connected-apps': 'connected-apps', 'transaction-list': 'transaction-list',
+  'connected-apps': 'connected-apps', 'transaction-list': 'transaction-list', week: 'week',
 };
 // Copied hooks: src/hooks/<name>.ts  <-  web/hooks/<name>.ts
 const HOOKS = [

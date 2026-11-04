@@ -19,7 +19,7 @@ export default function AppLayout() {
           <Stack.Screen name="transactions/[id]/index" options={{ title: 'Transaction' }} />
           <Stack.Screen name="accounts/index" options={{ title: 'Accounts' }} />
           <Stack.Screen name="categories/index" options={{ title: 'Categories' }} />
-          <Stack.Screen name="drafts/index" options={{ title: 'AI drafts' }} />
+          <Stack.Screen name="goals/index" options={{ title: 'Goals' }} />
           <Stack.Screen name="connect/index" options={{ title: 'Connect AI' }} />
           <Stack.Screen name="settings/index" options={{ title: 'Settings' }} />
           {/* Development only: the guard keeps the route out of release builds. */}

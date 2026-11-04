@@ -1,12 +1,13 @@
 import { usePhoneFrameOverlayStyle } from '@/components/shell/web-phone-frame';
 import { buttonTextVariants, buttonVariants } from '@/components/ui/button';
 import { NativeOnlyAnimatedView } from '@/components/ui/native-only-animated-view';
+import { SheetBottomInset, SheetHandle } from '@/components/ui/sheet-parts';
 import { TextClassContext } from '@/components/ui/text';
 import { cn } from '@/lib/utils';
 import * as AlertDialogPrimitive from '@rn-primitives/alert-dialog';
 import * as React from 'react';
 import { KeyboardAvoidingView, Platform, View, type ViewProps } from 'react-native';
-import { FadeIn, FadeOut, ReduceMotion } from 'react-native-reanimated';
+import { FadeIn, FadeOut, ReduceMotion, SlideInDown, SlideOutDown } from 'react-native-reanimated';
 import { FullWindowOverlay as RNFullWindowOverlay } from 'react-native-screens';
 
 const AlertDialog = AlertDialogPrimitive.Root;
@@ -29,7 +30,8 @@ function AlertDialogOverlay({
     <FullWindowOverlay>
       <AlertDialogPrimitive.Overlay
         className={cn(
-          'absolute bottom-0 left-0 right-0 top-0 z-50 flex items-center justify-center bg-black/50 p-2',
+          // A bottom sheet on a phone, like the other dialogs: the choice sits under the thumb.
+          'absolute bottom-0 left-0 right-0 top-0 z-50 flex items-stretch justify-end bg-black/50 p-0',
           Platform.select({
             web: 'animate-in fade-in-0 fixed',
           }),
@@ -39,12 +41,16 @@ function AlertDialogOverlay({
         style={frameStyle}
         asChild={Platform.OS !== 'web'}>
         <NativeOnlyAnimatedView
-          entering={FadeIn.duration(200).delay(50).reduceMotion(ReduceMotion.System)}
+          entering={FadeIn.duration(200).reduceMotion(ReduceMotion.System)}
           exiting={FadeOut.duration(150).reduceMotion(ReduceMotion.System)}
           as="Pressable">
           {/* The type-to-confirm dialog has a field; iOS needs the padding to keep it above the keyboard. */}
-          <KeyboardAvoidingView behavior="padding" enabled={Platform.OS === 'ios'} style={{ width: '100%', alignItems: 'center' }}>
-            {children}
+          <KeyboardAvoidingView behavior="padding" enabled={Platform.OS === 'ios'} style={{ width: '100%' }}>
+            <NativeOnlyAnimatedView
+              entering={SlideInDown.duration(260).reduceMotion(ReduceMotion.System)}
+              exiting={SlideOutDown.duration(200).reduceMotion(ReduceMotion.System)}>
+              {children}
+            </NativeOnlyAnimatedView>
           </KeyboardAvoidingView>
         </NativeOnlyAnimatedView>
       </AlertDialogPrimitive.Overlay>
@@ -64,14 +70,18 @@ function AlertDialogContent({
       <AlertDialogOverlay>
         <AlertDialogPrimitive.Content
           className={cn(
-            'bg-background border-border z-50 flex w-full max-w-[calc(100%-2rem)] flex-col gap-4 rounded-lg border p-6 shadow-lg shadow-black/5 sm:max-w-lg',
+            'bg-background border-border z-50 flex w-full flex-col gap-4 rounded-t-3xl border-x-0 border-b-0 border-t px-6 pb-6 pt-2 shadow-lg shadow-black/5',
             Platform.select({
-              web: 'animate-in fade-in-0 zoom-in-95 duration-200',
+              web: 'animate-in fade-in-0 slide-in-from-bottom-full duration-300',
             }),
             className
           )}
-          {...props}
-        />
+          {...props}>
+          {/* A handle like the other sheets, for the look; an alert closes only through its buttons. */}
+          <SheetHandle />
+          {props.children}
+          <SheetBottomInset />
+        </AlertDialogPrimitive.Content>
       </AlertDialogOverlay>
     </AlertDialogPortal>
   );

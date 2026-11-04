@@ -5,7 +5,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CategoryDialog } from '@/components/categories/category-dialog';
 import { CategoryRow, type CategoryRowActions } from '@/components/categories/category-row';
 import { ConfirmDialog } from '@/components/common/confirm-dialog';
-import { PageHeader } from '@/components/common/page-header';
 import { EmptyState, ErrorState, SkeletonRows } from '@/components/common/states';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -95,7 +94,6 @@ export default function CategoriesScreen() {
           }}
         />
       }>
-      <PageHeader description="Organize your transactions. System categories are read-only." className="mb-4" />
 
       <View className="mb-5 flex-row flex-wrap gap-2">
         {view === 'active' ? (

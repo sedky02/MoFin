@@ -1,5 +1,5 @@
 import { tryParse } from '@/core/decimal';
-import type { CategoryBreakdownItem, MonthlySeriesPoint } from '@/core/types';
+import type { CategoryBreakdownItem } from '@/core/types';
 
 export interface YearMonth {
   year: number;
@@ -25,12 +25,6 @@ export function monthTitle(year: number, month: number, locale?: string): string
     timeZone: 'UTC',
   });
 }
-
-/** Month names for the series' "YYYY-MM" keys. */
-export const seriesMonthShort = (m: string, locale?: string) =>
-  new Date(`${m}-01T00:00:00Z`).toLocaleDateString(locale, { month: 'short', timeZone: 'UTC' });
-export const seriesMonthLong = (m: string, locale?: string) =>
-  new Date(`${m}-01T00:00:00Z`).toLocaleDateString(locale, { month: 'long', year: 'numeric', timeZone: 'UTC' });
 
 /** Top categories shown before the rest fold into "Other". */
 export const MAX_SEGMENTS = 4;
@@ -88,28 +82,4 @@ export function donutArcs(values: number[], c: number): Arc[] {
 export function donutDescription(kind: 'Spending' | 'Income', segments: Segment[]): string {
   const parts = segments.map((s) => `${s.label} ${s.share}%`).join(', ');
   return parts ? `${kind} by category: ${parts}` : `${kind} by category: nothing recorded`;
-}
-
-export interface Bar {
-  month: string;
-  value: number;
-  /** Height as a percent of the tallest bar (>= 3 when non-zero). */
-  pct: number;
-  isNow: boolean;
-}
-
-/** Bars of the six-month chart for one metric, scaled to the largest absolute value. */
-export function chartBars(points: MonthlySeriesPoint[], metric: 'expenses' | 'income' | 'balance'): { bars: Bar[]; max: number } {
-  const values = points.map((p) => tryParse(p[metric])?.toNumber() ?? 0);
-  const max = Math.max(...values.map(Math.abs), 0);
-  const last = points.length - 1;
-  return {
-    max,
-    bars: points.map((p, i) => ({
-      month: p.month,
-      value: values[i],
-      pct: max > 0 ? Math.max((Math.abs(values[i]) / max) * 100, values[i] === 0 ? 0 : 3) : 0,
-      isNow: i === last,
-    })),
-  };
 }

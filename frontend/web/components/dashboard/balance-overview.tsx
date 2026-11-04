@@ -1,16 +1,29 @@
 "use client";
 
 import * as React from "react";
-import { useMonthlySeries } from "@/hooks/useAnalytics";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useDailySeries } from "@/hooks/useAnalytics";
 import { MoneyAmount } from "@/components/common/money-amount";
 import { CurrencySwitch } from "@/components/dashboard/currency-switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { tryParse } from "@/lib/decimal";
-import { heroHeadline } from "@/lib/hero-headline";
-import { barLabel, chartTableRows } from "@/lib/hero-chart-a11y";
+import { formatMoney } from "@/lib/format";
+import {
+  addDaysIso,
+  dayLong,
+  dayShort,
+  deviceTimeZone,
+  localIso,
+  mondayOf,
+  scaleY,
+  weekHeadline,
+  weekRange,
+  weekScale,
+  weekTitle,
+} from "@/lib/week";
 import { cn } from "@/lib/utils";
-import type { MonthlySeriesPoint } from "@/lib/types";
+import type { DailySeriesPoint } from "@/lib/types";
 
 type Metric = "expenses" | "income" | "balance";
 const TABS: { value: Metric; label: string }[] = [
@@ -19,15 +32,17 @@ const TABS: { value: Metric; label: string }[] = [
   { value: "balance", label: "Balance" },
 ];
 
-const short = (m: string) =>
-  new Date(`${m}-01T00:00:00Z`).toLocaleDateString(undefined, { month: "short", timeZone: "UTC" });
-const long = (m: string) =>
-  new Date(`${m}-01T00:00:00Z`).toLocaleDateString(undefined, { month: "long", year: "numeric", timeZone: "UTC" });
+// The pager's arrows: a segment of the pill each, with a clear hover and a visible disabled state.
+const arrow =
+  "inline-flex size-8 items-center justify-center rounded-full text-foreground transition-colors hover:bg-card hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:text-muted-foreground/40 pointer-coarse:size-11";
+
+const dayText = (p: DailySeriesPoint, currency: string) =>
+  `${dayLong(p.date)}: income ${formatMoney(p.income, currency)}, expenses ${formatMoney(p.expenses, currency)}, balance ${formatMoney(p.balance, currency)}`;
 
 /**
- * The dashboard hero as one component: headline balance, month-over-month
- * change, and a six-month chart whose metric filter sits top-right. Each bar is
- * hoverable/focusable and shows that month's income, expenses and closing balance.
+ * The dashboard hero as one component: headline balance, the week's change, a week pager and a
+ * chart with a bar per day (Monday to Sunday) and a y-axis. Hovering, focusing or clicking a bar
+ * shows its exact amount above it. Days are counted in the viewer's time zone.
  */
 export function BalanceOverview({
   amount,
@@ -57,16 +72,32 @@ export function BalanceOverview({
   emptyPanel?: React.ReactNode;
 }) {
   const [metric, setMetric] = React.useState<Metric>("balance");
-  const { data, isLoading } = useMonthlySeries(currency, accountId);
-  const points = data?.points ?? [];
+  // Client-only: the viewer's today and time zone (the server can't know them).
+  const [today] = React.useState(() => localIso(new Date()));
+  const [timeZone] = React.useState(deviceTimeZone);
+  const thisMonday = mondayOf(today);
+  const [monday, setMonday] = React.useState(thisMonday);
+  const [picked, setPicked] = React.useState<string | null>(null);
+  // Two weeks: the one shown and the one before it, for the "vs the week before" chip.
+  const { data, isLoading, isError, refetch } = useDailySeries(currency, addDaysIso(monday, -7), 14, timeZone, accountId);
+  const all = data?.points ?? [];
+  // While the next week loads, the previous one stays on screen (dimmed).
+  const ready = all[7]?.date === monday;
+  const week = all.slice(7);
+  const atCurrent = monday === thisMonday;
 
-  // Headline, caption and chip all follow the chosen metric (see lib/hero-headline.ts).
-  const headline = heroHeadline(metric, points, { amount, caption });
+  // Headline, caption and chip all follow the chosen metric (see lib/week.ts).
+  const headline = weekHeadline(metric, ready ? all : [], monday, today, { amount, caption });
 
-  const values = points.map((p) => tryParse(p[metric])?.toNumber() ?? 0);
-  const max = Math.max(...values.map(Math.abs), 0);
-  const last = points.length - 1;
+  const values = week.map((p) => (p.date > today ? 0 : (tryParse(p[metric])?.toNumber() ?? 0)));
+  const scale = weekScale(values);
+  const zero = scaleY(0, scale) * 100;
   const chartId = React.useId();
+
+  function goTo(next: string) {
+    setMonday(next);
+    setPicked(null);
+  }
 
   return (
     <div className="relative flex h-full flex-1 flex-col overflow-hidden rounded-hero bg-card p-6 shadow-hero sm:p-8">
@@ -92,11 +123,11 @@ export function BalanceOverview({
         )}
       </div>
 
-      {metric !== "balance" && isLoading ? (
+      {!ready && (metric !== "balance" || !atCurrent) ? (
         <Skeleton className="mt-6 h-12 w-64 rounded-xl sm:h-[4.5rem]" />
       ) : (
         <MoneyAmount
-          key={metric}
+          key={`${metric}-${monday}`}
           amount={headline.amount}
           currency={currency}
           animate
@@ -123,103 +154,171 @@ export function BalanceOverview({
 
       {emptyPanel ? (
         <div className="mt-8 border-t border-border pt-6">{emptyPanel}</div>
-      ) : isLoading ? (
-        <Skeleton className="mt-6 flex-1 min-h-40 rounded-xl" />
-      ) : points.length > 0 ? (
-        <div className="mt-8 flex flex-1 gap-3" style={{ minHeight: 170 }}>
-          <div className="flex flex-1 items-end gap-2 sm:gap-3">
-            {points.map((p: MonthlySeriesPoint, i) => {
-              const v = values[i];
-              const pct = max > 0 ? Math.max((Math.abs(v) / max) * 100, v === 0 ? 0 : 3) : 0;
-              const isNow = i === last;
-              const align = i === 0 ? "left-0" : isNow ? "right-0" : "left-1/2 -translate-x-1/2";
-              return (
-                <div key={p.month} className="group relative flex h-full flex-1 flex-col items-center justify-end gap-1.5">
-                  <div
-                    role="img"
-                    tabIndex={0}
-                    aria-label={barLabel(long(p.month), metric, p, currency)}
-                    aria-describedby={`${chartId}-tip-${i}`}
-                    className="relative flex w-full flex-1 items-end rounded-t-md outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      ) : (
+        <>
+          {/* The chart's own toolbar, set off from the headline: which week on the left, the pager on the right. */}
+          <div className="mt-7 flex flex-wrap items-center justify-between gap-3 border-t border-border/70 pt-5">
+            <p aria-live="polite" className="flex items-baseline gap-2">
+              <span className="text-base font-semibold tracking-[-0.01em]">{weekTitle(monday, today)}</span>
+              {/* The range already is the title for older weeks. */}
+              {weekTitle(monday, today) !== weekRange(monday) && (
+                <span className="text-sm text-muted-foreground tabular">{weekRange(monday)}</span>
+              )}
+            </p>
+            <div className="flex items-center gap-2">
+              {!atCurrent && (
+                <button
+                  type="button"
+                  onClick={() => goTo(thisMonday)}
+                  className="h-8 rounded-full px-3 text-xs font-medium text-primary-text transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring pointer-coarse:h-11"
+                >
+                  This week
+                </button>
+              )}
+              <div role="group" aria-label="Change week" className="flex items-center gap-0.5 rounded-full bg-secondary p-0.5">
+                <button type="button" className={arrow} onClick={() => goTo(addDaysIso(monday, -7))} aria-label="Previous week">
+                  <ChevronLeft className="size-4" />
+                </button>
+                {/* A disabled button swallows hover, so the reason lives on the wrapper. */}
+                <span title={atCurrent ? "You're viewing the current week" : undefined}>
+                  <button
+                    type="button"
+                    className={arrow}
+                    onClick={() => goTo(addDaysIso(monday, 7))}
+                    disabled={atCurrent}
+                    aria-label="Next week"
                   >
-                    {isNow && (
-                      <span className="absolute -top-1 left-1/2 -translate-x-1/2 -translate-y-full rounded-full bg-accent px-2 py-0.5 text-[11px] font-medium text-primary-text group-hover:opacity-0">
-                        Now
-                      </span>
-                    )}
+                    <ChevronRight className="size-4" />
+                  </button>
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {isError ? (
+            <p className="mt-6 text-sm text-muted-foreground">
+              Couldn&apos;t load this week.{" "}
+              <button type="button" className="font-medium text-foreground underline" onClick={() => refetch()}>
+                Try again
+              </button>
+            </p>
+          ) : isLoading && !data ? (
+            <Skeleton className="mt-6 flex-1 min-h-40 rounded-xl" />
+          ) : (
+            <div className={cn("mt-5 flex flex-1 flex-col transition-opacity", !ready && "opacity-50")} style={{ minHeight: 190 }}>
+              <div className="flex flex-1 gap-3">
+                {/* Bars over gridlines; each day is a column with its bar between zero and its value. */}
+                <div className="relative flex-1">
+                  {scale.ticks.map((t) => (
                     <div
-                      className={cn(
-                        "w-full rounded-t-md transition-[height,filter] duration-300 group-hover:brightness-110 group-focus-within:brightness-110",
-                        // The current month carries the colour (red for spending or a negative balance, the
-                        // accent otherwise); history is a neutral that still clears 3:1 against the card.
-                        isNow ? (v < 0 || metric === "expenses" ? "bg-destructive" : "bg-primary") : "bg-bar",
-                      )}
-                      style={{ height: `${pct}%` }}
+                      key={t}
+                      aria-hidden
+                      className={cn("absolute inset-x-0 border-t", t === 0 ? "border-border" : "border-dashed border-border/60")}
+                      style={{ top: `${scaleY(t, scale) * 100}%` }}
                     />
-                    {/* Hover / keyboard-focus details for this month */}
-                    <div
-                      id={`${chartId}-tip-${i}`}
-                      role="tooltip"
-                      className={cn(
-                        "pointer-events-none invisible absolute bottom-full z-20 mb-2 w-52 origin-bottom scale-95 rounded-xl bg-popover p-3 text-xs opacity-0 shadow-surface transition-[opacity,transform,visibility] duration-150 group-hover:visible group-hover:scale-100 group-hover:opacity-100 group-focus-within:visible group-focus-within:scale-100 group-focus-within:opacity-100",
-                        align,
-                      )}
-                    >
-                      <p className="mb-2 font-semibold text-foreground">{long(p.month)}</p>
-                      {(
-                        [
-                          ["Income", p.income, "text-success"],
-                          ["Expenses", p.expenses, "text-destructive"],
-                          ["Balance", p.balance, "text-foreground"],
-                        ] as const
-                      ).map(([label, value, tone]) => (
-                        <div key={label} className="flex items-center justify-between gap-3 py-0.5">
-                          <span className="text-muted-foreground">{label}</span>
-                          <MoneyAmount amount={value} currency={currency} className={cn("font-medium", tone)} />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  <span className={cn("text-xs", isNow ? "font-semibold text-primary-text" : "text-muted-foreground")}>
-                    {short(p.month)}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-
-          <table className="sr-only">
-            <thead>
-              <tr>
-                {["Month", "Income", "Expenses", "Balance"].map((h) => (
-                  <th key={h} scope="col">
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {chartTableRows(points, currency, long).map((row, i) => (
-                <tr key={points[i].month}>
-                  <th scope="row">{row[0]}</th>
-                  {row.slice(1).map((cell, j) => (
-                    <td key={j}>{cell}</td>
                   ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          <div
-            aria-hidden
-            className="flex flex-col justify-between border-l border-dashed border-border pb-5 pl-3 text-xs text-muted-foreground tabular"
-          >
-            {[max, max / 2, 0].map((n, i) => (
-              <MoneyAmount key={i} amount={String(n)} currency={currency} compact />
-            ))}
-          </div>
-        </div>
-      ) : null}
+                  <div className="absolute inset-0 flex gap-2 sm:gap-3">
+                    {week.map((p, i) => {
+                      const v = values[i];
+                      const future = p.date > today;
+                      const top = scaleY(Math.max(v, 0), scale) * 100;
+                      const bottom = 100 - scaleY(Math.min(v, 0), scale) * 100;
+                      const isToday = p.date === today;
+                      const open = picked === p.date;
+                      return (
+                        <div key={p.date} className="group relative flex-1">
+                          {!future && (
+                            <button
+                              type="button"
+                              aria-label={dayText(p, currency)}
+                              aria-describedby={`${chartId}-v-${i}`}
+                              aria-pressed={open}
+                              onClick={() => setPicked(open ? null : p.date)}
+                              className="absolute inset-0 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            >
+                              <span
+                                className={cn(
+                                  "absolute inset-x-[12%] transition-[top,bottom,filter] duration-300 group-hover:brightness-110",
+                                  v < 0 ? "rounded-b-md" : "rounded-t-md",
+                                  // Today carries the colour (red for spending or below zero); the rest is a
+                                  // neutral that still clears 3:1 against the card.
+                                  isToday || open ? (v < 0 || metric === "expenses" ? "bg-destructive" : "bg-primary") : "bg-bar",
+                                  v === 0 && "opacity-40",
+                                )}
+                                style={{ top: `${top}%`, bottom: `${v === 0 ? 100 - zero - 1 : bottom}%` }}
+                              />
+                              {/* The exact amount, above the bar (below it when negative). */}
+                              <span
+                                id={`${chartId}-v-${i}`}
+                                className={cn(
+                                  "pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-full bg-popover px-2 py-0.5 text-[11px] font-semibold text-foreground shadow-surface transition-opacity",
+                                  open ? "opacity-100" : "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100",
+                                )}
+                                style={
+                                  v < 0
+                                    ? { top: `calc(${100 - bottom}% + 4px)` }
+                                    : { bottom: `calc(${100 - top}% + 4px)` }
+                                }
+                              >
+                                <MoneyAmount amount={p[metric]} currency={currency} />
+                              </span>
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+                {/* Y axis: the amount at each gridline. */}
+                <div aria-hidden className="relative w-20 shrink-0 whitespace-nowrap text-xs text-muted-foreground tabular">
+                  {scale.ticks.map((t) => (
+                    <span key={t} className="absolute right-0 -translate-y-1/2" style={{ top: `${scaleY(t, scale) * 100}%` }}>
+                      <MoneyAmount amount={String(t)} currency={currency} compact />
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <div aria-hidden className="mt-2 flex gap-2 pr-[92px] sm:gap-3">
+                {week.map((p) => (
+                  <span
+                    key={p.date}
+                    className={cn(
+                      "flex-1 text-center text-xs",
+                      p.date === today ? "font-semibold text-primary-text" : p.date > today ? "text-muted-foreground/50" : "text-muted-foreground",
+                    )}
+                  >
+                    {dayShort(p.date)}
+                  </span>
+                ))}
+              </div>
+              <table className="sr-only">
+                <caption>{weekRange(monday)}</caption>
+                <thead>
+                  <tr>
+                    {["Day", "Income", "Expenses", "Balance"].map((h) => (
+                      <th key={h} scope="col">
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {week
+                    .filter((p) => p.date <= today)
+                    .map((p) => (
+                      <tr key={p.date}>
+                        <th scope="row">{dayLong(p.date)}</th>
+                        <td>{formatMoney(p.income, currency)}</td>
+                        <td>{formatMoney(p.expenses, currency)}</td>
+                        <td>{formatMoney(p.balance, currency)}</td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }

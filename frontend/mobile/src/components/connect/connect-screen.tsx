@@ -4,7 +4,6 @@ import * as React from 'react';
 import { Linking, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { PageHeader } from '@/components/common/page-header';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
@@ -122,12 +121,6 @@ export function ConnectScreen() {
       keyboardShouldPersistTaps="handled"
       contentContainerClassName="mx-auto w-full max-w-3xl p-4"
       contentContainerStyle={{ paddingBottom: 16 + insets.bottom }}>
-      {/* The header says "Connect AI"; the page explains what connecting does. */}
-      <PageHeader
-        description="Let Claude, ChatGPT or another assistant read your balances and suggest transactions. Anything it suggests stays a draft until you approve it."
-        className="mb-4"
-      />
-
       {message ? (
         <View role="status" className="mb-6 rounded-xl border border-border bg-accent px-4 py-3">
           <Text testID="connect-unavailable" className="text-sm text-accent-foreground">

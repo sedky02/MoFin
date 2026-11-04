@@ -39,6 +39,7 @@ jest.mock('react-native-reanimated', () => {
     default: { View, createAnimatedComponent: (c) => c },
     ReduceMotion: { System: 'system', Always: 'always', Never: 'never' },
     FadeIn: builder(), FadeOut: builder(), FadeInDown: builder(), FadeOutDown: builder(),
+    SlideInDown: builder(), SlideOutDown: builder(),
     ...anim,
   };
 });

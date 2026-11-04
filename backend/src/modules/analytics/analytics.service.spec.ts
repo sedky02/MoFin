@@ -671,3 +671,99 @@ describe('AnalyticsService cache invalidation', () => {
     ]);
   });
 });
+
+describe('AnalyticsService.getDailySeries', () => {
+  function setup(rows: unknown[], openings: Record<string, string> = {}) {
+    const queryRaw = jest.fn(async (_sql: Prisma.Sql) => rows);
+    const prisma = {
+      $queryRaw: queryRaw,
+      account: {
+        aggregate: jest.fn(
+          async ({ where }: { where: { currency: string } }) => ({
+            _sum: {
+              openingBalance: openings[where.currency]
+                ? new Prisma.Decimal(openings[where.currency])
+                : null,
+            },
+          }),
+        ),
+      },
+    };
+    return { service: new AnalyticsService(prisma as never), prisma, queryRaw };
+  }
+
+  it('returns one point per day, carrying the balance (opening balances and earlier days included) across empty days', async () => {
+    const { service } = setup(
+      [
+        { day: '2026-10-20', net: '200', income: '200', expenses: '0' }, // before the window
+        { day: '2026-11-02', net: '-12.5', income: '0', expenses: '12.5' },
+        { day: '2026-11-04', net: '30', income: '40', expenses: '10' },
+      ],
+      { TND: '1000' },
+    );
+    const result = await service.getDailySeries(
+      'u1',
+      '2026-11-02',
+      4,
+      'TND',
+      undefined,
+      'Africa/Tunis',
+    );
+    expect(result).toEqual({
+      currency: 'TND',
+      timeZone: 'Africa/Tunis',
+      points: [
+        {
+          date: '2026-11-02',
+          income: '0',
+          expenses: '12.5',
+          balance: '1187.5',
+        },
+        { date: '2026-11-03', income: '0', expenses: '0', balance: '1187.5' },
+        { date: '2026-11-04', income: '40', expenses: '10', balance: '1217.5' },
+        { date: '2026-11-05', income: '0', expenses: '0', balance: '1217.5' },
+      ],
+    });
+  });
+
+  it('crosses a month end on the calendar', async () => {
+    const { service } = setup([]);
+    const result = await service.getDailySeries('u1', '2026-10-30', 4, 'USD');
+    expect(result.points.map((p) => p.date)).toEqual([
+      '2026-10-30',
+      '2026-10-31',
+      '2026-11-01',
+      '2026-11-02',
+    ]);
+  });
+
+  it('groups by the local day, leaves deleted transactions out and scopes to the account and currency', async () => {
+    const { service, queryRaw, prisma } = setup([]);
+    await service.getDailySeries(
+      'u1',
+      '2026-11-02',
+      7,
+      'TND',
+      'acc-1',
+      'Africa/Tunis',
+    );
+    const sql = queryRaw.mock.calls[0][0];
+    expect(sql.sql).toContain(`AT TIME ZONE 'UTC') AT TIME ZONE`);
+    expect(sql.sql).toContain('"deletedAt" IS NULL');
+    expect(sql.sql).toContain('ti."accountId" =');
+    expect(sql.values).toEqual(
+      expect.arrayContaining([
+        'u1',
+        'TND',
+        'acc-1',
+        'Africa/Tunis',
+        '2026-11-09',
+      ]),
+    );
+    expect(prisma.account.aggregate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { userId: 'u1', currency: 'TND', id: 'acc-1' },
+      }),
+    );
+  });
+});

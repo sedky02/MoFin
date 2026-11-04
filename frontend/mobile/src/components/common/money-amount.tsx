@@ -15,6 +15,7 @@ type Props = {
   /** Prefix a + explicitly (for transaction rows). */
   signed?: boolean;
   className?: string;
+  numberOfLines?: number;
 };
 
 /** Splits a leading + / - / − off a formatted amount: ["-", "32.500 TND"], or ["", "$5.00"]. */
@@ -24,7 +25,7 @@ export function splitLeadingSign(text: string): [string, string] {
 }
 
 /** A formatted money value. Screen readers get the full (non-compact) value. */
-export function MoneyAmount({ amount, currency, compact = false, colorBySign = false, signed = false, className }: Props) {
+export function MoneyAmount({ amount, currency, compact = false, colorBySign = false, signed = false, className, numberOfLines }: Props) {
   const parsed = tryParse(amount);
   const isNeg = parsed?.isNegative() ?? false;
   const plus = signed && parsed && !parsed.isZero() && !isNeg ? '+' : '';
@@ -32,6 +33,7 @@ export function MoneyAmount({ amount, currency, compact = false, colorBySign = f
   return (
     <Text
       accessibilityLabel={formatMoney(amount, currency)}
+      numberOfLines={numberOfLines}
       style={{ fontVariant: ['tabular-nums'] }}
       className={cn(colorBySign && (isNeg ? 'text-destructive' : 'text-success'), className)}>
       {/* Tabular figures make a sign as wide as a digit, which left a gap after it ("- 32.500"). */}

@@ -5,7 +5,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AccountDialog } from '@/components/accounts/account-dialog';
 import { AccountRow } from '@/components/accounts/account-row';
 import { ConfirmDialog } from '@/components/common/confirm-dialog';
-import { PageHeader } from '@/components/common/page-header';
 import { EmptyState, ErrorState, SkeletonCard } from '@/components/common/states';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
@@ -102,7 +101,6 @@ export default function AccountsScreen() {
       contentContainerClassName="mx-auto w-full max-w-3xl p-4"
       contentContainerStyle={{ paddingBottom: 16 + insets.bottom }}
       refreshControl={<RefreshControl refreshing={list.isRefetching && !list.isLoading} onRefresh={async () => void (await list.refetch())} />}>
-      <PageHeader description="Cash, bank, savings and crypto — each tracked by the ledger." className="mb-4" />
 
       <View className="mb-5 flex-row flex-wrap gap-2">
         {view === 'active' ? (

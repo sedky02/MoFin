@@ -209,8 +209,8 @@ export function PickerField({
       </Pressable>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="gap-3 p-0 sm:max-w-md" style={{ maxHeight: 520 }}>
-          <DialogHeader className="px-6 pt-6">
+        <DialogContent className="gap-3 p-0 sm:max-w-md" style={{ maxHeight: 560 }}>
+          <DialogHeader className="px-6 pt-2">
             <DialogTitle>{title}</DialogTitle>
           </DialogHeader>
           {rows.length === 0 ? (
@@ -220,7 +220,7 @@ export function PickerField({
               data={rows}
               keyExtractor={(o) => o.value || '__none'}
               className="px-2 pb-3"
-              style={{ flexGrow: 0, maxHeight: 360 }}
+              style={{ flexGrow: 0, maxHeight: 420 }}
               accessibilityLabel={title}
               renderItem={({ item: o }) => {
                 const selected = (o.value || undefined) === value;
@@ -230,9 +230,10 @@ export function PickerField({
                     aria-selected={selected}
                     accessibilityLabel={o.detail ? `${o.label}, ${o.detail}` : o.label}
                     onPress={() => pick(o.value)}
-                    className="min-h-11 flex-row items-center gap-2 rounded-md px-3 active:bg-accent">
+                    // Thumb-sized rows in the sheet: 52 px tall, base text, selected row tinted.
+                    className={cn('min-h-[52px] flex-row items-center gap-3 rounded-xl px-4 active:bg-accent', selected && 'bg-primary/10')}>
                     {o.leading}
-                    <Text numberOfLines={1} className="min-w-0 flex-1 text-sm">
+                    <Text numberOfLines={1} className={cn('min-w-0 flex-1 text-base', selected && 'font-semibold')}>
                       {o.label}
                     </Text>
                     {o.detail ? (
@@ -240,7 +241,7 @@ export function PickerField({
                         {o.detail}
                       </Text>
                     ) : null}
-                    {selected ? <Icon as={Check} size={16} aria-hidden /> : null}
+                    {selected ? <Icon as={Check} size={18} aria-hidden className="text-primary-text" /> : null}
                   </Pressable>
                 );
               }}

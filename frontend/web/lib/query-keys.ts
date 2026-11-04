@@ -35,6 +35,8 @@ export const analyticsKeys = {
     [...analyticsKeys.all, "monthly", year, month, accountId, currency] as const,
   series: (currency: string, months: number, accountId?: string) =>
     [...analyticsKeys.all, "series", currency, months, accountId] as const,
+  daily: (currency: string, from: string, days: number, timeZone: string, accountId?: string) =>
+    [...analyticsKeys.all, "daily", currency, from, days, timeZone, accountId] as const,
 };
 
 export const searchKeys = {

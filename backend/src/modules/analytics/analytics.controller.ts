@@ -7,6 +7,8 @@ import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import { AuthenticatedUser } from '../../common/types/authenticated-user';
 import { AnalyticsService } from './analytics.service';
 import {
+  DailySeriesQueryDto,
+  dailySeriesQuerySchema,
   MonthlySeriesQueryDto,
   monthlySeriesQuerySchema,
   MonthlySummaryQueryDto,
@@ -49,6 +51,24 @@ export class AnalyticsController {
       query.months,
       query.currency,
       query.accountId,
+    );
+  }
+
+  /** Income, expenses and closing balance per day (the app's weekly chart). */
+  @Get('daily-series')
+  @ApiZodQuery(dailySeriesQuerySchema)
+  dailySeries(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query(new ZodValidationPipe(dailySeriesQuerySchema))
+    query: DailySeriesQueryDto,
+  ) {
+    return this.analyticsService.getDailySeries(
+      user.id,
+      query.from,
+      query.days,
+      query.currency,
+      query.accountId,
+      query.tz,
     );
   }
 }

@@ -12,7 +12,7 @@ import { Text } from '@/components/ui/text';
 import { useAccounts } from '@/hooks/useAccounts';
 import { useCategories } from '@/hooks/useCategories';
 import { useConnectedApps } from '@/hooks/useConnectedApps';
-import { usePendingDraftCount } from '@/hooks/useDrafts';
+import { useGoals } from '@/hooks/useGoals';
 import { useUser } from '@/hooks/useUser';
 import { ChevronRight, FlaskConical, LogOut } from '@/lib/icons';
 import { initials } from '@/lib/initials';
@@ -83,7 +83,7 @@ function Group({ title, highlight, children }: { title: string; highlight?: bool
 /**
  * The More tab: who is signed in, then everything the tab bar has no room for, grouped (your money,
  * the AI assistant, the app), each row with a coloured icon and a live line ("3 accounts",
- * "2 drafts to review", "Not connected yet") so it's clear what is behind it.
+ * "2 active goals", "1 app connected") so it's clear what is behind it.
  */
 export default function MoreScreen() {
   const insets = useSafeAreaInsets();
@@ -91,12 +91,12 @@ export default function MoreScreen() {
   const { data: user } = useUser();
   const { data: accounts } = useAccounts();
   const { data: categories } = useCategories();
-  const { data: pending } = usePendingDraftCount();
+  const { data: goals } = useGoals('active');
   const { data: apps } = useConnectedApps(!user?.isDemo);
   const counts: MoreCounts = {
     accounts: accounts?.length,
     categories: categories?.length,
-    pendingDrafts: pending,
+    activeGoals: goals?.length,
     connectedApps: apps?.length,
   };
 
@@ -133,7 +133,6 @@ export default function MoreScreen() {
               subtitle={moreSubtitle(item.href, counts)}
               icon={item.icon}
               tone={item.tone}
-              badge={item.href === '/drafts' ? pending : undefined}
               last={i === group.items.length - 1 && !(__DEV__ && group.title === 'App')}
             />
           ))}

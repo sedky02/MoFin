@@ -12,7 +12,7 @@ import {
   searchKeys,
   userKeys,
 } from "@/lib/query-keys";
-import { parseBalanceKey, pickPrimaryCurrency } from "@/lib/format";
+import { pickPrimaryCurrency } from "@/lib/format";
 import {
   ACTIVE_ACCOUNT_COOKIE,
   DASHBOARD_RECENT_LIMIT,
@@ -26,7 +26,6 @@ import type {
   Account,
   Goal,
   LedgerBalance,
-  MonthlySeries,
   MonthlySummary,
   Paginated,
   Transaction,
@@ -98,7 +97,6 @@ async function prefetchDashboard() {
   const activeAccount = resolveActiveAccount(stored, accounts, user?.settings?.mainAccountId);
   const accountId = activeAccount?.id;
   const scopedBalances = accountId && allBalances ? scopeBalances(allBalances, accountId) : undefined;
-  const balances = accountId ? scopedBalances : allBalances;
 
   // The client derives the same from this data once it is hydrated; the server needs it
   // first to know which currency to ask the summary and the chart series in.
@@ -112,25 +110,18 @@ async function prefetchDashboard() {
     currencies,
     primaryCurrency: initialPrimaryCurrency,
   });
-  const heroCurrencies = orderCurrencies(
-    (balances ?? []).map((b) => ({ currency: parseBalanceKey(b.key).currency })),
-    initialPrimaryCurrency,
-  );
-  const heroCurrency = heroCurrencies.includes(currency) ? currency : (heroCurrencies[0] ?? currency);
   const summaryCurrency = summaryApiCurrency(accountId, currency);
 
   // Second round: what needs the active account and currency. Nothing to summarise
   // without an account (and no currency to ask in).
-  const [recent, summary, series] = await Promise.all([
+  // The hero's weekly chart is fetched on the client: it needs the viewer's time zone and today.
+  const [recent, summary] = await Promise.all([
     serverGet<Paginated<Transaction>>("/search/transactions", {
       limit: DASHBOARD_RECENT_LIMIT,
       offset: 0,
       accountId,
     }),
     !accounts.length ? null : serverGet<MonthlySummary>("/analytics/monthly-summary", { year, month, accountId, currency: summaryCurrency }),
-    heroCurrencies.length
-      ? serverGet<MonthlySeries>("/analytics/monthly-series", { currency: heroCurrency, months: 6, accountId })
-      : null,
   ]);
 
   // Prime the cache only for successful fetches; the client refetches the rest.
@@ -144,7 +135,6 @@ async function prefetchDashboard() {
   if (allBalances) queryClient.setQueryData(ledgerKeys.balance(undefined, undefined), allBalances);
   if (accountId && scopedBalances) queryClient.setQueryData(ledgerKeys.balance(accountId, undefined), scopedBalances);
   if (summary) queryClient.setQueryData(analyticsKeys.monthly(year, month, accountId, summaryCurrency), summary);
-  if (series) queryClient.setQueryData(analyticsKeys.series(heroCurrency, 6, accountId), series);
   if (recent) {
     queryClient.setQueryData(searchKeys.list({ recent: DASHBOARD_RECENT_LIMIT, accountId }), recent.data);
   }

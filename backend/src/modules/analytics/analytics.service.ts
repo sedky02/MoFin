@@ -18,6 +18,26 @@ type MonthlySeries = {
   }[];
 };
 
+type DailySeries = {
+  currency: string;
+  timeZone: string;
+  points: {
+    /** YYYY-MM-DD in `timeZone`. */
+    date: string;
+    income: string;
+    expenses: string;
+    /** Closing balance at the end of that day (opening balances included). */
+    balance: string;
+  }[];
+};
+
+/** `YYYY-MM-DD` plus `n` days, on the calendar (no time zone involved). */
+function addDays(date: string, n: number): string {
+  const d = new Date(`${date}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
 @Injectable()
 export class AnalyticsService {
   constructor(private readonly prisma: PrismaService) {}
@@ -208,6 +228,70 @@ export class AnalyticsService {
         balance: new Prisma.Decimal(point.balance).plus(opening).toString(),
       })),
     };
+  }
+
+  /**
+   * Income, expenses and closing balance for `days` days from `from`, with days counted in
+   * `timeZone` (the phone's), so a late-evening purchase lands on the day it was made. Same rules
+   * as the monthly series: one grouped query, deleted transactions left out, transfers move the
+   * balance but are neither income nor expense, opening balances added to every balance. Not
+   * cached: a week is small and changes with every new transaction.
+   */
+  async getDailySeries(
+    userId: string,
+    from: string,
+    days: number,
+    currency: string,
+    accountId?: string,
+    timeZone = 'UTC',
+  ): Promise<DailySeries> {
+    const end = addDays(from, days);
+    // occurredAt is a UTC timestamp without zone: read it as UTC, then as the caller's local time.
+    const localDay = Prisma.sql`((t."occurredAt" AT TIME ZONE 'UTC') AT TIME ZONE ${timeZone})::date`;
+    const [rows, opening] = await Promise.all([
+      this.prisma.$queryRaw<
+        {
+          day: string;
+          net: Prisma.Decimal | string;
+          income: Prisma.Decimal | string;
+          expenses: Prisma.Decimal | string;
+        }[]
+      >(Prisma.sql`
+        SELECT to_char(${localDay}, 'YYYY-MM-DD') AS day,
+          SUM(CASE WHEN ti.direction = 'CREDIT' THEN ti.amount ELSE -ti.amount END) AS net,
+          SUM(CASE WHEN t.type = 'INCOME' THEN ti.amount ELSE 0 END) AS income,
+          SUM(CASE WHEN t.type = 'EXPENSE' THEN ti.amount ELSE 0 END) AS expenses
+        FROM "TransactionItem" ti
+        JOIN "Transaction" t ON t.id = ti."transactionId"
+        WHERE ti."userId" = ${userId}
+          AND ti.currency = ${currency}
+          AND t."deletedAt" IS NULL
+          AND ${localDay} < ${end}::date
+          ${accountId ? Prisma.sql`AND ti."accountId" = ${accountId}` : Prisma.empty}
+        GROUP BY 1
+        ORDER BY 1
+      `),
+      this.openingBalanceTotal(userId, currency, accountId),
+    ]);
+
+    const byDay = new Map(rows.map((r) => [r.day, r]));
+    // Everything before the window (and the accounts' opening balances) is where the first day starts.
+    let running = rows
+      .filter((r) => r.day < from)
+      .reduce((sum, r) => sum.plus(new Prisma.Decimal(String(r.net))), opening);
+
+    const points = Array.from({ length: days }, (_, i) => {
+      const date = addDays(from, i);
+      const row = byDay.get(date);
+      running = running.plus(new Prisma.Decimal(String(row?.net ?? 0)));
+      return {
+        date,
+        income: new Prisma.Decimal(String(row?.income ?? 0)).toString(),
+        expenses: new Prisma.Decimal(String(row?.expenses ?? 0)).toString(),
+        balance: running.toString(),
+      };
+    });
+    return { currency, timeZone, points };
   }
 
   /**

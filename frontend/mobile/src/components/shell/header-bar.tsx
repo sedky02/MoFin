@@ -15,20 +15,24 @@ export function HeaderIconButton({
   icon,
   accessibilityLabel,
   onPress,
+  disabled,
   className,
 }: {
   icon: LucideIcon;
   accessibilityLabel: string;
   onPress: () => void;
+  disabled?: boolean;
   className?: string;
 }) {
   return (
     <Pressable
       role="button"
       accessibilityLabel={accessibilityLabel}
+      accessibilityState={{ disabled: !!disabled }}
+      disabled={disabled}
       hitSlop={6}
       onPress={onPress}
-      className={cn('size-10 items-center justify-center rounded-full bg-secondary active:bg-accent', className)}>
+      className={cn('size-10 items-center justify-center rounded-full bg-secondary active:bg-accent', disabled && 'opacity-30', className)}>
       <Icon as={icon} size={20} aria-hidden className="text-foreground" />
     </Pressable>
   );

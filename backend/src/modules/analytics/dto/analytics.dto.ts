@@ -31,4 +31,34 @@ export const monthlySeriesQuerySchema = z.object({
 });
 export type MonthlySeriesQueryDto = z.infer<typeof monthlySeriesQuerySchema>;
 
+/** True for an IANA zone name the runtime knows ("Africa/Tunis", "UTC"). */
+function isTimeZone(value: string): boolean {
+  try {
+    new Intl.DateTimeFormat('en', { timeZone: value });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+const isoDate = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'expected YYYY-MM-DD')
+  .refine((v) => {
+    const d = new Date(`${v}T00:00:00Z`);
+    return !Number.isNaN(d.getTime()) && d.toISOString().startsWith(v);
+  }, 'not a calendar date');
+
+export const dailySeriesQuerySchema = z.object({
+  /** First day, in the caller's time zone (the app sends the Monday of a week). */
+  from: isoDate,
+  days: z.coerce.number().int().min(1).max(62).default(7),
+  // Balances can't be summed across currencies, so the series is always one currency.
+  currency: z.string().length(3),
+  accountId: z.string().optional(),
+  /** Which calendar the days follow; a transaction at 00:30 in Tunis belongs to that day, not the UTC one. */
+  tz: z.string().max(64).refine(isTimeZone, 'unknown time zone').default('UTC'),
+});
+export type DailySeriesQueryDto = z.infer<typeof dailySeriesQuerySchema>;
+
 export type MonthlySummaryQueryDto = z.infer<typeof monthlySummaryQuerySchema>;
