@@ -8,7 +8,7 @@ import {
   exportJWK,
   generateKeyPair,
   SignJWT,
-  type CryptoKey,
+  type KeyLike,
   type JWK,
   type JWTPayload,
   type JWTVerifyGetKey,
@@ -24,8 +24,8 @@ const AUDIENCE = 'web-client.apps.googleusercontent.com';
 const ISSUER = 'https://accounts.google.com';
 
 describe('IdTokenVerifier', () => {
-  let signingKey: CryptoKey;
-  let otherKey: CryptoKey;
+  let signingKey: KeyLike;
+  let otherKey: KeyLike;
   let keys: JWTVerifyGetKey;
 
   beforeAll(async () => {
@@ -52,7 +52,7 @@ describe('IdTokenVerifier', () => {
   /** A Google-like ID token; `claims` override the defaults (undefined drops one). */
   function sign(
     claims: JWTPayload = {},
-    opts: { key?: CryptoKey; kid?: string } = {},
+    opts: { key?: KeyLike; kid?: string } = {},
   ) {
     const now = Math.floor(Date.now() / 1000);
     const payload: JWTPayload = {

@@ -28,7 +28,7 @@ import {
   exportJWK,
   generateKeyPair,
   SignJWT,
-  type CryptoKey,
+  type KeyLike,
   type JWTPayload,
 } from 'jose';
 import * as request from 'supertest';
@@ -94,7 +94,7 @@ describe('POST /auth/google/id-token (e2e)', () => {
   let google: Awaited<ReturnType<typeof fakeGoogle>>;
   let ipCounter = 0;
   const nextIp = () => `10.50.0.${++ipCounter}`;
-  const idToken = (claims?: JWTPayload, key?: CryptoKey) =>
+  const idToken = (claims?: JWTPayload, key?: KeyLike) =>
     google.idToken(claims, key);
 
   beforeAll(async () => {
