@@ -35,7 +35,10 @@ export class AiChatService {
     user: { id: string; email: string },
     dto: AiChatDto,
   ): Promise<AiChatReply> {
-    if (!this.llm.enabled) throw new AiUnavailableException();
+    if (!this.llm.enabled) {
+      this.logger.error('Chat unavailable: AI_API_KEY is not set');
+      throw new AiUnavailableException();
+    }
     this.countDemoUse(user);
 
     const messages: LlmMessage[] = [

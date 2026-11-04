@@ -109,8 +109,12 @@ export class AiService {
       } catch (error) {
         // A provider outage must not block drafting: fall through to the stub.
         if (!(error instanceof AiUnavailableException)) throw error;
-        this.logger.warn('Model unavailable, using the local parser');
+        this.logger.warn(
+          `Model unavailable (${error.message}), using the local parser`,
+        );
       }
+    } else {
+      this.logger.warn('AI_API_KEY is not set, using the local parser');
     }
     return [
       { data: this.stubParse(dto), confidence: this.stubConfidence(dto) },
