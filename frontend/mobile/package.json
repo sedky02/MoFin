@@ -79,7 +79,9 @@
     "doctor": "expo-doctor",
     "theme:sync": "node scripts/sync-theme.js",
     "theme:check": "node scripts/sync-theme.js --check",
-    "core:drift": "node scripts/core-drift.mjs"
+    "core:drift": "node scripts/core-drift.mjs",
+    "icons:sync": "node scripts/sync-icons.mjs",
+    "icons:check": "node scripts/sync-icons.mjs --check"
   },
   "private": true
 }

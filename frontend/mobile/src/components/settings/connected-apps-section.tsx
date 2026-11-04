@@ -1,5 +1,4 @@
 import { Link } from 'expo-router';
-import { Plug } from 'lucide-react-native';
 import * as React from 'react';
 import { View } from 'react-native';
 
@@ -12,6 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import type { ConnectedApp } from '@/core/types';
 import { useConnectedApps, useDisconnectApp } from '@/hooks/useConnectedApps';
+import { Plug } from '@/lib/icons';
 import { cn } from '@/lib/utils';
 
 /** The AI apps the user approved, each with its state and a Disconnect button (the web's ConnectedAppsCard). */

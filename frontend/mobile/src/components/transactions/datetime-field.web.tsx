@@ -1,12 +1,12 @@
 // Expo web: @react-native-community/datetimepicker has no web implementation, so the field is the
 // browser's own input, exactly the web app's `<input type="datetime-local">` / `type="date"`.
-import { X } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
 import * as React from 'react';
 import { Pressable, View } from 'react-native';
 
 import type { DateTimeFieldProps } from '@/components/transactions/datetime-field';
 import { Icon } from '@/components/ui/icon';
+import { X } from '@/lib/icons';
 import { cn } from '@/lib/utils';
 import { COLORS } from '@/theme/colors';
 

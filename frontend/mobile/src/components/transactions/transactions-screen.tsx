@@ -1,11 +1,9 @@
 // The Transactions tab: every transaction (search, filters, day groups, more loaded as you scroll)
 // and the recurring series, like the web's /transactions page (which pages by number instead). Filter state lives here; the rules for
 // turning it into a query, chips and counts are in transactions-list-model.
-import { Receipt, Search, SlidersHorizontal, X } from 'lucide-react-native';
 import * as React from 'react';
 import { ActivityIndicator, FlatList, Platform, Pressable, RefreshControl, View } from 'react-native';
 
-import { PageHeader } from '@/components/common/page-header';
 import { EmptyState, ErrorState, SkeletonRows } from '@/components/common/states';
 import { FilterSheet } from '@/components/transactions/filter-sheet';
 import { RecurringSeriesList, useRecurringSeriesCount } from '@/components/transactions/recurring-series-list';
@@ -29,7 +27,7 @@ import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Text } from '@/components/ui/text';
 import { transactionAccountLabel } from '@/core/transaction-accounts';
-import { accountOptionLabel, TRANSACTIONS_DESCRIPTION, type TransactionsView } from '@/core/transaction-list-params';
+import { accountOptionLabel, type TransactionsView } from '@/core/transaction-list-params';
 import { groupByDay } from '@/core/transaction-days';
 import type { Account, Transaction } from '@/core/types';
 import { useAccounts } from '@/hooks/useAccounts';
@@ -37,6 +35,7 @@ import { useCategories } from '@/hooks/useCategories';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { useSearchTransactions } from '@/hooks/useSearch';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
+import { Receipt, Search, SlidersHorizontal, X } from '@/lib/icons';
 import { cn } from '@/lib/utils';
 
 type ListItem =
@@ -152,8 +151,6 @@ export function TransactionsScreen() {
   const panelCount = panelFilterCount(filters);
   const header = (
     <View>
-      {/* The tab header already shows the title. */}
-      <PageHeader description={TRANSACTIONS_DESCRIPTION} className="mb-4" />
       <ViewToggle view={view} onChange={setView} seriesCount={seriesCount} />
       {view === 'all' ? (
         <>

@@ -1,4 +1,3 @@
-import { History } from 'lucide-react-native';
 import { ScrollView, useWindowDimensions, View } from 'react-native';
 
 import { MoneyAmount } from '@/components/common/money-amount';
@@ -10,6 +9,7 @@ import { formatPeriodDate } from '@/core/format';
 import { goalProgressSourceLabel } from '@/core/goal-scope';
 import type { Account, Goal, GoalStatus } from '@/core/types';
 import { useGoalHistory } from '@/hooks/useGoals';
+import { History } from '@/lib/icons';
 import { cn } from '@/lib/utils';
 
 const STATUS: Record<GoalStatus, { label: string; bg: string; text: string }> = {

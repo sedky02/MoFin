@@ -1,7 +1,6 @@
 import * as React from 'react';
 import { View } from 'react-native';
 import { router } from 'expo-router';
-import { Wallet } from 'lucide-react-native';
 
 import { MoneyAmount } from '@/components/common/money-amount';
 import { EmptyState, ErrorState } from '@/components/common/states';
@@ -16,6 +15,7 @@ import { allAccountsCaption, countArchivedHolding, totalsByCurrency, zeroTotals 
 import { tryParse } from '@/core/decimal';
 import { pickPrimaryCurrency } from '@/core/format';
 import { heroHeadline, type HeroMetric } from '@/core/hero-headline';
+import { Wallet } from '@/lib/icons';
 import { cn } from '@/lib/utils';
 import { useAccounts } from '@/hooks/useAccounts';
 import { useMonthlySeries } from '@/hooks/useAnalytics';

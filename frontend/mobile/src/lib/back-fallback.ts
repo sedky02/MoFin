@@ -8,6 +8,8 @@ export function backFallbackHref(routeName: string, params?: Record<string, unkn
   if (routeName === 'transactions/[id]/edit' && typeof params?.id === 'string') {
     return { pathname: '/transactions/[id]', params: { id: params.id } };
   }
+  // The add sheet closes onto the dashboard (where + is used most), like saving with no history.
+  if (routeName === 'transactions/new') return '/dashboard';
   if (routeName.startsWith('transactions/')) return '/transactions';
   if (routeName.startsWith('settings/') && routeName !== 'settings/index') return '/settings';
   return '/more';

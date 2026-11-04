@@ -1,10 +1,10 @@
 import * as Clipboard from 'expo-clipboard';
-import { Check, Copy } from 'lucide-react-native';
 import * as React from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
+import { Check, Copy } from '@/lib/icons';
 import { toast } from '@/lib/toast';
 
 /** Copies a value to the clipboard and says so for a moment. */

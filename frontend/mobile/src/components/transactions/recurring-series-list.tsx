@@ -1,7 +1,6 @@
 // The Recurring view of the transactions screen: every series once (by its root), with its
 // schedule and actions. Same request and wording as the web's recurring-series-list.
 import { router } from 'expo-router';
-import { Repeat } from 'lucide-react-native';
 import * as React from 'react';
 import { FlatList, Pressable, RefreshControl, View } from 'react-native';
 
@@ -26,6 +25,7 @@ import type { Account, Transaction } from '@/core/types';
 import { useAccounts } from '@/hooks/useAccounts';
 import { useSearchPage, type SearchParams } from '@/hooks/useSearch';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
+import { Repeat } from '@/lib/icons';
 import { cn } from '@/lib/utils';
 
 // Each series once, by its root (deleted roots never come back): active ones first by their next

@@ -1,6 +1,6 @@
-import { Coffee, House, Receipt, Tags, Utensils } from 'lucide-react-native';
 
 import { categoryGlyph, categoryTint } from '@/components/categories/category-glyph';
+import { Coffee, House, Receipt, Tags, Utensils } from '@/lib/icons';
 
 describe('categoryGlyph', () => {
   it('uses the picked icon first', () => {

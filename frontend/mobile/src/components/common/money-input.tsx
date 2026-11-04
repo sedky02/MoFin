@@ -105,15 +105,25 @@ export function MoneyInput({
   if (large) {
     return (
       <View className="items-center">
-        <Text aria-hidden className="mb-1 h-4 text-xs font-medium tracking-widest text-muted-foreground">
+        <Text aria-hidden className="mb-2 text-xs font-medium leading-4 tracking-widest text-muted-foreground">
           {currency}
         </Text>
         <TextInput
           {...common}
-          style={{ fontVariant: ['tabular-nums'] }}
+          // An explicit box: with the class's tight line height Android clipped the top of the digits
+          // (they looked cut under the currency code) and added its own font padding.
+          style={{
+            fontVariant: ['tabular-nums'],
+            fontSize: 44,
+            lineHeight: 54,
+            height: 60,
+            paddingVertical: 0,
+            includeFontPadding: false,
+            textAlignVertical: 'center',
+          }}
           placeholderTextColor="rgba(128,128,128,0.4)"
           className={cn(
-            'w-full bg-transparent text-center text-5xl font-semibold tracking-tight text-foreground',
+            'w-full bg-transparent text-center font-semibold tracking-tight text-foreground',
             invalid && 'text-destructive',
             disabled && 'opacity-60',
             className,

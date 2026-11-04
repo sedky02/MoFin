@@ -1,7 +1,6 @@
 // A recurring series' panel and actions: cadence and next date (or why it is paused), and Edit /
 // Pause / Resume / Cancel series. Shared by a root's detail screen and the Recurring list. The
 // same rules and wording as the web's recurring-panel.
-import { PauseCircle, Repeat } from 'lucide-react-native';
 import * as React from 'react';
 import { ScrollView, useWindowDimensions, View } from 'react-native';
 
@@ -45,6 +44,7 @@ import {
   useResumeRecurringTransaction,
   useUpdateRecurringTransaction,
 } from '@/hooks/useTransactions';
+import { PauseCircle, Repeat } from '@/lib/icons';
 import { cn } from '@/lib/utils';
 
 /** "Paused", or "Paused: <why it couldn't post>", in place of a series' next date. */

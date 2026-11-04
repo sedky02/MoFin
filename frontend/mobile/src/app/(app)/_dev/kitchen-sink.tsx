@@ -1,4 +1,3 @@
-import { Inbox } from 'lucide-react-native';
 import * as React from 'react';
 import { ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -44,6 +43,7 @@ import { Text } from '@/components/ui/text';
 import { Textarea } from '@/components/ui/textarea';
 import type { Account, AccountType } from '@/core/types';
 import { THEME_LABELS, useThemePreference, type ThemePreference } from '@/hooks/use-theme-preference';
+import { Inbox } from '@/lib/icons';
 import { toast } from '@/lib/toast';
 
 // Development only (the route is guarded by __DEV__ in (app)/_layout.tsx). Every primitive in one place,

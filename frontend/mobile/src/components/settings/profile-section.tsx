@@ -1,5 +1,4 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { User as UserIcon } from 'lucide-react-native';
 import * as React from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { View } from 'react-native';
@@ -22,6 +21,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { handleApiError } from '@/core/form-errors';
 import { useUpdateUser, useUser } from '@/hooks/useUser';
+import { User as UserIcon } from '@/lib/icons';
 
 /** Profile: the sign-in email (read only) and the display name. */
 export function ProfileSection() {

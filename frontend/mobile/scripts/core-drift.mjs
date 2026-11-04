@@ -41,7 +41,8 @@ function normalizeWebSource(text) {
     .replace(/@\/lib\/api"/g, '@/api/client"')
     .replace(/from "sonner"/g, 'from "@/lib/toast"')
     .replace(/@\/lib\/(?!query-client|toast)/g, '@/core/')
-    .replace(/from "lucide-react";/g, 'from "lucide-react-native";')
+    // Icons come from the app's per-file re-exports (scripts/sync-icons.mjs), not the lucide barrel.
+    .replace(/from "lucide-react";/g, 'from "@/lib/icons";')
     .replace(/^import \{ [^}]* \} from "vitest";\n/m, '')
     .replace(/\bvi\./g, 'jest.');
 }

@@ -1,10 +1,10 @@
 import { router } from 'expo-router';
-import { Plug, X } from 'lucide-react-native';
 import { Pressable, View } from 'react-native';
 
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
+import { Plug, X } from '@/lib/icons';
 
 /** One quiet line on the dashboard, after setup: the AI assistants are what sets MoFin apart. */
 export function AssistantNudge({ onClose }: { onClose: () => void }) {

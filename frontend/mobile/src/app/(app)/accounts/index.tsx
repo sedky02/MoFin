@@ -1,4 +1,3 @@
-import { Archive, ArrowLeft, Plus, Wallet } from 'lucide-react-native';
 import * as React from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -13,6 +12,7 @@ import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import type { Account, AccountType } from '@/core/types';
 import { useAccounts, useArchiveAccount, useRestoreAccount } from '@/hooks/useAccounts';
+import { Archive, ArrowLeft, Plus, Wallet } from '@/lib/icons';
 
 const GROUPS: { type: AccountType; title: string }[] = [
   { type: 'BANK', title: 'Bank' },

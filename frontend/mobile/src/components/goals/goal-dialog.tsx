@@ -1,4 +1,4 @@
-import { PiggyBank, TrendingDown, TrendingUp, type LucideIcon } from 'lucide-react-native';
+import type { LucideIcon } from 'lucide-react-native';
 import * as React from 'react';
 import { Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
 
@@ -17,6 +17,7 @@ import type { Goal, GoalRecurrenceUnit, GoalType } from '@/core/types';
 import { useAccounts } from '@/hooks/useAccounts';
 import { useActiveAccount } from '@/hooks/useActiveAccount';
 import { useCreateGoal, useUpdateGoal } from '@/hooks/useGoals';
+import { PiggyBank, TrendingDown, TrendingUp } from '@/lib/icons';
 import { cn } from '@/lib/utils';
 
 import { initialGoalDraft, validateGoalDraft, type GoalDraft, type GoalErrors } from './goal-form-state';

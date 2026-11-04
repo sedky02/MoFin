@@ -1,4 +1,3 @@
-import { WifiOff } from 'lucide-react-native';
 import { View } from 'react-native';
 
 import { Icon } from '@/components/ui/icon';
@@ -6,6 +5,7 @@ import { Text } from '@/components/ui/text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useIsOnline } from '@/hooks/use-online';
+import { WifiOff } from '@/lib/icons';
 
 export const OFFLINE_MESSAGE = "You're offline. Showing what was loaded; changes will work once you're back online.";
 

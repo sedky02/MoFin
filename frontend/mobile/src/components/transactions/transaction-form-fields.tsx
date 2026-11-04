@@ -2,23 +2,16 @@
 // dialog list for accounts and split-line categories (a popover has no room on a phone, and the
 // dialog can be opened in tests), and the Month / Year interval switch. Same labels as the web's
 // type-switcher, category-chips and account-select.
-import {
-  ArrowDownLeft,
-  ArrowLeftRight,
-  ArrowUpRight,
-  Check,
-  ChevronsUpDown,
-  Plus,
-  type LucideIcon,
-} from 'lucide-react-native';
+import type { LucideIcon } from 'lucide-react-native';
 import * as React from 'react';
 import { FlatList, Pressable, ScrollView, View } from 'react-native';
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { CategoryGlyphIcon } from '@/components/categories/category-glyph';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
-import { categoryIconFor } from '@/core/category-icons';
 import type { Account, Category, RecurringInterval, TransactionType } from '@/core/types';
+import { ArrowDownLeft, ArrowLeftRight, ArrowUpRight, Check, ChevronsUpDown, Plus } from '@/lib/icons';
 import { cn } from '@/lib/utils';
 
 const TYPE_OPTIONS: { value: TransactionType; label: string; icon: LucideIcon; active: string }[] = [
@@ -73,34 +66,9 @@ export function TypeSwitcher({
   );
 }
 
-/** A category's icon (a registered key, or an older emoji), tinted with its colour. */
-export function CategoryGlyph({ category, size = 14 }: { category: Pick<Category, 'icon' | 'color'>; size?: number }) {
-  const registered = categoryIconFor(category.icon);
-  if (registered) {
-    return (
-      <Icon
-        as={registered.Icon}
-        size={size}
-        aria-hidden
-        className="text-muted-foreground"
-        color={category.color ?? undefined}
-      />
-    );
-  }
-  if (category.icon) {
-    return (
-      <Text aria-hidden style={{ fontSize: size }}>
-        {category.icon}
-      </Text>
-    );
-  }
-  return (
-    <View
-      aria-hidden
-      className="rounded-full bg-muted-foreground"
-      style={{ width: size * 0.6, height: size * 0.6, backgroundColor: category.color ?? undefined }}
-    />
-  );
+/** A category's icon in its colour, drawn the same way as everywhere else (`categoryGlyph`). */
+export function CategoryGlyph({ category, size = 14 }: { category: Pick<Category, 'icon' | 'color' | 'name'>; size?: number }) {
+  return <CategoryGlyphIcon category={category} size={size} color={category.color ?? undefined} />;
 }
 
 /**

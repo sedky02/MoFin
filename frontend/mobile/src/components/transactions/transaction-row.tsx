@@ -1,5 +1,4 @@
 import { router } from 'expo-router';
-import { ChevronRight, Repeat } from 'lucide-react-native';
 import * as React from 'react';
 import { Pressable, View } from 'react-native';
 
@@ -11,6 +10,7 @@ import { multiply } from '@/core/decimal';
 import { formatDate, transactionAmount } from '@/core/format';
 import { transactionCategorySummary } from '@/core/transaction-category';
 import type { Transaction } from '@/core/types';
+import { ChevronRight, Repeat } from '@/lib/icons';
 import { cn } from '@/lib/utils';
 
 const TILE: Record<Transaction['type'], string> = {

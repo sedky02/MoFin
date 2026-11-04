@@ -1,5 +1,4 @@
 import { router } from 'expo-router';
-import { ArrowRight, Receipt, Repeat } from 'lucide-react-native';
 import { Pressable, View } from 'react-native';
 
 import { MoneyAmount } from '@/components/common/money-amount';
@@ -16,6 +15,7 @@ import { transactionAccountLabel } from '@/core/transaction-accounts';
 import { transactionCategorySummary } from '@/core/transaction-category';
 import { groupByDay } from '@/core/transaction-days';
 import type { Transaction } from '@/core/types';
+import { ArrowRight, Receipt, Repeat } from '@/lib/icons';
 import { cn } from '@/lib/utils';
 import { useAccounts } from '@/hooks/useAccounts';
 import { useRecentTransactions } from '@/hooks/useSearch';

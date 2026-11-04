@@ -1,27 +1,27 @@
 import { router, Stack } from 'expo-router';
-import { Platform } from 'react-native';
+import { Pressable } from 'react-native';
 
 import { TransactionForm } from '@/components/transactions/transaction-form';
-import { Button } from '@/components/ui/button';
+import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
+import { Sparkles } from '@/lib/icons';
 
-// Presented as a modal over the tabs ((app)/_layout.tsx). Saving closes it; the toast offers Undo and View.
+// A sheet over the tabs ((app)/_layout.tsx), closed with the header's ✕. Saving closes it; the
+// toast offers Undo and View. "Describe it" hands over to AI drafts for people who'd rather type a sentence.
 export default function NewTransactionScreen() {
   return (
     <>
       <Stack.Screen
         options={{
-          headerLeft: () => (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="min-h-11 px-2"
-              // The web header gives headerLeft no inset of its own (native headers do).
-              style={Platform.OS === 'web' ? { marginLeft: 8 } : undefined}
-              accessibilityLabel="Cancel"
-              onPress={() => (router.canGoBack() ? router.back() : router.replace('/dashboard'))}>
-              <Text className="text-base">Cancel</Text>
-            </Button>
+          headerRight: () => (
+            <Pressable
+              role="link"
+              accessibilityLabel="Describe it instead: MoFin drafts it for you"
+              onPress={() => router.replace({ pathname: '/drafts', params: { compose: '1' } })}
+              className="min-h-10 flex-row items-center gap-1.5 rounded-full bg-primary/15 px-3.5 active:opacity-70">
+              <Icon as={Sparkles} size={16} aria-hidden className="text-primary-text" />
+              <Text className="text-sm font-semibold text-primary-text">Describe it</Text>
+            </Pressable>
           ),
         }}
       />

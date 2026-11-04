@@ -1,4 +1,4 @@
-import { AlertTriangle, Inbox, type LucideIcon } from 'lucide-react-native';
+import type { LucideIcon } from 'lucide-react-native';
 import * as React from 'react';
 import { View } from 'react-native';
 
@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
+import { AlertTriangle, Inbox } from '@/lib/icons';
 import { cn } from '@/lib/utils';
 
 export function EmptyState({

@@ -1,5 +1,4 @@
 import { router } from 'expo-router';
-import { ArrowRight, Plus, Target } from 'lucide-react-native';
 import { Pressable, View } from 'react-native';
 
 import { MoneyAmount } from '@/components/common/money-amount';
@@ -16,6 +15,7 @@ import { goalScopeLabel } from '@/core/goal-scope';
 import type { Account, Goal } from '@/core/types';
 import { useAccounts } from '@/hooks/useAccounts';
 import { useGoals } from '@/hooks/useGoals';
+import { ArrowRight, Plus, Target } from '@/lib/icons';
 
 function GoalTile({ goal, account }: { goal: Goal; account?: Account }) {
   const currency = account?.currency ?? 'USD';

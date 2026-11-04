@@ -1,4 +1,3 @@
-import { Trash2 } from 'lucide-react-native';
 import * as React from 'react';
 import { View } from 'react-native';
 
@@ -10,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { deleteAccount } from '@/hooks/useSettingsActions';
 import { useUser } from '@/hooks/useUser';
+import { Trash2 } from '@/lib/icons';
 
 const DELETED = [
   'your accounts and their balances;',

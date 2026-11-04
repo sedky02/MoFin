@@ -14,7 +14,7 @@ Run `npm run core:drift` to compare (report only, it never overwrites).
 - `@/lib/api` -> `@/api/client`, `sonner` -> `@/lib/toast`
 
 ## Intentional differences
-- `category-icons.ts`: imports `lucide-react-native` instead of `lucide-react` (same icon keys).
+- `category-icons.ts`: imports its icons from `@/lib/icons` (per-file re-exports of `lucide-react-native`, see `scripts/sync-icons.mjs`) instead of `lucide-react` (same icon keys).
 - `form-errors.ts`: only the rewrites above (toast and `ApiClientError` come from mobile modules).
 - `hooks/useAccounts.ts`: no `useHydrationSafe` wrapper. It exists for server-rendered HTML; the app has no SSR.
 - `hooks/useUser.ts`: no `useHydrationSafe`; and `useUpdateUser` merges the PATCH /users/me answer into the cached user instead of replacing it. That endpoint returns no `isDemo`/`expiresAt`/`createdAt`, so the web (which replaces) briefly shows demo-hidden controls too. Proper fix: select those fields in `backend/src/modules/users/users.service.ts` `updateProfile`, then drop this difference.

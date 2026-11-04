@@ -1,4 +1,3 @@
-import { Check, ChevronsUpDown, Search } from 'lucide-react-native';
 import * as React from 'react';
 import { FlatList, Pressable, TextInput, View } from 'react-native';
 
@@ -7,6 +6,7 @@ import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { currencyName } from '@/core/currency-names';
 import { currencyOptions } from '@/lib/currency-options';
+import { Check, ChevronsUpDown, Search } from '@/lib/icons';
 import { cn } from '@/lib/utils';
 
 type Props = {

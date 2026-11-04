@@ -1,5 +1,4 @@
 import { router, Stack } from 'expo-router';
-import { ArrowDown, ArrowDownLeft, ArrowUpRight, ChevronRight, Pencil, Repeat, Trash2 } from 'lucide-react-native';
 import * as React from 'react';
 import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -21,6 +20,7 @@ import { ledgerAccountName, transactionAccountLegs } from '@/core/transaction-ac
 import type { Account, LedgerItem, Transaction } from '@/core/types';
 import { useAccounts } from '@/hooks/useAccounts';
 import { useDeleteTransaction, useTransaction } from '@/hooks/useTransactions';
+import { ArrowDown, ArrowDownLeft, ArrowUpRight, ChevronRight, Pencil, Repeat, Trash2 } from '@/lib/icons';
 
 /** Back to wherever the user came from, else the list (a deep link has no history). */
 export function leaveToList() {

@@ -1,4 +1,3 @@
-import { AlertTriangle, Archive, ArchiveRestore, Pencil } from 'lucide-react-native';
 import { View } from 'react-native';
 
 import { TYPE_ICON } from '@/components/common/account-type-picker';
@@ -11,6 +10,7 @@ import { Text } from '@/components/ui/text';
 import { tryParse } from '@/core/decimal';
 import type { Account } from '@/core/types';
 import { useLedgerBalance } from '@/hooks/useLedger';
+import { AlertTriangle, Archive, ArchiveRestore, Pencil } from '@/lib/icons';
 import { cn } from '@/lib/utils';
 
 /** One account as its own card: type tile, name and currency, balance, and its actions. */

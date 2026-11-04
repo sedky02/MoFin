@@ -11,7 +11,8 @@
  *   an account given here counts as picked). Reset goes back to them.
  * - `onSaved(tx)`: after a successful save. Without it the form goes back (closes the modal, or
  *   returns to the transaction after an edit).
- * - `onCancel`: when given, the secondary button is "Cancel" and calls it, instead of "Reset".
+ * - `onCancel`: when given, the secondary button is "Cancel" and calls it. Otherwise an edit gets
+ *   "Undo changes" (back to the saved values) and a new form has only Save.
  * - `compact`: for embedding in another screen (the dashboard setup step): no description line, no
  *   own scroll view or keyboard handling, and the buttons sit at the end of the form instead of a
  *   sticky bar. The host provides the scrolling.
@@ -22,7 +23,6 @@
  */
 import { zodResolver } from '@hookform/resolvers/zod';
 import { router, type Href } from 'expo-router';
-import { Archive, Plus, Repeat, Split, Trash2, Wallet } from 'lucide-react-native';
 import * as React from 'react';
 import {
   AccessibilityInfo,
@@ -81,6 +81,7 @@ import { useCategories } from '@/hooks/useCategories';
 import { useSuggestedAccountId } from '@/hooks/useSuggestedAccount';
 import { useCreateTransaction, useTransaction, useUpdateTransaction } from '@/hooks/useTransactions';
 import { useUser } from '@/hooks/useUser';
+import { Archive, Plus, Repeat, Split, Trash2, Wallet } from '@/lib/icons';
 import { cn } from '@/lib/utils';
 
 export type TransactionFormProps = {
@@ -792,16 +793,17 @@ function TransactionFormBody({
         <Button variant="secondary" size="lg" className="min-h-12 flex-1 rounded-xl" onPress={onCancel}>
           <Text className="text-base">Cancel</Text>
         </Button>
-      ) : (
+      ) : editing ? (
+        // A new form needs no reset: the header's ✕ discards it. An edit can go back to what was saved.
         <Button
           variant="secondary"
           size="lg"
           className="min-h-12 flex-1 rounded-xl"
           onPress={resetForm}
           disabled={!isDirty || pending}>
-          <Text className="text-base">Reset</Text>
+          <Text className="text-base">Undo changes</Text>
         </Button>
-      )}
+      ) : null}
       <SubmitButton
         testID="transaction-submit"
         pending={pending}

@@ -3,6 +3,7 @@ import { View } from 'react-native';
 
 import { BalanceHero } from '@/components/dashboard/balance-hero';
 import { DashboardSkeleton } from '@/components/dashboard/dashboard-skeleton';
+import { DraftsBanner } from '@/components/dashboard/drafts-banner';
 import { GoalsSummary } from '@/components/dashboard/goals-summary';
 import { MonthlySummaryCard } from '@/components/dashboard/monthly-summary';
 import { RecentTransactions } from '@/components/dashboard/recent-transactions';
@@ -64,6 +65,7 @@ export function DashboardBody({ year, month }: { year: number; month: number }) 
   return (
     <View className="gap-6">
       {nudge.show ? <AssistantNudge onClose={nudge.close} /> : null}
+      <DraftsBanner />
       <BalanceHero accountId={accountId} accountName={selectedAccount?.name} currency={balanceCurrency} onCurrencyChange={setBalancePick} />
       <MonthlySummaryCard
         year={year}

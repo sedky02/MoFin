@@ -1,9 +1,9 @@
 import { router } from 'expo-router';
-import { Plus, Sparkles } from 'lucide-react-native';
 import { Pressable, View } from 'react-native';
 
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
+import { Plus, Sparkles } from '@/lib/icons';
 import { cn } from '@/lib/utils';
 
 const WAYS = [

@@ -1,4 +1,3 @@
-import { Database, Download } from 'lucide-react-native';
 import * as React from 'react';
 import { ActivityIndicator, View } from 'react-native';
 
@@ -14,6 +13,7 @@ import { handleApiError } from '@/core/form-errors';
 import type { User } from '@/core/types';
 import { exportData, useDeleteAllData } from '@/hooks/useSettingsActions';
 import { useUser } from '@/hooks/useUser';
+import { Database, Download } from '@/lib/icons';
 import { toast } from '@/lib/toast';
 
 /** Data: export as JSON or CSV, then (set apart, in red) delete everything and start over. */

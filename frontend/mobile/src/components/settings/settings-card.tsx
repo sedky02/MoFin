@@ -1,9 +1,10 @@
-import { TriangleAlert, type LucideIcon } from 'lucide-react-native';
+import type { LucideIcon } from 'lucide-react-native';
 import * as React from 'react';
 import { View } from 'react-native';
 
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
+import { TriangleAlert } from '@/lib/icons';
 import { cn } from '@/lib/utils';
 
 /**

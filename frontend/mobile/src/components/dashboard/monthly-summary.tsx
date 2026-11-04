@@ -1,5 +1,4 @@
 import { router } from 'expo-router';
-import { ChevronLeft, ChevronRight, PieChart, RotateCcw } from 'lucide-react-native';
 import * as React from 'react';
 import { Pressable, View } from 'react-native';
 
@@ -17,6 +16,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Text } from '@/components/ui/text';
 import { summaryApiCurrency, summaryCurrencyOptions } from '@/core/dashboard-scope';
 import { subtract, tryParse } from '@/core/decimal';
+import { ChevronLeft, ChevronRight, PieChart, RotateCcw } from '@/lib/icons';
 import { cn } from '@/lib/utils';
 import { useAccounts } from '@/hooks/useAccounts';
 import { useCategories } from '@/hooks/useCategories';

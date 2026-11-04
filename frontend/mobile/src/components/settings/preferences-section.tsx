@@ -1,4 +1,3 @@
-import { SlidersHorizontal } from 'lucide-react-native';
 import * as React from 'react';
 import { Pressable, View } from 'react-native';
 
@@ -23,6 +22,7 @@ import { Text } from '@/components/ui/text';
 import { handleApiError } from '@/core/form-errors';
 import { useAccounts } from '@/hooks/useAccounts';
 import { useUpdateUser, useUser } from '@/hooks/useUser';
+import { SlidersHorizontal } from '@/lib/icons';
 import { cn } from '@/lib/utils';
 
 /** A radio row with a dot, sized for a thumb. */

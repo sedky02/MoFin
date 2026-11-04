@@ -1,10 +1,8 @@
-import { Ban, ArrowLeft, History, Pencil, Plus, RotateCcw, Target } from 'lucide-react-native';
 import * as React from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ConfirmDialog } from '@/components/common/confirm-dialog';
-import { PageHeader } from '@/components/common/page-header';
 import { EmptyState, ErrorState, SkeletonRows } from '@/components/common/states';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -15,6 +13,7 @@ import { groupGoalsByStanding, STANDING_LABEL } from '@/core/goal-standing';
 import type { Account, Goal } from '@/core/types';
 import { useAccounts } from '@/hooks/useAccounts';
 import { useArchiveGoal, useGoals, useRestoreGoal } from '@/hooks/useGoals';
+import { Ban, ArrowLeft, History, Pencil, Plus, RotateCcw, Target } from '@/lib/icons';
 
 import { GoalDialog } from './goal-dialog';
 import { GoalHistoryDialog } from './goal-history-dialog';
@@ -155,7 +154,6 @@ export function GoalsScreen() {
       contentContainerClassName="mx-auto w-full max-w-3xl p-4"
       contentContainerStyle={{ paddingBottom: 16 + insets.bottom }}
       refreshControl={<RefreshControl refreshing={list.isRefetching && !list.isLoading} onRefresh={async () => void (await list.refetch())} />}>
-      <PageHeader description="Balance, income and expense targets tracked against your ledger." className="mb-4" />
 
       {showToolbar ? (
         <View className="mb-5 flex-row flex-wrap gap-2">

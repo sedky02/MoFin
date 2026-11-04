@@ -1,4 +1,4 @@
-import { CheckCircle2, Sparkles, XCircle, type LucideIcon } from 'lucide-react-native';
+import type { LucideIcon } from 'lucide-react-native';
 import * as React from 'react';
 import { View } from 'react-native';
 
@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import type { DraftStatus, ParsedTransactionData } from '@/core/types';
 import { useApproveDraft, useDrafts, useRejectDraft } from '@/hooks/useDrafts';
+import { CheckCircle2, Sparkles, XCircle } from '@/lib/icons';
 
 import { DraftCard } from './draft-card';
 

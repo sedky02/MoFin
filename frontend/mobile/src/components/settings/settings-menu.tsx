@@ -1,5 +1,4 @@
 import { Link } from 'expo-router';
-import { ChevronRight } from 'lucide-react-native';
 import * as React from 'react';
 import { Pressable, View } from 'react-native';
 
@@ -9,6 +8,7 @@ import { Icon } from '@/components/ui/icon';
 import { Separator } from '@/components/ui/separator';
 import { Text } from '@/components/ui/text';
 import { useUser } from '@/hooks/useUser';
+import { ChevronRight } from '@/lib/icons';
 import { cn } from '@/lib/utils';
 
 /**

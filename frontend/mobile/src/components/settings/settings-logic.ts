@@ -1,11 +1,12 @@
 // The Settings screens' rules and copy, kept apart from the components so they can be tested as
 // plain functions. Mirrors frontend/web/app/(app)/settings/page.tsx, frontend/web/components/settings
 // and frontend/web/lib/settings-sections.ts; the copy is the web's unless a comment says otherwise.
-import { Database, Plug, ShieldCheck, SlidersHorizontal, Trash2, User as UserIcon, type LucideIcon } from 'lucide-react-native';
+import type { LucideIcon } from 'lucide-react-native';
 import { z } from 'zod';
 
 import { MIN_PASSWORD_LENGTH } from '@/core/password-strength';
 import type { Account, User } from '@/core/types';
+import { Database, Plug, ShieldCheck, SlidersHorizontal, Trash2, User as UserIcon } from '@/lib/icons';
 
 // ─── Sections ────────────────────────────────────────────────────────────────
 

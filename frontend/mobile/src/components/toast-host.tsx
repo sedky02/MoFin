@@ -1,6 +1,5 @@
 // Renders the toasts from src/lib/toast.ts: stacked above the tab bar / home indicator, announced to
 // screen readers, auto-dismissed (a timer per toast, restarted when the same id is shown again).
-import { CircleAlert, CircleCheck, X } from 'lucide-react-native';
 import * as React from 'react';
 import { AccessibilityInfo, Platform, Pressable, View } from 'react-native';
 import Animated, { FadeInDown, FadeOutDown, ReduceMotion } from 'react-native-reanimated';
@@ -8,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
+import { CircleAlert, CircleCheck, X } from '@/lib/icons';
 import { dismissToast, getToasts, subscribeToasts, type ToastItem } from '@/lib/toast';
 import { cn } from '@/lib/utils';
 

@@ -1,5 +1,5 @@
 import { Link } from 'expo-router';
-import { Bot, EyeOff, ExternalLink, ShieldCheck, Undo2, type LucideIcon } from 'lucide-react-native';
+import type { LucideIcon } from 'lucide-react-native';
 import * as React from 'react';
 import { Linking, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -13,6 +13,7 @@ import { connectedStates } from '@/core/connected-apps';
 import { config } from '@/config';
 import { useConnectedApps } from '@/hooks/useConnectedApps';
 import { useUser } from '@/hooks/useUser';
+import { Bot, EyeOff, ExternalLink, ShieldCheck, Undo2 } from '@/lib/icons';
 import { cn } from '@/lib/utils';
 
 import {
@@ -121,8 +122,8 @@ export function ConnectScreen() {
       keyboardShouldPersistTaps="handled"
       contentContainerClassName="mx-auto w-full max-w-3xl p-4"
       contentContainerStyle={{ paddingBottom: 16 + insets.bottom }}>
+      {/* The header says "Connect AI"; the page explains what connecting does. */}
       <PageHeader
-        title="Connect an AI assistant"
         description="Let Claude, ChatGPT or another assistant read your balances and suggest transactions. Anything it suggests stays a draft until you approve it."
         className="mb-4"
       />

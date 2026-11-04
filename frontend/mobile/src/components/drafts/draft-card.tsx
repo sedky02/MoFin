@@ -1,4 +1,3 @@
-import { Check, ChevronDown, Quote, X } from 'lucide-react-native';
 import * as React from 'react';
 import { View } from 'react-native';
 
@@ -10,6 +9,7 @@ import { Text } from '@/components/ui/text';
 import { formatDate } from '@/core/format';
 import type { DraftStatus, DraftTransaction, ParsedTransactionData, TransactionType } from '@/core/types';
 import { useAccounts } from '@/hooks/useAccounts';
+import { Check, ChevronDown, Quote, X } from '@/lib/icons';
 import { cn } from '@/lib/utils';
 
 import { confidenceTier, draftAccountSummary, draftDisplayAmount, quickApproveState, rejectionReasonOf } from './draft-model';

@@ -1,9 +1,10 @@
-import { Check, Monitor, Moon, Sun, type LucideIcon } from 'lucide-react-native';
+import type { LucideIcon } from 'lucide-react-native';
 import { Pressable, View } from 'react-native';
 
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { THEME_LABELS, useThemePreference, type ThemePreference } from '@/hooks/use-theme-preference';
+import { Check, Monitor, Moon, Sun } from '@/lib/icons';
 import { cn } from '@/lib/utils';
 
 // The previews' colors are the palette's page, card and line tones (as on the web's ThemeSetting),

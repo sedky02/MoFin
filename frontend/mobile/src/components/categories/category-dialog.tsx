@@ -1,4 +1,3 @@
-import { Check, ChevronDown } from 'lucide-react-native';
 import * as React from 'react';
 import { Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
 
@@ -12,6 +11,7 @@ import { categoryIconFor, collapsedCategoryIcons, orderedCategoryIcons } from '@
 import { CATEGORY_COLORS, CATEGORY_COLOR_NAMES } from '@/core/constants';
 import type { Category, CategoryType } from '@/core/types';
 import { useCreateCategory, useUpdateCategory } from '@/hooks/useCategories';
+import { Check, ChevronDown } from '@/lib/icons';
 import { cn } from '@/lib/utils';
 
 import { CategoryAvatar } from './category-avatar';
@@ -46,7 +46,6 @@ function CategoryDialogBody({
   const [error, setError] = React.useState<string | undefined>();
   const [showAllIcons, setShowAllIcons] = React.useState(false);
   const [pending, setPending] = React.useState(false);
-
 
   const icon = draft.icon ?? '';
   // An emoji saved by an older version isn't in the set; keep it as a choice so editing doesn't lose it.

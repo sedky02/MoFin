@@ -1,10 +1,10 @@
-import { MoreVertical } from 'lucide-react-native';
 import { Pressable, View } from 'react-native';
 
 import { MoneyAmount } from '@/components/common/money-amount';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import type { Account, Goal } from '@/core/types';
+import { MoreVertical } from '@/lib/icons';
 import { cn } from '@/lib/utils';
 
 import { COLOURED_AMOUNT, goalRowModel } from './goal-model';

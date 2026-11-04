@@ -5,9 +5,9 @@ describe('backFallbackHref', () => {
     expect(backFallbackHref('transactions/[id]/edit', { id: 'tx-1' })).toEqual({ pathname: '/transactions/[id]', params: { id: 'tx-1' } });
   });
 
-  it('sends a transaction page and the add form to the Transactions tab', () => {
+  it('sends a transaction page to the Transactions tab, and closes the add sheet onto the dashboard', () => {
     expect(backFallbackHref('transactions/[id]/index', { id: 'tx-1' })).toBe('/transactions');
-    expect(backFallbackHref('transactions/new')).toBe('/transactions');
+    expect(backFallbackHref('transactions/new')).toBe('/dashboard');
   });
 
   it('sends a settings sub-page to Settings, and Settings itself to More', () => {

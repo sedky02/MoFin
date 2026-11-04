@@ -1,10 +1,11 @@
-import { Banknote, Bitcoin, Landmark, PiggyBank, type LucideIcon } from 'lucide-react-native';
+import type { LucideIcon } from 'lucide-react-native';
 import { Pressable, View } from 'react-native';
 
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { ACCOUNT_TYPES } from '@/core/constants';
 import type { AccountType } from '@/core/types';
+import { Banknote, Bitcoin, Landmark, PiggyBank } from '@/lib/icons';
 import { cn } from '@/lib/utils';
 
 export const TYPE_ICON: Record<AccountType, LucideIcon> = {

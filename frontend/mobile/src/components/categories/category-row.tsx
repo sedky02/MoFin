@@ -1,10 +1,10 @@
-import { Archive, ArchiveRestore, Lock, Pencil } from 'lucide-react-native';
 import { View } from 'react-native';
 
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import type { Category } from '@/core/types';
+import { Archive, ArchiveRestore, Lock, Pencil } from '@/lib/icons';
 import { cn } from '@/lib/utils';
 
 import { CategoryAvatar } from './category-avatar';

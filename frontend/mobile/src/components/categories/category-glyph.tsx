@@ -1,34 +1,10 @@
-import {
-  Banknote,
-  Briefcase,
-  Bus,
-  Car,
-  Clapperboard,
-  Coffee,
-  Droplets,
-  Dumbbell,
-  Gamepad2,
-  HeartPulse,
-  House,
-  Laptop,
-  Plane,
-  Receipt,
-  Repeat,
-  ShoppingBag,
-  ShoppingCart,
-  Smartphone,
-  Tags,
-  TrendingUp,
-  Utensils,
-  Wifi,
-  Zap,
-  type LucideIcon,
-} from 'lucide-react-native';
+import type { LucideIcon } from 'lucide-react-native';
 
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { categoryIconFor } from '@/core/category-icons';
 import type { Category } from '@/core/types';
+import { Banknote, Briefcase, Bus, Car, Clapperboard, Coffee, Droplets, Dumbbell, Gamepad2, HeartPulse, House, Laptop, Plane, Receipt, Repeat, ShoppingBag, ShoppingCart, Smartphone, Tags, TrendingUp, Utensils, Wifi, Zap } from '@/lib/icons';
 
 /**
  * Icons guessed from a name when a category has no icon of its own. They use the same glyphs as the

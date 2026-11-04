@@ -28,7 +28,7 @@ import {
   Wrench,
   Zap,
   type LucideIcon,
-} from "lucide-react-native";
+} from "@/lib/icons";
 
 /**
  * The icons a category can wear. A category stores the `key`; older categories

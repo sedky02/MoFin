@@ -1,4 +1,3 @@
-import { CornerDownRight, Sparkles } from 'lucide-react-native';
 import * as React from 'react';
 import { Pressable, View } from 'react-native';
 
@@ -10,11 +9,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { useAccounts } from '@/hooks/useAccounts';
 import { useActiveAccount } from '@/hooks/useActiveAccount';
 import { useCreateDraftIntent } from '@/hooks/useDrafts';
+import { CornerDownRight, Sparkles } from '@/lib/icons';
 
 import { EXAMPLES } from './draft-model';
 
 /** One text box: the sentence, an optional default account and the "Draft it" button. */
-export function DraftComposer() {
+/** `autoFocus`: open with the keyboard up (arriving from the add sheet's "Describe it"). */
+export function DraftComposer({ autoFocus = false }: { autoFocus?: boolean } = {}) {
   const [input, setInput] = React.useState('');
   const { accountId: activeAccountId } = useActiveAccount();
   // An explicit pick here overrides the app-wide active account for this composer only.
@@ -45,6 +46,7 @@ export function DraftComposer() {
           numberOfLines={3}
           className="min-h-20 border-0 bg-transparent px-1 shadow-none dark:bg-transparent"
           accessibilityLabel="Describe a transaction in plain language"
+          autoFocus={autoFocus}
         />
         <PickerField
           title="Default account"
@@ -65,16 +67,18 @@ export function DraftComposer() {
         </Button>
       </View>
 
-      <View accessibilityLabel="Examples" className="mt-3">
+      {/* Tapping an example fills the box, so the first try is one tap away. */}
+      <Text className="mb-2 mt-4 px-1 text-sm font-semibold text-muted-foreground">Try one</Text>
+      <View accessibilityLabel="Examples" className="flex-row flex-wrap gap-2">
         {EXAMPLES.map((text) => (
           <Pressable
             key={text}
             role="button"
             accessibilityLabel={`Use example: ${text}`}
             onPress={() => setInput(text)}
-            className="min-h-11 flex-row items-center gap-3 rounded-lg px-3 py-2 active:bg-secondary/70">
-            <Icon as={CornerDownRight} size={16} aria-hidden className="text-muted-foreground" />
-            <Text numberOfLines={2} className="min-w-0 flex-1 text-sm text-muted-foreground">
+            className="min-h-10 max-w-full flex-row items-center gap-2 rounded-full border border-border bg-card px-3.5 py-2 active:bg-accent">
+            <Icon as={CornerDownRight} size={14} aria-hidden className="text-muted-foreground" />
+            <Text numberOfLines={1} className="shrink text-sm">
               {text}
             </Text>
           </Pressable>

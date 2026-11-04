@@ -1,5 +1,4 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ShieldCheck } from 'lucide-react-native';
 import * as React from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { View } from 'react-native';
@@ -25,6 +24,7 @@ import { scorePassword } from '@/core/password-strength';
 import { changePassword, signOutEverywhere } from '@/hooks/useSettingsActions';
 import { useUser } from '@/hooks/useUser';
 import { STRENGTH } from '@/lib/auth-forms';
+import { ShieldCheck } from '@/lib/icons';
 import { cn } from '@/lib/utils';
 
 /**

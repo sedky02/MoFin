@@ -1,4 +1,3 @@
-import { Check } from 'lucide-react-native';
 import { View } from 'react-native';
 
 import { TransactionForm } from '@/components/transactions/transaction-form';
@@ -6,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import type { Account } from '@/core/types';
+import { Check } from '@/lib/icons';
 
 const noop = () => {};
 

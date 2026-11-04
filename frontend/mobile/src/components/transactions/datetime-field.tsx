@@ -4,7 +4,6 @@
 // The value is the web form's string: "YYYY-MM-DDTHH:mm" (mode "datetime") or "YYYY-MM-DD" (mode
 // "date"), in the device's local time, so the zod schema and the submit mapping see what the web sees.
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
-import { CalendarDays, X } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
 import * as React from 'react';
 import { Platform, Pressable, View } from 'react-native';
@@ -13,6 +12,7 @@ import { localDateTimeToDate, toDateInput } from '@/components/transactions/tran
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { formatDate, formatDateTime, toDatetimeLocal } from '@/core/format';
+import { CalendarDays, X } from '@/lib/icons';
 import { cn } from '@/lib/utils';
 import { COLORS } from '@/theme/colors';
 
