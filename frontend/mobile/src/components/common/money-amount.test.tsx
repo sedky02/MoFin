@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react-native';
 
-import { MoneyAmount } from '@/components/common/money-amount';
+import { MoneyAmount, splitLeadingSign } from '@/components/common/money-amount';
 
 describe('MoneyAmount', () => {
   it.each([
@@ -37,5 +37,18 @@ describe('MoneyAmount', () => {
   it('shows an unparseable amount as-is rather than a wrong number', async () => {
     await render(<MoneyAmount amount="abc" currency="USD" signed />);
     expect(screen.getByText('abc')).toBeTruthy();
+  });
+});
+
+describe('splitLeadingSign', () => {
+  it('splits a leading sign off the figures', () => {
+    expect(splitLeadingSign('-32.500 TND')).toEqual(['-', '32.500 TND']);
+    expect(splitLeadingSign('+$5.00')).toEqual(['+', '$5.00']);
+    expect(splitLeadingSign('−1.00 €')).toEqual(['−', '1.00 €']);
+  });
+
+  it('leaves an unsigned amount whole, including a symbol-first negative', () => {
+    expect(splitLeadingSign('32.500 TND')).toEqual(['', '32.500 TND']);
+    expect(splitLeadingSign('$-5.00')).toEqual(['', '$-5.00']);
   });
 });

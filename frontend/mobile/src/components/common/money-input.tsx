@@ -4,6 +4,7 @@ import { Platform, TextInput, View } from 'react-native';
 import { Input } from '@/components/ui/input';
 import { Text } from '@/components/ui/text';
 import {
+  currencyFractionDigits,
   formatMoneyInput,
   moneyInputHint,
   moneyInputPrefix,
@@ -12,6 +13,12 @@ import {
   signedMoneyInputHint,
 } from '@/core/format';
 import { cn } from '@/lib/utils';
+
+/** The empty field's placeholder: zero written with the currency's decimals. */
+export function zeroPlaceholder(currency?: string): string {
+  const digits = currencyFractionDigits(currency);
+  return digits > 0 ? `0.${'0'.repeat(digits)}` : '0';
+}
 
 type Props = {
   value: string;
@@ -88,7 +95,8 @@ export function MoneyInput({
     keyboardType,
     autoComplete: 'off' as const,
     autoCorrect: false,
-    placeholder: '0.00',
+    // Zero with the currency's own decimals: 0.000 for TND, 0 for JPY, 0.00 otherwise.
+    placeholder: zeroPlaceholder(currency),
     accessibilityLabel: label,
     'aria-invalid': invalid,
     testID,

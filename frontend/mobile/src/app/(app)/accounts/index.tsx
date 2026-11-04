@@ -102,7 +102,7 @@ export default function AccountsScreen() {
       contentContainerClassName="mx-auto w-full max-w-3xl p-4"
       contentContainerStyle={{ paddingBottom: 16 + insets.bottom }}
       refreshControl={<RefreshControl refreshing={list.isRefetching && !list.isLoading} onRefresh={async () => void (await list.refetch())} />}>
-      <PageHeader title="Accounts" description="Cash, bank, savings and crypto — each tracked by the ledger." className="mb-4" />
+      <PageHeader description="Cash, bank, savings and crypto — each tracked by the ledger." className="mb-4" />
 
       <View className="mb-5 flex-row flex-wrap gap-2">
         {view === 'active' ? (

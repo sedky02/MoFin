@@ -1,7 +1,9 @@
-// "More filters": type, recurrence, sort, dates and amount range, in a dialog (a phone has no room
-// for the web's inline panel). Changes apply to the list straight away, like the web's panel.
+// "More filters": type, recurrence, sort, dates and amount range, in a bottom sheet (a phone has no
+// room for the web's inline panel, and the sheet keeps Done near the thumb). Changes apply to the
+// list straight away, like the web's panel.
 import * as React from 'react';
 import { ScrollView, useWindowDimensions, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { DateTimeField } from '@/components/transactions/datetime-field';
 import { PickerField } from '@/components/transactions/transaction-form-fields';
@@ -37,10 +39,11 @@ export function FilterSheet({
   hasActive: boolean;
 }) {
   const { height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="gap-0 p-0 sm:max-w-md" style={{ maxHeight: height - 32 }}>
-        <DialogHeader className="border-b border-border px-4 py-3 pr-12">
+      <DialogContent sheet className="gap-0 p-0" style={{ maxHeight: height - Math.max(insets.top, 24) - 16 }}>
+        <DialogHeader className="border-b border-border px-4 pb-3 pt-2 pr-12 text-left sm:text-left">
           <DialogTitle>More filters</DialogTitle>
           <DialogDescription>Narrow the list by type, dates, amount and more.</DialogDescription>
         </DialogHeader>
@@ -109,7 +112,7 @@ export function FilterSheet({
                   value={filters.maxAmount}
                   onChangeText={(v) => onChange({ maxAmount: v })}
                   keyboardType="decimal-pad"
-                  placeholder="∞"
+                  placeholder="Any"
                   accessibilityLabel="Max amount"
                   className="min-h-12 rounded-xl border-0 bg-muted/50"
                   style={{ fontVariant: ['tabular-nums'] }}
@@ -118,13 +121,13 @@ export function FilterSheet({
             </View>
           </View>
         </ScrollView>
-        <View className="flex-row justify-end gap-2 border-t border-border px-4 py-3">
+        <View className="flex-row gap-2 border-t border-border px-4 pt-3" style={{ paddingBottom: 12 + insets.bottom }}>
           {hasActive ? (
-            <Button variant="outline" className="min-h-11" accessibilityLabel="Clear all filters" onPress={onClear}>
+            <Button variant="outline" className="min-h-12 flex-1" accessibilityLabel="Clear all filters" onPress={onClear}>
               <Text>Clear all</Text>
             </Button>
           ) : null}
-          <Button className="min-h-11" accessibilityLabel="Done" onPress={() => onOpenChange(false)}>
+          <Button className="min-h-12 flex-1" accessibilityLabel="Done" onPress={() => onOpenChange(false)}>
             <Text>Done</Text>
           </Button>
         </View>

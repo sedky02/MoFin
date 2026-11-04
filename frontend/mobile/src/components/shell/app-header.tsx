@@ -7,16 +7,17 @@ import { Text } from '@/components/ui/text';
 import { useActiveAccount } from '@/hooks/useActiveAccount';
 
 /**
- * The tab screens' header: the screen title, then the account switcher (All accounts or one account)
- * for the screens that are scoped by account. Large, left-aligned title on every platform so the
+ * The tab screens' header: the screen title, then (on the dashboard) the account switcher (All accounts or one account)
+ * that scopes it. Large, left-aligned title on every platform so the
  * switcher always has room beside it.
  */
 export function AppHeader({ options, route }: BottomTabHeaderProps) {
   const insets = useSafeAreaInsets();
   const { account, accounts, setAccountId, ready } = useActiveAccount();
   const title = typeof options.title === 'string' ? options.title : route.name;
-  // More lists screens that choose their own scope, so it has no switcher.
-  const scoped = route.name !== 'more';
+  // Only the dashboard is scoped by the active account. Transactions has its own account filter and
+  // Goals lists every goal, so a switcher there changed nothing on screen and read as a broken filter.
+  const scoped = route.name === 'dashboard';
   return (
     <View
       className="flex-row items-center gap-3 border-b border-border bg-background px-4 pb-3"

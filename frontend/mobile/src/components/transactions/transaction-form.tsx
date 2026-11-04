@@ -348,6 +348,8 @@ function TransactionFormBody({
   function goBack() {
     if (router.canGoBack()) router.back();
     else if (transaction) router.replace(transactionHref(transaction.id));
+    // Opened from a link or reloaded (no history): close the way Cancel does, not stay on a blank form.
+    else router.replace('/dashboard');
   }
 
   const pending = createMut.isPending || updateMut.isPending;

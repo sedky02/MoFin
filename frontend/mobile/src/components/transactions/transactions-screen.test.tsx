@@ -64,7 +64,7 @@ describe('TransactionsScreen', () => {
     expect(headings).toHaveLength(3);
     // Two rows share Today's heading; the transfer reads "From → To" and carries the recurring mark.
     expect(screen.getByLabelText(/^zz-Move, Everyday → Savings, recurring$/)).toBeTruthy();
-    expect(screen.getByText('1–4 of 60')).toBeTruthy();
+    expect(screen.getByText('Showing 4 of 60')).toBeTruthy();
   });
 
   it('opens a transaction from its row', async () => {
@@ -92,11 +92,35 @@ describe('TransactionsScreen', () => {
     await waitFor(() => expect(screen.queryByLabelText('Remove filter: At least 5')).toBeNull());
   });
 
-  it('shows the no-match state with a way out, and returns to page 1 on a filter change', async () => {
+  it('loads the next batch after what is shown and says how much is loaded', async () => {
+    const more = [makeTx({ id: 't5', description: 'zz-Lunch', occurredAt: new Date(now).toISOString() })];
+    mockedGet.mockImplementation(async (path: string, params?: Record<string, unknown>) => {
+      if (path !== '/search/transactions') return page([ACCOUNT]);
+      // The second batch repeats t1 (as offset paging can) and adds t5.
+      return params?.offset === 4 ? page([rows[0], ...more], { total: 60, offset: 4 }) : page(rows, { total: 60 });
+    });
     await render(<TransactionsScreen />, { wrapper });
     await screen.findByText('zz-Coffee');
-    await fireEvent.press(screen.getByLabelText('Next page'));
-    await waitFor(() => expect(searchCalls().at(-1)).toMatchObject({ offset: 25 }));
+    expect(screen.getByText('Showing 4 of 60')).toBeTruthy();
+    await fireEvent.press(screen.getByLabelText('Load more transactions'));
+    await waitFor(() => expect(searchCalls().at(-1)).toMatchObject({ offset: 4, limit: 25 }));
+    expect(await screen.findByText('zz-Lunch')).toBeTruthy();
+    expect(screen.getAllByText('zz-Coffee')).toHaveLength(1);
+    expect(screen.getByText('Showing 5 of 60')).toBeTruthy();
+  });
+
+  it('says when everything is loaded and offers no more', async () => {
+    mockedGet.mockImplementation(async (path: string) => (path === '/search/transactions' ? page(rows, { total: 4 }) : page([ACCOUNT])));
+    await render(<TransactionsScreen />, { wrapper });
+    expect(await screen.findByText('All 4 transactions')).toBeTruthy();
+    expect(screen.queryByLabelText('Load more transactions')).toBeNull();
+  });
+
+  it('shows the no-match state with a way out, and starts from the top on a filter change', async () => {
+    await render(<TransactionsScreen />, { wrapper });
+    await screen.findByText('zz-Coffee');
+    await fireEvent.press(screen.getByLabelText('Load more transactions'));
+    await waitFor(() => expect(searchCalls().at(-1)).toMatchObject({ offset: 4 }));
 
     mockedGet.mockImplementation(async (path: string) => (path === '/search/transactions' ? page([]) : page([ACCOUNT])));
     await fireEvent.press(screen.getByLabelText('More filters'));

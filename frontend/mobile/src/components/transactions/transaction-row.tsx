@@ -4,7 +4,7 @@ import * as React from 'react';
 import { Pressable, View } from 'react-native';
 
 import { MoneyAmount } from '@/components/common/money-amount';
-import { CategoryIcon } from '@/components/dashboard/category-icon';
+import { CategoryGlyphIcon, categoryTint } from '@/components/categories/category-glyph';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { multiply } from '@/core/decimal';
@@ -59,8 +59,11 @@ function TransactionRowView({
       accessibilityLabel={`${tx.description}, ${meta}${recurring ? ', recurring' : ''}`}
       onPress={() => router.push(`/transactions/${tx.id}`)}
       className={cn('min-h-[68px] flex-row items-center gap-3 bg-card px-4 py-3 active:bg-secondary', !last && 'border-b border-border/60')}>
-      <View className={cn('size-11 items-center justify-center rounded-xl', TILE[tx.type])}>
-        <CategoryIcon name={filed.category?.name ?? tx.description} size={20} />
+      {/* The category's own colour and icon, as on Categories; the amount carries in/out. */}
+      <View
+        className={cn('size-11 items-center justify-center rounded-xl', !categoryTint(filed.category?.color) && TILE[tx.type])}
+        style={{ backgroundColor: categoryTint(filed.category?.color) }}>
+        <CategoryGlyphIcon category={filed.category} fallbackName={tx.description} size={20} color={filed.category?.color ?? undefined} />
       </View>
       <View className="min-w-0 flex-1">
         <Text numberOfLines={1} className="text-sm font-medium">

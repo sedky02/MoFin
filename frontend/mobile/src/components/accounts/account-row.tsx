@@ -74,7 +74,7 @@ export function AccountRow({
                 className="size-11"
                 onPress={() => onArchive(account)}
                 accessibilityLabel={`Archive ${account.name}`}>
-                <Icon as={Archive} size={16} className="text-destructive" />
+                <Icon as={Archive} size={16} className="text-muted-foreground" />
               </Button>
             ) : null}
           </View>

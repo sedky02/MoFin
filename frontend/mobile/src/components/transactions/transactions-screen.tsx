@@ -1,10 +1,11 @@
-// The Transactions tab: every transaction (search, filters, day groups, numbered pages) and the
-// recurring series, like the web's /transactions page. Filter state lives here; the rules for
+// The Transactions tab: every transaction (search, filters, day groups, more loaded as you scroll)
+// and the recurring series, like the web's /transactions page (which pages by number instead). Filter state lives here; the rules for
 // turning it into a query, chips and counts are in transactions-list-model.
 import { Receipt, Search, SlidersHorizontal, X } from 'lucide-react-native';
 import * as React from 'react';
-import { FlatList, Platform, Pressable, RefreshControl, View } from 'react-native';
+import { ActivityIndicator, FlatList, Platform, Pressable, RefreshControl, View } from 'react-native';
 
+import { PageHeader } from '@/components/common/page-header';
 import { EmptyState, ErrorState, SkeletonRows } from '@/components/common/states';
 import { FilterSheet } from '@/components/transactions/filter-sheet';
 import { RecurringSeriesList, useRecurringSeriesCount } from '@/components/transactions/recurring-series-list';
@@ -13,12 +14,11 @@ import { TransactionRow } from '@/components/transactions/transaction-row';
 import {
   buildChips,
   clearChip,
-  DEFAULT_PAGE_SIZE,
   EMPTY_FILTERS,
   groupsByDay,
   hasActiveFilters,
-  pageSummary,
-  PAGE_SIZES,
+  loadedSummary,
+  PAGE_SIZE,
   panelFilterCount,
   toSearchParams,
   type FilterChip,
@@ -29,19 +29,25 @@ import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Text } from '@/components/ui/text';
 import { transactionAccountLabel } from '@/core/transaction-accounts';
-import { accountOptionLabel, TRANSACTIONS_DESCRIPTION, TRANSACTIONS_TITLE, type TransactionsView } from '@/core/transaction-list-params';
+import { accountOptionLabel, TRANSACTIONS_DESCRIPTION, type TransactionsView } from '@/core/transaction-list-params';
 import { groupByDay } from '@/core/transaction-days';
 import type { Account, Transaction } from '@/core/types';
 import { useAccounts } from '@/hooks/useAccounts';
 import { useCategories } from '@/hooks/useCategories';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
-import { useSearchPage } from '@/hooks/useSearch';
+import { useSearchTransactions } from '@/hooks/useSearch';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { cn } from '@/lib/utils';
 
 type ListItem =
   | { kind: 'header'; key: string; label: string }
   | { kind: 'row'; key: string; tx: Transaction; first: boolean; last: boolean; glance: boolean };
+
+/** Drops repeated transactions (same id), keeping the first. */
+export function uniqueById(rows: Transaction[]): Transaction[] {
+  const seen = new Set<string>();
+  return rows.filter((tx) => (seen.has(tx.id) ? false : (seen.add(tx.id), true)));
+}
 
 /** Flattens the page into day headings and rows (or just rows when the sort order is not by date). */
 export function buildListItems(rows: Transaction[], byDay: boolean, now: Date): ListItem[] {
@@ -107,8 +113,6 @@ export function TransactionsScreen() {
   const seriesCount = useRecurringSeriesCount();
 
   const [filters, setFilters] = React.useState<ListFilters>(EMPTY_FILTERS);
-  const [limit, setLimit] = React.useState<number>(DEFAULT_PAGE_SIZE);
-  const [page, setPage] = React.useState(1);
   const [sheetOpen, setSheetOpen] = React.useState(false);
   const patch = React.useCallback((p: Partial<ListFilters>) => setFilters((f) => ({ ...f, ...p })), []);
 
@@ -124,44 +128,32 @@ export function TransactionsScreen() {
     () => ({ ...filters, q: debouncedQ, minAmount: debouncedMin, maxAmount: debouncedMax }),
     [filters, debouncedQ, debouncedMin, debouncedMax],
   );
-  const params = React.useMemo(() => toSearchParams(effective, limit), [effective, limit]);
+  const params = React.useMemo(() => toSearchParams(effective, PAGE_SIZE), [effective]);
 
-  // Back to page 1 whenever a filter changes.
-  const filterKey = JSON.stringify(params);
-  const prevKey = React.useRef(filterKey);
-  React.useEffect(() => {
-    if (prevKey.current === filterKey) return;
-    prevKey.current = filterKey;
-    setPage(1);
-  }, [filterKey]);
-
-  const { data, isLoading, isFetching, isError, refetch } = useSearchPage(params, page, limit);
+  // A filter change is a new query key, so the list starts again from the first batch.
+  const { data, isLoading, isError, refetch, hasNextPage, isFetchingNextPage, fetchNextPage } = useSearchTransactions(params);
   const pull = usePullToRefresh(refetch);
-  const listRef = React.useRef<FlatList<ListItem>>(null);
-  React.useEffect(() => {
-    listRef.current?.scrollToOffset({ offset: 0, animated: false });
-  }, [page]);
+  const loadMore = React.useCallback(() => {
+    if (hasNextPage && !isFetchingNextPage) void fetchNextPage();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const hasActive = hasActiveFilters(effective);
   const chips = buildChips(filters, accounts, categories);
-  const rows = React.useMemo(() => data?.rows ?? [], [data]);
+  // Offset paging can hand back a row twice when something is added while scrolling; keep the first.
+  const rows = React.useMemo(() => uniqueById(data?.pages.flatMap((p) => p.data) ?? []), [data]);
+  const total = data?.pages[0]?.total;
   const accountsById = React.useMemo(() => (accounts ? new Map<string, Account>(accounts.map((a) => [a.id, a])) : undefined), [accounts]);
   const items = React.useMemo(() => buildListItems(rows, groupsByDay(filters.sort), new Date()), [rows, filters.sort]);
 
   function clearAll() {
     setFilters(EMPTY_FILTERS);
-    setPage(1);
   }
 
   const panelCount = panelFilterCount(filters);
   const header = (
     <View>
-      <View className="mb-4">
-        <Text role="heading" aria-level={1} className="text-[1.75rem] font-semibold leading-tight tracking-tight">
-          {TRANSACTIONS_TITLE}
-        </Text>
-        <Text className="mt-1 text-[0.9375rem] text-muted-foreground">{TRANSACTIONS_DESCRIPTION}</Text>
-      </View>
+      {/* The tab header already shows the title. */}
+      <PageHeader description={TRANSACTIONS_DESCRIPTION} className="mb-4" />
       <ViewToggle view={view} onChange={setView} seriesCount={seriesCount} />
       {view === 'all' ? (
         <>
@@ -255,31 +247,16 @@ export function TransactionsScreen() {
 
   const footer =
     rows.length > 0 ? (
-      <View className="mt-4 gap-3">
-        <View className="flex-row items-center justify-between gap-3">
-          <View className="w-36">
-            <PickerField
-              title="Per page"
-              accessibilityLabel="Per page"
-              options={PAGE_SIZES.map((n) => ({ value: String(n), label: `${n} per page` }))}
-              value={String(limit)}
-              onChange={(v) => v && setLimit(Number(v))}
-              placeholder="25 per page"
-              className="min-h-11 bg-card"
-            />
-          </View>
-          <View className="flex-row gap-2">
-            <Button variant="outline" className="min-h-11 bg-card" accessibilityLabel="Previous page" disabled={page <= 1} onPress={() => setPage((p) => Math.max(1, p - 1))}>
-              <Text>Previous</Text>
-            </Button>
-            <Button variant="outline" className="min-h-11 bg-card" accessibilityLabel="Next page" disabled={!data?.hasNext} onPress={() => setPage((p) => p + 1)}>
-              <Text>Next</Text>
-            </Button>
-          </View>
-        </View>
+      <View className="mt-4 items-center gap-3">
+        {isFetchingNextPage ? <ActivityIndicator accessibilityLabel="Loading more transactions" /> : null}
+        {/* Scrolling loads more by itself; the button is for screen readers, keyboards and short lists. */}
+        {hasNextPage && !isFetchingNextPage ? (
+          <Button variant="outline" className="min-h-11 bg-card" accessibilityLabel="Load more transactions" onPress={loadMore}>
+            <Text>Load more</Text>
+          </Button>
+        ) : null}
         <Text role="status" className="text-xs text-muted-foreground" style={{ fontVariant: ['tabular-nums'] }}>
-          {pageSummary(page, limit, rows.length, data?.total)}
-          {isFetching ? ', updating…' : ''}
+          {loadedSummary(rows.length, total)}
         </Text>
       </View>
     ) : undefined;
@@ -287,7 +264,6 @@ export function TransactionsScreen() {
   return (
     <>
       <FlatList
-        ref={listRef}
         data={items}
         keyExtractor={(item) => item.key}
         ListHeaderComponent={header}
@@ -305,9 +281,11 @@ export function TransactionsScreen() {
           )
         }
         refreshControl={<RefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} />}
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.5}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
-        // A page is at most 100 rows: render a screenful first and keep the window small.
+        // Batches of 25 accumulate as you scroll: render a screenful first and keep the window small.
         initialNumToRender={12}
         windowSize={7}
         removeClippedSubviews={Platform.OS === 'android'}

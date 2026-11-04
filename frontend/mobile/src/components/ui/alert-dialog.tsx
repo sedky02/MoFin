@@ -1,3 +1,4 @@
+import { usePhoneFrameOverlayStyle } from '@/components/shell/web-phone-frame';
 import { buttonTextVariants, buttonVariants } from '@/components/ui/button';
 import { NativeOnlyAnimatedView } from '@/components/ui/native-only-animated-view';
 import { TextClassContext } from '@/components/ui/text';
@@ -23,6 +24,7 @@ function AlertDialogOverlay({
 }: Omit<React.ComponentProps<typeof AlertDialogPrimitive.Overlay>, 'asChild'> & {
     children?: React.ReactNode;
   }) {
+  const frameStyle = usePhoneFrameOverlayStyle();
   return (
     <FullWindowOverlay>
       <AlertDialogPrimitive.Overlay
@@ -34,6 +36,7 @@ function AlertDialogOverlay({
           className
         )}
         {...props}
+        style={frameStyle}
         asChild={Platform.OS !== 'web'}>
         <NativeOnlyAnimatedView
           entering={FadeIn.duration(200).delay(50).reduceMotion(ReduceMotion.System)}

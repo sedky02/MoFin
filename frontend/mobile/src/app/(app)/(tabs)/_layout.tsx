@@ -21,7 +21,10 @@ export default function TabsLayout() {
         // A minimum, not a fixed height: labels clip on the web otherwise, targets stay >= 44pt, and the bar grows with large text.
         tabBarStyle: { backgroundColor: c.card, borderTopColor: c.border, minHeight: 60 + insets.bottom, paddingTop: 6, paddingBottom: 6 + insets.bottom },
         tabBarItemStyle: { height: 'auto', minHeight: 48 },
-        tabBarLabelStyle: { fontFamily: 'Inter_500Medium', fontSize: 11, lineHeight: 14 },
+        // flexShrink 0: on the web the icon box squeezed the label to ~10px and clipped it; now the item grows instead.
+        tabBarLabelStyle: { fontFamily: 'Inter_500Medium', fontSize: 11, lineHeight: 14, flexShrink: 0 },
+        // The bar puts labels beside the icons on a wide window; the web shows a phone column, so keep them below.
+        tabBarLabelPosition: 'below-icon',
       }}>
       <Tabs.Screen
         name="dashboard"
@@ -36,7 +39,7 @@ export default function TabsLayout() {
         options={{
           title: 'Add',
           headerShown: false,
-          tabBarAccessibilityLabel: 'New Transaction',
+          tabBarAccessibilityLabel: 'New transaction',
           tabBarIcon: ({ color, size }) => <PlusCircle color={color} size={size} />,
         }}
         listeners={{

@@ -95,7 +95,7 @@ export default function CategoriesScreen() {
           }}
         />
       }>
-      <PageHeader title="Categories" description="Organize your transactions. System categories are read-only." className="mb-4" />
+      <PageHeader description="Organize your transactions. System categories are read-only." className="mb-4" />
 
       <View className="mb-5 flex-row flex-wrap gap-2">
         {view === 'active' ? (

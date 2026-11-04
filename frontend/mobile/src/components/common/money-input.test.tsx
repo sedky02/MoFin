@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import * as React from 'react';
 
-import { MoneyInput } from '@/components/common/money-input';
+import { MoneyInput, zeroPlaceholder } from '@/components/common/money-input';
 
 function Harness({ initial = '', currency = 'USD', allowNegative = false }: { initial?: string; currency?: string; allowNegative?: boolean }) {
   const [value, setValue] = React.useState(initial);
@@ -40,5 +40,14 @@ describe('MoneyInput', () => {
     await render(<MoneyInput value="3" onChange={() => {}} onBlur={onBlur} currency="USD" />);
     await fireEvent(screen.getByLabelText('Amount in USD'), 'blur');
     expect(onBlur).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('zeroPlaceholder', () => {
+  it("writes zero with the currency's decimals", () => {
+    expect(zeroPlaceholder('TND')).toBe('0.000');
+    expect(zeroPlaceholder('USD')).toBe('0.00');
+    expect(zeroPlaceholder('JPY')).toBe('0');
+    expect(zeroPlaceholder()).toBe('0.00');
   });
 });

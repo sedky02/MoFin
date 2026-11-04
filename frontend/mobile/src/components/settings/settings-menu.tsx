@@ -23,7 +23,7 @@ export function SettingsMenu() {
 
   return (
     <View>
-      <PageHeader title={SETTINGS_COPY.title} description={SETTINGS_COPY.description} />
+      <PageHeader description={SETTINGS_COPY.description} />
       <View className="overflow-hidden rounded-xl border border-border bg-card">
         {main.map((s, i) => (
           <React.Fragment key={s.id}>

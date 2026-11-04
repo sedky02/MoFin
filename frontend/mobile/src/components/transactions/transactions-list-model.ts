@@ -42,8 +42,8 @@ export const EMPTY_FILTERS: ListFilters = {
   sort: DEFAULT_SORT,
 };
 
-export const PAGE_SIZES = [10, 25, 50] as const;
-export const DEFAULT_PAGE_SIZE = 25;
+/** Rows fetched per request; the list loads the next batch as it nears the end. */
+export const PAGE_SIZE = 25;
 
 /**
  * The filters as the search endpoint takes them. Amount fields keep what was typed; the query
@@ -147,10 +147,8 @@ export function groupsByDay(sort: TransactionSort): boolean {
   return sort === 'newest' || sort === 'oldest';
 }
 
-/** "1–25 of 80", "3 of 80" or "Page 2" while the total is unknown. */
-export function pageSummary(page: number, limit: number, shown: number, total?: number): string {
-  if (total === undefined) return `Page ${page}`;
-  const first = (page - 1) * limit + 1;
-  const last = (page - 1) * limit + shown;
-  return first === last ? `${first} of ${total}` : `${first}–${last} of ${total}`;
+/** The list's footer line: "Showing 25 of 80", or "All 80 transactions" once everything is loaded. */
+export function loadedSummary(shown: number, total?: number): string {
+  if (total === undefined || shown < total) return total === undefined ? `Showing ${shown}` : `Showing ${shown} of ${total}`;
+  return total === 1 ? '1 transaction' : `All ${total} transactions`;
 }

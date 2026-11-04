@@ -1,3 +1,4 @@
+import { usePhoneFrameOverlayStyle } from '@/components/shell/web-phone-frame';
 import { Icon } from '@/components/ui/icon';
 import { NativeOnlyAnimatedView } from '@/components/ui/native-only-animated-view';
 import { cn } from '@/lib/utils';
@@ -27,6 +28,7 @@ function DialogOverlay({
   children?: React.ReactNode;
 }) {
   const { onOpenChange } = DialogPrimitive.useRootContext();
+  const frameStyle = usePhoneFrameOverlayStyle();
 
   function onOverlayPress(event: GestureResponderEvent) {
     onPress?.(event);
@@ -46,6 +48,7 @@ function DialogOverlay({
           className
         )}
         {...props}
+        style={frameStyle}
         onPress={Platform.select({ web: onOverlayPress, native: onPress })}
         asChild={Platform.OS !== 'web'}>
         <NativeOnlyAnimatedView
@@ -68,23 +71,32 @@ function DialogOverlay({
 function DialogContent({
   className,
   portalHost,
+  sheet = false,
   children,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   portalHost?: string;
+  /** A bottom sheet: anchored to the bottom edge, full width, rounded top with a grab handle. */
+  sheet?: boolean;
 }) {
   return (
     <DialogPortal hostName={portalHost}>
-      <DialogOverlay>
+      <DialogOverlay className={sheet ? 'items-stretch justify-end p-0' : undefined}>
         <DialogPrimitive.Content
           className={cn(
             'bg-background border-border z-50 mx-auto flex w-full max-w-[calc(100%-2rem)] flex-col gap-4 rounded-lg border p-6 shadow-lg shadow-black/5 sm:max-w-lg',
             Platform.select({
               web: 'animate-in fade-in-0 zoom-in-95 duration-200',
             }),
+            sheet &&
+              cn(
+                'max-w-full rounded-b-none rounded-t-2xl border-x-0 border-b-0 sm:max-w-full',
+                Platform.select({ web: 'slide-in-from-bottom-8 zoom-in-100' })
+              ),
             className
           )}
           {...props}>
+          {sheet ? <View aria-hidden className="mx-auto mt-2 h-1 w-10 rounded-full bg-muted-foreground/30" /> : null}
           <>{children}</>
           <DialogPrimitive.Close
             className={cn(

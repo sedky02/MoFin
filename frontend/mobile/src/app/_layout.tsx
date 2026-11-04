@@ -9,6 +9,7 @@ import { useColorScheme } from 'nativewind';
 import { useEffect, useState } from 'react';
 
 import { useSession } from '@/api/session';
+import { WebPhoneFrame } from '@/components/shell/web-phone-frame';
 import { ToastHost } from '@/components/toast-host';
 import { useInterFont } from '@/hooks/use-inter-font';
 import { useWebColorSchemeSync } from '@/hooks/use-web-color-scheme-sync';
@@ -59,18 +60,20 @@ export default function RootLayout() {
     <QueryClientProvider client={getQueryClient()}>
       <ThemeProvider value={NAV_THEME[scheme]}>
         <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
-        <Stack screenOptions={{ headerShown: false }}>
-          {/* The route guard is the only navigation on sign-in and sign-out. */}
-          <Stack.Protected guard={signedIn} redirectTo="/login">
-            <Stack.Screen name="(app)" />
-          </Stack.Protected>
-          <Stack.Protected guard={!signedIn}>
-            <Stack.Screen name="(auth)" />
-          </Stack.Protected>
-        </Stack>
-        <ToastHost />
-        {/* Overlays (dialogs, selects, popovers, tooltips) render here, so it stays last. */}
-        <PortalHost />
+        <WebPhoneFrame>
+          <Stack screenOptions={{ headerShown: false }}>
+            {/* The route guard is the only navigation on sign-in and sign-out. */}
+            <Stack.Protected guard={signedIn} redirectTo="/login">
+              <Stack.Screen name="(app)" />
+            </Stack.Protected>
+            <Stack.Protected guard={!signedIn}>
+              <Stack.Screen name="(auth)" />
+            </Stack.Protected>
+          </Stack>
+          <ToastHost />
+          {/* Overlays (dialogs, selects, popovers, tooltips) render here, so it stays last. */}
+          <PortalHost />
+        </WebPhoneFrame>
       </ThemeProvider>
     </QueryClientProvider>
   );

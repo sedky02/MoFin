@@ -7,11 +7,11 @@ import { Text } from '@/components/ui/text';
 import { cn } from '@/lib/utils';
 
 /**
- * The heading block of a Settings section (the web's SettingsCard): an icon tile, a level-2 heading
- * and a short description, then the section's content. "danger" turns it red.
+ * A Settings section (the web's SettingsCard): an icon tile and a short description, then the
+ * section's content. "danger" turns it red. Each section is its own page whose stack header already
+ * shows the section's name, so the card doesn't print it again (`title` stays for callers and tests).
  */
 export function SettingsSectionCard({
-  title,
   description,
   icon,
   action,
@@ -40,12 +40,9 @@ export function SettingsSectionCard({
             <Icon as={icon} size={20} className={danger ? 'text-destructive' : 'text-primary-text'} />
           </View>
         ) : null}
-        <View className="min-w-0 flex-1">
-          <Text role="heading" aria-level={2} className={cn('text-base font-semibold leading-tight', danger && 'text-destructive')}>
-            {title}
-          </Text>
+        <View className="min-h-10 min-w-0 flex-1 justify-center">
           {typeof description === 'string' ? (
-            <Text className="mt-1 text-sm text-muted-foreground">{description}</Text>
+            <Text className={cn('text-sm text-muted-foreground', danger && 'text-destructive')}>{description}</Text>
           ) : (
             description
           )}

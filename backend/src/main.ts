@@ -56,6 +56,15 @@ async function bootstrap() {
   // exception filter, throttler guard, and structured (pino) request logging
   // are registered globally in AppModule.
 
+  // Outside production, let browser clients on localhost (the Expo web preview)
+  // call the API directly. Production stays without CORS: only the BFF and the
+  // native app call it there, and neither needs it.
+  if (config.get<string>('NODE_ENV') !== 'production') {
+    app.enableCors({
+      origin: [/^http:\/\/localhost:\d+$/, /^http:\/\/127\.0\.0\.1:\d+$/],
+    });
+  }
+
   // The API reference lists every route, so production doesn't serve it.
   if (config.get<string>('NODE_ENV') !== 'production') {
     const swaggerConfig = new DocumentBuilder()

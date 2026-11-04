@@ -39,7 +39,7 @@ export function DraftsScreen() {
       contentContainerClassName="mx-auto w-full max-w-2xl p-4"
       contentContainerStyle={{ paddingBottom: 16 + insets.bottom }}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} />}>
-      <PageHeader title="Drafts" description="Talk to MoFin. Review what it understood. Approve to record." className="mb-4" />
+      <PageHeader description="Talk to MoFin. Review what it understood. Approve to record." className="mb-4" />
       <DraftComposer />
       <View className="mt-8">
         <Tabs value={tab} onValueChange={(v) => setTab(v as DraftStatus)}>

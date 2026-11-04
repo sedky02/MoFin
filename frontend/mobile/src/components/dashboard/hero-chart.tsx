@@ -12,10 +12,14 @@ import { cn } from '@/lib/utils';
 
 export const HERO_CHART_HEIGHT = 150;
 
+/** Height of the stub drawn for a month with nothing in it, so every month has a mark on the axis. */
+const EMPTY_BAR_HEIGHT = 3;
+
 /**
  * The six-month bar chart, drawn in SVG. Each month is a button that names its figures for screen
- * readers and, when pressed, shows that month's income, expenses and balance under the chart.
- * A summary label on the whole chart carries the same table the web gives screen readers.
+ * readers; the panel under the chart shows the current month's income, expenses and balance, or the
+ * month that was tapped. A summary label on the whole chart carries the same table the web gives
+ * screen readers.
  */
 export function HeroChart({
   points,
@@ -33,7 +37,9 @@ export function HeroChart({
   const n = bars.length;
   const slot = n > 0 ? width / n : 0;
   const barW = Math.max(slot - 10, 4);
-  const selected = picked !== null && picked < n ? points[picked] : undefined;
+  // The current month until another one is tapped; tapping it again (or the current month) goes back.
+  const selectedIndex = picked !== null && picked < n ? picked : n > 0 ? n - 1 : null;
+  const selected = selectedIndex !== null ? points[selectedIndex] : undefined;
 
   const summary = chartTableRows(points, currency, (m) => seriesMonthLong(m))
     .map((r) => `${r[0]}: income ${r[1]}, expenses ${r[2]}, balance ${r[3]}`)
@@ -51,8 +57,10 @@ export function HeroChart({
             <Svg width={width} height={HERO_CHART_HEIGHT} aria-hidden>
               <Line x1={0} x2={width} y1={HERO_CHART_HEIGHT - 0.5} y2={HERO_CHART_HEIGHT - 0.5} stroke={c.border} strokeWidth={1} />
               {bars.map((b, i) => {
-                const h = (b.pct / 100) * (HERO_CHART_HEIGHT - 6);
-                const fill = b.isNow ? (b.value < 0 || metric === 'expenses' ? c.destructive : c.primary) : c.bar;
+                const empty = b.pct === 0;
+                const h = empty ? EMPTY_BAR_HEIGHT : (b.pct / 100) * (HERO_CHART_HEIGHT - 6);
+                const fill = empty ? c.bar : b.isNow ? (b.value < 0 || metric === 'expenses' ? c.destructive : c.primary) : c.bar;
+                const dimmed = picked !== null && picked !== i;
                 return (
                   <Rect
                     key={b.month}
@@ -60,9 +68,9 @@ export function HeroChart({
                     y={HERO_CHART_HEIGHT - h}
                     width={barW}
                     height={h}
-                    rx={4}
+                    rx={empty ? 1.5 : 4}
                     fill={fill}
-                    opacity={picked !== null && picked !== i ? 0.55 : 1}
+                    opacity={(empty ? 0.45 : 1) * (dimmed ? 0.55 : 1)}
                   />
                 );
               })}
@@ -74,8 +82,8 @@ export function HeroChart({
                   role="button"
                   accessibilityLabel={barLabel(seriesMonthLong(b.month), metric, points[i], currency)}
                   accessibilityHint="Shows income, expenses and balance for this month"
-                  accessibilityState={{ selected: picked === i }}
-                  onPress={() => setPicked(picked === i ? null : i)}
+                  accessibilityState={{ selected: selectedIndex === i }}
+                  onPress={() => setPicked(picked === i || i === n - 1 ? null : i)}
                   style={{ width: slot }}
                 />
               ))}
@@ -97,7 +105,10 @@ export function HeroChart({
       <View className="mt-3 min-h-[92px] justify-center rounded-xl bg-muted/35 px-4 py-3 dark:bg-muted" accessibilityLiveRegion="polite">
         {selected ? (
           <>
-            <Text className="mb-1 text-xs font-semibold">{seriesMonthLong(selected.month)}</Text>
+            <View className="mb-1 flex-row items-baseline justify-between gap-2">
+              <Text className="text-xs font-semibold">{seriesMonthLong(selected.month)}</Text>
+              {picked === null && n > 1 ? <Text className="text-xs text-muted-foreground">Tap a bar for another month</Text> : null}
+            </View>
             {(
               [
                 ['Income', selected.income, 'text-success'],
@@ -112,7 +123,7 @@ export function HeroChart({
             ))}
           </>
         ) : (
-          <Text className="text-center text-xs text-muted-foreground">Tap a month to see its income, expenses and balance.</Text>
+          <Text className="text-center text-xs text-muted-foreground">No months to show yet.</Text>
         )}
       </View>
     </View>

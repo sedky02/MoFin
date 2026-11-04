@@ -55,7 +55,7 @@ export function CategoryRow({ category, onEdit, onArchive, onRestore, busyId }: 
               disabled={busy}
               onPress={() => onArchive(category)}
               accessibilityLabel={`Archive ${category.name}`}>
-              <Icon as={Archive} size={16} className="text-destructive" />
+              <Icon as={Archive} size={16} className="text-muted-foreground" />
             </Button>
           ) : null}
         </View>

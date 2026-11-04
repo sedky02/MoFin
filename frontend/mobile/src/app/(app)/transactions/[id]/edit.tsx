@@ -10,7 +10,7 @@ export default function EditTransactionScreen() {
   if (!isTransactionId(id)) return <ErrorState title="Transaction not found" />;
   return (
     <>
-      <Stack.Screen options={{ title: 'Edit Transaction' }} />
+      <Stack.Screen options={{ title: 'Edit transaction' }} />
       <TransactionForm mode="edit" transactionId={id} />
     </>
   );

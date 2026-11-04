@@ -5,7 +5,7 @@ import { Pressable, View } from 'react-native';
 
 import { MoneyAmount } from '@/components/common/money-amount';
 import { EmptyState, ErrorState } from '@/components/common/states';
-import { CategoryIcon } from '@/components/dashboard/category-icon';
+import { CategoryGlyphIcon } from '@/components/categories/category-glyph';
 import { buildSegments, donutDescription, monthTitle, shiftMonth } from '@/components/dashboard/dashboard-logic';
 import { SummarySkeleton } from '@/components/dashboard/dashboard-skeleton';
 import { CurrencySwitch } from '@/components/dashboard/currency-switch';
@@ -19,6 +19,7 @@ import { summaryApiCurrency, summaryCurrencyOptions } from '@/core/dashboard-sco
 import { subtract, tryParse } from '@/core/decimal';
 import { cn } from '@/lib/utils';
 import { useAccounts } from '@/hooks/useAccounts';
+import { useCategories } from '@/hooks/useCategories';
 import { useMonthlySummary } from '@/hooks/useAnalytics';
 import { useMainAccount } from '@/hooks/useMainAccount';
 
@@ -57,6 +58,7 @@ export function MonthlySummaryCard({
   accountId?: string;
 }) {
   const colors = useChartColors();
+  const { data: categories } = useCategories('all');
   const { data: accounts = [] } = useAccounts();
   const { accountId: mainAccountId } = useMainAccount();
   const [kind, setKind] = React.useState<Kind>('expense');
@@ -77,6 +79,11 @@ export function MonthlySummaryCard({
   const total = (data && (isExpense ? data.expenses : data.income)) ?? '0';
   const segments = buildSegments(raw);
   const colorOf = (i: number) => (i < 0 ? colors['muted-foreground'] : colors[CHART_RAMP[i % CHART_RAMP.length]]);
+  // The breakdown names categories; look them up so the legend shows each one's own icon.
+  const categoryByName = React.useMemo(
+    () => new Map((categories ?? []).filter((c) => c.type === (isExpense ? 'EXPENSE' : 'INCOME')).map((c) => [c.name, c])),
+    [categories, isExpense],
+  );
 
   const net = data ? subtract(data.income, data.expenses) : '0';
   const incomeValue = tryParse(data?.income ?? '0')?.toNumber() ?? 0;
@@ -185,7 +192,8 @@ export function MonthlySummaryCard({
                 {segments.map((s) => (
                   <View key={s.label} accessible accessibilityLabel={`${s.label}, ${s.share} percent`} className="flex-row items-center gap-3">
                     <View className="size-9 items-center justify-center rounded-xl" style={{ backgroundColor: `${colorOf(s.colorIndex)}29` }}>
-                      <CategoryIcon name={s.label} size={16} color={colorOf(s.colorIndex)} />
+                      {/* The slice colour is the legend key; the icon is the category's own. */}
+                      <CategoryGlyphIcon category={categoryByName.get(s.label)} fallbackName={s.label} size={16} color={colorOf(s.colorIndex)} />
                     </View>
                     <Text numberOfLines={1} className="min-w-0 flex-1 text-sm font-medium">
                       {s.label}

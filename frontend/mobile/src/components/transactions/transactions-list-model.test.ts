@@ -4,7 +4,7 @@ import {
   EMPTY_FILTERS,
   groupsByDay,
   hasActiveFilters,
-  pageSummary,
+  loadedSummary,
   panelFilterCount,
   sortOrDefault,
   toSearchParams,
@@ -86,9 +86,10 @@ describe('small helpers', () => {
     expect(sortOrDefault('nope')).toBe('newest');
     expect(sortOrDefault('amount-asc')).toBe('amount-asc');
   });
-  it('summarises the page', () => {
-    expect(pageSummary(2, 25, 25, 80)).toBe('26–50 of 80');
-    expect(pageSummary(1, 25, 1, 1)).toBe('1 of 1');
-    expect(pageSummary(3, 25, 0)).toBe('Page 3');
+  it('summarises what is loaded', () => {
+    expect(loadedSummary(25, 80)).toBe('Showing 25 of 80');
+    expect(loadedSummary(80, 80)).toBe('All 80 transactions');
+    expect(loadedSummary(1, 1)).toBe('1 transaction');
+    expect(loadedSummary(25)).toBe('Showing 25');
   });
 });

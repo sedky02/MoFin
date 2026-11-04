@@ -125,6 +125,11 @@ export function GoalsScreen() {
 
   const restoringId = (restoreMut.isPending && restoreMut.variables) || undefined;
   const list = view === 'active' ? active : cancelled;
+  // "Cancelled" only once there is something to show (kept while loading or on error).
+  const showCancelled = !(cancelled.isSuccess && cancelledCount === 0);
+  // With no active goals the empty state carries the one New goal button.
+  const showNew = !(view === 'active' && active.isSuccess && (active.data ?? []).length === 0);
+  const showToolbar = view === 'cancelled' || showCancelled || showNew;
   const newButton = (
     <Button onPress={openCreate} className="min-h-11 gap-2" accessibilityLabel="New goal">
       <Icon as={Plus} size={16} className="text-primary-foreground" />
@@ -150,22 +155,26 @@ export function GoalsScreen() {
       contentContainerClassName="mx-auto w-full max-w-3xl p-4"
       contentContainerStyle={{ paddingBottom: 16 + insets.bottom }}
       refreshControl={<RefreshControl refreshing={list.isRefetching && !list.isLoading} onRefresh={async () => void (await list.refetch())} />}>
-      <PageHeader title="Goals" description="Balance, income and expense targets tracked against your ledger." className="mb-4" />
+      <PageHeader description="Balance, income and expense targets tracked against your ledger." className="mb-4" />
 
-      <View className="mb-5 flex-row flex-wrap gap-2">
-        {view === 'active' ? (
-          <Button variant="outline" className="min-h-11 gap-2" onPress={() => setView('cancelled')}>
-            <Icon as={Ban} size={16} aria-hidden />
-            <Text>{cancelledCount > 0 ? `Cancelled (${cancelledCount})` : 'Cancelled'}</Text>
-          </Button>
-        ) : (
-          <Button variant="outline" className="min-h-11 gap-2" onPress={() => setView('active')}>
-            <Icon as={ArrowLeft} size={16} aria-hidden />
-            <Text>Back to goals</Text>
-          </Button>
-        )}
-        {newButton}
-      </View>
+      {showToolbar ? (
+        <View className="mb-5 flex-row flex-wrap gap-2">
+          {view === 'active' ? (
+            showCancelled ? (
+              <Button variant="outline" className="min-h-11 gap-2" onPress={() => setView('cancelled')}>
+                <Icon as={Ban} size={16} aria-hidden />
+                <Text>{cancelledCount > 0 ? `Cancelled (${cancelledCount})` : 'Cancelled'}</Text>
+              </Button>
+            ) : null
+          ) : (
+            <Button variant="outline" className="min-h-11 gap-2" onPress={() => setView('active')}>
+              <Icon as={ArrowLeft} size={16} aria-hidden />
+              <Text>Back to goals</Text>
+            </Button>
+          )}
+          {showNew ? newButton : null}
+        </View>
+      ) : null}
 
       {view === 'active' ? (
         active.isLoading ? (

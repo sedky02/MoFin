@@ -14,6 +14,6 @@ export const MORE_ITEMS: MoreItem[] = [
   { href: '/accounts', label: 'Accounts', description: 'Balances and account types', icon: Wallet },
   { href: '/categories', label: 'Categories', description: 'Income and expense categories', icon: Tags },
   { href: '/drafts', label: 'Drafts', description: 'Review what the assistant parsed', icon: Sparkles, badge: 'drafts' },
-  { href: '/connect', label: 'AI Connector', description: 'Connect an AI assistant', icon: Bot },
+  { href: '/connect', label: 'AI connector', description: 'Connect an AI assistant', icon: Bot },
   { href: '/settings', label: 'Settings', description: 'Profile, theme and data', icon: Settings },
 ];

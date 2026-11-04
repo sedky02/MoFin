@@ -29,6 +29,7 @@ jest.mock('@/hooks/useAnalytics', () => ({
 }));
 jest.mock('@/hooks/useAccounts', () => ({ useAccounts: () => ({ data: [] }) }));
 jest.mock('@/hooks/useMainAccount', () => ({ useMainAccount: () => ({ accountId: undefined }) }));
+jest.mock('@/hooks/useCategories', () => ({ useCategories: () => ({ data: [] }) }));
 
 describe('MonthlySummaryCard', () => {
   beforeEach(() => mockSummary.mockClear());
