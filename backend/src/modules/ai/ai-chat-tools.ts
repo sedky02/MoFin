@@ -32,7 +32,9 @@ export const LIST_CATEGORIES_TOOL = 'list_categories';
 
 function schemaOf(schema: ZodTypeAny): Record<string, unknown> {
   const json = toJsonSchema(schema, {
-    target: 'openApi3',
+    // Tool parameters are plain JSON Schema. The openApi3 target writes
+    // `exclusiveMinimum: true`, which providers such as Groq reject with a 400.
+    target: 'jsonSchema7',
     $refStrategy: 'none',
   });
   delete json.$schema;
