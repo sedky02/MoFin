@@ -67,6 +67,9 @@
   },
   "scripts": {
     "start": "expo start",
+    "dev": "expo start --dev-client",
+    "dev:tunnel": "expo start --dev-client --tunnel",
+    "build:dev": "npx eas-cli build --profile development --platform android",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",

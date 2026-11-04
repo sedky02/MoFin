@@ -29,6 +29,8 @@ export function OtherSignIn({ googleLabel = 'Continue with Google', showDemo = t
       const tokens = await authApi.googleIdToken(result.idToken);
       await startSession(tokens);
     } catch (err) {
+      // Development builds only: shows the real cause in the Metro terminal (the banner stays generic).
+      if (__DEV__) console.warn('[google sign-in]', err);
       if (err instanceof ApiClientError && err.status === 429) setError(AUTH_COPY.rateLimited);
       else if (err instanceof ApiClientError && err.status === 503) setError(GOOGLE_MESSAGES.unconfigured);
       else setError(GOOGLE_MESSAGES.failed);

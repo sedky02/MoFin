@@ -1,0 +1,48 @@
+# EAS uses this file instead of .gitignore when it builds the archive, so it must repeat everything
+# the .gitignore files exclude. The app lives in frontend/mobile; the rest of the repo is not needed.
+
+# Not part of the mobile app
+/backend
+/frontend/web
+/docs
+/audit
+/.claude
+/.ux
+/.git
+/skills-lock.json
+/docker-compose.yml
+/learnings.txt
+/notes.txt
+/readme.md
+/CLAUDE.md
+
+# Dependencies (EAS runs npm install itself)
+**/node_modules
+
+# Build output, caches and generated native folders
+**/.expo
+**/dist
+**/web-build
+**/.metro-health-check*
+**/*.tsbuildinfo
+/frontend/mobile/ios
+/frontend/mobile/android
+/frontend/mobile/coverage
+
+# Not needed to build
+/frontend/mobile/.maestro
+/frontend/mobile/__tests__
+**/*.test.ts
+**/*.test.tsx
+
+# Secrets and local settings: never upload these
+**/.env
+**/.env.*
+!**/.env.example
+**/*.jks
+**/*.p8
+**/*.p12
+**/*.key
+**/*.pem
+**/*.mobileprovision
+.DS_Store

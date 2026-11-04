@@ -56,9 +56,8 @@ const config: ExpoConfig = {
     reactCompiler: true,
   },
   extra: {
-    // Run `npx eas-cli init` once (needs `eas login`), then replace the line below with the printed
-    // project id as a plain string. It is an identifier, not a secret, so it is committed.
-    eas: { projectId: process.env.EAS_PROJECT_ID },
+    // The id `eas init` printed for @sedky02/mofin. It is an identifier, not a secret, so it is committed.
+    eas: { projectId: "2b264808-719e-4df5-b114-e7d9be34554b" },
   },
 };
 
