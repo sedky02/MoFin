@@ -13,7 +13,7 @@ describe("sidebar groups", () => {
     expect(SIDEBAR_GROUPS.map((g) => [g.label, g.items.map((i) => i.label)])).toEqual([
       [undefined, ["Dashboard"]],
       ["Money", ["Transactions", "Accounts", "Categories", "Goals"]],
-      ["Assistant", ["Drafts", "AI Connector"]],
+      ["Assistant", ["Ask MoFin", "Drafts", "AI Connector"]],
     ]);
   });
 

@@ -7,6 +7,7 @@ import {
   Tags,
   Target,
   Bot,
+  MessageCircle,
   Settings,
   type LucideIcon,
 } from "lucide-react";
@@ -26,6 +27,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/accounts", label: "Accounts", icon: Wallet },
   { href: "/goals", label: "Goals", icon: Target },
   { href: "/transactions/new", label: "New Transaction", icon: PlusCircle },
+  { href: "/ask", label: "Ask MoFin", icon: MessageCircle },
   { href: "/drafts", label: "Drafts", icon: Sparkles, badge: "drafts" },
   { href: "/transactions", label: "Transactions", icon: ReceiptText },
   { href: "/categories", label: "Categories", icon: Tags },
@@ -49,7 +51,7 @@ const byHref = (href: string): NavItem => {
 export const SIDEBAR_GROUPS: NavGroup[] = [
   { items: [byHref("/dashboard")] },
   { label: "Money", items: ["/transactions", "/accounts", "/categories", "/goals"].map(byHref) },
-  { label: "Assistant", items: ["/drafts", "/connect"].map(byHref) },
+  { label: "Assistant", items: ["/ask", "/drafts", "/connect"].map(byHref) },
 ];
 
 export const SIDEBAR_FOOTER_ITEM: NavItem = byHref("/settings");

@@ -216,15 +216,49 @@ export interface ApiError {
 
 // The "Ask" chat on the Drafts page. The client keeps the conversation and
 // sends it whole; the server stores nothing.
-export interface AiChatMessage {
-  role: "user" | "assistant";
-  content: string;
+/**
+ * A chart attached to an assistant answer. The server computes every number
+ * from the ledger; the model only chose which chart. Amounts are decimal strings.
+ */
+export interface AiChart {
+  kind: "donut" | "bar" | "line";
+  title: string;
+  currency: string;
+  /** How to read `labels`: YYYY-MM months, YYYY-MM-DD days, or plain text. */
+  axis: "month" | "day" | "category";
+  labels: string[];
+  series: {
+    name: string;
+    tone: "income" | "expense" | "balance" | "neutral";
+    values: string[];
+  }[];
 }
 
-export interface AiChatReply {
-  message: string;
+export interface AiChatMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
   /** Tools the assistant read from to answer, e.g. "get_monthly_summary". */
   usedTools: string[];
+  charts: AiChart[];
+  createdAt: string;
+}
+
+export interface AiChatSummary {
+  id: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AiChatDetail extends AiChatSummary {
+  messages: AiChatMessage[];
+}
+
+/** What sending a question returns: the chat (new or updated) and the two saved turns. */
+export interface AiChatTurn {
+  chat: AiChatSummary;
+  messages: [AiChatMessage, AiChatMessage];
 }
 
 // Paginated list responses (search/transactions, draft-transactions).

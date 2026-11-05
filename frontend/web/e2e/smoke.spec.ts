@@ -8,6 +8,7 @@ const APP_ROUTES = [
   "/accounts",
   "/categories",
   "/goals",
+  "/ask",
   "/drafts",
   "/transactions",
   "/connect",

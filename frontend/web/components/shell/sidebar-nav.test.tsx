@@ -31,11 +31,12 @@ describe("SidebarNav", () => {
       "Accounts",
       "Categories",
       "Goals",
+      "Ask MoFin",
       "Drafts",
       "AI Connector",
     ]);
     expect(within(screen.getByRole("group", { name: "Money" })).getAllByRole("link")).toHaveLength(4);
-    expect(within(screen.getByRole("group", { name: "Assistant" })).getAllByRole("link")).toHaveLength(2);
+    expect(within(screen.getByRole("group", { name: "Assistant" })).getAllByRole("link")).toHaveLength(3);
     // Settings sits outside the groups, under them.
     const settings = screen.getByRole("link", { name: "Settings" });
     expect(nav.contains(settings)).toBe(false);

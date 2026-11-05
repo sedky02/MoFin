@@ -26,6 +26,7 @@ const ROUTES = [
   "/goals",
   "/categories",
   "/accounts",
+  "/ask",
   "/drafts",
   "/settings",
 ];
