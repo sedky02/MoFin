@@ -3,7 +3,7 @@ import { MORE_GROUPS, MORE_ITEMS, moreSubtitle } from '@/components/shell/nav-it
 describe('More menu', () => {
   it('groups money, the AI assistant and the app, with every route once', () => {
     expect(MORE_GROUPS.map((g) => g.title)).toEqual(['Your money', 'AI assistant', 'App']);
-    expect(MORE_ITEMS.map((i) => i.href)).toEqual(['/accounts', '/categories', '/goals', '/connect', '/settings']);
+    expect(MORE_ITEMS.map((i) => i.href)).toEqual(['/accounts', '/categories', '/goals', '/ask', '/connect', '/settings']);
   });
 
   it('shows live counts once they are known', () => {

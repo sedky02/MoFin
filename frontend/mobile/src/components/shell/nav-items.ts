@@ -1,7 +1,7 @@
 import type { LucideIcon } from 'lucide-react-native';
-import { Bot, Settings, Tags, Target, Wallet } from '@/lib/icons';
+import { Bot, MessageCircle, Settings, Tags, Target, Wallet } from '@/lib/icons';
 
-export type MoreHref = '/accounts' | '/categories' | '/goals' | '/connect' | '/settings';
+export type MoreHref = '/accounts' | '/categories' | '/goals' | '/ask' | '/connect' | '/settings';
 
 /** Icon tile colour: one per group, so a row's group reads at a glance. */
 export type MoreTone = 'money' | 'ai' | 'app';
@@ -16,8 +16,8 @@ export type MoreItem = {
 export type MoreGroup = { title: string; items: MoreItem[] };
 
 /**
- * What the More tab gathers, grouped by what it is for. AI drafts has its own tab, so the AI group
- * holds connecting an assistant; it still gets the highlighted card.
+ * What the More tab gathers, grouped by what it is for. AI drafts has its own tab; the AI group
+ * holds the saved Ask chats and connecting an assistant, in the highlighted card.
  */
 export const MORE_GROUPS: MoreGroup[] = [
   {
@@ -31,6 +31,7 @@ export const MORE_GROUPS: MoreGroup[] = [
   {
     title: 'AI assistant',
     items: [
+      { href: '/ask', label: 'Ask MoFin', icon: MessageCircle, tone: 'ai' },
       { href: '/connect', label: 'Connect Claude or ChatGPT', icon: Bot, tone: 'ai' },
     ],
   },
@@ -67,6 +68,8 @@ export function moreSubtitle(href: MoreHref, counts: MoreCounts): string {
       return counts.categories === undefined ? 'Group your income and spending' : `${plural(counts.categories, 'category', 'categories')} · icons and colours`;
     case '/goals':
       return counts.activeGoals ? `${plural(counts.activeGoals, 'active goal', 'active goals')} · track your targets` : 'Save up, earn more or spend less';
+    case '/ask':
+      return 'Questions about your money, answered with charts';
     case '/connect':
       return counts.connectedApps
         ? `${plural(counts.connectedApps, 'app', 'apps')} connected · manage in Settings`

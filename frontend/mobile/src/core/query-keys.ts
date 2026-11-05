@@ -60,3 +60,9 @@ export const goalKeys = {
 export const connectedAppKeys = {
   all: ["connected-apps"] as const,
 };
+
+export const aiChatKeys = {
+  all: ["ai-chats"] as const,
+  list: () => [...aiChatKeys.all, "list"] as const,
+  detail: (id: string) => [...aiChatKeys.all, "detail", id] as const,
+};

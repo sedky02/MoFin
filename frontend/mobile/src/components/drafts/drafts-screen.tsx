@@ -10,7 +10,7 @@ import { draftKeys } from '@/core/query-keys';
 import type { DraftStatus } from '@/core/types';
 import { usePendingDraftCount } from '@/hooks/useDrafts';
 
-import { DraftChat } from './draft-chat';
+import { AskChatList } from '@/components/ask/ask-chat-list';
 import { DraftComposer } from './draft-composer';
 import { DraftList } from './draft-list';
 
@@ -26,7 +26,7 @@ export function DraftsScreen() {
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const [tab, setTab] = React.useState<DraftStatus>('PENDING');
-  // "Draft" turns a sentence into drafts to review; "Ask" answers questions about your data.
+  // "Draft" turns a sentence into drafts to review; "Ask" opens saved chats about your data.
   const [mode, setMode] = React.useState<'draft' | 'ask'>('draft');
   const [refreshing, setRefreshing] = React.useState(false);
   const { data: pending } = usePendingDraftCount();
@@ -55,9 +55,9 @@ export function DraftsScreen() {
         </TabsList>
       </Tabs>
 
-      {/* Both stay mounted, one hidden, so the conversation and the typed sentence survive a switch. */}
+      {/* Both stay mounted, one hidden, so the typed sentence survives a switch. Each chat opens on its own screen. */}
       <View className={mode === 'ask' ? undefined : 'hidden'}>
-        <DraftChat />
+        <AskChatList />
       </View>
 
       <View className={mode === 'draft' ? undefined : 'hidden'}>

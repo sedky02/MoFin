@@ -21,7 +21,8 @@ Run `npm run core:drift` to compare (report only, it never overwrites).
 - `hooks/useDrafts.ts`: the "View" toast action calls `router.push` (expo-router) instead of `window.location.assign`. `useCreateDraftIntent` passes a 60 s `timeoutMs` (the model answers slower than the 15 s default; the web raises the same limit in its BFF proxy for `ai/*`).
 
 ## Mobile-only counterparts (not copies, not compared)
-- `src/hooks/useAiChat.ts`: the "Ask" chat hook. Same shape as `frontend/web/hooks/useAiChat.ts`, with a 60 s `timeoutMs` and `@/api/client` imports. Keep the two in step by hand.
+- `src/hooks/useAiChat.ts`: the saved "Ask" chats (list, detail, send, rename, delete) and `chatErrorMessage`. Same shape as `frontend/web/hooks/useAiChat.ts`, with a 60 s `timeoutMs` on send and `@/api/client` / `@/lib/toast` imports. Keep the two in step by hand.
+- `src/components/ask/*`: the Ask screens. Same behaviour and wording as `frontend/web/components/ask/*` (suggestions, tool labels, chart colours, error messages), drawn with react-native-svg.
 - `src/lib/query-client.ts`: `STALE` and a `QueryClient` without the SSR dehydration settings.
 - `src/lib/toast.ts`: a `sonner`-shaped store (`id`, `description`, `duration`, `action`, `cancel`, `dismiss`); `src/components/toast-host.tsx` renders it.
 - `src/api/client.ts`: `ApiClientError` and a placeholder `api`; Phase 4 makes it real.

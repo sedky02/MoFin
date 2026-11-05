@@ -21,6 +21,9 @@ export default function AppLayout() {
           <Stack.Screen name="categories/index" options={{ title: 'Categories' }} />
           <Stack.Screen name="goals/index" options={{ title: 'Goals' }} />
           <Stack.Screen name="connect/index" options={{ title: 'Connect AI' }} />
+          <Stack.Screen name="ask/index" options={{ title: 'Ask MoFin' }} />
+          {/* The chat sets its own title (its name, or "New chat"). */}
+          <Stack.Screen name="ask/[id]" options={{ title: 'Chat' }} />
           <Stack.Screen name="settings/index" options={{ title: 'Settings' }} />
           {/* Development only: the guard keeps the route out of release builds. */}
           <Stack.Protected guard={__DEV__}>

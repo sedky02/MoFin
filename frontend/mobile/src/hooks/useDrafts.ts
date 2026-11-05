@@ -21,6 +21,7 @@ import type {
 import { router, type Href } from "expo-router"; // the typed route exists from Phase 6
 import { toast } from "@/lib/toast";
 import { handleApiError } from "@/core/form-errors";
+import { deviceTimeZone } from "@/core/week";
 
 const PAGE = 10;
 // A language model answers slower than the 15 s default allows.
@@ -69,7 +70,13 @@ export function useCreateDraftIntent() {
       input: string;
       defaultAccountId?: string;
       defaultCurrency?: string;
-    }) => api.post<DraftTransaction[]>("/ai/transaction-intents", body, { timeoutMs: AI_TIMEOUT_MS }),
+      // The phone's zone, so "yesterday" is the user's yesterday.
+    }) =>
+      api.post<DraftTransaction[]>(
+        "/ai/transaction-intents",
+        { ...body, timeZone: deviceTimeZone() },
+        { timeoutMs: AI_TIMEOUT_MS },
+      ),
     onSuccess: (drafts) => {
       queryClient.invalidateQueries({ queryKey: draftKeys.all });
       if (drafts.length > 1) toast.success(`${drafts.length} drafts created. Review each one below.`);
