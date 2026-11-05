@@ -103,8 +103,7 @@ const envSchema = z
     AI_BASE_URL: z.string().url().default('https://api.groq.com/openai/v1'),
     AI_MODEL: z.string().min(1).default('openai/gpt-oss-120b'),
     AI_TIMEOUT_MS: z.coerce.number().int().positive().default(30_000),
-    // Chat messages one demo visitor can send (held in memory, so it resets
-    // when the server restarts).
+    // Chat questions one demo visitor can ask (counted in the database).
     DEMO_AI_CHAT_CAP: z.coerce.number().int().positive().default(15),
   })
   .superRefine((env, ctx) => {

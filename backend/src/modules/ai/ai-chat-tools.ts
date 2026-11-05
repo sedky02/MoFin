@@ -1,8 +1,14 @@
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import { ZodTypeAny } from 'zod';
+import { monthlySummaryQueryObject } from '../analytics/dto/analytics.dto';
 import { listCategoriesQuerySchema } from '../categories/dto/categories.dto';
 import { mcpToolSchemas, McpToolName } from '../mcp/dto/mcp.dto';
 import { MCP_TOOLS } from '../mcp/mcp-tools';
+import {
+  CHART_TOOL_NAMES,
+  chartToolDescriptions,
+  chartToolSchemas,
+} from './chat/chart-tools';
 import { LlmTool } from './llm/llm-provider';
 
 // Loosened signature: the generic return type trips TS2589 on larger schemas
@@ -16,19 +22,60 @@ const toJsonSchema = zodToJsonSchema as unknown as (
  * The chat is read-only by construction: it may use only these tools.
  * `create_draft_transaction` is left out on purpose; drafts come from the
  * composer, and a model that reads user-written text must not be able to
- * write anything.
+ * write anything. `list_accounts` is left out too: the system prompt already
+ * lists the accounts, and every tool offered costs tokens on every call.
  */
 export const CHAT_MCP_TOOLS: ReadonlyArray<McpToolName> = [
   'search_transactions',
   'get_balance',
   'get_monthly_summary',
-  'list_accounts',
   'list_goals',
   'get_goal',
   'get_goal_history',
 ];
+export type ChatMcpToolName = (typeof CHAT_MCP_TOOLS)[number];
 
 export const LIST_CATEGORIES_TOOL = 'list_categories';
+
+/**
+ * Argument schemas the chat validates against: the MCP ones, except that the
+ * monthly summary loses `refresh`. A model has no reason to bypass the
+ * analytics cache, and every forced recompute is a full month of queries.
+ */
+export const chatToolSchemas: Record<ChatMcpToolName, ZodTypeAny> = {
+  ...mcpToolSchemas,
+  get_monthly_summary: monthlySummaryQueryObject.omit({ refresh: true }),
+};
+
+/**
+ * Shorter descriptions than MCP's, which are written for outside assistants
+ * reading them once. The chat re-sends every tool on every model call, and the
+ * free provider tier is about 8k tokens a minute.
+ */
+const CHAT_DESCRIPTIONS: Partial<Record<ChatMcpToolName, string>> = {
+  search_transactions:
+    'Find transactions by text, category, account, amount, date range or type. Sorted and paginated.',
+  get_balance:
+    'Current balance per account and currency. Opening balances included; they are never income.',
+  get_monthly_summary:
+    "One month's income, expenses, savings rate and category breakdown, in one currency (or one account).",
+  list_goals: "The user's savings and spending goals.",
+  get_goal: 'One goal with its progress.',
+  get_goal_history: "One goal's past periods and how each went.",
+};
+
+/** Drops keywords that only add tokens: arguments are validated again on the server. */
+function slim(node: unknown): unknown {
+  if (Array.isArray(node)) return node.map(slim);
+  if (node && typeof node === 'object') {
+    return Object.fromEntries(
+      Object.entries(node as Record<string, unknown>)
+        .filter(([key]) => key !== 'additionalProperties' && key !== '$schema')
+        .map(([key, value]) => [key, slim(value)]),
+    );
+  }
+  return node;
+}
 
 function schemaOf(schema: ZodTypeAny): Record<string, unknown> {
   const json = toJsonSchema(schema, {
@@ -37,8 +84,7 @@ function schemaOf(schema: ZodTypeAny): Record<string, unknown> {
     target: 'jsonSchema7',
     $refStrategy: 'none',
   });
-  delete json.$schema;
-  return json;
+  return slim(json) as Record<string, unknown>;
 }
 
 export function buildChatTools(): LlmTool[] {
@@ -46,17 +92,22 @@ export function buildChatTools(): LlmTool[] {
     CHAT_MCP_TOOLS.includes(tool.name),
   ).map((tool) => ({
     name: tool.name,
-    description: tool.description,
-    parameters: schemaOf(mcpToolSchemas[tool.name]),
+    description: CHAT_DESCRIPTIONS[tool.name] ?? tool.description,
+    parameters: schemaOf(chatToolSchemas[tool.name]),
   }));
   return [
     ...fromMcp,
     {
       name: LIST_CATEGORIES_TOOL,
       description:
-        "List the user's active categories (id, name, type) so a category name can be turned into the categoryId other tools filter on.",
+        "The user's categories (id, name, type), to turn a category name into the categoryId other tools filter on.",
       parameters: schemaOf(listCategoriesQuerySchema),
     },
+    ...CHART_TOOL_NAMES.map((name) => ({
+      name,
+      description: chartToolDescriptions[name],
+      parameters: schemaOf(chartToolSchemas[name]),
+    })),
   ];
 }
 

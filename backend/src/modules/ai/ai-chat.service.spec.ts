@@ -1,24 +1,53 @@
-import { HttpException } from '@nestjs/common';
+import { BadRequestException } from '@nestjs/common';
 import { AiChatService, MAX_TOOL_ROUNDS } from './ai-chat.service';
 import {
   buildChatTools,
   compactToolResult,
   MAX_TOOL_RESULT_CHARS,
 } from './ai-chat-tools';
+import { MAX_MESSAGES_PER_CHAT } from './chat/chat-context';
+import { ChatToolRunner } from './chat/chat-tool-runner';
+import { MAX_CHARTS_PER_REPLY } from './chat/chart-tools';
 import { AiUnavailableException } from './llm/ai-unavailable.exception';
 
-const USER = { id: 'u1', email: 'real@example.com' };
-const DEMO = { id: 'u2', email: 'demo-x@demo.mofin.invalid' };
-const dto = (text = 'how much did I spend?') => ({
-  messages: [{ role: 'user' as const, content: text }],
-});
+const USER_ID = 'u1';
+const NOW = new Date('2026-11-05T10:00:00Z');
+
+type Msg = { role: string; content?: string | null; toolCallId?: string };
+type ChatCall = [{ messages: Msg[]; tools?: Array<{ name: string }> }];
 
 const answer = (content: string) => Promise.resolve({ content, toolCalls: [] });
-const toolCall = (name: string, args: unknown = {}, id = 'c1') =>
+const toolCalls = (...calls: Array<[string, unknown?]>) =>
   Promise.resolve({
     content: null,
-    toolCalls: [{ id, name, arguments: JSON.stringify(args) }],
+    toolCalls: calls.map(([name, args], i) => ({
+      id: `c${i + 1}`,
+      name,
+      arguments: JSON.stringify(args ?? {}),
+    })),
   });
+
+function storedChat(messageCount: number, over: Record<string, unknown> = {}) {
+  return {
+    id: 'chat-1',
+    userId: USER_ID,
+    title: 'Old chat',
+    summary: null,
+    summarizedCount: 0,
+    createdAt: NOW,
+    updatedAt: NOW,
+    messages: Array.from({ length: messageCount }, (_, i) => ({
+      id: `m${i}`,
+      chatId: 'chat-1',
+      role: i % 2 === 0 ? 'USER' : 'ASSISTANT',
+      content: `message ${i}`,
+      usedTools: [],
+      charts: null,
+      createdAt: NOW,
+    })),
+    ...over,
+  };
+}
 
 function setup(chat: jest.Mock, enabled = true) {
   const mcp = { dispatch: jest.fn(() => Promise.resolve({ ok: true })) };
@@ -30,52 +59,141 @@ function setup(chat: jest.Mock, enabled = true) {
       }),
     ),
   };
-  const config = { getOrThrow: jest.fn(() => 2) };
-  const service = new AiChatService(
-    { enabled, chat },
+  const analytics = {
+    getMonthlySummary: jest.fn(() =>
+      Promise.resolve({
+        categoryBreakdown: [
+          { category: 'Food', amount: '120' },
+          { category: 'Rent', amount: '800' },
+        ],
+        incomeBreakdown: [],
+      }),
+    ),
+    getMonthlySeries: jest.fn(() =>
+      Promise.resolve({
+        currency: 'TND',
+        points: [
+          { month: '2026-10', income: '1000', expenses: '700', balance: '0' },
+          { month: '2026-11', income: '1000', expenses: '900', balance: '0' },
+        ],
+      }),
+    ),
+    getDailySeries: jest.fn(() =>
+      Promise.resolve({ currency: 'TND', timeZone: 'UTC', points: [] }),
+    ),
+  };
+  const accounts = {
+    list: jest.fn(() =>
+      Promise.resolve({
+        data: [{ id: 'acc-1', name: 'Checking', currency: 'TND' }],
+        total: 1,
+      }),
+    ),
+  };
+  const chats = {
+    loadForReply: jest.fn(),
+    saveTurn: jest.fn(
+      (
+        _userId: string,
+        chatId: string | null,
+        title: string,
+        question: { content: string; askedAt: Date },
+        reply: { content: string; usedTools: string[]; charts: unknown[] },
+      ) =>
+        Promise.resolve({
+          chat: {
+            id: chatId ?? 'new-chat',
+            title,
+            createdAt: NOW,
+            updatedAt: NOW,
+          },
+          asked: {
+            id: 'q',
+            role: 'USER',
+            content: question.content,
+            usedTools: [],
+            charts: null,
+            createdAt: question.askedAt,
+          },
+          answered: {
+            id: 'a',
+            role: 'ASSISTANT',
+            content: reply.content,
+            usedTools: reply.usedTools,
+            charts: reply.charts,
+            createdAt: NOW,
+          },
+        }),
+    ),
+    saveSummary: jest.fn(() => Promise.resolve()),
+  };
+  const runner = new ChatToolRunner(
     mcp as never,
     categories as never,
-    config as never,
+    analytics as never,
   );
-  return { service, mcp, categories };
+  const service = new AiChatService(
+    { enabled, chat },
+    chats as never,
+    runner,
+    accounts as never,
+  );
+  const call = (i: number) => (chat.mock.calls[i] as ChatCall)[0];
+  return { service, mcp, categories, analytics, chats, call };
 }
 
+const ask = (content = 'how much did I spend?', timeZone?: string) => ({
+  content,
+  timeZone,
+});
+
 describe('AiChatService', () => {
+  beforeEach(() => jest.useFakeTimers({ now: NOW }));
+  afterEach(() => jest.useRealTimers());
+
   it('answers 503 AI_UNAVAILABLE when no key is configured', async () => {
     const { service } = setup(jest.fn(), false);
-    await expect(service.chat(USER, dto())).rejects.toBeInstanceOf(
+    await expect(service.send(USER_ID, null, ask())).rejects.toBeInstanceOf(
       AiUnavailableException,
     );
   });
 
-  it('runs a tool, feeds the result back and returns the final answer', async () => {
+  it('starts a chat: runs a tool, saves both turns, titles it from the question', async () => {
     const chat = jest
       .fn()
       .mockImplementationOnce(() =>
-        toolCall('get_monthly_summary', {
-          year: 2026,
-          month: 10,
-          currency: 'TND',
-        }),
+        toolCalls([
+          'get_monthly_summary',
+          { year: 2026, month: 11, currency: 'TND' },
+        ]),
       )
       .mockImplementationOnce(() => answer('You spent 120 TND.'));
-    const { service, mcp } = setup(chat);
+    const { service, mcp, chats, call } = setup(chat);
 
-    const reply = await service.chat(USER, dto());
+    const turn = await service.send(USER_ID, null, ask());
 
-    expect(reply).toEqual({
-      message: 'You spent 120 TND.',
-      usedTools: ['get_monthly_summary'],
+    expect(turn.chat).toMatchObject({
+      id: 'new-chat',
+      title: 'how much did I spend?',
     });
+    expect(turn.messages[0]).toMatchObject({
+      role: 'user',
+      content: 'how much did I spend?',
+    });
+    expect(turn.messages[1]).toMatchObject({
+      role: 'assistant',
+      content: 'You spent 120 TND.',
+      usedTools: ['get_monthly_summary'],
+      charts: [],
+    });
+    expect(chats.saveTurn).toHaveBeenCalledTimes(1);
+    expect((chats.saveTurn.mock.calls[0] as unknown[])[1]).toBeNull();
     expect(mcp.dispatch).toHaveBeenCalledWith(
-      'u1',
+      USER_ID,
       'get_monthly_summary',
-      expect.objectContaining({ year: 2026, month: 10 }),
+      expect.objectContaining({ year: 2026, month: 11 }),
     );
-    const secondCall = (
-      chat.mock.calls[1] as [{ messages: Array<{ role: string }> }]
-    )[0];
-    expect(secondCall.messages.map((m) => m.role)).toEqual([
+    expect(call(1).messages.map((m) => m.role)).toEqual([
       'system',
       'user',
       'assistant',
@@ -83,86 +201,312 @@ describe('AiChatService', () => {
     ]);
   });
 
+  it('saves nothing when the model fails', async () => {
+    const chat = jest.fn(() => Promise.reject(new AiUnavailableException()));
+    const { service, chats } = setup(chat);
+
+    await expect(service.send(USER_ID, null, ask())).rejects.toBeInstanceOf(
+      AiUnavailableException,
+    );
+    expect(chats.saveTurn).not.toHaveBeenCalled();
+  });
+
+  it("answers in the chat's context: earlier messages and the summary", async () => {
+    const chat = jest.fn(() => answer('ok'));
+    const { service, chats, call } = setup(chat);
+    chats.loadForReply.mockResolvedValue(
+      storedChat(4, { summary: 'They asked about rent.', summarizedCount: 2 }),
+    );
+
+    await service.send(USER_ID, 'chat-1', ask('and last month?'));
+
+    expect(chats.loadForReply).toHaveBeenCalledWith(USER_ID, 'chat-1');
+    const { messages } = call(0);
+    expect(messages[0].content).toContain(
+      'Summary of the earlier part of this chat: They asked about rent.',
+    );
+    // Messages 0-1 are in the summary; 2-3 come verbatim, then the question.
+    expect(messages.slice(1).map((m) => m.content)).toEqual([
+      'message 2',
+      'message 3',
+      'and last month?',
+    ]);
+  });
+
+  it("puts today's date in the user's time zone in the prompt", async () => {
+    // 05:00 UTC on Nov 5 is 19:00 on Nov 4 in Honolulu (UTC-10).
+    jest.setSystemTime(new Date('2026-11-05T05:00:00Z'));
+    const chat = jest.fn(() => answer('ok'));
+    const { service, call } = setup(chat);
+
+    await service.send(USER_ID, null, ask('hi', 'Pacific/Honolulu'));
+
+    expect(call(0).messages[0].content).toContain('Today is 2026-11-04');
+  });
+
+  it('refuses a chat that is full', async () => {
+    const { service, chats } = setup(jest.fn());
+    chats.loadForReply.mockResolvedValue(storedChat(MAX_MESSAGES_PER_CHAT));
+
+    await expect(service.send(USER_ID, 'chat-1', ask())).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+  });
+
   it('never runs create_draft_transaction, even if the model asks for it', async () => {
     const chat = jest
       .fn()
       .mockImplementationOnce(() =>
-        toolCall('create_draft_transaction', { rawInput: 'x' }),
+        toolCalls(['create_draft_transaction', { rawInput: 'x' }]),
       )
       .mockImplementationOnce(() => answer('I cannot do that.'));
-    const { service, mcp } = setup(chat);
+    const { service, mcp, call } = setup(chat);
 
-    await service.chat(USER, dto());
+    await service.send(USER_ID, null, ask());
 
     expect(mcp.dispatch).not.toHaveBeenCalled();
-    const toolMessage = (
-      chat.mock.calls[1] as [
-        { messages: Array<{ role: string; content: string }> },
-      ]
-    )[0].messages.find((m) => m.role === 'tool');
-    expect(toolMessage?.content).toContain('Unknown tool');
+    expect(call(1).messages.at(-1)?.content).toContain('Unknown tool');
   });
 
-  it('does not offer create_draft_transaction to the model', () => {
-    const names = buildChatTools().map((tool) => tool.name);
+  it('offers the read tools and the chart tools, never create_draft_transaction', () => {
+    const names = buildChatTools().map((t) => t.name);
     expect(names).not.toContain('create_draft_transaction');
-    expect(names).toContain('search_transactions');
-    expect(names).toContain('list_categories');
+    expect(names).toEqual(
+      expect.arrayContaining([
+        'get_monthly_summary',
+        'list_categories',
+        'chart_spending_by_category',
+        'chart_income_vs_expenses',
+        'chart_daily_trend',
+      ]),
+    );
+  });
+
+  it('does not let the model force a summary recompute', async () => {
+    const chat = jest
+      .fn()
+      .mockImplementationOnce(() =>
+        toolCalls([
+          'get_monthly_summary',
+          { year: 2026, month: 11, currency: 'TND', refresh: true },
+        ]),
+      )
+      .mockImplementationOnce(() => answer('ok'));
+    const { service, mcp } = setup(chat);
+
+    await service.send(USER_ID, null, ask());
+
+    expect(mcp.dispatch).toHaveBeenCalledWith(
+      USER_ID,
+      'get_monthly_summary',
+      expect.objectContaining({ refresh: false }),
+    );
+    const summaryTool = buildChatTools().find(
+      (t) => t.name === 'get_monthly_summary',
+    );
+    expect(summaryTool?.parameters.properties).not.toHaveProperty('refresh');
   });
 
   it('returns invalid arguments to the model instead of dispatching', async () => {
     const chat = jest
       .fn()
       .mockImplementationOnce(() =>
-        toolCall('get_monthly_summary', { year: 'abc' }),
+        toolCalls(['get_monthly_summary', { year: 'soon' }]),
       )
       .mockImplementationOnce(() => answer('Sorry.'));
-    const { service, mcp } = setup(chat);
+    const { service, mcp, call } = setup(chat);
 
-    await service.chat(USER, dto());
+    await service.send(USER_ID, null, ask());
 
     expect(mcp.dispatch).not.toHaveBeenCalled();
+    expect(call(1).messages.at(-1)?.content).toContain('Invalid arguments');
+  });
+
+  it('runs the tool calls of one round together and keeps their order', async () => {
+    const chat = jest
+      .fn()
+      .mockImplementationOnce(() =>
+        toolCalls(['list_goals', {}], ['list_categories', {}]),
+      )
+      .mockImplementationOnce(() => answer('ok'));
+    const { service, call } = setup(chat);
+
+    await service.send(USER_ID, null, ask());
+
+    const tools = call(1).messages.filter((m) => m.role === 'tool');
+    expect(tools.map((m) => m.toolCallId)).toEqual(['c1', 'c2']);
   });
 
   it('stops after MAX_TOOL_ROUNDS and asks for a final answer without tools', async () => {
-    const chat = jest.fn((req: { tools?: unknown[] }) =>
-      req.tools ? toolCall('list_accounts') : answer('Here is what I found.'),
+    const chat = jest.fn((request: { tools?: unknown[] }) =>
+      request.tools ? toolCalls(['list_goals']) : answer('Best I can do.'),
     );
-    const { service, mcp } = setup(chat);
+    const { service } = setup(chat);
 
-    const reply = await service.chat(USER, dto());
+    const turn = await service.send(USER_ID, null, ask());
 
-    expect(reply.message).toBe('Here is what I found.');
     expect(chat).toHaveBeenCalledTimes(MAX_TOOL_ROUNDS + 1);
-    expect(mcp.dispatch).toHaveBeenCalledTimes(MAX_TOOL_ROUNDS);
+    expect(turn.messages[1].content).toBe('Best I can do.');
   });
 
   it('serves list_categories from the categories service', async () => {
     const chat = jest
       .fn()
-      .mockImplementationOnce(() => toolCall('list_categories'))
-      .mockImplementationOnce(() => answer('ok'));
-    const { service, categories } = setup(chat);
+      .mockImplementationOnce(() => toolCalls(['list_categories', {}]))
+      .mockImplementationOnce(() => answer('Food.'));
+    const { service, categories, call } = setup(chat);
 
-    await service.chat(USER, dto());
+    await service.send(USER_ID, null, ask());
 
-    expect(categories.list).toHaveBeenCalledWith('u1', expect.any(Object));
+    expect(categories.list).toHaveBeenCalledWith(
+      USER_ID,
+      expect.objectContaining({ limit: 20 }),
+    );
+    // Only id, name and type reach the model.
+    expect(call(1).messages.at(-1)?.content).not.toContain('#fff');
   });
 
-  it('caps a demo visitor at DEMO_AI_CHAT_CAP messages', async () => {
-    const { service } = setup(jest.fn(() => answer('hi')));
+  describe('charts', () => {
+    it('attaches a chart computed from the ledger, and tells the model about it', async () => {
+      const chat = jest
+        .fn()
+        .mockImplementationOnce(() =>
+          toolCalls([
+            'chart_spending_by_category',
+            { year: 2026, month: 11, currency: 'TND' },
+          ]),
+        )
+        .mockImplementationOnce(() => answer('Rent is your biggest cost.'));
+      const { service, analytics, call } = setup(chat);
 
-    await service.chat(DEMO, dto());
-    await service.chat(DEMO, dto());
-    const third = service.chat(DEMO, dto());
+      const turn = await service.send(USER_ID, null, ask());
 
-    await expect(third).rejects.toBeInstanceOf(HttpException);
-    await expect(third).rejects.toMatchObject({ status: 429 });
+      expect(analytics.getMonthlySummary).toHaveBeenCalledWith(
+        USER_ID,
+        2026,
+        11,
+        false,
+        undefined,
+        'TND',
+      );
+      expect(turn.messages[1].charts).toEqual([
+        expect.objectContaining({
+          kind: 'donut',
+          currency: 'TND',
+          labels: ['Rent', 'Food'],
+          series: [expect.objectContaining({ values: ['800', '120'] })],
+        }),
+      ]);
+      const told = JSON.parse(call(1).messages.at(-1)?.content ?? '{}') as {
+        shownToUser: boolean;
+      };
+      expect(told.shownToUser).toBe(true);
+    });
+
+    it(`keeps at most ${MAX_CHARTS_PER_REPLY} charts per answer`, async () => {
+      const bars = ['chart_income_vs_expenses', { currency: 'TND' }] as [
+        string,
+        unknown,
+      ];
+      const chat = jest
+        .fn()
+        .mockImplementationOnce(() => toolCalls(bars, bars, bars, bars))
+        .mockImplementationOnce(() => answer('Here.'));
+      const { service, call } = setup(chat);
+
+      const turn = await service.send(USER_ID, null, ask());
+
+      expect(turn.messages[1].charts).toHaveLength(MAX_CHARTS_PER_REPLY);
+      expect(call(1).messages.at(-1)?.content).toContain('limit');
+    });
+
+    it('treats a chart of only zeros as nothing to chart', async () => {
+      const chat = jest
+        .fn()
+        .mockImplementationOnce(() =>
+          toolCalls(['chart_income_vs_expenses', { currency: 'TND' }]),
+        )
+        .mockImplementationOnce(() => answer('No activity.'));
+      const { service, analytics, call } = setup(chat);
+      analytics.getMonthlySeries.mockResolvedValueOnce({
+        currency: 'TND',
+        points: [
+          { month: '2026-10', income: '0', expenses: '0', balance: '0' },
+          { month: '2026-11', income: '0', expenses: '0', balance: '0' },
+        ],
+      });
+
+      const turn = await service.send(USER_ID, null, ask());
+
+      expect(turn.messages[1].charts).toEqual([]);
+      expect(call(1).messages.at(-1)?.content).toContain('No activity');
+    });
+
+    it('tells the model when there is nothing to chart', async () => {
+      const chat = jest
+        .fn()
+        .mockImplementationOnce(() =>
+          toolCalls(['chart_daily_trend', { currency: 'TND' }]),
+        )
+        .mockImplementationOnce(() => answer('No activity.'));
+      const { service, analytics, call } = setup(chat);
+
+      const turn = await service.send(USER_ID, null, ask());
+
+      expect(analytics.getDailySeries).toHaveBeenCalled();
+      expect(turn.messages[1].charts).toEqual([]);
+      expect(call(1).messages.at(-1)?.content).toContain('No activity');
+    });
   });
 
-  it('does not cap real users', async () => {
-    const { service } = setup(jest.fn(() => answer('hi')));
-    for (let i = 0; i < 5; i++) await service.chat(USER, dto());
+  describe('running summary', () => {
+    it('folds messages that left the recent window into the summary', async () => {
+      const chat = jest
+        .fn()
+        .mockImplementationOnce(() => answer('the answer'))
+        .mockImplementationOnce(() => answer('New summary.'));
+      const { service, chats, call } = setup(chat);
+      // 8 saved + 2 new = 10; the last 6 stay verbatim, so 0-3 are folded.
+      chats.loadForReply.mockResolvedValue(storedChat(8));
+
+      await service.send(USER_ID, 'chat-1', ask());
+
+      expect(chat).toHaveBeenCalledTimes(2);
+      expect(call(1).messages[1].content).toContain('message 3');
+      expect(call(1).messages[1].content).not.toContain('message 4');
+      expect(chats.saveSummary).toHaveBeenCalledWith(
+        'chat-1',
+        'New summary.',
+        4,
+      );
+    });
+
+    it('waits until a batch has piled up', async () => {
+      const chat = jest.fn(() => answer('ok'));
+      const { service, chats } = setup(chat);
+      chats.loadForReply.mockResolvedValue(storedChat(6));
+
+      await service.send(USER_ID, 'chat-1', ask());
+
+      expect(chat).toHaveBeenCalledTimes(1);
+      expect(chats.saveSummary).not.toHaveBeenCalled();
+    });
+
+    it('still returns the answer when the summary call fails', async () => {
+      const chat = jest
+        .fn()
+        .mockImplementationOnce(() => answer('the answer'))
+        .mockImplementationOnce(() =>
+          Promise.reject(new AiUnavailableException()),
+        );
+      const { service, chats } = setup(chat);
+      chats.loadForReply.mockResolvedValue(storedChat(8));
+
+      const turn = await service.send(USER_ID, 'chat-1', ask());
+
+      expect(turn.messages[1].content).toBe('the answer');
+      expect(chats.saveSummary).not.toHaveBeenCalled();
+    });
   });
 });
 

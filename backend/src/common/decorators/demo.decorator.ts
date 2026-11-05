@@ -4,7 +4,7 @@ export const DEMO_BLOCKED_KEY = 'demoBlocked';
 export const DEMO_QUOTA_KEY = 'demoQuota';
 
 /** Usage a demo user is capped on (see DemoRestrictionsGuard). */
-export type DemoQuotaName = 'ai-drafts';
+export type DemoQuotaName = 'ai-drafts' | 'ai-chat';
 
 /**
  * Closes a route to temporary demo users: anything that would lock other

@@ -25,7 +25,10 @@ import { isDemoEmail } from '../utils/demo-identity';
  *
  * - `@DemoBlocked()` routes answer 403 DEMO_BLOCKED.
  * - `@DemoQuota('ai-drafts')` routes answer 429 DEMO_LIMIT once the user has
- *   DEMO_AI_CAP drafts (counted in the database, so it survives restarts).
+ *   DEMO_AI_CAP drafts, and `@DemoQuota('ai-chat')` once they have asked
+ *   DEMO_AI_CHAT_CAP chat questions. Both are counted in the database, so they
+ *   hold across restarts and across serverless instances; a chat question is
+ *   only saved once it was answered, so a failed answer costs nothing.
  *
  * One route checks for itself: POST /oauth/session/handoff is public and
  * verifies its own bearer token, so OAuthService.createHandoff refuses demo
@@ -68,6 +71,21 @@ export class DemoRestrictionsGuard implements CanActivate {
           {
             code: 'DEMO_LIMIT',
             message: `The demo allows ${cap} AI drafts. Create an account to keep going.`,
+          },
+          HttpStatus.TOO_MANY_REQUESTS,
+        );
+      }
+    }
+    if (quota === 'ai-chat') {
+      const cap = this.config.getOrThrow<number>('DEMO_AI_CHAT_CAP');
+      const used = await this.prisma.aiChatMessage.count({
+        where: { role: 'USER', chat: { userId: user.id } },
+      });
+      if (used >= cap) {
+        throw new HttpException(
+          {
+            code: 'DEMO_LIMIT',
+            message: `The demo allows ${cap} chat questions. Create an account to keep going.`,
           },
           HttpStatus.TOO_MANY_REQUESTS,
         );

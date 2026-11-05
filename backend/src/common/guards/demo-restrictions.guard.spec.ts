@@ -21,9 +21,10 @@ function contextFor(
   } as never;
 }
 
-function makeGuard(draftCount = 0) {
+function makeGuard(draftCount = 0, chatQuestionCount = draftCount) {
   const prisma = {
     draftTransaction: { count: jest.fn(async () => draftCount) },
+    aiChatMessage: { count: jest.fn(async () => chatQuestionCount) },
   };
   const config = { getOrThrow: jest.fn(() => 3) };
   const guard = new DemoRestrictionsGuard(
@@ -78,6 +79,26 @@ describe('DemoRestrictionsGuard', () => {
     const at = makeGuard(3);
     await expect(
       at.guard.canActivate(contextFor(DEMO, { [DEMO_QUOTA_KEY]: 'ai-drafts' })),
+    ).rejects.toMatchObject({
+      status: HttpStatus.TOO_MANY_REQUESTS,
+      response: { code: 'DEMO_LIMIT' },
+    });
+  });
+
+  it('caps a demo user’s chat questions, counted in the database', async () => {
+    const under = makeGuard(0, 2);
+    await expect(
+      under.guard.canActivate(
+        contextFor(DEMO, { [DEMO_QUOTA_KEY]: 'ai-chat' }),
+      ),
+    ).resolves.toBe(true);
+    expect(under.prisma.aiChatMessage.count).toHaveBeenCalledWith({
+      where: { role: 'USER', chat: { userId: DEMO.id } },
+    });
+
+    const at = makeGuard(0, 3);
+    await expect(
+      at.guard.canActivate(contextFor(DEMO, { [DEMO_QUOTA_KEY]: 'ai-chat' })),
     ).rejects.toMatchObject({
       status: HttpStatus.TOO_MANY_REQUESTS,
       response: { code: 'DEMO_LIMIT' },
