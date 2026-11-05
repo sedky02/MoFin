@@ -44,6 +44,13 @@ export class AllExceptionsFilter implements ExceptionFilter {
         );
         if (!isHealthCheck) Sentry.captureException(exception);
       }
+      // An exception that knows when to try again (AiUnavailableException on
+      // a provider 429) says so in the standard header too.
+      const retryAfter = (exception as { retryAfterSeconds?: unknown })
+        .retryAfterSeconds;
+      if (typeof retryAfter === 'number' && retryAfter > 0) {
+        response.setHeader('Retry-After', String(retryAfter));
+      }
       response.status(status).json(exception.getResponse());
       return;
     }
