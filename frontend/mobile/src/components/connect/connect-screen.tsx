@@ -33,14 +33,14 @@ const TRUST: { icon: LucideIcon; title: string; body: string }[] = [
   {
     icon: ShieldCheck,
     title: 'Suggestions only',
-    body: 'It can read balances and propose transactions. Each one waits as a draft until you approve it.',
+    body: 'It reads your data and suggests transactions. You approve each one.',
   },
   {
     icon: EyeOff,
     title: 'No keys to paste',
-    body: 'You sign in here with your MoFin account. The assistant never sees your password.',
+    body: 'You sign in with MoFin. The assistant never sees your password.',
   },
-  { icon: Undo2, title: 'Easy to undo', body: 'Disconnect any time under Settings → Connected AI apps.' },
+  { icon: Undo2, title: 'Easy to undo', body: 'Disconnect any time in Settings.' },
 ];
 
 function UrlField({ label = 'Connector URL' }: { label?: string }) {
@@ -178,20 +178,18 @@ export function ConnectScreen() {
           <>
             <Steps>
               <Step n={1} title="Add MoFin to Claude" action={openButton('Add to Claude', claudeDeepLink(MCP_URL))}>
-                This opens Claude with the connector name and URL already filled in.
+                Opens Claude with everything filled in.
               </Step>
               <Step n={2} title="Confirm in Claude">
-                Review the details in the dialog that opens, then confirm.
+                Check the details, then confirm.
               </Step>
               <Step n={3} title="Sign in and approve">
-                {`Claude sends you back here to sign in${user && !user.isDemo ? ` as ${user.email}` : ''} and approve access.`}
+                Claude brings you back here to approve.
               </Step>
             </Steps>
             <View className="gap-2">
-              <Text className="text-sm font-medium">Didn&apos;t work? Add it by hand</Text>
-              <Text className="text-sm text-muted-foreground">
-                In Claude go to Settings → Connectors → Add custom connector and paste this URL.
-              </Text>
+              <Text className="text-sm font-medium">Didn&apos;t work?</Text>
+              <Text className="text-sm text-muted-foreground">In Claude: Settings → Connectors → Add custom connector.</Text>
               <UrlField />
             </View>
           </>
@@ -199,27 +197,20 @@ export function ConnectScreen() {
 
         {active === 'chatgpt' ? (
           <Steps>
-            <Step n={1} title="Open ChatGPT's connector settings" action={openButton('Open ChatGPT connector settings', CHATGPT_SETTINGS_URL)}>
-              That is Settings → Apps &amp; Connectors in ChatGPT.
+            <Step n={1} title="Open ChatGPT's connectors" action={openButton('Open ChatGPT connector settings', CHATGPT_SETTINGS_URL)}>
+              Settings → Apps &amp; Connectors.
             </Step>
-            <Step n={2} title="Create a custom connector">
-              Click Create and choose Custom connector.
-            </Step>
-            <Step n={3} title="Paste the connector URL" action={<UrlField label="Server URL to paste" />}>
-              Paste it into the Server URL field, then save.
-            </Step>
-            <Step n={4} title="Connect">
-              Click Connect — you&apos;ll be redirected here to sign in and approve access.
+            <Step n={2} title="Create a custom connector" />
+            <Step n={3} title="Paste this as the server URL" action={<UrlField label="Server URL" />} />
+            <Step n={4} title="Connect and approve">
+              ChatGPT brings you back here to approve.
             </Step>
           </Steps>
         ) : null}
 
         {active === 'gemini' ? (
           <>
-            <Text className="text-sm text-muted-foreground">
-              The consumer Gemini app doesn&apos;t support custom MCP connectors yet. If you use Gemini CLI, you can add
-              MoFin to its settings file.
-            </Text>
+            <Text className="text-sm text-muted-foreground">The Gemini app can&apos;t add connectors yet. Gemini CLI can:</Text>
             <Steps>
               <Step n={1} title="Open the settings file">
                 ~/.gemini/settings.json
@@ -244,14 +235,10 @@ export function ConnectScreen() {
 
         {active === 'other' ? (
           <Steps>
-            <Step n={1} title="Find the connector option">
-              In your AI client, look for the option to add a custom remote MCP server.
-            </Step>
-            <Step n={2} title="Paste the connector URL" action={<UrlField />}>
-              Use it as the server URL.
-            </Step>
-            <Step n={3} title="Choose OAuth">
-              If it asks for an auth method, choose OAuth — the client will redirect you here to sign in and approve access.
+            <Step n={1} title="Add a custom remote MCP server" />
+            <Step n={2} title="Paste this as the server URL" action={<UrlField />} />
+            <Step n={3} title="Choose OAuth if asked">
+              You&apos;ll come back here to approve.
             </Step>
           </Steps>
         ) : null}

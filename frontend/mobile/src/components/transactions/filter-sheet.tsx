@@ -6,18 +6,19 @@ import { ScrollView, View } from 'react-native';
 
 import { DateTimeField } from '@/components/transactions/datetime-field';
 import { PickerField } from '@/components/transactions/transaction-form-fields';
-import { sortOrDefault, type ListFilters } from '@/components/transactions/transactions-list-model';
+import { REPEATS_OPTIONS, SCHEDULES, sortOrDefault, type ListFilters } from '@/components/transactions/transactions-list-model';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Text } from '@/components/ui/text';
-import { RECURRENCE_OPTIONS, SORT_OPTIONS, TYPE_OPTIONS } from '@/core/transaction-list-params';
+import { SORT_OPTIONS, TYPE_OPTIONS } from '@/core/transaction-list-params';
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
     <View className="gap-1.5">
       <Text className="text-xs font-medium text-muted-foreground">{label}</Text>
       {children}
+      {hint ? <Text className="text-xs text-muted-foreground">{hint}</Text> : null}
     </View>
   );
 }
@@ -56,15 +57,17 @@ export function FilterSheet({
               emptyOption="All types"
             />
           </Field>
-          <Field label="Recurring">
+          <Field
+            label="Repeats"
+            hint={filters.recurrence === SCHEDULES ? 'One row per schedule, to pause or cancel it.' : undefined}>
             <PickerField
-              title="Recurring"
-              accessibilityLabel="Recurring"
-              options={RECURRENCE_OPTIONS}
+              title="Repeats"
+              accessibilityLabel="Repeats"
+              options={REPEATS_OPTIONS}
               value={filters.recurrence || undefined}
               onChange={(v) => onChange({ recurrence: v ?? '' })}
-              placeholder="Recurring and one-off"
-              emptyOption="Recurring and one-off"
+              placeholder="All transactions"
+              emptyOption="All transactions"
             />
           </Field>
           <Field label="Sort by">

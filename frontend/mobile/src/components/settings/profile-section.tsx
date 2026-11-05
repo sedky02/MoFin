@@ -27,17 +27,20 @@ import { User as UserIcon } from '@/lib/icons';
 export function ProfileSection() {
   const { data: user, isLoading, isError, refetch } = useUser();
   const update = useUpdateUser();
+  // `values` keeps the form in step with the saved profile, including when it arrives after the
+  // screen opened; what the user is typing is kept.
   const form = useForm<ProfileValues>({
     resolver: zodResolver(profileSchema),
     defaultValues: { displayName: '' },
+    values: user ? { displayName: user.displayName ?? '' } : undefined,
+    resetOptions: { keepDirtyValues: true },
     mode: 'onTouched',
   });
 
-  React.useEffect(() => {
-    if (user) form.reset({ displayName: user.displayName ?? '' });
-  }, [user, form]);
-
-  const displayName = useWatch({ control: form.control, name: 'displayName' }) ?? '';
+  const watched = useWatch({ control: form.control, name: 'displayName' }) ?? '';
+  // The card shows the saved name until the field is edited, so it can't read "No display name"
+  // while the field already holds one.
+  const displayName = form.formState.dirtyFields.displayName ? watched : watched || (user?.displayName ?? '');
   const changed = profileChanged(user, displayName);
 
   const onSubmit = form.handleSubmit(async (values) => {

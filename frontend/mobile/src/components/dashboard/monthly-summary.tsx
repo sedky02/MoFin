@@ -6,6 +6,7 @@ import { MoneyAmount } from '@/components/common/money-amount';
 import { EmptyState, ErrorState } from '@/components/common/states';
 import { CategoryGlyphIcon } from '@/components/categories/category-glyph';
 import { buildSegments, donutDescription, monthTitle, shiftMonth } from '@/components/dashboard/dashboard-logic';
+import { SwipeStepper } from '@/components/common/swipe';
 import { SummarySkeleton } from '@/components/dashboard/dashboard-skeleton';
 import { CurrencySwitch } from '@/components/dashboard/currency-switch';
 import { Donut } from '@/components/dashboard/donut';
@@ -21,21 +22,18 @@ import { cn } from '@/lib/utils';
 import { useAccounts } from '@/hooks/useAccounts';
 import { useCategories } from '@/hooks/useCategories';
 import { useMonthlySummary } from '@/hooks/useAnalytics';
-import { useMainAccount } from '@/hooks/useMainAccount';
 
 type Kind = 'expense' | 'income';
 
-function ArrowButton({ icon, label, onPress, disabled, hidden }: { icon: typeof ChevronLeft; label: string; onPress: () => void; disabled?: boolean; hidden?: boolean }) {
+function ArrowButton({ icon, label, onPress, disabled }: { icon: typeof ChevronLeft; label: string; onPress: () => void; disabled?: boolean }) {
   return (
     <Pressable
       role="button"
       accessibilityLabel={label}
       accessibilityState={{ disabled }}
-      disabled={disabled || hidden}
+      disabled={disabled}
       onPress={onPress}
-      importantForAccessibility={hidden ? 'no-hide-descendants' : 'auto'}
-      accessibilityElementsHidden={hidden}
-      className={cn('size-11 items-center justify-center rounded-full active:bg-secondary', disabled && 'opacity-35', hidden && 'opacity-0')}>
+      className={cn('size-11 items-center justify-center rounded-full active:bg-secondary', disabled && 'opacity-35')}>
       <Icon as={icon} size={18} aria-hidden />
     </Pressable>
   );
@@ -60,7 +58,6 @@ export function MonthlySummaryCard({
   const colors = useChartColors();
   const { data: categories } = useCategories('all');
   const { data: accounts = [] } = useAccounts();
-  const { accountId: mainAccountId } = useMainAccount();
   const [kind, setKind] = React.useState<Kind>('expense');
   const [offset, setOffset] = React.useState(0);
   const viewed = shiftMonth(year, month, offset);
@@ -71,7 +68,6 @@ export function MonthlySummaryCard({
   const scopedAccount = accounts.find((a) => a.id === accountId);
   const scopedCurrency = scopedAccount?.currency ?? currency;
   const title = monthTitle(viewed.year, viewed.month);
-  const scopeLabel = scopedAccount ? `${scopedAccount.name}${scopedAccount.id === mainAccountId ? ' · Main account' : ''}` : 'All accounts';
 
   const isExpense = kind === 'expense';
   const noun = isExpense ? 'spending' : 'income';
@@ -235,17 +231,18 @@ export function MonthlySummaryCard({
           {title}
         </Text>
         <ArrowButton icon={ChevronRight} label="Next month" disabled={offset === 0} onPress={() => setOffset((o) => Math.max(0, o - 1))} />
-        <ArrowButton icon={RotateCcw} label="Back to this month" hidden={offset === 0} onPress={() => setOffset(0)} />
+        {/* Always there so the row keeps its shape; greyed out on the current month. */}
+        <ArrowButton icon={RotateCcw} label="Back to this month" disabled={offset === 0} onPress={() => setOffset(0)} />
       </View>
-      <Text numberOfLines={1} className="text-center text-xs text-muted-foreground">
-        {scopeLabel}
-      </Text>
       {switchOptions.length > 1 ? (
         <View className="mt-2 items-center">
           <CurrencySwitch currencies={switchOptions} value={currency} onChange={(c) => onCurrencyChange?.(c)} />
         </View>
       ) : null}
-      {body}
+      {/* Swipe left or right for the next or previous month, like the arrows. */}
+      <SwipeStepper onPrev={() => setOffset((o) => o + 1)} onNext={() => setOffset((o) => Math.max(0, o - 1))} canNext={offset > 0}>
+        {body}
+      </SwipeStepper>
     </View>
   );
 }

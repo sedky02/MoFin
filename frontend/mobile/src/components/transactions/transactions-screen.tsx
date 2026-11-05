@@ -1,12 +1,12 @@
-// The Transactions tab: every transaction (search, filters, day groups, more loaded as you scroll)
-// and the recurring series, like the web's /transactions page (which pages by number instead). Filter state lives here; the rules for
+// The Transactions tab: every transaction (search, filters, day groups, more loaded as you scroll),
+// or the recurring schedules when picked under More filters, like the web's /transactions page (which pages by number instead). Filter state lives here; the rules for
 // turning it into a query, chips and counts are in transactions-list-model.
 import * as React from 'react';
 import { ActivityIndicator, FlatList, Platform, Pressable, RefreshControl, View } from 'react-native';
 
 import { EmptyState, ErrorState, SkeletonRows } from '@/components/common/states';
 import { FilterSheet } from '@/components/transactions/filter-sheet';
-import { RecurringSeriesList, useRecurringSeriesCount } from '@/components/transactions/recurring-series-list';
+import { RecurringSeriesList } from '@/components/transactions/recurring-series-list';
 import { categoryOptions, PickerField } from '@/components/transactions/transaction-form-fields';
 import { TransactionRow } from '@/components/transactions/transaction-row';
 import {
@@ -18,6 +18,7 @@ import {
   loadedSummary,
   PAGE_SIZE,
   panelFilterCount,
+  SCHEDULES,
   toSearchParams,
   type FilterChip,
   type ListFilters,
@@ -27,7 +28,7 @@ import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Text } from '@/components/ui/text';
 import { transactionAccountLabel } from '@/core/transaction-accounts';
-import { accountOptionLabel, type TransactionsView } from '@/core/transaction-list-params';
+import { accountOptionLabel } from '@/core/transaction-list-params';
 import { groupByDay } from '@/core/transaction-days';
 import type { Account, Transaction } from '@/core/types';
 import { useAccounts } from '@/hooks/useAccounts';
@@ -59,32 +60,6 @@ export function buildListItems(rows: Transaction[], byDay: boolean, now: Date): 
   return items;
 }
 
-function ViewToggle({ view, onChange, seriesCount }: { view: TransactionsView; onChange: (v: TransactionsView) => void; seriesCount?: number }) {
-  const options: { value: TransactionsView; label: string }[] = [
-    { value: 'all', label: 'All' },
-    { value: 'recurring', label: seriesCount ? `Recurring ${seriesCount}` : 'Recurring' },
-  ];
-  return (
-    <View role="radiogroup" accessibilityLabel="Transactions view" className="mb-4 flex-row gap-1 self-start rounded-xl bg-secondary/70 p-1">
-      {options.map((o) => {
-        const selected = view === o.value;
-        return (
-          <Pressable
-            key={o.value}
-            role="radio"
-            aria-checked={selected}
-            accessibilityLabel={o.value === 'recurring' ? 'Recurring' : o.label}
-            accessibilityState={{ checked: selected }}
-            onPress={() => onChange(o.value)}
-            className={cn('min-h-11 min-w-[88px] items-center justify-center rounded-lg px-5', selected && 'bg-card shadow-sm shadow-black/5')}>
-            <Text className={cn('text-sm font-medium', !selected && 'text-muted-foreground')}>{o.label}</Text>
-          </Pressable>
-        );
-      })}
-    </View>
-  );
-}
-
 function Chips({ chips, onClear, onClearAll }: { chips: FilterChip[]; onClear: (c: FilterChip) => void; onClearAll: () => void }) {
   if (chips.length === 0) return null;
   return (
@@ -108,9 +83,6 @@ function Chips({ chips, onClear, onClearAll }: { chips: FilterChip[]; onClear: (
 }
 
 export function TransactionsScreen() {
-  const [view, setView] = React.useState<TransactionsView>('all');
-  const seriesCount = useRecurringSeriesCount();
-
   const [filters, setFilters] = React.useState<ListFilters>(EMPTY_FILTERS);
   const [sheetOpen, setSheetOpen] = React.useState(false);
   const patch = React.useCallback((p: Partial<ListFilters>) => setFilters((f) => ({ ...f, ...p })), []);
@@ -149,10 +121,12 @@ export function TransactionsScreen() {
   }
 
   const panelCount = panelFilterCount(filters);
+  const showSchedules = filters.recurrence === SCHEDULES;
   const header = (
     <View>
-      <ViewToggle view={view} onChange={setView} seriesCount={seriesCount} />
-      {view === 'all' ? (
+      {/* The recurring schedules (picked under More filters) list each series, not transactions,
+          so the search and pickers that only apply to transactions step aside. */}
+      {!showSchedules ? (
         <>
           <View className="mb-3 flex-row flex-wrap gap-2">
             <View className="min-w-[200px] basis-full justify-center">
@@ -217,11 +191,24 @@ export function TransactionsScreen() {
           </View>
           <Chips chips={chips} onClear={(c) => setFilters((f) => clearChip(f, c))} onClearAll={clearAll} />
         </>
-      ) : null}
+      ) : (
+        <View className="mb-4 flex-row items-center gap-2">
+          <View className="flex-1">
+            <Chips chips={chips} onClear={(c) => setFilters((f) => clearChip(f, c))} onClearAll={clearAll} />
+          </View>
+        </View>
+      )}
     </View>
   );
 
-  if (view === 'recurring') return <RecurringSeriesList header={header} />;
+  if (showSchedules) {
+    return (
+      <>
+        <RecurringSeriesList header={header} />
+        <FilterSheet open={sheetOpen} onOpenChange={setSheetOpen} filters={filters} onChange={patch} onClear={clearAll} hasActive={hasActive} />
+      </>
+    );
+  }
 
   const empty = isLoading ? (
     <SkeletonRows rows={6} />

@@ -74,7 +74,6 @@ export function DashboardBody({ year, month }: { year: number; month: number }) 
         {addAccountSheet}
         <BalanceHero
           accountId={accountId}
-          accountName={selectedAccount?.name}
           currency={balanceCurrency}
           onCurrencyChange={setBalancePick}
           emptyPanel={<FirstTransactionPanel />}
@@ -90,7 +89,7 @@ export function DashboardBody({ year, month }: { year: number; month: number }) 
       <View className="gap-4">
         {chips}
         {addAccountSheet}
-        <BalanceHero accountId={accountId} accountName={selectedAccount?.name} currency={balanceCurrency} onCurrencyChange={setBalancePick} />
+        <BalanceHero accountId={accountId} currency={balanceCurrency} onCurrencyChange={setBalancePick} />
       </View>
       <MonthlySummaryCard
         year={year}

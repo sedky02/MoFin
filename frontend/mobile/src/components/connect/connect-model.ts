@@ -7,7 +7,7 @@ export const CONNECTOR_NAME = 'MoFin — Monitor your Finances';
 export const CHATGPT_SETTINGS_URL = 'https://chatgpt.com/#settings/Connectors';
 export const NOT_AVAILABLE = "The AI connector isn't available on this server yet.";
 export const DEMO_UNAVAILABLE =
-  "Connecting an AI app isn't available in the demo. Create your own account to connect Claude, ChatGPT or Gemini to your data.";
+  "Not available in the demo. Create an account to connect an assistant.";
 
 export const CLIENTS = [
   { key: 'claude', label: 'Claude', hint: 'Web, desktop and mobile' },

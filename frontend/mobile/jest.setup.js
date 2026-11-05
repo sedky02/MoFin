@@ -25,8 +25,8 @@ jest.mock('expo-secure-store', () => {
 
 jest.mock('@react-native-community/netinfo', () => require('@react-native-community/netinfo/jest/netinfo-mock.js'));
 
-// Reanimated needs its native module, which jest has none of. Components only use it for enter/exit
-// animations, so a plain View stands in and the animation builders are inert.
+// Reanimated needs its native module, which jest has none of. A plain View stands in, the animation
+// builders are inert, and the hooks return still values.
 jest.mock('react-native-reanimated', () => {
   const { View } = require('react-native');
   const builder = () => {
@@ -40,6 +40,14 @@ jest.mock('react-native-reanimated', () => {
     ReduceMotion: { System: 'system', Always: 'always', Never: 'never' },
     FadeIn: builder(), FadeOut: builder(), FadeInDown: builder(), FadeOutDown: builder(),
     SlideInDown: builder(), SlideOutDown: builder(),
+    // Hooks run synchronously with no keyboard and no animation.
+    useAnimatedKeyboard: () => ({ height: { value: 0 }, state: { value: 0 } }),
+    useAnimatedStyle: (fn) => fn(),
+    useSharedValue: (value) => ({ value }),
+    withSpring: (value) => value,
+    withTiming: (value) => value,
+    runOnJS: (fn) => fn,
+    scheduleOnRN: (fn, ...args) => fn(...args),
     ...anim,
   };
 });

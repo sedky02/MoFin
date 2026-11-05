@@ -1,6 +1,7 @@
 import { Tabs } from 'expo-router/js-tabs';
 import { router } from 'expo-router';
 
+import { TabSwipe } from '@/components/common/swipe';
 import { AppHeader } from '@/components/shell/app-header';
 import { ADD_ROUTE, AppTabBar } from '@/components/shell/app-tab-bar';
 import { usePendingDraftCount } from '@/hooks/useDrafts';
@@ -14,7 +15,13 @@ export default function TabsLayout() {
       tabBar={(props) => <AppTabBar {...props} />}
       // freezeOnBlur: a tab you left doesn't re-render on every refetch or theme change while hidden;
       // it catches up once when you come back. Less work on the JS thread, so taps answer sooner.
-      screenOptions={{ header: (props) => <AppHeader {...props} />, freezeOnBlur: true }}>
+      screenOptions={{ header: (props) => <AppHeader {...props} />, freezeOnBlur: true }}
+      // Swipe left or right on a tab to move to the next or previous one.
+      screenLayout={({ route, children }) => (
+        <TabSwipe tab={route.name} onNavigate={(tab) => router.navigate(`/${tab}`)}>
+          {children}
+        </TabSwipe>
+      )}>
       <Tabs.Screen
         name="dashboard"
         options={{ title: 'Dashboard', tabBarIcon: ({ color, size }) => <LayoutDashboard color={color} size={size} /> }}

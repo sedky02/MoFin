@@ -22,7 +22,7 @@ afterAll(() => getQueryClient().clear());
 it('explains how to connect an app when there are none', async () => {
   mockFetch(() => json(200, []));
   await renderWithUser(<ConnectedAppsSection />);
-  expect(await screen.findByText(/^No apps connected\./)).toBeTruthy();
+  expect(await screen.findByText(/^No apps connected yet/)).toBeTruthy();
   expect(screen.getByText('Connect an app')).toBeTruthy();
 });
 

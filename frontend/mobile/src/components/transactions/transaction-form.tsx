@@ -27,13 +27,12 @@ import * as React from 'react';
 import {
   AccessibilityInfo,
   Keyboard,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   View,
 } from 'react-native';
 import { Controller, useFieldArray, useForm, useFormState, useWatch } from 'react-hook-form';
+import Animated, { useAnimatedKeyboard, useAnimatedStyle } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { SubmitButton } from '@/components/auth/submit-button';
@@ -206,14 +205,19 @@ function FieldLabel({ children, nativeID }: { children: React.ReactNode; nativeI
   );
 }
 
-/** The window y of a view, for KeyboardAvoidingView's offset (it measures relative to its parent). */
-function useWindowTop() {
-  const ref = React.useRef<React.ComponentRef<typeof View>>(null);
-  const [top, setTop] = React.useState(0);
-  const onLayout = React.useCallback(() => {
-    ref.current?.measureInWindow((_x, y) => setTop((prev) => (Math.abs(prev - y) > 1 ? y : prev)));
-  }, []);
-  return { ref, top, onLayout };
+/**
+ * Space to leave at the bottom for the on-screen keyboard, so the sticky Save bar sits right on top
+ * of it. Reanimated reads the real keyboard height on both platforms; KeyboardAvoidingView didn't
+ * lift the bar under Android's edge-to-edge layout. On the web the browser resizes the page itself.
+ */
+function useKeyboardLift(bottomInset: number) {
+  const keyboard = useAnimatedKeyboard();
+  const frame = useAnimatedStyle(() => ({ paddingBottom: keyboard.height.value }));
+  // With the keyboard up there is no home indicator to clear, just a little breathing room.
+  const bar = useAnimatedStyle(() => ({
+    paddingBottom: keyboard.height.value > 0 ? 10 : Math.max(bottomInset, 12),
+  }));
+  return { frame, bar };
 }
 
 function TransactionFormBody({
@@ -410,7 +414,7 @@ function TransactionFormBody({
     }
   }
 
-  const { ref: frameRef, top: frameTop, onLayout: onFrameLayout } = useWindowTop();
+  const lift = useKeyboardLift(insets.bottom);
 
   const fields = (
     <View className="gap-5">
@@ -843,11 +847,8 @@ function TransactionFormBody({
   }
 
   return (
-    <View ref={frameRef} onLayout={onFrameLayout} className="flex-1 bg-background">
-      <KeyboardAvoidingView
-        className="flex-1"
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={frameTop}>
+    <View className="flex-1 bg-background">
+      <Animated.View style={[{ flex: 1 }, lift.frame]}>
         <ScrollView
           className="flex-1"
           keyboardShouldPersistTaps="handled"
@@ -855,13 +856,11 @@ function TransactionFormBody({
           contentContainerClassName="w-full max-w-lg self-center p-4 pb-8">
           {fields}
         </ScrollView>
-        {/* Sticky actions above the home indicator. */}
-        <View
-          className="border-t border-border bg-background px-4 pt-3"
-          style={{ paddingBottom: Math.max(insets.bottom, 12) }}>
+        {/* Sticky actions: above the home indicator, or right on top of the keyboard while typing. */}
+        <Animated.View className="border-t border-border bg-background px-4 pt-3" style={lift.bar}>
           <View className="w-full max-w-lg self-center">{buttons}</View>
-        </View>
-      </KeyboardAvoidingView>
+        </Animated.View>
+      </Animated.View>
       {dialogs}
     </View>
   );

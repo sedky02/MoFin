@@ -7,16 +7,16 @@ describe('More menu', () => {
   });
 
   it('shows live counts once they are known', () => {
-    expect(moreSubtitle('/accounts', { accounts: 1 })).toBe('1 account · balances and types');
+    expect(moreSubtitle('/accounts', { accounts: 1 })).toBe('1 account');
     expect(moreSubtitle('/accounts', { accounts: 0 })).toBe('Add your first account');
-    expect(moreSubtitle('/categories', { categories: 9 })).toBe('9 categories · icons and colours');
-    expect(moreSubtitle('/goals', { activeGoals: 2 })).toBe('2 active goals · track your targets');
-    expect(moreSubtitle('/connect', { connectedApps: 1 })).toBe('1 app connected · manage in Settings');
+    expect(moreSubtitle('/categories', { categories: 9 })).toBe('9 categories');
+    expect(moreSubtitle('/goals', { activeGoals: 2 })).toBe('2 active goals');
+    expect(moreSubtitle('/connect', { connectedApps: 1 })).toBe('1 app connected');
   });
 
   it('explains the screen while counts load or are zero', () => {
-    expect(moreSubtitle('/accounts', {})).toBe('Cash, bank, savings and crypto');
-    expect(moreSubtitle('/goals', { activeGoals: 0 })).toBe('Save up, earn more or spend less');
-    expect(moreSubtitle('/connect', {})).toMatch(/suggest transactions/);
+    expect(moreSubtitle('/accounts', {})).toBe('Cash, bank, savings, crypto');
+    expect(moreSubtitle('/goals', { activeGoals: 0 })).toBe('Save, earn or spend less');
+    expect(moreSubtitle('/connect', {})).toBe('Use MoFin from your assistant');
   });
 });

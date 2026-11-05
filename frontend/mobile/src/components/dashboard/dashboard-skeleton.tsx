@@ -3,7 +3,8 @@ import { View } from 'react-native';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
-const CARD = 'rounded-xl bg-card p-5 shadow-sm shadow-black/5';
+// Same surface as the loaded cards, so nothing jumps when the data arrives.
+const CARD = 'rounded-2xl bg-card p-5 shadow-sm shadow-black/5';
 
 /** Hidden from screen readers; the screen announces loading itself. */
 function Hidden({ className, children }: { className?: string; children: React.ReactNode }) {
@@ -14,26 +15,52 @@ function Hidden({ className, children }: { className?: string; children: React.R
   );
 }
 
-/** Same footprint as the loaded hero: header row, figure, caption, chart area. */
+/** A pager row: round arrow, title and range in the middle, round arrow. */
+function PagerRow({ className, extra = false }: { className?: string; extra?: boolean }) {
+  return (
+    <View className={cn('flex-row items-center justify-between gap-2', className)}>
+      <Skeleton className="size-11 rounded-full" />
+      <View className="flex-1 items-center gap-1.5">
+        <Skeleton className="h-4 w-28" />
+        {!extra ? <Skeleton className="h-3 w-20" /> : null}
+      </View>
+      <Skeleton className="size-11 rounded-full" />
+      {extra ? <Skeleton className="size-11 rounded-full" /> : null}
+    </View>
+  );
+}
+
+/** Same layout as the loaded hero: label, metric tabs, week pager, figure, caption, chart. */
 export function BalanceHeroSkeleton() {
   return (
-    <Hidden className={cn(CARD, 'p-6')}>
-      <View className="flex-row items-center justify-between">
-        <Skeleton className="h-3 w-24" />
-        <Skeleton className="h-11 w-52 rounded-lg" />
-      </View>
+    <Hidden className={CARD}>
+      <Skeleton className="h-3 w-24" />
+      <Skeleton className="mt-3 h-12 w-full rounded-lg" />
+      <PagerRow className="mt-4" />
       <Skeleton className="mt-6 h-12 w-56 rounded-xl" />
-      <Skeleton className="mt-4 h-3 w-40" />
-      <Skeleton className="mt-8 h-44 rounded-xl" />
+      <Skeleton className="mt-3 h-3 w-32" />
+      <Skeleton className="mt-6 h-[194px] w-full rounded-xl" />
     </Hidden>
   );
 }
 
+/** The summary's body: the net box, then the donut and its legend rows. */
 export function SummarySkeleton() {
   return (
     <Hidden>
       <Skeleton className="mt-4 h-[148px] w-full rounded-xl" />
-      <Skeleton className="mt-4 h-44 w-full rounded-xl" />
+      <View className="mt-5 items-center gap-5">
+        <Skeleton className="size-44 rounded-full" />
+        <View className="w-full gap-2.5">
+          {[0, 1, 2].map((i) => (
+            <View key={i} className="flex-row items-center gap-3">
+              <Skeleton className="size-9 rounded-xl" />
+              <Skeleton className="h-3.5 flex-1" />
+              <Skeleton className="h-3.5 w-16" />
+            </View>
+          ))}
+        </View>
+      </View>
     </Hidden>
   );
 }
@@ -65,13 +92,22 @@ export function RecentRowsSkeleton() {
   );
 }
 
-/** The whole dashboard while the first data loads: hero, summary, goals, recent. */
+/** The whole dashboard while the first data loads: account chips, hero, summary, goals, recent. */
 export function DashboardSkeleton() {
   return (
     <View accessibilityLabel="Loading your dashboard" aria-busy className="gap-6">
-      <BalanceHeroSkeleton />
+      <View className="gap-4">
+        <Hidden className="flex-row gap-2">
+          <Skeleton className="h-11 w-32 rounded-full" />
+          <Skeleton className="h-11 w-28 rounded-full" />
+          <Skeleton className="size-11 rounded-full" />
+        </Hidden>
+        <BalanceHeroSkeleton />
+      </View>
       <View className={CARD}>
-        <Skeleton className="h-4 w-32" />
+        <Skeleton className="h-3 w-32" />
+        <Skeleton className="mt-3 h-12 w-full rounded-lg" />
+        <PagerRow className="mt-2" extra />
         <SummarySkeleton />
       </View>
       <View className={CARD}>

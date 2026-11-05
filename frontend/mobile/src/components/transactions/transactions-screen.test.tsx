@@ -137,7 +137,7 @@ describe('TransactionsScreen', () => {
     expect(await screen.findByText('No transactions yet')).toBeTruthy();
   });
 
-  it('switches to the recurring series', async () => {
+  it('shows the recurring schedules when picked in the Repeats filter', async () => {
     const root = makeTx({ id: 'r1', description: 'zz-Rent', isRecurring: true, recurringStatus: 'ACTIVE', recurringInterval: 'MONTHLY', recurringAmount: '500.00', nextOccurrenceAt: new Date(now + DAY).toISOString() });
     mockedGet.mockImplementation(async (path: string, params?: Record<string, unknown>) => {
       if (path === '/search/transactions') return params?.recurrence === 'series' ? page([root]) : page(rows);
@@ -145,7 +145,9 @@ describe('TransactionsScreen', () => {
     });
     await render(<TransactionsScreen />, { wrapper });
     await act(async () => {});
-    await fireEvent.press(await screen.findByRole('radio', { name: 'Recurring' }));
+    await fireEvent.press(await screen.findByLabelText('More filters'));
+    await fireEvent.press(await screen.findByLabelText(/^Repeats:/));
+    await fireEvent.press(await screen.findByLabelText('Recurring schedules'));
     expect(await screen.findByText('zz-Rent')).toBeTruthy();
     expect(screen.getByLabelText('Pause series')).toBeTruthy();
     expect(screen.getByLabelText('Edit series')).toBeTruthy();

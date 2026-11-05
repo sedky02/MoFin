@@ -19,7 +19,7 @@ describe('connect model', () => {
   });
 
   it('hides the connector for the demo or a server without a URL', () => {
-    expect(unavailableMessage('https://x/mcp', true)).toMatch(/isn't available in the demo/);
+    expect(unavailableMessage('https://x/mcp', true)).toMatch(/Not available in the demo/);
     expect(unavailableMessage('', false)).toMatch(/isn't available on this server/);
     expect(unavailableMessage('https://x/mcp', false)).toBeNull();
   });

@@ -7,6 +7,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useColorScheme } from 'nativewind';
 import { useEffect, useState } from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { useSession } from '@/api/session';
 import { WebPhoneFrame } from '@/components/shell/web-phone-frame';
@@ -57,6 +58,8 @@ export default function RootLayout() {
   const scheme = colorScheme === 'dark' ? 'dark' : 'light';
   const signedIn = status === 'signedIn';
   return (
+    // Gestures (swiping weeks, months and tabs) need this root around everything.
+    <GestureHandlerRootView style={{ flex: 1 }}>
     <QueryClientProvider client={getQueryClient()}>
       <ThemeProvider value={NAV_THEME[scheme]}>
         <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
@@ -76,5 +79,6 @@ export default function RootLayout() {
         </WebPhoneFrame>
       </ThemeProvider>
     </QueryClientProvider>
+    </GestureHandlerRootView>
   );
 }

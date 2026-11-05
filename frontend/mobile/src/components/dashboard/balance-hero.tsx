@@ -3,6 +3,7 @@ import { View } from 'react-native';
 import { router } from 'expo-router';
 
 import { MoneyAmount } from '@/components/common/money-amount';
+import { SwipeStepper } from '@/components/common/swipe';
 import { EmptyState, ErrorState } from '@/components/common/states';
 import { BalanceHeroSkeleton } from '@/components/dashboard/dashboard-skeleton';
 import { CurrencySwitch } from '@/components/dashboard/currency-switch';
@@ -12,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Text } from '@/components/ui/text';
-import { allAccountsCaption, countArchivedHolding, totalsByCurrency, zeroTotals } from '@/core/balances';
+import { countArchivedHolding, totalsByCurrency, zeroTotals } from '@/core/balances';
 import { tryParse } from '@/core/decimal';
 import { pickPrimaryCurrency } from '@/core/format';
 import type { HeroMetric } from '@/core/hero-headline';
@@ -39,13 +40,11 @@ const isOverdrawn = (amount: string) => tryParse(amount)?.isNegative() ?? false;
  */
 export function BalanceHero({
   accountId,
-  accountName,
   currency,
   onCurrencyChange,
   emptyPanel,
 }: {
   accountId?: string;
-  accountName?: string;
   currency: string;
   onCurrencyChange: (currency: string) => void;
   emptyPanel?: React.ReactNode;
@@ -91,7 +90,8 @@ export function BalanceHero({
     <HeroCard
       amount={hero.amount}
       currency={hero.currency}
-      caption={accountId ? (accountName ?? 'This account') : allAccountsCaption(hero.currency, archivedCount)}
+      // The account chips above already say which account this is; the caption says what the figure is.
+      caption={archivedCount > 0 ? `Current balance · incl. ${archivedCount} archived` : 'Current balance'}
       overdrawn={isOverdrawn(hero.amount)}
       accountId={accountId}
       currencies={totals.map((t) => ({ code: t.currency, overdrawn: isOverdrawn(t.amount) }))}
@@ -181,6 +181,13 @@ function HeroCard({
         </View>
       ) : null}
 
+      {/* Swipe left or right for the next or previous week, like the arrows. No weeks after this
+          one; nothing to step through before anything is recorded. */}
+      <SwipeStepper
+        onPrev={() => setMonday((m) => addDaysIso(m, -7))}
+        onNext={() => setMonday((m) => addDaysIso(m, 7))}
+        canPrev={!emptyPanel}
+        canNext={!emptyPanel && !atCurrent}>
       {!ready && (metric !== 'balance' || !atCurrent) ? (
         <Skeleton className="mt-6 h-12 w-56 rounded-xl" />
       ) : (
@@ -232,6 +239,7 @@ function HeroCard({
           <WeekChart key={monday} points={ready ? weekPoints : all.slice(7)} metric={metric} currency={currency} today={today} />
         </View>
       )}
+      </SwipeStepper>
     </View>
   );
 }

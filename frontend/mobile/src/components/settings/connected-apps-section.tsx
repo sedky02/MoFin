@@ -24,7 +24,7 @@ export function ConnectedAppsSection() {
     <SettingsSectionCard
       icon={Plug}
       title="Connected AI apps"
-      description="Apps you've approved to read your data and suggest transactions. Disconnecting stops an app from renewing access; a session it already holds can keep working for up to 15 minutes."
+      description="Apps that can read your data and suggest transactions. After you disconnect one, it may keep access for up to 15 minutes."
       action={
         <Link href="/connect" asChild>
           <Button variant="outline" role="link" className="min-h-11 self-start">
@@ -42,8 +42,7 @@ export function ConnectedAppsSection() {
         <View className="flex-row items-center gap-3 rounded-xl border border-dashed border-border p-4">
           <Icon as={Plug} size={20} aria-hidden className="text-muted-foreground" />
           <Text className="min-w-0 flex-1 text-sm text-muted-foreground">
-            No apps connected. Connect Claude, ChatGPT or another assistant to ask about your money and have it suggest
-            transactions for your approval.
+            No apps connected yet.
           </Text>
         </View>
       ) : (
@@ -92,7 +91,7 @@ export function ConnectedAppsSection() {
         open={!!toDisconnect}
         onOpenChange={(o) => !o && setToDisconnect(undefined)}
         title={`Disconnect ${toDisconnect?.clientName ?? 'this app'}?`}
-        description="It will lose access and have to ask for your approval again to reconnect."
+        description="It loses access until you approve it again."
         confirmLabel="Disconnect"
         destructive
         onConfirm={() => {

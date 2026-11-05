@@ -15,6 +15,17 @@ import {
 import type { Account, Category } from '@/core/types';
 import type { SearchParams } from '@/hooks/useSearch';
 
+/**
+ * The "Repeats" filter: core's two choices plus the recurring schedules, which list each series once
+ * (with pause, resume and cancel) instead of the transactions. They replaced the old Recurring tab.
+ * The schedules value never reaches the search params; the screen swaps in the series list.
+ */
+export const SCHEDULES = 'series';
+export const REPEATS_OPTIONS: { value: string; label: string }[] = [
+  ...RECURRENCE_OPTIONS,
+  { value: SCHEDULES, label: 'Recurring schedules' },
+];
+
 /** What the user typed or picked. Empty string means "not set". */
 export interface ListFilters {
   q: string;
@@ -104,7 +115,7 @@ export function buildChips(f: ListFilters, accounts?: Account[], categories?: Ca
   }
   const typeLabel = TYPE_OPTIONS.find((o) => o.value === f.type)?.label;
   if (typeLabel) chips.push({ key: 'type', label: typeLabel, clears: ['type'] });
-  const recurrenceLabel = RECURRENCE_OPTIONS.find((o) => o.value === f.recurrence)?.label;
+  const recurrenceLabel = REPEATS_OPTIONS.find((o) => o.value === f.recurrence)?.label;
   if (recurrenceLabel) chips.push({ key: 'recurrence', label: recurrenceLabel, clears: ['recurrence'] });
   if (f.from || f.to) {
     chips.push({

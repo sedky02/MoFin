@@ -24,27 +24,27 @@ export type SettingsSection = {
 
 /** The web's sections, in its page order, each a screen of its own here. */
 export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
-  { id: 'profile', label: 'Profile', summary: 'Display name and sign-in email', href: '/settings/profile', icon: UserIcon },
+  { id: 'profile', label: 'Profile', summary: 'Name and email', href: '/settings/profile', icon: UserIcon },
   {
     id: 'preferences',
     label: 'Preferences',
-    summary: 'Primary currency, default account and appearance',
+    summary: 'Currency, default account, theme',
     href: '/settings/preferences',
     icon: SlidersHorizontal,
   },
-  { id: 'security', label: 'Security', summary: 'Password and signed-in devices', href: '/settings/security', icon: ShieldCheck },
+  { id: 'security', label: 'Security', summary: 'Password and devices', href: '/settings/security', icon: ShieldCheck },
   {
     id: 'connected-apps',
     label: 'Connected AI apps',
-    summary: 'Apps you approved, and disconnecting them',
+    summary: 'Claude, ChatGPT and others',
     href: '/settings/connected-apps',
     icon: Plug,
   },
-  { id: 'data', label: 'Data', summary: 'Export as JSON or CSV, or delete it all', href: '/settings/data', icon: Database },
+  { id: 'data', label: 'Data', summary: 'Export or delete', href: '/settings/data', icon: Database },
   {
     id: 'delete-account',
     label: 'Delete account',
-    summary: 'Permanently delete your account',
+    summary: 'Delete for good',
     href: '/settings/delete-account',
     icon: Trash2,
     tone: 'danger',
@@ -69,8 +69,8 @@ export function settingsSections(user: User | undefined): SettingsSection[] {
 export const SETTINGS_COPY = {
   title: 'Settings',
   description: 'Manage your profile, preferences and security.',
-  profile: "Your sign-in email. Changing it isn't supported yet.",
-  preferences: 'How your money is shown and where new entries start.',
+  profile: "Your email can't be changed yet.",
+  preferences: 'Currency, default account and theme.',
   demoEmail: 'Temporary demo account',
   noDisplayName: 'No display name yet',
 } as const;

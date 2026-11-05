@@ -63,18 +63,18 @@ function plural(n: number, one: string, many: string): string {
 export function moreSubtitle(href: MoreHref, counts: MoreCounts): string {
   switch (href) {
     case '/accounts':
-      return counts.accounts === undefined ? 'Cash, bank, savings and crypto' : counts.accounts === 0 ? 'Add your first account' : `${plural(counts.accounts, 'account', 'accounts')} · balances and types`;
+      return counts.accounts === undefined ? 'Cash, bank, savings, crypto' : counts.accounts === 0 ? 'Add your first account' : plural(counts.accounts, 'account', 'accounts');
     case '/categories':
-      return counts.categories === undefined ? 'Group your income and spending' : `${plural(counts.categories, 'category', 'categories')} · icons and colours`;
+      return counts.categories === undefined ? 'Group income and spending' : plural(counts.categories, 'category', 'categories');
     case '/goals':
-      return counts.activeGoals ? `${plural(counts.activeGoals, 'active goal', 'active goals')} · track your targets` : 'Save up, earn more or spend less';
+      return counts.activeGoals ? plural(counts.activeGoals, 'active goal', 'active goals') : 'Save, earn or spend less';
     case '/ask':
-      return 'Questions about your money, answered with charts';
+      return 'Questions answered with charts';
     case '/connect':
       return counts.connectedApps
-        ? `${plural(counts.connectedApps, 'app', 'apps')} connected · manage in Settings`
-        : 'Let your assistant read balances and suggest transactions';
+        ? `${plural(counts.connectedApps, 'app', 'apps')} connected`
+        : 'Use MoFin from your assistant';
     case '/settings':
-      return 'Profile, appearance, security and data';
+      return 'Profile, theme, security, data';
   }
 }
