@@ -6,6 +6,11 @@ datasource db {
   provider = "postgresql"
 }
 
+enum AiChatRole {
+  USER
+  ASSISTANT
+}
+
 enum AccountType {
   CASH
   BANK
@@ -96,6 +101,7 @@ model User {
   oauthGrants        OAuthGrant[]
   authSessions       AuthSession[]
   passwordResets     PasswordResetToken[]
+  aiChats            AiChat[]
   createdAt          DateTime             @default(now())
   updatedAt          DateTime             @updatedAt
 
@@ -435,4 +441,40 @@ model PasswordResetToken {
   createdAt DateTime  @default(now())
 
   @@index([userId])
+}
+
+// A saved conversation with the in-app assistant. Read-only Q&A over the
+// user's own data: nothing here is financial data, so a chat can be deleted.
+// The model sees `summary` (a running digest of the older messages) plus the
+// messages after the first `summarizedCount`, so long chats keep their context
+// without re-sending everything.
+model AiChat {
+  id              String          @id @default(uuid())
+  userId          String
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title           String
+  summary         String?
+  summarizedCount Int             @default(0)
+  messages        AiChatMessage[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([userId, updatedAt])
+}
+
+// One turn of a chat. Only what the user typed and what the assistant
+// answered are stored; the tool calls in between are not.
+model AiChatMessage {
+  id        String     @id @default(uuid())
+  chatId    String
+  chat      AiChat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  role      AiChatRole
+  content   String
+  /// Tools the assistant read to answer (assistant turns only).
+  usedTools String[]   @default([])
+  /// Charts computed on the server from the ledger (assistant turns only).
+  charts    Json?
+  createdAt DateTime   @default(now())
+
+  @@index([chatId, createdAt])
 }
