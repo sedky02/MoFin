@@ -27,6 +27,33 @@ export class DraftTransactionsService {
     private readonly events: EventEmitter2,
   ) {}
 
+  /**
+   * Several drafts from one message, all or none: a failure halfway must not
+   * leave some saved (the user would retry and get duplicates). Events go out
+   * only after the commit, so no listener sees a draft that was rolled back.
+   */
+  async createMany(userId: string, dtos: CreateDraftTransactionDto[]) {
+    const drafts = await this.prisma.$transaction(
+      dtos.map((dto) =>
+        this.prisma.draftTransaction.create({
+          data: {
+            userId,
+            rawInput: dto.rawInput,
+            parsedData: dto.parsedData,
+            confidenceScore: new Prisma.Decimal(dto.confidenceScore),
+          },
+        }),
+      ),
+    );
+    for (const draft of drafts) {
+      this.events.emit(DomainEvents.DraftCreated, {
+        draftId: draft.id,
+        userId,
+      } satisfies DraftCreatedEvent);
+    }
+    return drafts;
+  }
+
   async create(userId: string, dto: CreateDraftTransactionDto) {
     const draft = await this.prisma.draftTransaction.create({
       data: {
