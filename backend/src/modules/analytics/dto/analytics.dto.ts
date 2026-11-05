@@ -1,3 +1,4 @@
+import { timeZoneSchema } from '../../../common/utils/time-zone';
 import { z } from 'zod';
 
 // Plain object (no refinement) so MCP can expose its raw shape as a tool inputSchema.
@@ -31,16 +32,6 @@ export const monthlySeriesQuerySchema = z.object({
 });
 export type MonthlySeriesQueryDto = z.infer<typeof monthlySeriesQuerySchema>;
 
-/** True for an IANA zone name the runtime knows ("Africa/Tunis", "UTC"). */
-function isTimeZone(value: string): boolean {
-  try {
-    new Intl.DateTimeFormat('en', { timeZone: value });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 const isoDate = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, 'expected YYYY-MM-DD')
@@ -57,7 +48,7 @@ export const dailySeriesQuerySchema = z.object({
   currency: z.string().length(3),
   accountId: z.string().optional(),
   /** Which calendar the days follow; a transaction at 00:30 in Tunis belongs to that day, not the UTC one. */
-  tz: z.string().max(64).refine(isTimeZone, 'unknown time zone').default('UTC'),
+  tz: timeZoneSchema.default('UTC'),
 });
 export type DailySeriesQueryDto = z.infer<typeof dailySeriesQuerySchema>;
 
