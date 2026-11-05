@@ -22,6 +22,7 @@ import type {
 } from "@/lib/types";
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/form-errors";
+import { deviceTimeZone } from "@/lib/week";
 
 const PAGE = 10;
 
@@ -68,7 +69,8 @@ export function useCreateDraftIntent() {
       input: string;
       defaultAccountId?: string;
       defaultCurrency?: string;
-    }) => api.post<DraftTransaction[]>("/ai/transaction-intents", body),
+      // The browser's zone, so "yesterday" is the user's yesterday.
+    }) => api.post<DraftTransaction[]>("/ai/transaction-intents", { ...body, timeZone: deviceTimeZone() }),
     onSuccess: (drafts) => {
       queryClient.invalidateQueries({ queryKey: draftKeys.all });
       if (drafts.length > 1) toast.success(`${drafts.length} drafts created. Review each one below.`);
