@@ -103,7 +103,7 @@ export async function computeSummary(at: Date): Promise<SummaryWidgetProps> {
     account,
     missing,
     currency,
-    balance: scopeBalance(balances, account, currency),
+    balance: scopeBalance(balances, account, currency, accounts),
     ...flows,
     hidden: amountsHidden(settings.hideAmounts, account),
     at,

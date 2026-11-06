@@ -8,6 +8,7 @@ import { useUser } from "@/hooks/useUser";
 import { Button } from "@/components/ui/button";
 import { pickPrimaryCurrency } from "@/lib/format";
 import { tryParse } from "@/lib/decimal";
+import { hiddenAccountIds, hiddenCaption, withoutHiddenBalances } from "@/lib/account-privacy";
 import { allAccountsCaption, countArchivedHolding, totalsByCurrency, zeroTotals } from "@/lib/balances";
 import { BalanceOverview } from "@/components/dashboard/balance-overview";
 import { ErrorState, EmptyState } from "@/components/common/states";
@@ -60,7 +61,14 @@ export function BalanceCards({
   const scopedAccounts = (activeAccounts ?? []).filter((a) => !accountId || a.id === accountId);
   const ledgerTotals = totalsByCurrency(data ?? []);
   const noActivity = ledgerTotals.length === 0 && scopedAccounts.length > 0;
-  const totals = (noActivity ? zeroTotals(scopedAccounts) : ledgerTotals).sort(
+  // All accounts leaves hidden accounts out. A currency held only in hidden accounts keeps its
+  // place in the switch, at zero, rather than vanishing.
+  const hiddenIds = accountId ? [] : hiddenAccountIds(activeAccounts);
+  const shownTotals = totalsByCurrency(withoutHiddenBalances(data ?? [], hiddenIds));
+  const visibleTotals = ledgerTotals.map(
+    (t) => shownTotals.find((s) => s.currency === t.currency) ?? { currency: t.currency, amount: "0" },
+  );
+  const totals = (noActivity ? zeroTotals(scopedAccounts) : visibleTotals).sort(
     (a, b) => Number(b.currency === primary) - Number(a.currency === primary),
   );
 
@@ -94,10 +102,16 @@ export function BalanceCards({
       <BalanceOverview
         amount={hero.amount}
         currency={hero.currency}
-        caption={accountId ? (accountName ?? "This account") : allAccountsCaption(hero.currency, archivedCount)}
+        caption={
+          accountId
+            ? (accountName ?? "This account")
+            : allAccountsCaption(hero.currency, archivedCount) +
+              hiddenCaption(hiddenAccountIds(activeAccounts, hero.currency).length)
+        }
         overdrawn={isOverdrawn(hero.amount)}
         accountId={accountId}
         account={accountId ? activeAccounts?.find((a) => a.id === accountId) : undefined}
+        hiddenIds={accountId ? [] : hiddenAccountIds(activeAccounts, hero.currency)}
         currencies={totals.map((t) => ({ code: t.currency, overdrawn: isOverdrawn(t.amount) }))}
         onCurrencyChange={setPicked}
         emptyAction={

@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 
 import { HideableAmount } from '@/components/common/hideable-amount';
 import { MoneyAmount } from '@/components/common/money-amount';
-import { isAmountHidden } from '@/core/account-privacy';
+import { hiddenAccountIds, hiddenCaption, isAmountHidden, withoutHiddenBalances, withoutHiddenSeries } from '@/core/account-privacy';
 import { useRevealedAmount } from '@/hooks/use-revealed-amount';
 import { SwipeStepper } from '@/components/common/swipe';
 import { EmptyState, ErrorState } from '@/components/common/states';
@@ -25,7 +25,7 @@ import { addDaysIso, deviceTimeZone, localIso, mondayOf, weekHeadline, weekRange
 import { ChevronLeft, ChevronRight, Wallet } from '@/lib/icons';
 import { cn } from '@/lib/utils';
 import { useAccounts } from '@/hooks/useAccounts';
-import { useDailySeries } from '@/hooks/useAnalytics';
+import { useDailySeries, useDailySeriesFor } from '@/hooks/useAnalytics';
 import { useLedgerBalance } from '@/hooks/useLedger';
 import { useUser } from '@/hooks/useUser';
 
@@ -65,7 +65,14 @@ export function BalanceHero({
   // The ledger scoped to one account is keyed by currency alone; totalsByCurrency reads both forms.
   const ledgerTotals = totalsByCurrency((data ?? []).map((b) => ({ key: b.key, balance: b.balance })));
   const noActivity = ledgerTotals.length === 0 && scopedAccounts.length > 0;
-  const totals = (noActivity ? zeroTotals(scopedAccounts) : ledgerTotals).sort(
+  // All accounts leaves hidden accounts out. A currency held only in hidden accounts keeps its
+  // place in the switch, at zero, rather than vanishing.
+  const hiddenIds = accountId ? [] : hiddenAccountIds(activeAccounts);
+  const shownTotals = totalsByCurrency(withoutHiddenBalances(data ?? [], hiddenIds));
+  const visibleTotals = ledgerTotals.map(
+    (t) => shownTotals.find((s) => s.currency === t.currency) ?? { currency: t.currency, amount: '0' },
+  );
+  const totals = (noActivity ? zeroTotals(scopedAccounts) : visibleTotals).sort(
     (a, b) => Number(b.currency === primary) - Number(a.currency === primary),
   );
 
@@ -95,10 +102,14 @@ export function BalanceHero({
       amount={hero.amount}
       currency={hero.currency}
       // The account chips above already say which account this is; the caption says what the figure is.
-      caption={archivedCount > 0 ? `Current balance · incl. ${archivedCount} archived` : 'Current balance'}
+      caption={
+        (archivedCount > 0 ? `Current balance · incl. ${archivedCount} archived` : 'Current balance') +
+        (accountId ? '' : hiddenCaption(hiddenAccountIds(activeAccounts, hero.currency).length))
+      }
       overdrawn={isOverdrawn(hero.amount)}
       accountId={accountId}
       account={accountId ? activeAccounts?.find((a) => a.id === accountId) : undefined}
+      hiddenIds={accountId ? [] : hiddenAccountIds(activeAccounts, hero.currency)}
       currencies={totals.map((t) => ({ code: t.currency, overdrawn: isOverdrawn(t.amount) }))}
       onCurrencyChange={onCurrencyChange}
       emptyAction={
@@ -120,6 +131,7 @@ function HeroCard({
   overdrawn,
   accountId,
   account,
+  hiddenIds = [],
   currencies,
   onCurrencyChange,
   emptyAction,
@@ -132,6 +144,8 @@ function HeroCard({
   accountId?: string;
   /** The one account shown, if any: its amounts stay dots while the user keeps them hidden. */
   account?: Account;
+  /** All accounts: hidden accounts in this currency, whose figures the chart leaves out. */
+  hiddenIds?: string[];
   currencies: { code: string; overdrawn: boolean }[];
   onCurrencyChange: (c: string) => void;
   emptyAction?: React.ReactNode;
@@ -146,8 +160,23 @@ function HeroCard({
   const thisMonday = mondayOf(today);
   const [monday, setMonday] = React.useState(thisMonday);
   // Two weeks: the one shown and the one before it, for the "vs the week before" chip.
-  const { data, isLoading, isError, refetch } = useDailySeries(currency, addDaysIso(monday, -7), 14, timeZone, accountId);
-  const all = data?.points ?? [];
+  const from = addDaysIso(monday, -7);
+  const series = useDailySeries(currency, from, 14, timeZone, accountId);
+  // All accounts with some hidden: their own series come out of every day. Until each one is in
+  // (and the main series is this same week, not the previous one kept while paging), nothing is
+  // drawn, so the hidden money never shows even for a moment.
+  const hidden = useDailySeriesFor(currency, from, 14, timeZone, accountId ? [] : hiddenIds);
+  const hiddenIn =
+    hidden.length === 0 ||
+    (series.data?.points[0]?.date === from && hidden.every((q) => q.data?.points[0]?.date === from));
+  const data = series.data && hiddenIn ? series.data : undefined;
+  const isLoading = series.isLoading || hidden.some((q) => q.isLoading);
+  const isError = series.isError || hidden.some((q) => q.isError);
+  const refetch = () => {
+    void series.refetch();
+    hidden.forEach((q) => void q.refetch());
+  };
+  const all = data ? withoutHiddenSeries(data.points, hidden.map((q) => q.data?.points ?? [])) : [];
   // While the next week loads the previous one stays on screen (dimmed); its figures aren't this week's.
   const ready = all[7]?.date === monday;
   const weekPoints = ready ? all.slice(7) : [];

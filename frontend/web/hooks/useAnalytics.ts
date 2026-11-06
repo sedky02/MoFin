@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { analyticsKeys } from "@/lib/query-keys";
 import { STALE } from "@/lib/query-client";
@@ -37,5 +37,26 @@ export function useDailySeries(currency: string, from: string, days: number, tim
       api.get<DailySeries>("/analytics/daily-series", { currency, from, days, tz: timeZone, accountId }),
     staleTime: STALE.analytics,
     placeholderData: (prev) => prev,
+  });
+}
+
+/**
+ * One day series per account, same window: the hidden accounts taken out of an all-accounts chart.
+ * Same keys as useDailySeries, so a series already fetched for that account is reused.
+ */
+export function useDailySeriesFor(
+  currency: string,
+  from: string,
+  days: number,
+  timeZone: string,
+  accountIds: string[],
+) {
+  return useQueries({
+    queries: accountIds.map((accountId) => ({
+      queryKey: analyticsKeys.daily(currency, from, days, timeZone, accountId),
+      queryFn: () =>
+        api.get<DailySeries>("/analytics/daily-series", { currency, from, days, tz: timeZone, accountId }),
+      staleTime: STALE.analytics,
+    })),
   });
 }

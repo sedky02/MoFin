@@ -1,6 +1,6 @@
 // The Summary widget's numbers and words, worked out in the app: widgets can't fetch or compute
 // anything themselves, so they get finished strings. Pure functions, tested in summary-data.test.ts.
-import { isAmountHidden, MASKED_AMOUNT } from '@/core/account-privacy';
+import { hiddenAccountIds, isAmountHidden, MASKED_AMOUNT, withoutHiddenBalances } from '@/core/account-privacy';
 import { totalsByCurrency } from '@/core/balances';
 import { add } from '@/core/decimal';
 import { scopeBalances } from '@/core/dashboard-scope';
@@ -106,9 +106,17 @@ export function scopeCurrency(account: Account | undefined, balances: LedgerBala
   return account?.currency ?? pickPrimaryCurrency(balances, user, '', accounts);
 }
 
-/** Today's balance for the scope, in `currency`, from the all-accounts balance rows. */
-export function scopeBalance(all: LedgerBalance[], account: Account | undefined, currency: string): string {
-  const rows = account ? scopeBalances(all, account.id) : all;
+/**
+ * Today's balance for the scope, in `currency`, from the all-accounts balance rows. All accounts
+ * leaves out the accounts the user hid, as the dashboard does.
+ */
+export function scopeBalance(
+  all: LedgerBalance[],
+  account: Account | undefined,
+  currency: string,
+  accounts: Account[] = [],
+): string {
+  const rows = account ? scopeBalances(all, account.id) : withoutHiddenBalances(all, hiddenAccountIds(accounts));
   return totalsByCurrency(rows).find((t) => t.currency === currency)?.amount ?? '0';
 }
 
@@ -164,7 +172,9 @@ export function summaryProps(input: {
     ...EMPTY,
     kind: 'data',
     title: periodTitle(input.config.period),
-    scope: account ? account.name : `All accounts · ${currency}`,
+    scope: account
+      ? account.name
+      : `All accounts · ${currency}${hiddenAccountIds(input.accounts, currency).length ? ' · excl. hidden' : ''}`,
     balance: money(input.balance),
     income: money(input.income),
     expenses: money(input.expenses),

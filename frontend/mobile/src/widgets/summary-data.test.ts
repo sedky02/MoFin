@@ -77,6 +77,11 @@ describe('scopeCurrency and scopeBalance', () => {
     expect(scopeBalance(BALANCES, undefined, 'TND')).toBe('1120.75');
   });
 
+  it('leaves hidden accounts out of the all-accounts balance', () => {
+    const hiddenBank = account('bank', 'TND', { metadata: { hideAmount: true } });
+    expect(scopeBalance(BALANCES, undefined, 'TND', [CASH, hiddenBank, EURO])).toBe('120.5');
+  });
+
   it('is zero for an account with no ledger rows yet', () => {
     expect(scopeBalance([], BANK, 'TND')).toBe('0');
   });
@@ -139,6 +144,12 @@ describe('summaryProps', () => {
   it("names a single account and the week", () => {
     const props = summaryProps({ ...base, config: { period: 'week', accountId: 'bank' }, account: BANK });
     expect(props).toMatchObject({ title: 'This week', scope: 'Bank' });
+  });
+
+  it('says when hidden accounts are left out of all accounts', () => {
+    const accounts = [CASH, account('bank', 'TND', { metadata: { hideAmount: true } }), EURO];
+    expect(summaryProps({ ...base, accounts }).scope).toBe('All accounts · TND · excl. hidden');
+    expect(summaryProps({ ...base, accounts, currency: 'EUR' }).scope).toBe('All accounts · EUR');
   });
 
   it('masks every amount when hidden', () => {
