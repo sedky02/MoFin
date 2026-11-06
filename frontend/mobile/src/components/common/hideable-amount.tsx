@@ -48,7 +48,7 @@ export function HideableAmount({
           onPress={() => setRevealed(!revealed)}
           hitSlop={4}
           className="size-11 items-center justify-center rounded-full active:bg-accent">
-          <Icon as={revealed ? EyeOff : Eye} size={18} className="text-muted-foreground" />
+          <Icon as={revealed ? Eye : EyeOff} size={18} className="text-muted-foreground" />
         </Pressable>
       ) : null}
     </View>

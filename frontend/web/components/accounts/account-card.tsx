@@ -114,7 +114,7 @@ export function AccountRow({
                   aria-pressed={hidden}
                   title={hidden ? "Show balance" : "Hide balance"}
                 >
-                  {hidden ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
+                  {hidden ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                 </Button>
               )}
               {onEdit && (

@@ -49,7 +49,7 @@ export function HideableAmount({
           aria-label={revealed ? `Hide the balance of ${name}` : `Show the balance of ${name}`}
           aria-pressed={revealed}
         >
-          {revealed ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+          {revealed ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
         </Button>
       )}
     </span>

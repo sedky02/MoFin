@@ -72,7 +72,7 @@ export function AccountRow({
                 onPress={() => onToggleHidden(account)}
                 accessibilityLabel={hidden ? `Show the balance of ${account.name}` : `Hide the balance of ${account.name}`}
                 accessibilityState={{ selected: hidden, disabled: busy }}>
-                <Icon as={hidden ? Eye : EyeOff} size={16} className="text-muted-foreground" />
+                <Icon as={hidden ? EyeOff : Eye} size={16} className="text-muted-foreground" />
               </Button>
             ) : null}
             {onEdit ? (
