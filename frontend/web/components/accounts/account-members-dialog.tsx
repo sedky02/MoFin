@@ -18,7 +18,6 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import {
@@ -31,7 +30,7 @@ import {
   useRevokeInvitation,
   useTransferOwnership,
 } from "@/hooks/useAccountSharing";
-import { canManage, memberName, ROLE_HELP, ROLE_LABEL } from "@/lib/account-sharing";
+import { canManage, memberName, ROLE_LABEL } from "@/lib/account-sharing";
 import type { Account, AccountMember, AccountMemberRole } from "@/lib/types";
 
 function RoleSelect({
@@ -73,14 +72,14 @@ function InviteForm({ accountId }: { accountId: string }) {
 
   return (
     <form onSubmit={submit} className="space-y-2">
-      <Label htmlFor="invite-email">Invite someone</Label>
       <div className="flex flex-wrap gap-2">
         <Input
           id="invite-email"
           type="email"
           required
           autoComplete="off"
-          placeholder="name@example.com"
+          aria-label="Email to invite"
+          placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           className="min-w-44 flex-1"
@@ -91,10 +90,7 @@ function InviteForm({ accountId }: { accountId: string }) {
           Invite
         </Button>
       </div>
-      <p className="text-xs text-muted-foreground">
-        {ROLE_HELP[role]} They&apos;ll see this account&apos;s full history and its goals, from before
-        they joined too. The link works for 7 days.
-      </p>
+      <p className="text-xs text-muted-foreground">They&apos;ll see the full history.</p>
     </form>
   );
 }
@@ -129,12 +125,8 @@ export function AccountMembersDialog({
       <Dialog open={!!account} onOpenChange={(open) => !open && onClose()}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle className="text-base">People on {account?.name}</DialogTitle>
-            <DialogDescription>
-              {owner
-                ? "Editors can add and change transactions and goals. Viewers can only look."
-                : "Your role decides what you can do on this account."}
-            </DialogDescription>
+            <DialogTitle className="text-base">{account?.name}</DialogTitle>
+            <DialogDescription className="sr-only">People on this account</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-6">
@@ -192,7 +184,7 @@ export function AccountMembersDialog({
 
             {owner && pending.length > 0 && (
               <section aria-label="Pending invitations">
-                <h3 className="mb-1 text-sm font-medium">Pending invitations</h3>
+                <h3 className="mb-1 text-sm font-medium">Pending</h3>
                 <ul className="divide-y divide-border">
                   {pending.map((invitation) => (
                     <li key={invitation.id} className="flex items-center gap-2 py-2">
@@ -236,7 +228,7 @@ export function AccountMembersDialog({
         open={!!toRemove}
         onOpenChange={(open) => !open && setToRemove(undefined)}
         title={`Remove ${toRemove ? memberName(toRemove) : ""}?`}
-        description="They lose access to this account straight away. Transactions they added stay."
+        description="They lose access now. Their transactions stay."
         confirmLabel="Remove"
         onConfirm={() => {
           if (toRemove) remove.mutate(toRemove.userId);
@@ -247,7 +239,7 @@ export function AccountMembersDialog({
         open={!!newOwner}
         onOpenChange={(open) => !open && setNewOwner(undefined)}
         title={`Make ${newOwner ? memberName(newOwner) : ""} the owner?`}
-        description="They get full control of this account, and it moves to their categories. You stay on as an editor and can leave later. Past transfers to your other accounts are kept as separate one-sided records, and a recurring transfer between them pauses. Balances don't change, and you can't undo this yourself."
+        description="They get full control and you become an editor. You can't undo this."
         confirmLabel="Transfer ownership"
         onConfirm={() => {
           if (newOwner) transfer.mutate(newOwner.userId, { onSuccess: onClose });
@@ -258,7 +250,7 @@ export function AccountMembersDialog({
         open={leaving}
         onOpenChange={setLeaving}
         title={`Leave ${account?.name}?`}
-        description="You lose access to this account straight away. Transactions you added stay, and pending drafts for it will need another account. The owner can invite you again."
+        description="You lose access now. Your transactions stay."
         confirmLabel="Leave"
         onConfirm={() => {
           leave.mutate(undefined, { onSuccess: onClose });

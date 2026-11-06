@@ -9,8 +9,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api, ApiClientError } from '@/api/client';
 import { SkeletonCard } from '@/components/common/states';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Text } from '@/components/ui/text';
-import { ROLE_HELP, ROLE_LABEL } from '@/core/account-sharing';
+import { ROLE_LABEL } from '@/core/account-sharing';
 import type { InvitationPreview } from '@/core/types';
 import { useUser } from '@/hooks/useUser';
 import { forgetInvite, pendingInvite } from '@/lib/pending-invite';
@@ -78,10 +79,16 @@ export function InvitationScreen() {
   const frame = (children: React.ReactNode) => (
     <ScrollView
       className="flex-1 bg-background"
-      contentContainerClassName="mx-auto w-full max-w-3xl gap-4 p-4"
+      contentContainerClassName="mx-auto w-full max-w-md flex-grow justify-center p-4"
       contentContainerStyle={{ paddingBottom: 16 + insets.bottom }}>
-      {children}
+      <Card className="gap-0 rounded-[28px] border-0 p-3.5">{children}</Card>
     </ScrollView>
+  );
+
+  const heading = (text: string) => (
+    <Text role="heading" aria-level={1} className="px-3 pb-5 pt-4 text-center text-xl font-semibold">
+      {text}
+    </Text>
   );
 
   if (preview.isLoading) return frame(<SkeletonCard />);
@@ -89,13 +96,9 @@ export function InvitationScreen() {
   if (!token || preview.isError || !preview.data) {
     return frame(
       <>
-        <Text role="heading" aria-level={1} className="text-xl font-semibold">
-          This invitation can&apos;t be used
-        </Text>
-        <Text className="text-sm text-muted-foreground">
-          It may have expired, been revoked or already been answered. Ask for a new one.
-        </Text>
-        <Button variant="outline" className="min-h-11" onPress={done}>
+        {heading('Invitation unavailable')}
+        <Text className="-mt-3 pb-5 text-center text-sm text-muted-foreground">Ask for a new one.</Text>
+        <Button variant="outline" className="min-h-12 rounded-xl" onPress={done}>
           <Text>Go to MoFin</Text>
         </Button>
       </>,
@@ -103,56 +106,59 @@ export function InvitationScreen() {
   }
 
   const invitation = preview.data;
-  const role = ROLE_LABEL[invitation.role].toLowerCase();
   const wrongPerson = !!user && user.email !== invitation.email;
 
   return frame(
     <>
-      <Text role="heading" aria-level={1} className="text-xl font-semibold">
-        {invitation.invitedBy} invited you to an account
-      </Text>
-      <Text className="text-sm text-muted-foreground">
-        Join <Text className="text-sm font-medium">{invitation.accountName}</Text> ({invitation.currency}) as{' '}
-        {role === 'editor' ? 'an' : 'a'} {role}. {ROLE_HELP[invitation.role]}
-      </Text>
-      <Text className="text-sm text-muted-foreground">
-        You&apos;ll see its full history, and the owner and other members will see what you add.
-      </Text>
+      {heading(`${invitation.invitedBy} invited you`)}
+      {/* Same panel as the invitation email, so the two read as one step. */}
+      <View className="rounded-xl bg-brand-ink p-5">
+        <Text className="text-xs text-white/60">Shared account</Text>
+        <Text numberOfLines={1} className="mt-1 text-2xl font-semibold text-white">
+          {invitation.accountName}
+        </Text>
+        <View className="mt-3.5 flex-row items-center gap-2">
+          <View className="rounded-full bg-brand-lime px-2.5 py-1">
+            <Text className="text-xs font-semibold text-brand-ink">{ROLE_LABEL[invitation.role]}</Text>
+          </View>
+          <Text className="text-xs text-white/60">{invitation.currency}</Text>
+        </View>
+      </View>
+      <View className="mt-3.5 gap-2">
+        {wrongPerson ? null : needsVerifying ? (
+          verificationSent ? (
+            <Button className="min-h-12 rounded-xl" disabled={busy} onPress={accept}>
+              <Text>I&apos;ve verified it</Text>
+            </Button>
+          ) : (
+            <Button className="min-h-12 rounded-xl" disabled={busy} onPress={sendVerification}>
+              <Text>Verify your email</Text>
+            </Button>
+          )
+        ) : (
+          <>
+            <Button className="min-h-12 rounded-xl" disabled={busy} onPress={accept}>
+              <Text>Accept</Text>
+            </Button>
+            <Button variant="ghost" className="min-h-12 rounded-xl" disabled={busy} onPress={decline}>
+              <Text>Decline</Text>
+            </Button>
+          </>
+        )}
+      </View>
       {problem ? (
-        <Text role="alert" className="text-sm text-destructive">
+        <Text role="alert" className="px-2 pt-3.5 text-center text-sm text-destructive">
           {problem}
         </Text>
       ) : null}
       {wrongPerson ? (
-        <Text role="alert" className="text-sm text-destructive">
-          This invitation is for {invitation.email}, and you&apos;re signed in as {user.email}. Sign out and sign in with that
-          address to accept it.
+        <Text role="alert" className="px-2 pt-3.5 text-center text-sm text-destructive">
+          This invitation is for {invitation.email}.
         </Text>
-      ) : needsVerifying ? (
-        <View className="gap-3">
-          <Text className="text-sm">
-            Verify {invitation.email} first. We&apos;ll email you a link; open it, then come back here.
-          </Text>
-          {verificationSent ? (
-            <Button className="min-h-11" disabled={busy} onPress={accept}>
-              <Text>I&apos;ve verified it</Text>
-            </Button>
-          ) : (
-            <Button className="min-h-11" disabled={busy} onPress={sendVerification}>
-              <Text>Send verification email</Text>
-            </Button>
-          )}
-        </View>
-      ) : (
-        <View className="gap-2">
-          <Button className="min-h-11" disabled={busy} onPress={accept}>
-            <Text>Accept invitation</Text>
-          </Button>
-          <Button variant="outline" className="min-h-11" disabled={busy} onPress={decline}>
-            <Text>Decline</Text>
-          </Button>
-        </View>
-      )}
+      ) : null}
+      {verificationSent ? (
+        <Text className="px-2 pt-3.5 text-center text-sm text-muted-foreground">Check your inbox.</Text>
+      ) : null}
     </>,
   );
 }

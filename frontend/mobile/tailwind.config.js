@@ -26,6 +26,8 @@ module.exports = {
       fontFamily: { sans: ['Inter_400Regular'] },
       // The variables are generated from the web's globals.css (scripts/sync-theme.js).
       colors: {
+        // Fixed brand values from the logo guidelines, the same in both themes.
+        brand: { lime: '#d7f205', ink: '#11120d' },
         border: color('border'),
         input: color('input'),
         ring: color('ring'),

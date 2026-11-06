@@ -11,16 +11,21 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { AccountInvitation, InvitationStatus, Prisma } from '@prisma/client';
+import {
+  AccountInvitation,
+  AccountMemberRole,
+  InvitationStatus,
+  Prisma,
+} from '@prisma/client';
 import { randomBytes } from 'crypto';
 import {
   AccountAccessChangedEvent,
   DomainEvents,
 } from '../../common/events/domain-events';
-import { escapeHtml } from '../../common/utils/escape-html';
 import { sha256 } from '../../common/utils/hash';
 import { PrismaService } from '../../database/prisma.service';
 import { AccountAccessService } from '../account-access/account-access.service';
+import { invitationEmail } from '../mail/invitation-email';
 import { MailSender } from '../mail/mail-sender';
 import { CreateInvitationDto } from './dto/account-sharing.dto';
 
@@ -134,6 +139,7 @@ export class InvitationsService {
         token,
         short(inviter.displayName || inviter.email),
         short(account.name),
+        dto.role,
       );
     } catch (error) {
       // Nobody has the link, so a pending row would only mislead the owner.
@@ -156,6 +162,7 @@ export class InvitationsService {
     token: string,
     inviter: string,
     accountName: string,
+    role: AccountMemberRole,
   ) {
     const webUrl = this.config
       .get<string>('WEB_URL', 'http://localhost:3001')
@@ -164,20 +171,7 @@ export class InvitationsService {
     const link = `${webUrl}/invitations/accept#token=${token}`;
     await this.mail.send({
       to,
-      subject: `${inviter} invited you to an account on MoFin`,
-      text: [
-        `${inviter} invited you to share the account "${accountName}" on MoFin.`,
-        '',
-        'Open this link within 7 days to accept or decline:',
-        link,
-        '',
-        "If you don't know this person, ignore this email.",
-      ].join('\n'),
-      html: [
-        `<p>${escapeHtml(inviter)} invited you to share the account "${escapeHtml(accountName)}" on MoFin.</p>`,
-        `<p><a href="${link}">Accept or decline</a> (the link works once, within 7 days).</p>`,
-        "<p>If you don't know this person, ignore this email.</p>",
-      ].join('\n'),
+      ...invitationEmail({ inviter, accountName, role, link }),
     });
   }
 

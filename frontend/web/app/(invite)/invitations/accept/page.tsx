@@ -3,10 +3,9 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AlertCircle, MailCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { PENDING_INVITE_KEY, ROLE_HELP, ROLE_LABEL } from "@/lib/account-sharing";
+import { PENDING_INVITE_KEY, ROLE_LABEL } from "@/lib/account-sharing";
 import { loginUrlWithNext } from "@/lib/safe-next";
 import type { InvitationPreview, User } from "@/lib/types";
 
@@ -46,21 +45,44 @@ function forgetToken() {
   }
 }
 
-function Heading({ children }: { children: React.ReactNode }) {
+/** The card every state sits on. The inner panel's radius is the card's minus its padding. */
+function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <h1 className="font-heading text-3xl font-bold leading-tight tracking-tight">{children}</h1>
+    <div className="rounded-hero bg-card p-3.5 shadow-hero">
+      <h1 className="px-3 pt-4 pb-5 text-center text-xl font-semibold tracking-tight text-balance">
+        {title}
+      </h1>
+      {children}
+    </div>
   );
 }
 
-function Alert({ children }: { children: React.ReactNode }) {
+/** Same panel as the invitation email, so the two read as one step. */
+function AccountPanel({ preview }: { preview: InvitationPreview }) {
   return (
-    <div
-      role="alert"
-      className="mt-4 flex items-start gap-2.5 rounded-lg border border-destructive/30 bg-destructive/10 px-3.5 py-3 text-sm text-destructive"
-    >
-      <AlertCircle className="mt-0.5 size-4 shrink-0" />
-      <span>{children}</span>
+    <div className="rounded-xl bg-brand-ink p-5 text-white dark:ring-1 dark:ring-white/10">
+      <p className="text-xs text-white/60">Shared account</p>
+      <p className="mt-1 truncate text-2xl font-semibold tracking-tight">{preview.accountName}</p>
+      <p className="mt-3.5 flex items-center gap-2 text-xs">
+        <span className="rounded-full bg-brand-lime px-2.5 py-1 font-semibold text-brand-ink">
+          {ROLE_LABEL[preview.role]}
+        </span>
+        <span className="tabular text-white/60">{preview.currency}</span>
+      </p>
     </div>
+  );
+}
+
+const ACTION = "h-12 w-full rounded-xl text-base";
+
+function Note({ children, alert }: { children: React.ReactNode; alert?: boolean }) {
+  return (
+    <p
+      role={alert ? "alert" : undefined}
+      className={`px-2 pt-3.5 text-center text-sm ${alert ? "text-destructive" : "text-muted-foreground"}`}
+    >
+      {children}
+    </p>
   );
 }
 
@@ -136,111 +158,82 @@ export default function AcceptInvitationPage() {
     window.location.assign(loginUrlWithNext(HERE));
   }
 
-  if (status === "loading") return <div aria-busy="true" className="min-h-64" />;
+  if (status === "loading") return <div aria-busy="true" className="min-h-80" />;
 
   if (status === "declined") {
     return (
-      <div>
-        <Heading>Invitation declined</Heading>
-        <p className="mt-3 text-sm text-muted-foreground">
-          You won&apos;t be added to this account.
-        </p>
-      </div>
+      <Card title="Invitation declined">
+        <Button asChild variant="outline" className={ACTION}>
+          <Link href="/dashboard">Go to MoFin</Link>
+        </Button>
+      </Card>
     );
   }
 
   if (status === "invalid" || !preview) {
     return (
-      <div>
-        <Heading>This invitation can&apos;t be used</Heading>
-        <Alert>It may have expired, been revoked or already been answered. Ask for a new one.</Alert>
-        <Button asChild variant="outline" className="mt-6">
+      <Card title="Invitation unavailable">
+        <p className="-mt-3 pb-5 text-center text-sm text-muted-foreground">Ask for a new one.</p>
+        <Button asChild variant="outline" className={ACTION}>
           <Link href="/dashboard">Go to MoFin</Link>
         </Button>
-      </div>
+      </Card>
     );
   }
 
   const wrongPerson = !!user && user.email !== preview.email;
-  const role = ROLE_LABEL[preview.role].toLowerCase();
 
   return (
-    <div>
-      <Heading>{preview.invitedBy} invited you to an account</Heading>
-      <p className="mt-3 text-sm text-muted-foreground">
-        Join <span className="font-medium text-foreground">{preview.accountName}</span> ({preview.currency})
-        as {role === "editor" ? "an" : "a"} {role}. {ROLE_HELP[preview.role]}
-      </p>
-      <p className="mt-2 text-sm text-muted-foreground">
-        You&apos;ll see its full history, and the owner and other members will see what you add.
-      </p>
-
-      {problem && <Alert>{problem}</Alert>}
-
-      {wrongPerson ? (
-        <>
-          <Alert>
-            This invitation is for {preview.email}, and you&apos;re signed in as {user.email}.
-          </Alert>
-          <div className="mt-6 flex flex-wrap gap-2">
-            <Button onClick={switchAccount}>Switch account</Button>
-          </div>
-        </>
-      ) : !user ? (
-        <>
-          <p className="mt-4 text-sm">
-            Sign in with <span className="font-medium">{preview.email}</span> to accept, or create an
-            account with that address.
-          </p>
-          <div className="mt-6 flex flex-wrap gap-2">
-            <Button asChild>
-              <Link href={loginUrlWithNext(HERE)}>Sign in</Link>
+    <>
+      <Card title={`${preview.invitedBy} invited you`}>
+        <AccountPanel preview={preview} />
+        <div className="mt-3.5 space-y-2">
+          {wrongPerson ? (
+            <Button className={ACTION} onClick={switchAccount}>
+              Switch account
             </Button>
-            <Button asChild variant="outline">
-              <Link href={`/register?next=${encodeURIComponent(HERE)}`}>Create an account</Link>
-            </Button>
-            <Button variant="ghost" onClick={decline} disabled={busy}>
-              Decline
-            </Button>
-          </div>
-        </>
-      ) : needsVerifying ? (
-        <div className="mt-6 space-y-3">
-          <p className="text-sm">
-            Verify {preview.email} first. We&apos;ll email you a link, and you can come back here
-            afterwards.
-          </p>
-          {verificationSent ? (
-            <p className="flex items-center gap-2 text-sm font-medium">
-              <MailCheck className="size-4" aria-hidden />
-              Check your inbox, then open the link.
-            </p>
+          ) : !user ? (
+            <>
+              <Button asChild className={ACTION}>
+                <Link href={loginUrlWithNext(HERE)}>Sign in to accept</Link>
+              </Button>
+              <Button asChild variant="outline" className={ACTION}>
+                <Link href={`/register?next=${encodeURIComponent(HERE)}`}>Create an account</Link>
+              </Button>
+            </>
+          ) : needsVerifying ? (
+            !verificationSent && (
+              <Button className={ACTION} onClick={sendVerification} disabled={busy}>
+                Verify your email
+              </Button>
+            )
           ) : (
-            <Button onClick={sendVerification} disabled={busy}>
-              Send verification email
+            <Button className={ACTION} onClick={accept} disabled={busy}>
+              Accept
+            </Button>
+          )}
+          {!wrongPerson && !needsVerifying && (
+            <Button variant="ghost" className={ACTION} onClick={decline} disabled={busy}>
+              Decline
             </Button>
           )}
         </div>
-      ) : (
-        <div className="mt-6 flex flex-wrap gap-2">
-          <Button onClick={accept} disabled={busy}>
-            Accept invitation
-          </Button>
-          <Button variant="outline" onClick={decline} disabled={busy}>
-            Decline
-          </Button>
-        </div>
-      )}
-
+        {problem && <Note alert>{problem}</Note>}
+        {wrongPerson && <Note alert>This invitation is for {preview.email}.</Note>}
+        {!user && <Note>Sent to {preview.email}</Note>}
+        {verificationSent && <Note>Check your inbox.</Note>}
+      </Card>
       {token && (
         // Touch screens only: that's where the app is.
-        <a
-          href={`mofin://invitations?token=${encodeURIComponent(token)}`}
-          className="mt-6 hidden text-sm underline underline-offset-2 pointer-coarse:inline-block"
-        >
-          Open in the MoFin app
-        </a>
+        <p className="mt-5 hidden text-center pointer-coarse:block">
+          <a
+            href={`mofin://invitations?token=${encodeURIComponent(token)}`}
+            className="text-sm text-muted-foreground underline underline-offset-2"
+          >
+            Open in the app
+          </a>
+        </p>
       )}
-    </div>
+    </>
   );
 }

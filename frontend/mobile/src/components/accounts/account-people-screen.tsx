@@ -12,7 +12,7 @@ import { Card } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Text } from '@/components/ui/text';
-import { canManage, memberName, ROLE_HELP, ROLE_LABEL } from '@/core/account-sharing';
+import { canManage, memberName, ROLE_LABEL } from '@/core/account-sharing';
 import type { AccountMember, AccountMemberRole } from '@/core/types';
 import { useAccounts } from '@/hooks/useAccounts';
 import {
@@ -74,12 +74,9 @@ function InviteForm({ accountId }: { accountId: string }) {
 
   return (
     <View className="gap-2">
-      <Text role="heading" aria-level={2} className="text-sm font-medium">
-        Invite someone
-      </Text>
       <Input
-        accessibilityLabel="Email address"
-        placeholder="name@example.com"
+        accessibilityLabel="Email to invite"
+        placeholder="Email"
         keyboardType="email-address"
         autoCapitalize="none"
         autoCorrect={false}
@@ -89,10 +86,7 @@ function InviteForm({ accountId }: { accountId: string }) {
         onSubmitEditing={submit}
       />
       <RolePicker value={role} onChange={setRole} label="Role for the invited person" />
-      <Text className="text-xs text-muted-foreground">
-        {ROLE_HELP[role]} They&apos;ll see this account&apos;s full history and its goals, from before they joined too. The
-        link works for 7 days.
-      </Text>
+      <Text className="text-xs text-muted-foreground">They&apos;ll see the full history.</Text>
       <Button className="min-h-11 gap-2" disabled={invite.isPending || !email.trim()} onPress={submit}>
         <Icon as={Send} size={16} className="text-primary-foreground" aria-hidden />
         <Text>Invite</Text>
@@ -119,7 +113,7 @@ export function AccountPeopleScreen({ accountId }: { accountId: string }) {
   const [leaving, setLeaving] = React.useState(false);
 
   const close = () => router.back();
-  const title = <Stack.Screen options={{ title: account ? `People on ${account.name}` : 'People' }} />;
+  const title = <Stack.Screen options={{ title: account?.name ?? 'People' }} />;
 
   if (members.isLoading || accounts.isLoading) {
     return (
@@ -147,12 +141,6 @@ export function AccountPeopleScreen({ accountId }: { accountId: string }) {
       contentContainerClassName="mx-auto w-full max-w-3xl gap-6 p-4"
       contentContainerStyle={{ paddingBottom: 16 + insets.bottom }}>
       {title}
-      <Text className="text-sm text-muted-foreground">
-        {owner
-          ? 'Editors can add and change transactions and goals. Viewers can only look.'
-          : 'Your role decides what you can do on this account.'}
-      </Text>
-
       <Card className="gap-0 border-0 px-4 py-1">
         {(members.data ?? []).map((member) => (
           <View key={member.userId} className="gap-2 border-b border-border py-3 last:border-b-0">
@@ -206,7 +194,7 @@ export function AccountPeopleScreen({ accountId }: { accountId: string }) {
       {owner && pending.length > 0 ? (
         <View accessibilityLabel="Pending invitations" className="gap-1">
           <Text role="heading" aria-level={2} className="text-sm font-medium">
-            Pending invitations
+            Pending
           </Text>
           {pending.map((invitation) => (
             <View key={invitation.id} className="flex-row items-center gap-2">
@@ -240,7 +228,7 @@ export function AccountPeopleScreen({ accountId }: { accountId: string }) {
         open={!!toRemove}
         onOpenChange={(open) => !open && setToRemove(undefined)}
         title={`Remove ${toRemove ? memberName(toRemove) : ''}?`}
-        description="They lose access to this account straight away. Transactions they added stay."
+        description="They lose access now. Their transactions stay."
         confirmLabel="Remove"
         onConfirm={() => {
           if (toRemove) remove.mutate(toRemove.userId);
@@ -251,7 +239,7 @@ export function AccountPeopleScreen({ accountId }: { accountId: string }) {
         open={!!newOwner}
         onOpenChange={(open) => !open && setNewOwner(undefined)}
         title={`Make ${newOwner ? memberName(newOwner) : ''} the owner?`}
-        description="They get full control of this account, and it moves to their categories. You stay on as an editor and can leave later. Past transfers to your other accounts are kept as separate one-sided records, and a recurring transfer between them pauses. Balances don't change, and you can't undo this yourself."
+        description="They get full control and you become an editor. You can't undo this."
         confirmLabel="Transfer ownership"
         onConfirm={() => {
           if (newOwner) transfer.mutate(newOwner.userId);
@@ -262,7 +250,7 @@ export function AccountPeopleScreen({ accountId }: { accountId: string }) {
         open={leaving}
         onOpenChange={setLeaving}
         title={`Leave ${account.name}?`}
-        description="You lose access to this account straight away. Transactions you added stay, and pending drafts for it will need another account. The owner can invite you again."
+        description="You lose access now. Your transactions stay."
         confirmLabel="Leave"
         onConfirm={() => {
           leave.mutate(undefined, { onSuccess: close });

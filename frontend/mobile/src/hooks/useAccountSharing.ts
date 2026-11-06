@@ -64,9 +64,9 @@ export function useInviteMember(accountId: string) {
   return useMutation({
     mutationFn: (input: { email: string; role: AccountMemberRole }) =>
       api.post<AccountInvitation>(`/accounts/${accountId}/invitations`, input),
-    onSuccess: (invitation) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: sharingKeys.invitations(accountId) });
-      toast.success(`Invitation sent to ${invitation.email}.`);
+      toast.success("Invitation sent.");
     },
     onError: (err) => handleApiError(err, { fallback: "Could not send the invitation." }),
   });

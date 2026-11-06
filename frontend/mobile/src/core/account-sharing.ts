@@ -9,11 +9,6 @@ export const ROLE_LABEL: Record<AccountRole, string> = {
   VIEWER: "Viewer",
 };
 
-export const ROLE_HELP: Record<Exclude<AccountRole, "OWNER">, string> = {
-  EDITOR: "Can add, edit and delete transactions, and manage goals.",
-  VIEWER: "Can see everything, but can't change anything.",
-};
-
 type WithRole = Pick<Account, "role">;
 
 /** May add and change transactions and goals on it. */
