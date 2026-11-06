@@ -393,6 +393,7 @@ describe('Public routes across every controller', () => {
     'GET /.well-known/oauth-authorization-server',
     'GET /.well-known/oauth-protected-resource',
     'GET /.well-known/oauth-protected-resource/*',
+    'GET /boom',
     'GET /health',
     'GET /health/ready',
     'GET /mcp',

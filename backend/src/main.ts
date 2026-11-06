@@ -7,6 +7,7 @@ import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module';
 import { trustedClientIpMiddleware } from './common/middleware/trusted-client-ip.middleware';
 import { initSentry } from './common/sentry';
+import { Errwise } from '@errwise/node';
 
 // Sentry.init must run before anything that could throw, so it's the very
 // first thing in bootstrap. process.env directly (not ConfigService) because
@@ -19,8 +20,9 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     bufferLogs: true,
   });
-  app.useLogger(app.get(Logger));
   const config = app.get(ConfigService);
+  Errwise.init({ apiKey: config.get<string>('ERRWISE_API_KEY')! });
+  app.useLogger(app.get(Logger));
   // The BFF (Next.js) is the only thing that ever calls this backend directly.
   // Trusting one hop makes req.ip the address that hop forwarded, which is the
   // real client locally. Behind Vercel's edge that hop is the BFF itself, so

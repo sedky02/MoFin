@@ -32,6 +32,12 @@ describe('AppModule (e2e)', () => {
       .expect({ status: 'ok' });
   });
 
+  // An unhandled error reaches the catch-all filter: a plain 500, with nothing of the stack in the body.
+  it('/boom (GET) answers a 500 outside production', async () => {
+    const res = await request(app.getHttpServer()).get('/boom').expect(500);
+    expect(JSON.stringify(res.body)).not.toContain('at ');
+  });
+
   afterEach(async () => {
     await app.close();
   });

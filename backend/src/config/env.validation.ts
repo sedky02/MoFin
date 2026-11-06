@@ -105,6 +105,8 @@ const envSchema = z
     AI_TIMEOUT_MS: z.coerce.number().int().positive().default(30_000),
     // Chat questions one demo visitor can ask (counted in the database).
     DEMO_AI_CHAT_CAP: z.coerce.number().int().positive().default(15),
+
+    ERRWISE_API_KEY: z.string().min(1).optional(),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV === 'production' && !env.BFF_SHARED_SECRET) {

@@ -5,11 +5,10 @@ import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { GlobalJwtAuthGuard } from './common/guards/jwt-auth.guard';
-import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
-import { PrismaExceptionFilter } from './common/filters/prisma-exception.filter';
 import { LoggerModule } from './common/logger/logger.module';
 import { validateEnv } from './config/env.validation';
 import { HealthModule } from './health/health.module';
+import { BoomController } from './diagnostics/boom.controller';
 import { AccountAccessModule } from './modules/account-access/account-access.module';
 import { AccountSharingModule } from './modules/account-sharing/account-sharing.module';
 import { AccountsModule } from './modules/accounts/accounts.module';
@@ -31,6 +30,7 @@ import { OAuthModule } from './modules/oauth/oauth.module';
 import { SearchModule } from './modules/search/search.module';
 import { TransactionsModule } from './modules/transactions/transactions.module';
 import { UsersModule } from './modules/users/users.module';
+import { ErrwiseExceptionFilter } from '@errwise/node/nestjs';
 
 @Module({
   imports: [
@@ -68,6 +68,7 @@ import { UsersModule } from './modules/users/users.module';
     DemoModule,
     MaintenanceModule,
   ],
+  controllers: [BoomController],
   providers: [
     // Global guards run in registration order: rate limit first, so an
     // unauthenticated flood is still throttled, then require a web access
@@ -79,8 +80,9 @@ import { UsersModule } from './modules/users/users.module';
     // Order matters: Nest checks global filters in REVERSE registration
     // order, so AllExceptionsFilter (registered first, checked last) is the
     // fallback behind PrismaExceptionFilter's more specific `@Catch()` scope.
-    { provide: APP_FILTER, useClass: AllExceptionsFilter },
-    { provide: APP_FILTER, useClass: PrismaExceptionFilter },
+    { provide: APP_FILTER, useClass: ErrwiseExceptionFilter },
+    //{ provide: APP_FILTER, useClass: AllExceptionsFilter },
+    //{ provide: APP_FILTER, useClass: PrismaExceptionFilter },
   ],
 })
 export class AppModule {}
