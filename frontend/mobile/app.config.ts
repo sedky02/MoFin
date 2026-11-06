@@ -49,6 +49,31 @@ const config: ExpoConfig = {
     ],
     // Adds the Android backup rules that keep the stored session out of cloud backups and device transfers.
     'expo-secure-store',
+    // Home screen widgets, Android only for now. The app computes their data and pushes it
+    // (src/widgets/widget-sync.ts). Taps open deep links through patches/expo-widgets+*.patch.
+    // Changing this needs a new development build (npm run build:dev).
+    [
+      'expo-widgets',
+      {
+        enableAndroid: true,
+        widgets: [
+          {
+            name: 'Summary',
+            displayName: 'MoFin summary',
+            description: 'Balance, income and expenses for this month or week.',
+            ios: null,
+            android: {
+              minWidth: 180,
+              minHeight: 110,
+              targetCellWidth: 3,
+              targetCellHeight: 2,
+              resizeMode: 'both',
+              initialLayout: './src/widgets/summary-widget.android.tsx',
+            },
+          },
+        ],
+      },
+    ],
     [
       'expo-splash-screen',
       {

@@ -6,11 +6,18 @@ import { z } from 'zod';
 
 import { MIN_PASSWORD_LENGTH } from '@/core/password-strength';
 import type { Account, User } from '@/core/types';
-import { Database, Plug, ShieldCheck, SlidersHorizontal, Trash2, User as UserIcon } from '@/lib/icons';
+import { Database, LayoutDashboard, Plug, ShieldCheck, SlidersHorizontal, Trash2, User as UserIcon } from '@/lib/icons';
 
 // ─── Sections ────────────────────────────────────────────────────────────────
 
-export type SettingsSectionId = 'profile' | 'preferences' | 'security' | 'connected-apps' | 'data' | 'delete-account';
+export type SettingsSectionId =
+  | 'profile'
+  | 'preferences'
+  | 'widgets'
+  | 'security'
+  | 'connected-apps'
+  | 'data'
+  | 'delete-account';
 
 export type SettingsSection = {
   id: SettingsSectionId;
@@ -51,13 +58,25 @@ export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
   },
 ];
 
+/** Mobile only (the web has no home screen widgets), and only where widgets ship: Android. */
+export const WIDGETS_SECTION: SettingsSection = {
+  id: 'widgets',
+  label: 'Widgets',
+  summary: 'What your home screen widgets show',
+  href: '/settings/widgets',
+  icon: LayoutDashboard,
+};
+
 /**
  * The Settings list for this user. A demo keeps every section, as on the web (each one says what
  * the demo can't do), but its Security and Delete account rows read as information, not actions.
  * The summaries are mobile-only list text; each screen shows the web's own copy.
  */
-export function settingsSections(user: User | undefined): SettingsSection[] {
-  return SETTINGS_SECTIONS.map((s) => {
+export function settingsSections(user: User | undefined, opts: { widgets?: boolean } = {}): SettingsSection[] {
+  const sections = opts.widgets
+    ? SETTINGS_SECTIONS.flatMap((s) => (s.id === 'preferences' ? [s, WIDGETS_SECTION] : [s]))
+    : SETTINGS_SECTIONS;
+  return sections.map((s) => {
     if (!user?.isDemo) return s;
     if (s.id === 'security') return { ...s, summary: 'Not available in the demo' };
     if (s.id === 'delete-account') return { ...s, summary: 'Deleted automatically when the demo ends', tone: undefined };

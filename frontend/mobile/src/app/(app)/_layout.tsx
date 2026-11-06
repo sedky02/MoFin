@@ -5,9 +5,12 @@ import { OfflineBanner } from '@/components/shell/offline-banner';
 import { StackHeader } from '@/components/shell/stack-header';
 import { useStackScreenOptions } from '@/components/shell/stack-options';
 import { VoiceOverlay } from '@/components/voice/voice-overlay';
+import { useWidgetSync } from '@/widgets/use-widget-sync';
 
 export default function AppLayout() {
   const options = useStackScreenOptions();
+  // Home screen widgets follow the data while signed in (Android).
+  useWidgetSync();
   return (
     <View className="flex-1 bg-background">
       <OfflineBanner />
@@ -26,6 +29,8 @@ export default function AppLayout() {
           {/* The chat sets its own title (its name, or "New chat"). */}
           <Stack.Screen name="ask/[id]" options={{ title: 'Chat' }} />
           <Stack.Screen name="settings/index" options={{ title: 'Settings' }} />
+          {/* A widget's ↻ passes through here on its way to the widget's screen. */}
+          <Stack.Screen name="widget-refresh" options={{ headerShown: false, animation: 'none' }} />
           {/* Development only: the guard keeps the route out of release builds. */}
           <Stack.Protected guard={__DEV__}>
             <Stack.Screen name="_dev/kitchen-sink" options={{ title: 'Kitchen sink' }} />

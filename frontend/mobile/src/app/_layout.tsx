@@ -19,10 +19,13 @@ import { installNumberFormatToParts } from '@/lib/intl-polyfill';
 import { getQueryClient } from '@/lib/query-client';
 import { installReactQueryNative } from '@/lib/react-query-native';
 import { NAV_THEME } from '@/lib/theme';
+import { installWidgetSync } from '@/widgets/widget-sync';
 
 // Hermes on iOS lacks NumberFormat.formatToParts, which the money formatting needs.
 installNumberFormatToParts();
 installReactQueryNative();
+// Signing out clears the home screen widgets at once (Android).
+installWidgetSync();
 
 SplashScreen.preventAutoHideAsync();
 

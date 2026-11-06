@@ -1,4 +1,4 @@
-import { isTransactionId, safeDeepLinkPath } from '@/lib/deep-links';
+import { isTransactionId, safeDeepLinkPath, widgetScreen } from '@/lib/deep-links';
 
 describe('safeDeepLinkPath', () => {
   it('opens the add form and a transaction detail', () => {
@@ -6,6 +6,22 @@ describe('safeDeepLinkPath', () => {
     expect(safeDeepLinkPath('/transactions/new')).toBe('/transactions/new');
     expect(safeDeepLinkPath('mofin://transactions/clx123abc')).toBe('/transactions/clx123abc');
     expect(safeDeepLinkPath('/transactions/clx123abc?x=1')).toBe('/transactions/clx123abc');
+  });
+
+  it('opens the screens home screen widgets link to', () => {
+    expect(safeDeepLinkPath('mofin://dashboard')).toBe('/dashboard');
+    expect(safeDeepLinkPath('mofin://goals')).toBe('/goals');
+    expect(safeDeepLinkPath('/dashboard?x=1')).toBe('/dashboard');
+  });
+
+  it("turns a widget's refresh link into the refresh route, back to an allowed screen only", () => {
+    expect(safeDeepLinkPath('mofin://refresh?to=dashboard')).toBe('/widget-refresh?to=dashboard');
+    expect(safeDeepLinkPath('mofin://refresh?to=goals')).toBe('/widget-refresh?to=goals');
+    for (const to of ['settings/delete-account', '%2Fsettings', 'constructor', '__proto__', '']) {
+      expect(safeDeepLinkPath(`mofin://refresh?to=${to}`)).toBe('/widget-refresh?to=dashboard');
+    }
+    expect(safeDeepLinkPath('mofin://refresh')).toBe('/widget-refresh?to=dashboard');
+    expect(safeDeepLinkPath('mofin://refresh/settings')).toBe('/');
   });
 
   it('sends everything else home, including screens that act or edit', () => {
@@ -23,6 +39,14 @@ describe('safeDeepLinkPath', () => {
     ]) {
       expect(safeDeepLinkPath(p)).toBe('/');
     }
+  });
+});
+
+describe('widgetScreen', () => {
+  it('only names the screens widgets open', () => {
+    expect(widgetScreen('goals')).toBe('goals');
+    expect(widgetScreen('toString')).toBe('dashboard');
+    expect(widgetScreen(undefined)).toBe('dashboard');
   });
 });
 

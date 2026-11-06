@@ -47,6 +47,13 @@ describe('sections', () => {
     expect(SETTINGS_SECTIONS.map((s) => s.href)).toEqual(SETTINGS_SECTIONS.map((s) => `/settings/${s.id}`));
   });
 
+  it('adds Widgets after Preferences only where widgets ship', () => {
+    expect(settingsSections(user()).map((s) => s.id)).not.toContain('widgets');
+    const ids = settingsSections(user(), { widgets: true }).map((s) => s.id);
+    expect(ids.slice(0, 3)).toEqual(['profile', 'preferences', 'widgets']);
+    expect(ids).toHaveLength(SETTINGS_SECTIONS.length + 1);
+  });
+
   it('keeps every section for a demo, but its delete row is not red and says it goes by itself', () => {
     const demo = settingsSections(user({ isDemo: true }));
     expect(demo).toHaveLength(SETTINGS_SECTIONS.length);

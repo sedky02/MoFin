@@ -4,6 +4,7 @@
   "main": "expo-router/entry",
   "dependencies": {
     "@expo-google-fonts/inter": "^0.4.2",
+    "@expo/ui": "~58.0.27",
     "@hookform/resolvers": "^7.0.1",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-community/datetimepicker": "9.2.1",
@@ -38,6 +39,7 @@
     "expo-splash-screen": "~58.0.12",
     "expo-status-bar": "~58.0.4",
     "expo-system-ui": "~58.0.7",
+    "expo-widgets": "~58.0.27",
     "lucide-react-native": "^1.66.0",
     "nativewind": "^4.2.7",
     "react": "19.3.0",
@@ -64,9 +66,11 @@
     "eslint-config-expo": "~58.0.4",
     "jest": "~30.5.2",
     "jest-expo": "~58.0.13",
+    "patch-package": "^8.0.1",
     "typescript": "~6.0.3"
   },
   "scripts": {
+    "postinstall": "patch-package",
     "start": "expo start",
     "dev": "expo start --dev-client",
     "dev:tunnel": "expo start --dev-client --tunnel",
