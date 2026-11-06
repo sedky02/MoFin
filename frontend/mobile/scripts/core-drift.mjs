@@ -15,7 +15,7 @@ const CORE = [
   'transaction-schema', 'transaction-edit', 'transaction-category', 'transaction-accounts',
   'recurring-edit', 'recurring-series', 'goal-scope', 'goal-standing', 'cancelled-goals', 'balances',
   'draft-review', 'category-icons', 'password-strength', 'connected-apps', 'form-errors', 'utils', 'week',
-  'account-privacy',
+  'account-privacy', 'account-sharing',
 ];
 // Copied tests: src/core/<name>.test.ts  <-  web/lib/<name>.test.ts (web name in the value)
 const TESTS = {
@@ -27,13 +27,13 @@ const TESTS = {
   'cancelled-goals': 'cancelled-goals', balances: 'balances', 'draft-review': 'draft-review',
   'category-icons': 'category-icons', 'password-strength': 'password-strength',
   'connected-apps': 'connected-apps', 'transaction-list': 'transaction-list', week: 'week',
-  'account-privacy': 'account-privacy',
+  'account-privacy': 'account-privacy', 'account-sharing': 'account-sharing',
 };
 // Copied hooks: src/hooks/<name>.ts  <-  web/hooks/<name>.ts
 const HOOKS = [
   'useAccounts', 'useTransactions', 'useGoals', 'useCategories', 'useAnalytics', 'useLedger',
   'useSearch', 'useUser', 'useDrafts', 'useConnectedApps', 'useMainAccount', 'useSuggestedAccount',
-  'use-debounced-value', 'use-revealed-amount',
+  'use-debounced-value', 'use-revealed-amount', 'useAccountSharing',
 ];
 
 /** The known, mechanical import rewrites. Everything else is a real difference. */

@@ -19,6 +19,8 @@ import { TYPE_OPTIONS } from '@/core/transaction-list-params';
 import { ledgerAccountName, transactionAccountLegs } from '@/core/transaction-accounts';
 import type { Account, LedgerItem, Transaction } from '@/core/types';
 import { useAccounts } from '@/hooks/useAccounts';
+import { useUser } from '@/hooks/useUser';
+import { authorLine } from '@/core/account-sharing';
 import { useDeleteTransaction, useTransaction } from '@/hooks/useTransactions';
 import { ArrowDown, ArrowDownLeft, ArrowUpRight, ChevronRight, Pencil, Repeat, Trash2 } from '@/lib/icons';
 
@@ -47,10 +49,10 @@ export function TransactionDetail({ id }: { id: string }) {
   const { data: tx, isLoading, isError, error, refetch, isRefetching } = useTransaction(id);
   const insets = useSafeAreaInsets();
 
-  // Older responses carried legs without their account. Only then fall back to the account list,
-  // with archived accounts included so they resolve too.
-  const needsAccountLookup = !!tx?.items.some((item) => !item.account);
-  const accountsQuery = useAccounts('all', needsAccountLookup);
+  // Older responses carried legs without their account: the account list resolves those, with
+  // archived accounts included. It also says which accounts are shared, for who entered this.
+  const accountsQuery = useAccounts('all');
+  const { data: user } = useUser();
   const accountsById = React.useMemo<ReadonlyMap<string, Account> | undefined>(() => {
     if (accountsQuery.data) return new Map(accountsQuery.data.map((a) => [a.id, a]));
     // A failed lookup resolves to "Deleted account" rather than a spinner forever.
@@ -151,7 +153,12 @@ export function TransactionDetail({ id }: { id: string }) {
           </View>
         ) : null}
 
-        {/* It's the user's own record: change it or remove it. */}
+        {tx.items.some((item) => accountsById?.get(item.accountId)?.isShared) && authorLine(tx, user?.id) ? (
+          <Text className="mt-3 text-xs text-muted-foreground">{authorLine(tx, user?.id)}</Text>
+        ) : null}
+
+        {/* Someone with the right role can change it or remove it. */}
+        {tx.canEdit !== false ? (
         <View className="mt-4 flex-row flex-wrap gap-2 border-t border-border pt-4">
           <Button variant="outline" className="min-h-11 gap-1.5" accessibilityLabel="Edit" testID="transaction-edit" onPress={() => router.push(`/transactions/${tx.id}/edit`)}>
             <Icon as={Pencil} size={16} aria-hidden />
@@ -168,6 +175,7 @@ export function TransactionDetail({ id }: { id: string }) {
             <Text className="text-destructive">Delete</Text>
           </Button>
         </View>
+        ) : null}
 
         {/* Recurring series management: only on the root of a series. */}
         {tx.isRecurring && !tx.parentTransactionId ? <RecurringPanel tx={tx} /> : null}

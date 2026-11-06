@@ -40,6 +40,7 @@ import { AccountSelect } from "@/components/transactions/account-select";
 import { SubmitButton } from "@/components/common/submit-button";
 import { useAccounts } from "@/hooks/useAccounts";
 import { useCategories } from "@/hooks/useCategories";
+import { categoryScope, sameOwnerAccounts, writableAccounts } from "@/lib/account-sharing";
 import {
   useCancelRecurringTransaction,
   usePauseRecurringTransaction,
@@ -111,8 +112,13 @@ export function SeriesPausedNote({ label, className }: { label: string; classNam
  */
 export function RecurringSeriesActions({ tx, className }: { tx: Transaction; className?: string }) {
   const [editOpen, setEditOpen] = React.useState(false);
-  const { data: accounts } = useAccounts();
-  const { data: categories } = useCategories();
+  const { data: allAccounts } = useAccounts();
+  // A series posts within one ledger, so it can only move to accounts with the same owner.
+  const seriesAccount = (allAccounts ?? []).find(
+    (a) => a.id === (tx.recurringFromAccountId ?? tx.recurringToAccountId),
+  );
+  const accounts = sameOwnerAccounts(writableAccounts(allAccounts ?? []), seriesAccount);
+  const { data: categories } = useCategories("active", true, categoryScope(seriesAccount));
   const updateMut = useUpdateRecurringTransaction(tx.id);
   const pauseMut = usePauseRecurringTransaction(tx.id);
   const resumeMut = useResumeRecurringTransaction(tx.id);
@@ -130,8 +136,8 @@ export function RecurringSeriesActions({ tx, className }: { tx: Transaction; cla
   const fromValue = useWatch({ control: form.control, name: "fromAccountId" });
   const toValue = useWatch({ control: form.control, name: "toAccountId" });
   const isTransfer = tx.type === "TRANSFER";
-  const fromOptions = seriesAccountOptions(accounts ?? [], tx.currency, isTransfer ? toValue : undefined);
-  const toOptions = seriesAccountOptions(accounts ?? [], tx.currency, isTransfer ? fromValue : undefined);
+  const fromOptions = seriesAccountOptions(accounts, tx.currency, isTransfer ? toValue : undefined);
+  const toOptions = seriesAccountOptions(accounts, tx.currency, isTransfer ? fromValue : undefined);
 
   function handleOpenChange(open: boolean) {
     if (open) {
@@ -175,6 +181,9 @@ export function RecurringSeriesActions({ tx, className }: { tx: Transaction; cla
       handleApiError(err, { setError: form.setError });
     }
   }
+
+  // The series touches an account this person can't post to.
+  if (tx.canEdit === false) return null;
 
   return (
     <div className={cn("flex flex-wrap gap-2", className)}>

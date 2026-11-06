@@ -37,6 +37,7 @@ import {
 } from '@/core/recurring-series';
 import type { Transaction } from '@/core/types';
 import { useAccounts } from '@/hooks/useAccounts';
+import { categoryScope, sameOwnerAccounts, writableAccounts } from '@/core/account-sharing';
 import { useCategories } from '@/hooks/useCategories';
 import {
   useCancelRecurringTransaction,
@@ -97,6 +98,9 @@ export function RecurringSeriesActions({ tx, className }: { tx: Transaction; cla
   const cancelMut = useCancelRecurringTransaction(tx.id);
   const paused = seriesIsPaused(tx);
 
+  // The series touches an account this person can't post to.
+  if (tx.canEdit === false) return null;
+
   return (
     <View className={cn('flex-row flex-wrap gap-2', className)}>
       {paused ? (
@@ -145,8 +149,11 @@ function FieldError({ message }: { message?: string }) {
 /** Edits the series template. Mounted only while open, so each open starts from the series as it is now. */
 function EditSeriesDialog({ tx, onClose }: { tx: Transaction; onClose: () => void }) {
   const { height } = useWindowDimensions();
-  const { data: accounts } = useAccounts();
-  const { data: categories } = useCategories();
+  const { data: allAccounts } = useAccounts();
+  // A series posts within one ledger, so it can only move to accounts with the same owner.
+  const seriesAccount = (allAccounts ?? []).find((a) => a.id === (tx.recurringFromAccountId ?? tx.recurringToAccountId));
+  const accounts = sameOwnerAccounts(writableAccounts(allAccounts ?? []), seriesAccount);
+  const { data: categories } = useCategories('active', true, categoryScope(seriesAccount));
   const updateMut = useUpdateRecurringTransaction(tx.id);
   const [initial] = React.useState(() => recurringFormValues(tx));
   const [values, setValues] = React.useState<RecurringFormValues>(initial);
@@ -155,8 +162,8 @@ function EditSeriesDialog({ tx, onClose }: { tx: Transaction; onClose: () => voi
 
   const isTransfer = tx.type === 'TRANSFER';
   // Only accounts the series can post to: its currency, and for a transfer not the other side.
-  const fromOptions = seriesAccountOptions(accounts ?? [], tx.currency, isTransfer ? values.toAccountId : undefined);
-  const toOptions = seriesAccountOptions(accounts ?? [], tx.currency, isTransfer ? values.fromAccountId : undefined);
+  const fromOptions = seriesAccountOptions(accounts, tx.currency, isTransfer ? values.toAccountId : undefined);
+  const toOptions = seriesAccountOptions(accounts, tx.currency, isTransfer ? values.fromAccountId : undefined);
   const relevantCategories = (categories ?? []).filter((c) => c.type === tx.type);
 
   async function save() {

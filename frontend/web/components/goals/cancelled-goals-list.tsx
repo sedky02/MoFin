@@ -1,5 +1,6 @@
 "use client";
 
+import { canPost } from "@/lib/account-sharing";
 import type { Account, Goal } from "@/lib/types";
 import { GoalPanel } from "@/components/goals/goal-panel";
 import { GoalRow } from "@/components/goals/goal-row";
@@ -34,7 +35,7 @@ export function CancelledGoalsList({
               account={accountsById.get(goal.accountId)}
               readOnly
               busy={busyId === goal.id}
-              onRestore={onRestore}
+              onRestore={canPost(accountsById.get(goal.accountId)) ? onRestore : undefined}
               onViewHistory={onViewHistory}
             />
           ))}

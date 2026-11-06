@@ -38,6 +38,7 @@ import { SubmitButton } from "@/components/common/submit-button";
 import { MoneyInput } from "@/components/common/money-input";
 import { AccountSelect } from "@/components/transactions/account-select";
 import { useAccounts } from "@/hooks/useAccounts";
+import { writableAccounts } from "@/lib/account-sharing";
 import { useActiveAccount } from "@/hooks/useActiveAccount";
 import { useCreateGoal, useUpdateGoal } from "@/hooks/useGoals";
 import { parseMoneyInput } from "@/lib/format";
@@ -116,7 +117,8 @@ export function GoalDialog({
   goal?: Goal; // present → edit mode (name + target amount only; the rest is frozen once created)
 }) {
   const isEdit = !!goal;
-  const { data: accounts } = useAccounts();
+  const { data: allAccounts } = useAccounts();
+  const accounts = writableAccounts(allAccounts ?? []);
   const { accountId: activeAccountId } = useActiveAccount();
   const createMut = useCreateGoal();
   const updateMut = useUpdateGoal();

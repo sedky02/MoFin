@@ -18,16 +18,22 @@ type CategoryListStatus = "active" | "archived" | "all";
 /**
  * Active categories by default, which is what every picker wants: archived
  * ones are left out by the backend. The categories page asks for "archived"
- * to list them for restoring.
+ * to list them for restoring. With `accountId` (see categoryScope) they are the ones that fit
+ * that account: a shared account uses its owner's.
  */
-export function useCategories(status: CategoryListStatus = "active", enabled = true) {
+export function useCategories(
+  status: CategoryListStatus = "active",
+  enabled = true,
+  accountId?: string,
+) {
   return useQuery({
-    queryKey: categoryKeys.list(status),
+    queryKey: accountId ? categoryKeys.forAccount(accountId, status) : categoryKeys.list(status),
     queryFn: async () => {
       const result = await api.get<Paginated<Category>>("/categories", {
         status,
         limit: CATEGORIES_PAGE_SIZE,
         offset: 0,
+        ...(accountId ? { accountId } : {}),
       });
       return result.data;
     },

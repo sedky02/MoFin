@@ -18,6 +18,7 @@ import type { TransactionFormValues } from '@/core/transaction-schema';
 import type { DraftTransaction, ParsedTransactionData } from '@/core/types';
 import { useAccounts } from '@/hooks/useAccounts';
 import { useCategories } from '@/hooks/useCategories';
+import { categoryScope, sameOwnerAccounts, writableAccounts } from '@/core/account-sharing';
 
 import { buildApproval, initialReviewValues, syncCurrency, withDefaultAccounts, type ReviewErrors } from './draft-model';
 
@@ -42,8 +43,7 @@ export function DraftReviewForm({
   onCancel: () => void;
 }) {
   const { data: accounts } = useAccounts();
-  const { data: categories } = useCategories();
-  const accountList = React.useMemo(() => accounts ?? [], [accounts]);
+  const accountList = React.useMemo(() => writableAccounts(accounts ?? []), [accounts]);
   const [values, setValues] = React.useState<TransactionFormValues>(() => initialReviewValues(draft, accountList));
   const [errors, setErrors] = React.useState<ReviewErrors>({});
 
@@ -57,6 +57,16 @@ export function DraftReviewForm({
 
   const set = (patch: Partial<TransactionFormValues>) => setValues((v) => syncCurrency({ ...v, ...patch }, accountList));
   const { type } = values;
+  // A shared account uses its owner's categories, so moving the draft can drop the pick.
+  const ledgerAccountId = type === 'INCOME' ? values.toAccountId : values.fromAccountId;
+  const categorySet = categoryScope(accountList.find((a) => a.id === ledgerAccountId));
+  const { data: categories } = useCategories('active', true, categorySet);
+  const previousCategorySet = React.useRef(categorySet);
+  React.useEffect(() => {
+    if (!accountList.length || previousCategorySet.current === categorySet) return;
+    previousCategorySet.current = categorySet;
+    setValues((v) => ({ ...v, categoryId: undefined }));
+  }, [categorySet, accountList.length]);
   const relevantCategories = (categories ?? []).filter((c) => (type === 'TRANSFER' ? false : c.type === type));
 
   async function submit() {
@@ -146,7 +156,7 @@ export function DraftReviewForm({
           <PickerField
             title={type === 'TRANSFER' ? 'To' : 'Account'}
             accessibilityLabel={type === 'TRANSFER' ? 'To' : 'Account'}
-            options={accountOptions(accountList)}
+            options={accountOptions(type === 'TRANSFER' ? sameOwnerAccounts(accountList, accountList.find((a) => a.id === values.fromAccountId)) : accountList)}
             value={values.toAccountId}
             onChange={(v) => set({ toAccountId: v })}
             placeholder="Choose an account"

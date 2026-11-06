@@ -77,6 +77,7 @@ import type { Account, Transaction, TransactionType } from '@/core/types';
 import { useAccounts } from '@/hooks/useAccounts';
 import { useActiveAccount } from '@/hooks/useActiveAccount';
 import { useCategories } from '@/hooks/useCategories';
+import { categoryScope, sameOwnerAccounts, writableAccounts } from '@/core/account-sharing';
 import { useSuggestedAccountId } from '@/hooks/useSuggestedAccount';
 import { useCreateTransaction, useTransaction, useUpdateTransaction } from '@/hooks/useTransactions';
 import { useUser } from '@/hooks/useUser';
@@ -127,7 +128,9 @@ function EditTransactionLoader({ id, ...props }: TransactionFormProps & { id: st
 /** Waits for what the defaults depend on, and shows the archived / no-accounts states. */
 function TransactionFormGate(props: TransactionFormProps) {
   const { transaction, compact } = props;
-  const { data: accounts, isLoading: accountsLoading } = useAccounts();
+  const { data: allAccounts, isLoading: accountsLoading } = useAccounts();
+  // A view-only account can't take a transaction, so it is never offered.
+  const accounts = React.useMemo(() => writableAccounts(allAccounts ?? []), [allAccounts]);
   const { isLoading: userLoading } = useUser();
   const { ready } = useActiveAccount();
 
@@ -145,7 +148,7 @@ function TransactionFormGate(props: TransactionFormProps) {
 
   if (accountsLoading || userLoading || !ready) return <FormSkeleton compact={compact} />;
 
-  if (!accounts || accounts.length === 0) {
+  if (accounts.length === 0) {
     return (
       <FormFrame compact={compact}>
         <EmptyState
@@ -215,7 +218,6 @@ function TransactionFormBody({
 }: TransactionFormProps & { accounts: Account[] }) {
   const editing = !!transaction;
   const recurringRoot = !!transaction?.isRecurring && !transaction.parentTransactionId;
-  const { data: categories } = useCategories();
   const createMut = useCreateTransaction({ onView: (id) => router.push(transactionHref(id)) });
   const updateMut = useUpdateTransaction(transaction?.id ?? '');
 
@@ -298,9 +300,12 @@ function TransactionFormBody({
   // Accounts: a picked one, else the suggested default (see effectiveAccountIds).
   const suggestedAccountId = useSuggestedAccountId();
   const { accountId: activeAccountId } = useActiveAccount();
+  // A transaction sits on one ledger, so a transfer stays between accounts with one owner.
+  const sourceChoice = accountList.find((a) => a.id === (fromAccountId ?? suggestedAccountId));
+  const ledgerAccounts = type === 'TRANSFER' ? sameOwnerAccounts(accountList, sourceChoice) : accountList;
   const { fromId: effectiveFromId, toId: effectiveToId } = effectiveAccountIds({
     type,
-    accounts: accountList,
+    accounts: ledgerAccounts,
     fromAccountId,
     toAccountId,
     suggestedAccountId,
@@ -322,6 +327,17 @@ function TransactionFormBody({
     const acct = accountList.find((a) => a.id === sourceId);
     if (acct && acct.currency !== currency) form.setValue('currency', acct.currency, { shouldValidate: false });
   }, [sourceId, accountList, currency, form]);
+
+  // A shared account uses its owner's categories, so moving to another account can drop the pick.
+  const categorySet = categoryScope(accountList.find((a) => a.id === sourceId));
+  const { data: categories } = useCategories('active', true, categorySet);
+  const previousCategorySet = React.useRef(categorySet);
+  React.useEffect(() => {
+    if (previousCategorySet.current === categorySet) return;
+    previousCategorySet.current = categorySet;
+    form.setValue('categoryId', undefined);
+    (form.getValues('items') ?? []).forEach((_, i) => form.setValue(`items.${i}.categoryId`, ''));
+  }, [categorySet, form]);
 
   const relevantCategories = (categories ?? []).filter((c) => (type === 'TRANSFER' ? false : c.type === type));
 
@@ -668,7 +684,7 @@ function TransactionFormBody({
                 <PickerField
                   title={type === 'TRANSFER' ? 'To' : 'Account'}
                   accessibilityLabel={type === 'TRANSFER' ? 'To account' : 'Account'}
-                  options={accountOptions(selectableAccounts)}
+                  options={accountOptions(type === 'TRANSFER' ? sameOwnerAccounts(selectableAccounts, sourceChoice) : selectableAccounts)}
                   value={effectiveToId}
                   onChange={(id) => id && field.onChange(id)}
                   placeholder="Select account"

@@ -1,4 +1,4 @@
-import { isTransactionId, safeDeepLinkPath, widgetScreen } from '@/lib/deep-links';
+import { INVITATION_PATH, inviteToken, isTransactionId, safeDeepLinkPath, widgetScreen } from '@/lib/deep-links';
 
 describe('safeDeepLinkPath', () => {
   it('opens the add form and a transaction detail', () => {
@@ -64,5 +64,25 @@ describe('isTransactionId', () => {
     for (const bad of ['../users/me', '..%2Fusers%2Fme', 'a/b', '', 'x'.repeat(65), undefined, ['a']]) {
       expect(isTransactionId(bad)).toBe(false);
     }
+  });
+});
+
+describe('invitation links', () => {
+  const token = 'abcDEF123_-abcDEF123_-abcDEF123_-abcDEF12345';
+
+  it('opens the invitation screen and hands over the token', () => {
+    const link = `mofin://invitations?token=${token}`;
+    expect(safeDeepLinkPath(link)).toBe(INVITATION_PATH);
+    expect(inviteToken(link)).toBe(token);
+  });
+
+  it('goes home for a link with no usable token', () => {
+    expect(safeDeepLinkPath('mofin://invitations')).toBe('/');
+    expect(safeDeepLinkPath('mofin://invitations?token=short')).toBe('/');
+    expect(safeDeepLinkPath('mofin://invitations?token=%3Cscript%3E%3Cscript%3E%3Cscript%3E')).toBe('/');
+  });
+
+  it('never opens anything deeper under the path', () => {
+    expect(safeDeepLinkPath(`mofin://invitations/accept?token=${token}`)).toBe('/');
   });
 });

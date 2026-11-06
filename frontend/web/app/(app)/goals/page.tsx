@@ -4,6 +4,7 @@ import * as React from "react";
 import { Ban, ArrowLeft, Plus, Target } from "lucide-react";
 import { useGoals, useArchiveGoal, useRestoreGoal } from "@/hooks/useGoals";
 import { useAccounts } from "@/hooks/useAccounts";
+import { canPost } from "@/lib/account-sharing";
 import { GoalRow } from "@/components/goals/goal-row";
 import { GoalPanel } from "@/components/goals/goal-panel";
 import { GoalDialog } from "@/components/goals/goal-dialog";
@@ -115,8 +116,8 @@ export default function GoalsPage() {
                     key={goal.id}
                     goal={goal}
                     account={accountsById.get(goal.accountId)}
-                    onEdit={openEdit}
-                    onStop={setToStop}
+                    onEdit={canPost(accountsById.get(goal.accountId)) ? openEdit : undefined}
+                    onStop={canPost(accountsById.get(goal.accountId)) ? setToStop : undefined}
                     onViewHistory={setHistoryGoal}
                   />
                 ))}

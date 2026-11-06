@@ -7,6 +7,8 @@ import { useRouter } from "next/navigation";
 import { ApiClientError } from "@/lib/api";
 import { ArrowDown, ArrowDownLeft, ArrowLeft, ArrowRight, ArrowUpRight, ChevronRight, Pencil, Trash2 } from "lucide-react";
 import { useAccounts } from "@/hooks/useAccounts";
+import { useUser } from "@/hooks/useUser";
+import { authorLine } from "@/lib/account-sharing";
 import { useDeleteTransaction, useTransaction } from "@/hooks/useTransactions";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { MoneyAmount } from "@/components/common/money-amount";
@@ -37,10 +39,11 @@ export function TransactionDetail({ id }: { id: string }) {
   const [confirmDelete, setConfirmDelete] = React.useState(false);
   const { data: tx, isLoading, isError, error, refetch } = useTransaction(id);
 
-  // Older responses carried legs without their account. Only then fall back
-  // to the account list, with archived accounts included so they resolve too.
-  const needsAccountLookup = !!tx?.items.some((item) => !item.account);
-  const accountsQuery = useAccounts("all", needsAccountLookup);
+  // Older responses carried legs without their account: the account list resolves
+  // those, with archived accounts included.
+  // The list also says which accounts are shared, for showing who entered this.
+  const accountsQuery = useAccounts("all");
+  const { data: user } = useUser();
   const accountsById = React.useMemo<ReadonlyMap<string, Account> | undefined>(() => {
     if (accountsQuery.data) return new Map(accountsQuery.data.map((a) => [a.id, a]));
     // A failed lookup resolves to "Deleted account" rather than a spinner forever.
@@ -73,6 +76,9 @@ export function TransactionDetail({ id }: { id: string }) {
   const nameOf = (item: (typeof tx.items)[number] | undefined) =>
     item ? (ledgerAccountName(item, accountsById) ?? <AccountNamePlaceholder />) : null;
   const singleAccountLeg = legs.from ?? legs.to;
+
+  const onSharedAccount = tx.items.some((item) => accountsById?.get(item.accountId)?.isShared);
+  const author = onSharedAccount ? authorLine(tx, user?.id) : null;
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -143,7 +149,10 @@ export function TransactionDetail({ id }: { id: string }) {
           ) : null}
         </div>
 
-        {/* It's the user's own record: change it or remove it. */}
+        {author && <p className="mt-3 text-xs text-muted-foreground">{author}</p>}
+
+        {/* Someone with the right role can change it or remove it. */}
+        {tx.canEdit !== false && (
         <div className="mt-4 flex flex-wrap gap-2 border-t border-border pt-4">
           <Button asChild variant="outline" size="sm" className="gap-1.5">
             <Link href={`/transactions/${tx.id}/edit`}>
@@ -162,6 +171,7 @@ export function TransactionDetail({ id }: { id: string }) {
             Delete
           </Button>
         </div>
+        )}
 
         {/* Recurring series management — only on the root of a series. */}
         {tx.isRecurring && !tx.parentTransactionId && <RecurringPanel tx={tx} />}

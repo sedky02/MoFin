@@ -11,9 +11,11 @@ import {
   Landmark,
   PiggyBank,
   Pencil,
+  Users,
   type LucideIcon,
 } from "lucide-react";
 import { isAmountHidden } from "@/lib/account-privacy";
+import { canManage, ROLE_LABEL } from "@/lib/account-sharing";
 import type { Account, AccountType } from "@/lib/types";
 import { useLedgerBalance } from "@/hooks/useLedger";
 import { HideableAmount } from "@/components/common/hideable-amount";
@@ -38,6 +40,7 @@ export function AccountRow({
   onToggleHidden,
   onArchive,
   onRestore,
+  onMembers,
   busy = false,
 }: {
   account: Account;
@@ -46,6 +49,8 @@ export function AccountRow({
   onToggleHidden?: (account: Account) => void;
   onArchive?: (account: Account) => void;
   onRestore?: (account: Account) => void;
+  /** Opens who is on the account, and for its owner, inviting people. */
+  onMembers?: (account: Account) => void;
   busy?: boolean;
 }) {
   // Parallel per-account balance query (key = currency when accountId is passed).
@@ -67,6 +72,8 @@ export function AccountRow({
 
   const isZero = tryParse(balance)?.isZero() ?? false;
   const hidden = isAmountHidden(account);
+  // The API refuses these for anyone but the owner; don't offer them.
+  const owner = canManage(account);
 
   return (
     <li aria-busy={busy || undefined} className="min-w-0">
@@ -85,11 +92,20 @@ export function AccountRow({
           </span>
           <div className="min-w-0 flex-1">
             <h3 className="truncate text-sm font-medium">{account.name}</h3>
-            <p className="text-xs text-muted-foreground tabular">
-              {account.currency}
+            <p className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+              <span className="tabular">{account.currency}</span>
+              {account.isShared && (
+                <>
+                  <span aria-hidden>·</span>
+                  <Users className="size-3 shrink-0" aria-hidden />
+                  <span className="truncate">
+                    Shared{account.role ? ` · ${ROLE_LABEL[account.role]}` : ""}
+                  </span>
+                </>
+              )}
             </p>
           </div>
-          {onRestore ? (
+          {onRestore && owner ? (
             <Button
               variant="ghost"
               size="sm"
@@ -117,7 +133,19 @@ export function AccountRow({
                   {hidden ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                 </Button>
               )}
-              {onEdit && (
+              {onMembers && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-8 text-muted-foreground"
+                  onClick={() => onMembers(account)}
+                  aria-label={`People on ${account.name}`}
+                  title="People"
+                >
+                  <Users className="size-4" />
+                </Button>
+              )}
+              {onEdit && owner && (
                 <Button
                   variant="ghost"
                   size="icon"
@@ -128,7 +156,7 @@ export function AccountRow({
                   <Pencil className="size-4" />
                 </Button>
               )}
-              {onArchive && (
+              {onArchive && owner && (
                 <Button
                   variant="ghost"
                   size="icon"

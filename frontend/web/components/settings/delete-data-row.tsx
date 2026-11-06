@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SettingsRow } from "@/components/settings/settings-card";
+import { SharedAccountsWarning } from "@/components/settings/shared-accounts-warning";
 import { CONFIRM_WORD, TypeToConfirmDialog } from "@/components/settings/type-to-confirm-dialog";
 import { api } from "@/lib/api";
 import type { User } from "@/lib/types";
@@ -47,6 +48,7 @@ export function DeleteDataRow({ user, isLoading }: { user?: User; isLoading: boo
         onOpenChange={setOpen}
         title="Delete all your data?"
         description="Everything you recorded will be deleted for good. Your account, your sign-in and your connected AI apps stay."
+        warning={<SharedAccountsWarning enabled={open} />}
         actionLabel="Delete data"
         pendingText="Deleting…"
         failureMessage="Couldn't delete your data. Please try again."

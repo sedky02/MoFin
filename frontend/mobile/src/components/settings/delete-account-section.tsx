@@ -4,6 +4,7 @@ import { View } from 'react-native';
 import { TypeToConfirmDialog } from '@/components/common/type-to-confirm-dialog';
 import { SettingsSectionCard } from '@/components/settings/settings-card';
 import { canDeleteAccount } from '@/components/settings/settings-logic';
+import { SharedAccountsWarning } from '@/components/settings/shared-accounts-warning';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
@@ -74,6 +75,7 @@ export function DeleteAccountSection() {
           onOpenChange={setOpen}
           title="Delete your account?"
           description="Your account and all of its data will be deleted for good, and you'll be signed out everywhere."
+          warning={<SharedAccountsWarning enabled={open} onLeave={() => setOpen(false)} />}
           actionLabel="Delete account"
           pendingText="Deleting…"
           failureMessage="Couldn't delete the account. Please try again."

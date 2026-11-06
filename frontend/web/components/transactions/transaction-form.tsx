@@ -41,6 +41,7 @@ import { useAccounts } from "@/hooks/useAccounts";
 import { useActiveAccount } from "@/hooks/useActiveAccount";
 import { useSuggestedAccountId } from "@/hooks/useSuggestedAccount";
 import { useCategories } from "@/hooks/useCategories";
+import { categoryScope, sameOwnerAccounts, writableAccounts } from "@/lib/account-sharing";
 import { useCreateTransaction, useUpdateTransaction } from "@/hooks/useTransactions";
 import { useFormStash } from "@/hooks/use-form-stash";
 import {
@@ -88,7 +89,6 @@ export function TransactionForm({ transaction }: { transaction?: Transaction }) 
   const editing = !!transaction;
   const recurringRoot = !!transaction?.isRecurring && !transaction.parentTransactionId;
   const { data: accounts, isLoading: accountsLoading } = useAccounts();
-  const { data: categories } = useCategories();
   const createMut = useCreateTransaction({
     onView: (id) => router.push(`/transactions/${id}`),
     // The new transaction's page is gone once it's undone, so leave it.
@@ -98,7 +98,7 @@ export function TransactionForm({ transaction }: { transaction?: Transaction }) 
   });
   const updateMut = useUpdateTransaction(transaction?.id ?? "");
 
-  const accountList = accounts ?? [];
+  const accountList = writableAccounts(accounts ?? []);
   const selectableAccounts = recurringRoot
     ? accountList.filter((a) => a.currency === transaction.currency)
     : accountList;
@@ -207,9 +207,28 @@ export function TransactionForm({ transaction }: { transaction?: Transaction }) 
       ? suggestedAccountId
       : (() => {
           const from = accountList.find((a) => a.id === effectiveFromId);
-          const others = accountList.filter((a) => a.id !== effectiveFromId);
+          const others = sameOwnerAccounts(accountList, from).filter((a) => a.id !== effectiveFromId);
           return (others.find((a) => a.currency === from?.currency) ?? others[0] ?? accountList[0])?.id;
         })());
+
+  // A transaction sits on one ledger: a transfer stays between accounts with one owner, and a
+  // shared account uses its owner's categories, so moving it to another account can drop the pick.
+  const ledgerAccount = accountList.find(
+    (a) => a.id === (type === "INCOME" ? effectiveToId : effectiveFromId),
+  );
+  const destinationAccounts =
+    type === "TRANSFER"
+      ? sameOwnerAccounts(selectableAccounts, ledgerAccount)
+      : selectableAccounts;
+  const categorySet = categoryScope(ledgerAccount);
+  const { data: categories } = useCategories("active", true, categorySet);
+  const previousCategorySet = React.useRef(categorySet);
+  React.useEffect(() => {
+    if (previousCategorySet.current === categorySet) return;
+    previousCategorySet.current = categorySet;
+    form.setValue("categoryId", undefined);
+    (form.getValues("items") ?? []).forEach((_, i) => form.setValue(`items.${i}.categoryId`, ""));
+  }, [categorySet, form]);
 
   // Switching the active account is a deliberate choice, so it replaces any picked account.
   // Not while editing: the transaction's own accounts are what's being edited.
@@ -692,7 +711,7 @@ export function TransactionForm({ transaction }: { transaction?: Transaction }) 
                     </FormLabel>
                     <FormControl>
                       <AccountSelect
-                        accounts={selectableAccounts}
+                        accounts={destinationAccounts}
                         value={effectiveToId}
                         onChange={field.onChange}
                         className="data-[size=default]:h-12 rounded-xl border-0 bg-muted/50 shadow-none dark:bg-muted/50 dark:hover:bg-muted/70"

@@ -1,4 +1,5 @@
 import { useAccounts } from "@/hooks/useAccounts";
+import { writableAccounts } from "@/core/account-sharing";
 import { useActiveAccount } from "@/hooks/useActiveAccount";
 import { useMainAccount } from "@/hooks/useMainAccount";
 import { useRecentTransactions } from "@/hooks/useSearch";
@@ -17,17 +18,19 @@ const RECENT_WINDOW = 30;
  * account is never suggested. `undefined` only while there are no accounts.
  */
 export function useSuggestedAccountId(): string | undefined {
-  const { data: accounts = [] } = useAccounts();
+  const { data: allAccounts = [] } = useAccounts();
+  const accounts = writableAccounts(allAccounts);
   const { accountId: activeId } = useActiveAccount();
   const { accountId: mainId } = useMainAccount();
   const { data: recent } = useRecentTransactions(RECENT_WINDOW);
 
   if (accounts.length === 0) return undefined;
-  if (activeId) return activeId;
-  if (mainId) return mainId;
+  const known = new Set(accounts.map((a) => a.id));
+  // A view-only account can be active or main, but nothing can be posted to it.
+  if (activeId && known.has(activeId)) return activeId;
+  if (mainId && known.has(mainId)) return mainId;
   if (accounts.length === 1) return accounts[0].id;
 
-  const known = new Set(accounts.map((a) => a.id));
   const counts = new Map<string, number>();
   // Newest first, so on a tie the first account seen (most recent) wins below.
   for (const tx of recent ?? []) {

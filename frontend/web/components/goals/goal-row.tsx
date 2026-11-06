@@ -107,9 +107,9 @@ export function GoalRow({
               <History className="size-4" />
               View history
             </DropdownMenuItem>
-            {!readOnly && (
+            {!readOnly && onEdit && (
               <>
-                <DropdownMenuItem onClick={() => onEdit?.(goal)}>
+                <DropdownMenuItem onClick={() => onEdit(goal)}>
                   <Pencil className="size-4" />
                   Edit
                 </DropdownMenuItem>

@@ -7,6 +7,7 @@ import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SettingsCard } from "@/components/settings/settings-card";
+import { SharedAccountsWarning } from "@/components/settings/shared-accounts-warning";
 import { CONFIRM_WORD, TypeToConfirmDialog } from "@/components/settings/type-to-confirm-dialog";
 import { authApi } from "@/lib/api";
 import type { User } from "@/lib/types";
@@ -68,6 +69,7 @@ function DeleteAccountDialog({ open, onOpenChange }: { open: boolean; onOpenChan
       onOpenChange={onOpenChange}
       title="Delete your account?"
       description="Your account and all of its data will be deleted for good, and you'll be signed out everywhere."
+      warning={<SharedAccountsWarning enabled={open} />}
       actionLabel="Delete account"
       pendingText="Deleting…"
       failureMessage="Couldn't delete the account. Please try again."

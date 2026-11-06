@@ -1,5 +1,5 @@
 // Incoming `mofin://` links. They may only ever open a screen (the transaction detail, the add
-// form, or the screens home screen widgets open): never a settings or delete screen, and never
+// form, an invitation to answer, or the screens home screen widgets open): never a settings or delete screen, and never
 // anything that writes on open. A widget's ↻ only reads (it refetches the widget data, then opens
 // its screen). Adding a widget opens its setup screen, which only saves this phone's choice of
 // what that widget shows, and only when the user taps Done. Everything else
@@ -19,6 +19,16 @@ const WIDGET_NAMES = ['WeeklySummary', 'MonthlySummary', 'Goals'];
 /** The screen a widget's ↻ returns to: one of WIDGET_SCREENS, else the dashboard. */
 export function widgetScreen(name: unknown): WidgetScreen {
   return typeof name === 'string' && Object.prototype.hasOwnProperty.call(WIDGET_SCREENS, name) ? (name as WidgetScreen) : 'dashboard';
+}
+
+export const INVITATION_PATH = '/invitations';
+const INVITE_TOKEN = /^[A-Za-z0-9_-]{16,256}$/;
+
+/** The invitation token in a `mofin://invitations?token=…` link, when it looks like one. */
+export function inviteToken(path: string): string | undefined {
+  const query = path.match(/\?([^#]*)/)?.[1] ?? '';
+  const token = new URLSearchParams(query).get('token');
+  return token && INVITE_TOKEN.test(token) ? token : undefined;
 }
 
 /** True for an id that can safely go into an API path (screens reached by a typed or pasted URL). */
@@ -49,6 +59,9 @@ export function safeDeepLinkPath(path: string): string {
     const widget = new URLSearchParams(query).get('widget') ?? '';
     return WIDGET_NAMES.includes(widget) ? `/widget-setup?widget=${widget}` : HOME_PATH;
   }
+  // An emailed invitation, handed over by the web page. The token is kept by the caller, so it
+  // survives a sign-in; opening the screen answers nothing, the person still has to tap.
+  if (parts.length === 1 && parts[0] === 'invitations') return inviteToken(path) ? INVITATION_PATH : HOME_PATH;
   if (parts[0] === 'transactions') {
     if (parts.length === 2 && parts[1] === 'new') return '/transactions/new';
     if (parts.length === 2 && parts[1] !== 'edit' && TRANSACTION_ID.test(parts[1]!)) return `/transactions/${parts[1]}`;

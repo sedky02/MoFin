@@ -22,6 +22,9 @@ export default function AppLayout() {
           <Stack.Screen name="transactions/new" options={{ title: 'New transaction', presentation: 'modal' }} />
           <Stack.Screen name="transactions/[id]/index" options={{ title: 'Transaction' }} />
           <Stack.Screen name="accounts/index" options={{ title: 'Accounts' }} />
+          {/* Sets its own title (the account's name). */}
+          <Stack.Screen name="accounts/[id]" options={{ title: 'People' }} />
+          <Stack.Screen name="invitations" options={{ title: 'Invitation' }} />
           <Stack.Screen name="categories/index" options={{ title: 'Categories' }} />
           <Stack.Screen name="goals/index" options={{ title: 'Goals' }} />
           <Stack.Screen name="connect/index" options={{ title: 'Connect AI' }} />

@@ -26,6 +26,7 @@ import { TypeSwitcher } from "@/components/transactions/type-switcher";
 import { AccountSelect } from "@/components/transactions/account-select";
 import { useAccounts } from "@/hooks/useAccounts";
 import { useCategories } from "@/hooks/useCategories";
+import { categoryScope, sameOwnerAccounts, writableAccounts } from "@/lib/account-sharing";
 import { makeTransactionSchema, type TransactionFormValues } from "@/lib/transaction-schema";
 import { handleApiError } from "@/lib/form-errors";
 import { parseMoneyInput, toDatetimeLocal } from "@/lib/format";
@@ -45,8 +46,7 @@ export function DraftReviewForm({
   onCancel: () => void;
 }) {
   const { data: accounts } = useAccounts();
-  const { data: categories } = useCategories();
-  const accountList = accounts ?? [];
+  const accountList = writableAccounts(accounts ?? []);
   const schema = makeTransactionSchema(accountList);
 
   const p = draft.parsedData;
@@ -87,6 +87,22 @@ export function DraftReviewForm({
       form.setValue("currency", acct.currency, { shouldValidate: false });
     }
   }, [sourceAccountId, accountList, currency, form]);
+
+  // A shared account uses its owner's categories, so moving the draft can drop the pick.
+  const ledgerAccount = accountList.find((a) => a.id === sourceAccountId);
+  const categorySet = categoryScope(ledgerAccount);
+  const { data: categories } = useCategories("active", true, categorySet);
+  const previousCategorySet = React.useRef(categorySet);
+  React.useEffect(() => {
+    if (!accountList.length || previousCategorySet.current === categorySet) return;
+    previousCategorySet.current = categorySet;
+    form.setValue("categoryId", undefined);
+  }, [categorySet, accountList.length, form]);
+
+  const destinationAccounts =
+    type === "TRANSFER"
+      ? sameOwnerAccounts(accountList, accountList.find((a) => a.id === fromAccountId))
+      : accountList;
 
   const relevantCategories = (categories ?? []).filter((c) =>
     type === "TRANSFER" ? false : c.type === type,
@@ -215,7 +231,7 @@ export function DraftReviewForm({
                   <FormLabel>{type === "TRANSFER" ? "To" : "Account"}</FormLabel>
                   <FormControl>
                     <AccountSelect
-                      accounts={accountList}
+                      accounts={destinationAccounts}
                       value={field.value}
                       onChange={field.onChange}
                       aria-invalid={!!form.formState.errors.toAccountId}

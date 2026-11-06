@@ -17,6 +17,7 @@ import { Text } from '@/components/ui/text';
 import { goalExplainer, goalRuleHint, goalScopeLabel } from '@/core/goal-scope';
 import type { Goal, GoalRecurrenceUnit, GoalType } from '@/core/types';
 import { useAccounts } from '@/hooks/useAccounts';
+import { writableAccounts } from '@/core/account-sharing';
 import { useActiveAccount } from '@/hooks/useActiveAccount';
 import { useCreateGoal, useUpdateGoal } from '@/hooks/useGoals';
 import { PiggyBank, TrendingDown, TrendingUp } from '@/lib/icons';
@@ -65,7 +66,7 @@ function GoalDialogBody({
   const [pending, setPending] = React.useState(false);
   const set = <K extends keyof GoalDraft>(key: K, value: GoalDraft[K]) => setDraft((d) => ({ ...d, [key]: value }));
 
-  const accountList = accounts ?? [];
+  const accountList = writableAccounts(accounts ?? []);
   const scopeAccount = accountList.find((a) => a.id === draft.accountId);
   const explainer = goalExplainer(draft.type);
 

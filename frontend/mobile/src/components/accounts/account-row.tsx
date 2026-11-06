@@ -9,10 +9,11 @@ import { Icon } from '@/components/ui/icon';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { isAmountHidden } from '@/core/account-privacy';
+import { canManage, ROLE_LABEL } from '@/core/account-sharing';
 import { tryParse } from '@/core/decimal';
 import type { Account } from '@/core/types';
 import { useLedgerBalance } from '@/hooks/useLedger';
-import { AlertTriangle, Archive, ArchiveRestore, Eye, EyeOff, Pencil } from '@/lib/icons';
+import { AlertTriangle, Archive, ArchiveRestore, Eye, EyeOff, Pencil, Users } from '@/lib/icons';
 import { cn } from '@/lib/utils';
 
 /** One account as its own card: type tile, name and currency, balance, and its actions. */
@@ -22,6 +23,7 @@ export function AccountRow({
   onToggleHidden,
   onArchive,
   onRestore,
+  onMembers,
   busy = false,
 }: {
   account: Account;
@@ -30,6 +32,8 @@ export function AccountRow({
   onToggleHidden?: (account: Account) => void;
   onArchive?: (account: Account) => void;
   onRestore?: (account: Account) => void;
+  /** Opens who is on the account, and for its owner, inviting people. */
+  onMembers?: (account: Account) => void;
   busy?: boolean;
 }) {
   // A failed request is shown as an error, never as a balance of 0. An empty result is an
@@ -38,6 +42,8 @@ export function AccountRow({
   const balance = data?.find((b) => b.key === account.currency)?.balance ?? data?.[0]?.balance ?? '0';
   const isZero = tryParse(balance)?.isZero() ?? false;
   const hidden = isAmountHidden(account);
+  // The API refuses these for anyone but the owner; don't offer them.
+  const owner = canManage(account);
 
   return (
     <Card aria-busy={busy || undefined} className={cn('gap-3 border-0 p-4', busy && 'opacity-60')}>
@@ -49,9 +55,22 @@ export function AccountRow({
           <Text numberOfLines={1} className="text-sm font-medium">
             {account.name}
           </Text>
-          <Text className="text-xs text-muted-foreground">{account.currency}</Text>
+          <View className="flex-row items-center gap-1.5">
+            <Text className="text-xs text-muted-foreground">{account.currency}</Text>
+            {account.isShared ? (
+              <>
+                <Text aria-hidden className="text-xs text-muted-foreground">
+                  ·
+                </Text>
+                <Icon as={Users} size={12} aria-hidden className="text-muted-foreground" />
+                <Text numberOfLines={1} className="shrink text-xs text-muted-foreground">
+                  Shared{account.role ? ` · ${ROLE_LABEL[account.role]}` : ''}
+                </Text>
+              </>
+            ) : null}
+          </View>
         </View>
-        {onRestore ? (
+        {onRestore && owner ? (
           <Button
             variant="ghost"
             disabled={busy}
@@ -75,7 +94,17 @@ export function AccountRow({
                 <Icon as={hidden ? EyeOff : Eye} size={16} className="text-muted-foreground" />
               </Button>
             ) : null}
-            {onEdit ? (
+            {onMembers ? (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-11"
+                onPress={() => onMembers(account)}
+                accessibilityLabel={`People on ${account.name}`}>
+                <Icon as={Users} size={16} className="text-muted-foreground" />
+              </Button>
+            ) : null}
+            {onEdit && owner ? (
               <Button
                 variant="ghost"
                 size="icon"
@@ -85,7 +114,7 @@ export function AccountRow({
                 <Icon as={Pencil} size={16} className="text-muted-foreground" />
               </Button>
             ) : null}
-            {onArchive ? (
+            {onArchive && owner ? (
               <Button
                 variant="ghost"
                 size="icon"

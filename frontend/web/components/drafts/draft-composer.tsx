@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import { useCreateDraftIntent } from "@/hooks/useDrafts";
 import { useAccounts } from "@/hooks/useAccounts";
+import { writableAccounts } from "@/lib/account-sharing";
 import { useActiveAccount } from "@/hooks/useActiveAccount";
 
 // Example sentences, shown whole so it is plain what a click puts in the box.
@@ -28,13 +29,14 @@ export function DraftComposer() {
   // An explicit pick here overrides the app-wide active account for this composer only.
   const [pickedAccountId, setDefaultAccountId] = React.useState<string | undefined>();
   const defaultAccountId = pickedAccountId ?? activeAccountId;
-  const { data: accounts } = useAccounts();
+  const { data: allAccounts } = useAccounts();
+  const accounts = writableAccounts(allAccounts ?? []);
   const createIntent = useCreateDraftIntent();
 
   async function submit() {
     const text = input.trim();
     if (!text || createIntent.isPending) return;
-    const account = accounts?.find((a) => a.id === defaultAccountId);
+    const account = accounts.find((a) => a.id === defaultAccountId);
     try {
       await createIntent.mutateAsync({
         input: text,
@@ -86,7 +88,7 @@ export function DraftComposer() {
               <SelectValue placeholder="Account (optional)" />
             </SelectTrigger>
             <SelectContent>
-              {(accounts ?? []).map((a) => (
+              {accounts.map((a) => (
                 <SelectItem key={a.id} value={a.id}>
                   <span className="flex items-center gap-2">
                     {a.name}

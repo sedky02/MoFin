@@ -19,6 +19,7 @@ import { accountKeys, userKeys } from '@/core/query-keys';
 import { getQueryClient } from '@/lib/query-client';
 import { getToasts } from '@/lib/toast';
 
+jest.mock('expo-router', () => ({ router: { push: jest.fn() } }));
 jest.mock('@/components/settings/save-export', () => ({ saveExport: jest.fn(async () => 'shared') }));
 
 const deleteCalls = (calls: Call[]) => calls.filter((c) => c.path === '/users/me' && c.method === 'DELETE');
@@ -75,6 +76,7 @@ describe('Delete all data', () => {
     const calls = mockFetch((c) => {
       if (c.path === '/users/me/reset-data') return new Response(null, { status: 204 });
       if (c.path === '/users/me') return json(200, baseUser());
+      if (c.path === '/accounts/shared/owned') return json(200, []);
       return json(200, { data: [], total: 0 });
     });
     const client = getQueryClient();

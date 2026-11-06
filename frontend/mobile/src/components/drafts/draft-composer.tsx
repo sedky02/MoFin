@@ -7,6 +7,7 @@ import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { Textarea } from '@/components/ui/textarea';
 import { useAccounts } from '@/hooks/useAccounts';
+import { writableAccounts } from '@/core/account-sharing';
 import { useActiveAccount } from '@/hooks/useActiveAccount';
 import { useCreateDraftIntent } from '@/hooks/useDrafts';
 import { Sparkles } from '@/lib/icons';
@@ -19,13 +20,14 @@ export function DraftComposer({ autoFocus = false }: { autoFocus?: boolean } = {
   // An explicit pick here overrides the app-wide active account for this composer only.
   const [pickedAccountId, setPickedAccountId] = React.useState<string | undefined>();
   const defaultAccountId = pickedAccountId ?? activeAccountId;
-  const { data: accounts } = useAccounts();
+  const { data: allAccounts } = useAccounts();
+  const accounts = writableAccounts(allAccounts ?? []);
   const createIntent = useCreateDraftIntent();
 
   async function submit() {
     const text = input.trim();
     if (!text || createIntent.isPending) return;
-    const account = accounts?.find((a) => a.id === defaultAccountId);
+    const account = accounts.find((a) => a.id === defaultAccountId);
     try {
       await createIntent.mutateAsync({ input: text, defaultAccountId, defaultCurrency: account?.currency });
       setInput('');
@@ -49,7 +51,7 @@ export function DraftComposer({ autoFocus = false }: { autoFocus?: boolean } = {
         <PickerField
           title="Default account"
           accessibilityLabel="Default account"
-          options={accountOptions(accounts ?? [])}
+          options={accountOptions(accounts)}
           value={defaultAccountId}
           onChange={setPickedAccountId}
           placeholder="Account (optional)"

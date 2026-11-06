@@ -5,13 +5,16 @@ import { Archive, ArrowLeft, Plus, Wallet } from "lucide-react";
 import { useAccounts, useArchiveAccount, useRestoreAccount, useUpdateAccount } from "@/hooks/useAccounts";
 import { AccountRow } from "@/components/accounts/account-card";
 import { AccountDialog } from "@/components/accounts/account-dialog";
+import { AccountMembersDialog } from "@/components/accounts/account-members-dialog";
 import { PageHeader } from "@/components/common/page-header";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState, ErrorState } from "@/components/common/states";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
+import { useAccountMembers, useSetHideAmount } from "@/hooks/useAccountSharing";
 import { isAmountHidden, withHideAmount } from "@/lib/account-privacy";
+import { canManage, memberName } from "@/lib/account-sharing";
 import type { Account, AccountType } from "@/lib/types";
 
 const GROUPS: { type: AccountType; title: string }[] = [
@@ -35,6 +38,7 @@ function Group({
   onToggleHidden?: (a: Account) => void;
   onArchive?: (a: Account) => void;
   onRestore?: (a: Account) => void;
+  onMembers?: (a: Account) => void;
   busyId?: string;
 }) {
   if (items.length === 0) return null;
@@ -82,15 +86,23 @@ export default function AccountsPage() {
   const archived = useAccounts("archived");
   const archive = useArchiveAccount();
   const update = useUpdateAccount();
-  // The eye beside Edit: hides or shows this account's balance everywhere, saved on the account.
+  const setHideAmount = useSetHideAmount();
+  // The eye beside Edit: hides or shows this account's balance everywhere. Each person's own
+  // choice: the owner's is saved on the account, a member's on their membership.
   const toggleHidden = (a: Account) =>
-    update.mutate({ id: a.id, metadata: withHideAmount(a.metadata, !isAmountHidden(a)) });
+    canManage(a)
+      ? update.mutate({ id: a.id, metadata: withHideAmount(a.metadata, !isAmountHidden(a)) })
+      : setHideAmount.mutate({ accountId: a.id, hideAmount: !isAmountHidden(a) });
   const restore = useRestoreAccount();
   const archivedCount = archived.data?.length ?? 0;
 
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<Account | undefined>();
   const [toArchive, setToArchive] = React.useState<Account | undefined>();
+  const [membersOf, setMembersOf] = React.useState<Account | undefined>();
+  // Archiving takes the account away from everyone on it, so the warning names them.
+  const { data: archiveMembers } = useAccountMembers(toArchive?.isShared ? toArchive.id : undefined);
+  const othersOnArchive = (archiveMembers ?? []).filter((m) => !m.isYou).map(memberName);
 
   // Instant list removal on archive (React 19 useOptimistic).
   const [optimisticAccounts, removeOptimistic] = React.useOptimistic(
@@ -173,6 +185,7 @@ export default function AccountsPage() {
                 onEdit={openEdit}
                 onToggleHidden={toggleHidden}
                 onArchive={setToArchive}
+                onMembers={setMembersOf}
                 busyId={update.isPending ? update.variables?.id : undefined}
               />
             ))}
@@ -198,6 +211,7 @@ export default function AccountsPage() {
             hint="hidden from your list, history kept"
             items={archived.data ?? []}
             onRestore={(a) => restore.mutate(a.id)}
+            onMembers={setMembersOf}
             busyId={restoringId}
           />
         </div>
@@ -209,11 +223,17 @@ export default function AccountsPage() {
         account={editing}
       />
 
+      <AccountMembersDialog account={membersOf} onClose={() => setMembersOf(undefined)} />
+
       <ConfirmDialog
         open={!!toArchive}
         onOpenChange={(o) => !o && setToArchive(undefined)}
         title={`Archive "${toArchive?.name}"?`}
-        description="This hides the account from your list. Its history and ledger entries are preserved. You can restore it later from Archived. Any goals linked to this account keep running."
+        description={
+          toArchive?.isShared
+            ? `This removes the account for everyone on it${othersOnArchive.length ? `: ${othersOnArchive.join(", ")}` : ""}. They can't add to it, and only see it under Archived. Its history is preserved, and you can restore it later.`
+            : "This hides the account from your list. Its history and ledger entries are preserved. You can restore it later from Archived. Any goals linked to this account keep running."
+        }
         confirmLabel="Archive"
         onConfirm={confirmArchive}
       />

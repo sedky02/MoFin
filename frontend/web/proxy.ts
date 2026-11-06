@@ -16,6 +16,12 @@ export default function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Emailed links too: the page itself says what to do, and the token in the fragment would be
+  // lost on a redirect to the login page.
+  if (pathname.startsWith("/invitations") || pathname.startsWith("/verify-email")) {
+    return NextResponse.next();
+  }
+
   // The landing page is public for everyone, signed in or not; the app lives at /dashboard.
   if (pathname === "/") {
     return NextResponse.next();

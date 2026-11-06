@@ -11,6 +11,8 @@ export type GoalRecurrenceUnit = "MONTH" | "YEAR";
 export type GoalStatus = "IN_PROGRESS" | "ACHIEVED" | "FAILED";
 export type RecurringInterval = "MONTHLY" | "YEARLY";
 export type RecurringStatus = "ACTIVE" | "PAUSED" | "CANCELLED";
+export type AccountMemberRole = "EDITOR" | "VIEWER";
+export type AccountRole = "OWNER" | AccountMemberRole;
 
 export interface User {
   id: string;
@@ -19,6 +21,8 @@ export interface User {
   settings?: UserSettings | null;
   /** False for an account that only signs in with Google (no password to change). */
   hasPassword?: boolean;
+  /** When this person proved they control `email`; accepting an invitation needs it. */
+  emailVerifiedAt?: string | null;
   /** A temporary "Try the demo" user, deleted at `expiresAt`. */
   isDemo?: boolean;
   expiresAt?: string | null;
@@ -45,6 +49,53 @@ export interface Account {
   archivedAt?: string | null;
   createdAt: string;
   updatedAt: string;
+  /** The owner's id. */
+  userId?: string;
+  /** This viewer's role on the account. */
+  role?: AccountRole;
+  /** Other people can reach it. */
+  isShared?: boolean;
+  /** Everyone on it, the owner included. */
+  memberCount?: number;
+  ownerName?: string | null;
+}
+
+/** Someone on a shared account. `email` is for the owner, and for your own row. */
+export interface AccountMember {
+  userId: string;
+  displayName?: string | null;
+  email?: string | null;
+  role: AccountRole;
+  isYou: boolean;
+  joinedAt: string;
+}
+
+export interface AccountInvitation {
+  id: string;
+  accountId: string;
+  email: string;
+  role: AccountMemberRole;
+  status: "PENDING" | "ACCEPTED" | "DECLINED" | "REVOKED";
+  expiresAt: string;
+  createdAt: string;
+}
+
+/** What someone holding an invitation link sees before answering it. */
+export interface InvitationPreview {
+  accountName: string;
+  currency: string;
+  invitedBy: string;
+  email: string;
+  role: AccountMemberRole;
+  expiresAt: string;
+}
+
+/** An account the user owns that others can reach: what deleting their data takes from those people. */
+export interface OwnedSharedAccount {
+  id: string;
+  name: string;
+  archivedAt?: string | null;
+  members: { userId: string; displayName?: string | null; email: string; role: AccountMemberRole }[];
 }
 
 export interface Category {
@@ -88,6 +139,11 @@ export interface Transaction {
   items: LedgerItem[];
   createdAt: string;
   updatedAt: string;
+  /** Whether this viewer may change it. Absent right after creating one, which they may. */
+  canEdit?: boolean;
+  /** Who entered it and who last changed it; null once that person has left MoFin. */
+  createdBy?: { id: string; displayName?: string | null } | null;
+  updatedBy?: { id: string; displayName?: string | null } | null;
 
   // Recurrence — only meaningful on the root transaction that started a
   // series (isRecurring true, parentTransactionId null). Generated

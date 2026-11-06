@@ -10,6 +10,7 @@ import { getToasts } from '@/lib/toast';
 
 const mockFile = { create: jest.fn(), write: jest.fn(async () => {}), uri: '' };
 const mockDir = { uri: 'file:///cache/exports/', exists: true, create: jest.fn(), delete: jest.fn() };
+jest.mock('expo-router', () => ({ router: { push: jest.fn() } }));
 jest.mock('expo-file-system', () => ({
   Paths: { cache: { uri: 'file:///cache/' } },
   Directory: jest.fn().mockImplementation(() => mockDir),

@@ -11,6 +11,16 @@ export const categoryKeys = {
   all: ["categories"] as const,
   list: (status: "active" | "archived" | "all" = "active") =>
     [...categoryKeys.all, "list", status] as const,
+  /** The categories that fit a shared account: its owner's. */
+  forAccount: (accountId: string, status: "active" | "archived" | "all" = "active") =>
+    [...categoryKeys.list(status), accountId] as const,
+};
+
+export const sharingKeys = {
+  all: ["account-sharing"] as const,
+  members: (accountId: string) => [...sharingKeys.all, "members", accountId] as const,
+  invitations: (accountId: string) => [...sharingKeys.all, "invitations", accountId] as const,
+  owned: () => [...sharingKeys.all, "owned"] as const,
 };
 
 export const transactionKeys = {

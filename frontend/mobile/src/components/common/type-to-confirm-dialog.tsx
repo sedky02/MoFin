@@ -36,6 +36,7 @@ export function TypeToConfirmDialog({
   pendingText,
   failureMessage,
   closeWhenDone = true,
+  warning,
   onConfirm,
 }: {
   open: boolean;
@@ -46,6 +47,8 @@ export function TypeToConfirmDialog({
   pendingText: string;
   failureMessage: string;
   closeWhenDone?: boolean;
+  /** Anything the person should read before typing the word. */
+  warning?: React.ReactNode;
   onConfirm: () => Promise<void>;
 }) {
   const [pending, setPending] = React.useState(false);
@@ -95,6 +98,7 @@ export function TypeToConfirmDialog({
           <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
+        {warning}
         <View className="gap-1.5">
           <Text className="text-sm font-medium">Type {CONFIRM_WORD} to confirm</Text>
           <Input

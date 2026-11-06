@@ -3,6 +3,7 @@ import { ActivityIndicator, View } from 'react-native';
 
 import { ApiClientError } from '@/api/client';
 import { TypeToConfirmDialog } from '@/components/common/type-to-confirm-dialog';
+import { SharedAccountsWarning } from '@/components/settings/shared-accounts-warning';
 import { SettingsRow, SettingsSectionCard } from '@/components/settings/settings-card';
 import { canDeleteData, EXPORT_COPY, EXPORT_FORMATS, type ExportFormat } from '@/components/settings/settings-logic';
 import { Button } from '@/components/ui/button';
@@ -102,6 +103,7 @@ export function DeleteDataRow({ user, isLoading }: { user?: User; isLoading: boo
         onOpenChange={setOpen}
         title="Delete all your data?"
         description="Everything you recorded will be deleted for good. Your account, your sign-in and your connected AI apps stay."
+        warning={<SharedAccountsWarning enabled={open} onLeave={() => setOpen(false)} />}
         actionLabel="Delete data"
         pendingText="Deleting…"
         failureMessage="Couldn't delete your data. Please try again."

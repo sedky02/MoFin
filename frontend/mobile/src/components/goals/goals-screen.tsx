@@ -12,6 +12,7 @@ import { groupCancelledGoals } from '@/core/cancelled-goals';
 import { groupGoalsByStanding, STANDING_LABEL } from '@/core/goal-standing';
 import type { Account, Goal } from '@/core/types';
 import { useAccounts } from '@/hooks/useAccounts';
+import { canPost } from '@/core/account-sharing';
 import { useArchiveGoal, useGoals, useRestoreGoal } from '@/hooks/useGoals';
 import { Ban, ArrowLeft, History, Pencil, Plus, RotateCcw, Target } from '@/lib/icons';
 
@@ -44,6 +45,7 @@ function ActionsDialog({
   onEdit,
   onStop,
   onRestore,
+  canChange,
 }: {
   goal?: Goal;
   onClose: () => void;
@@ -51,17 +53,21 @@ function ActionsDialog({
   onEdit: (g: Goal) => void;
   onStop: (g: Goal) => void;
   onRestore: (g: Goal) => void;
+  /** False on a view-only account. */
+  canChange: boolean;
 }) {
   const cancelled = !!goal?.archivedAt;
   const items = goal
     ? [
         { label: 'View history', icon: History, run: () => onHistory(goal), destructive: false },
-        ...(cancelled
-          ? [{ label: 'Restore', icon: RotateCcw, run: () => onRestore(goal), destructive: false }]
-          : [
-              { label: 'Edit', icon: Pencil, run: () => onEdit(goal), destructive: false },
-              { label: 'Cancel goal', icon: Ban, run: () => onStop(goal), destructive: true },
-            ]),
+        ...(!canChange
+          ? []
+          : cancelled
+            ? [{ label: 'Restore', icon: RotateCcw, run: () => onRestore(goal), destructive: false }]
+            : [
+                { label: 'Edit', icon: Pencil, run: () => onEdit(goal), destructive: false },
+                { label: 'Cancel goal', icon: Ban, run: () => onStop(goal), destructive: true },
+              ]),
       ]
     : [];
   return (
@@ -220,6 +226,7 @@ export function GoalsScreen() {
         onEdit={openEdit}
         onStop={setToStop}
         onRestore={(g) => restoreMut.mutate(g.id)}
+        canChange={!actionsGoal || canPost(accountsById.get(actionsGoal.accountId))}
       />
 
       <GoalHistoryDialog

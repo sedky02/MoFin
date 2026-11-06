@@ -28,6 +28,13 @@ describe("proxy", () => {
     expect(visit("/dashboard", true).headers.get("location")).toBeNull();
   });
 
+  it("lets visitors reach emailed links, whose token would not survive a redirect", () => {
+    for (const path of ["/invitations/accept", "/verify-email"]) {
+      expect(visit(path, false).headers.get("location")).toBeNull();
+      expect(visit(path, true).headers.get("location")).toBeNull();
+    }
+  });
+
   it("still sends visitors from app routes to sign in", () => {
     expect(visit("/dashboard", false).headers.get("location")).toMatch(/^http:\/\/web\.test\/login/);
   });
