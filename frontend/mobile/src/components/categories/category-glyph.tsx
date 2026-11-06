@@ -43,9 +43,8 @@ function iconForName(name?: string | null): LucideIcon | undefined {
 export type CategoryGlyph = { kind: 'icon'; Icon: LucideIcon } | { kind: 'emoji'; emoji: string };
 
 /**
- * The one way a category is drawn, on every screen: its picked icon; else an older emoji icon; else
- * an icon guessed from its name (or, with no category, from `fallbackName`, e.g. a description);
- * else a tag for a category and a receipt for an uncategorized transaction.
+ * Drawn the same everywhere: the picked icon, else an older emoji, else an icon guessed from the
+ * name (or `fallbackName`), else a tag or receipt.
  */
 export function categoryGlyph(category?: Pick<Category, 'icon' | 'name'> | null, fallbackName?: string | null): CategoryGlyph {
   const registered = categoryIconFor(category?.icon);
@@ -55,7 +54,6 @@ export function categoryGlyph(category?: Pick<Category, 'icon' | 'name'> | null,
   return { kind: 'icon', Icon: guessed ?? (category ? Tags : Receipt) };
 }
 
-/** Draws `categoryGlyph`: the icon in `color`, or the emoji. */
 export function CategoryGlyphIcon({
   category,
   fallbackName,
@@ -78,7 +76,6 @@ export function CategoryGlyphIcon({
   return <Icon as={glyph.Icon} size={size} color={color} aria-hidden />;
 }
 
-/** Background for a category tile: the category's colour at low opacity (hex + alpha). */
 export function categoryTint(color?: string | null): string | undefined {
   return color && /^#[0-9a-f]{6}$/i.test(color) ? `${color}22` : undefined;
 }

@@ -57,7 +57,6 @@ export function DraftComposer() {
   );
 
   function onKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    // ⌘/Ctrl + Enter submits.
     if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
       e.preventDefault();
       submit();
@@ -66,7 +65,6 @@ export function DraftComposer() {
 
   return (
     <div>
-      {/* One box: the sentence on top, the account and the button along its bottom edge. */}
       <div className="rounded-2xl border border-border bg-card shadow-sm transition-shadow focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/30">
         <Textarea
           value={input}
@@ -118,7 +116,6 @@ export function DraftComposer() {
         </div>
       </div>
 
-      {/* Suggestions, like the follow-ups under a chat answer: a return arrow and the sentence. A click fills the box in. */}
       <ul aria-label="Examples" className="mt-4 divide-y divide-border/60">
         {EXAMPLES.map((text) => (
           <li key={text}>

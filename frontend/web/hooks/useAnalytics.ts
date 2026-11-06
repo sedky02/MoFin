@@ -16,7 +16,6 @@ export function useMonthlySummary(year: number, month: number, accountId?: strin
   });
 }
 
-/** Income / expenses / closing balance per month for one currency (server-cached). */
 export function useMonthlySeries(currency: string, accountId?: string, months = 6) {
   return useQuery({
     queryKey: analyticsKeys.series(currency, months, accountId),
@@ -24,7 +23,6 @@ export function useMonthlySeries(currency: string, accountId?: string, months = 
     staleTime: STALE.analytics,
   });
 }
-
 
 /**
  * Income / expenses / closing balance per day for one currency, days counted in `timeZone`

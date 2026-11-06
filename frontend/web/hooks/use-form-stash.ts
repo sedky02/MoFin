@@ -6,14 +6,8 @@ import { onBeforeLoginRedirect } from "@/lib/api";
 import { stashForm, takeStashedForm } from "@/lib/form-stash";
 
 /**
- * Keeps a form's input across a session-expired redirect: if the API client
- * bounces to /login while the form has changes, the values go to
- * sessionStorage under `key`; the next time the form is ready (after signing
- * back in) they are put back once. Fields the user has already changed are
- * left alone. Returns true while restored input is on screen, for a notice.
- *
- * `ready` holds the restore until the data the form depends on has loaded;
- * `accept` can reject a stash that no longer fits (e.g. unknown account ids).
+ * Keeps a form's input across a session-expired redirect: unsaved values go to sessionStorage under
+ * `key` and are restored when the form is ready after signing back in.
  */
 export function useFormStash<T extends FieldValues>(
   form: UseFormReturn<T>,

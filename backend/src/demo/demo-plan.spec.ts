@@ -39,9 +39,8 @@ interface WrittenItem {
 }
 
 /**
- * The real TransactionsService (validation, category checks, ledger lines)
- * over an in-memory store, so the test sees the items the create path would
- * write for each planned transaction.
+ * The real TransactionsService over an in-memory store, so the test sees the items the create path
+ * would write.
  */
 function makeWriter(plan: DemoPlan) {
   const accounts = plan.accounts.map((account) => ({
@@ -74,8 +73,8 @@ function makeWriter(plan: DemoPlan) {
       return { account: { ...account, userId }, role: 'OWNER' };
     },
   };
-  // The create path's category checks read through whichever client it is
-  // given (the caller's transaction or the service's own), so both fakes need it.
+  // The create path's category checks read through whichever client they're given, so both fakes
+  // need it.
   const category = {
     findFirst: async ({ where }: { where: { id: string } }) =>
       categories.find((c) => c.id === where.id) ?? null,

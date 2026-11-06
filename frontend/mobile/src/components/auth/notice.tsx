@@ -9,7 +9,6 @@ const STYLES = {
   info: { box: 'border-border bg-muted', text: 'text-foreground' },
 } as const;
 
-/** A banner above a form (account created, session expired, too many attempts). */
 export function Notice({ kind, children, className }: { kind: keyof typeof STYLES; children: string; className?: string }) {
   const s = STYLES[kind];
   return (

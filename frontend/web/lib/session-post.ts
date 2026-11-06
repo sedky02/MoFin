@@ -1,7 +1,5 @@
-// Server-only: POSTs (or DELETEs) to an authenticated backend route as the
-// signed-in user, for BFF routes the generic proxy can't serve: the backend
-// needs the session's refresh token in the body (only this server can read
-// the cookie), or the route has to change the auth cookies afterwards.
+// Server-only: POSTs/DELETEs to an authenticated backend route as the signed-in user, for BFF
+// routes the generic proxy can't serve (the backend needs the refresh token in the body).
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import {
@@ -18,18 +16,13 @@ import {
 import { bffHeaders } from "@/lib/bff-headers";
 
 export interface SessionPostResult {
-  /** The response for the browser: the backend's status and body, plus any cookie changes. */
   res: NextResponse;
-  /** True when the backend accepted the request (2xx). */
   ok: boolean;
 }
 
 /**
- * Sends `body(refreshToken)` to `${BACKEND_URL}/${path}` with the access
- * token from the cookie. A 401 is handled like the proxy does: one refresh,
- * then one retry with the rotated pair (and the rotated refresh token in the
- * body), which is set on the response. A rejected refresh ends the session
- * (401, cookies cleared); a rate-limited or unreachable one keeps it (503).
+ * Sends `body(refreshToken)` with the access token from the cookie; a 401 is handled like the
+ * proxy: one refresh, then one retry with the rotated pair.
  */
 export async function postAsSession(
   req: Request,

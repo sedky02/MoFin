@@ -30,7 +30,6 @@ function FieldError({ message }: { message?: string }) {
   ) : null;
 }
 
-/** Edit what the assistant understood, then approve it as a transaction. */
 export function DraftReviewForm({
   draft,
   approving,

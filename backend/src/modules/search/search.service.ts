@@ -27,9 +27,8 @@ const DATE_ORDER = {
   Prisma.TransactionOrderByWithRelationInput[]
 >;
 
-// What a series list wants first: active series (the enum sorts in declaration
-// order: ACTIVE, PAUSED, CANCELLED), the soonest next occurrence first. Rows
-// outside any series carry neither field and come last, newest first.
+// Series list order: active first (the enum sorts ACTIVE, PAUSED, CANCELLED), soonest next
+// occurrence first; rows outside any series come last, newest first.
 const NEXT_OCCURRENCE_ORDER = [
   { recurringStatus: { sort: 'asc', nulls: 'last' } },
   { nextOccurrenceAt: { sort: 'asc', nulls: 'last' } },
@@ -43,11 +42,7 @@ function orderFor(
   return DATE_ORDER[sort === 'oldest' ? 'oldest' : 'newest'];
 }
 
-/**
- * A transaction's total from its ledger legs: what left an account (expense,
- * transfer) or came into one (income). A transfer's two legs carry the same
- * amount, so the larger side is the total for every type.
- */
+/** A transfer's two legs carry the same amount, so the larger side is the total for every type. */
 export function transactionTotal(
   items: { direction: string; amount: Prisma.Decimal }[],
 ): Prisma.Decimal {
@@ -160,7 +155,6 @@ export class SearchService {
     };
   }
 
-  /** Hides what the caller can't reach: a transfer's leg on someone's private account. */
   private async present(userId: string, rows: LoadedTransaction[]) {
     const roles = await this.access.rolesOn(userId, [
       ...new Set(rows.flatMap(accountIdsOf)),
@@ -168,11 +162,7 @@ export class SearchService {
     return rows.map((row) => presentTransaction(row, roles));
   }
 
-  /**
-   * Ids of the live transactions on these accounts whose total (see transactionTotal) lies
-   * within the bounds. Prisma can't filter on a sum of related rows, so the
-   * totals are computed in the database.
-   */
+  /** Prisma can't filter on a sum of related rows, so totals are computed in the database. */
   private async idsWithTotalBetween(
     accountIds: string[],
     min: string | undefined,
@@ -198,11 +188,8 @@ export class SearchService {
   }
 
   /**
-   * A transaction's total is the sum of its ledger legs, which Prisma can't
-   * order by, so the matches are ranked here: every match's legs are read
-   * (amounts only), sorted, and just the requested page is loaded in full.
-   * Fine at one person's transaction volume; a raw SQL ranking is the next
-   * step if it ever isn't.
+   * Prisma can't order by a sum of legs, so matches are ranked here and only the requested page is
+   * loaded. Fine at one person's volume; raw SQL is the next step if it isn't.
    */
   private async searchByAmount(
     userId: string,

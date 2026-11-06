@@ -1,10 +1,8 @@
 import type { TransactionType } from "./types";
 
 /**
- * The transaction list's type, recurrence and sort filters: the values the
- * search endpoint accepts, their labels, and readers for URL params (an
- * unknown value reads as "not set" rather than reaching the backend, which
- * would reject it).
+ * The search endpoint's type, recurrence and sort values, their labels, and readers for URL params
+ * (an unknown value reads as "not set").
  */
 
 export const TYPE_OPTIONS: { value: TransactionType; label: string }[] = [
@@ -39,14 +37,12 @@ export type SearchSort = TransactionSort | "next-occurrence";
 export const TRANSACTIONS_TITLE = "Transactions";
 export const TRANSACTIONS_DESCRIPTION = "Everything you have recorded. Search it, filter it, or see your recurring series.";
 
-/** The page's views: every transaction, or the recurring series (?view=recurring). */
 export type TransactionsView = "all" | "recurring";
 
 export function parseView(value: string | undefined): TransactionsView {
   return value === "recurring" ? "recurring" : "all";
 }
 
-/** The URL of the Recurring view. */
 export function recurringViewHref(pathname: string): string {
   return `${pathname}?view=recurring`;
 }
@@ -59,7 +55,6 @@ export const parseType = (value: string | undefined) => pick(TYPE_OPTIONS, value
 export const parseRecurrence = (value: string | undefined) => pick(RECURRENCE_OPTIONS, value);
 export const parseSort = (value: string | undefined) => pick(SORT_OPTIONS, value);
 
-/** "Old savings (archived)" for an archived account, its plain name otherwise. */
 export function accountOptionLabel(account: { name: string; archivedAt?: string | null }): string {
   return account.archivedAt ? `${account.name} (archived)` : account.name;
 }

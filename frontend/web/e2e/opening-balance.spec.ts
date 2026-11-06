@@ -2,11 +2,8 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { AXE_TAGS, formatViolations } from "./helpers/axe";
 
-// B-10: an account can start from an opening balance. It shows in the account's
-// balance (card, ledger, balance series) but is never a transaction, so this
-// month's income, expenses and "% saved" don't move. Uses the UX fixture user
-// (`npm run e2e:seed`); the account it creates is reset to 0 and archived at the
-// end so the fixture's totals stay as they were.
+// An opening balance counts in the balance but isn't a transaction, so monthly figures don't move.
+// Archives its account at the end; needs `npm run e2e:seed`.
 test.use({ locale: "en-US" });
 
 const ACTIVE_ACCOUNT_COOKIE = "mofin-active-account";
@@ -33,7 +30,6 @@ function summary(page: Page, params: Record<string, string>) {
   });
 }
 
-/** "$5,000.00" / "-$250.00" → thousandths. */
 function toMilli(formatted: string): number {
   const n = Number(formatted.replace(/[^0-9.-]/g, ""));
   expect(Number.isFinite(n), `could not read an amount from "${formatted}"`).toBeTruthy();
@@ -44,7 +40,6 @@ function accountCard(page: Page, name: string) {
   return page.getByRole("listitem").filter({ has: page.getByRole("heading", { name, exact: true }) });
 }
 
-/** The card's balance in thousandths; MoneyAmount keeps the full formatted value in its title. */
 async function cardBalance(page: Page, name: string): Promise<number> {
   const amount = accountCard(page, name).locator("span.tabular[title]");
   await expect(amount).toBeVisible();

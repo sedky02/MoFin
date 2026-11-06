@@ -31,13 +31,11 @@ export function TransactionRow({
   variant = "default",
 }: {
   tx: Transaction;
-  /** Shown in the meta line when the list spans several accounts. */
   accountLabel?: string;
   /** "glance": for lists already grouped by day: no per-row date, inset separator instead of full-width dividers. */
   variant?: "default" | "glance";
 }) {
   const glance = variant === "glance";
-  // Expenses display as negative + red; income positive + green; transfer neutral.
   const base = transactionAmount(tx);
   const signedAmount = tx.type === "EXPENSE" ? multiply(base, "-1") : base;
 
@@ -55,7 +53,6 @@ export function TransactionRow({
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
       )}
     >
-      {/* A light green tile for income, a light red one for spending, grey for a transfer. */}
       <div className={cn("flex size-11 shrink-0 items-center justify-center rounded-xl", TYPE_TILE[tx.type])}>
         <CategoryIcon name={filedUnder.category?.name ?? tx.description} className="size-5" />
       </div>
@@ -96,7 +93,6 @@ export function TransactionRow({
               <span className={cn("min-w-0 truncate", !glance && "basis-full sm:basis-auto")}>{accountLabel}</span>
             </>
           )}
-          {/* A repeat mark ends the line, after the category and account. */}
           {isRecurring && <Repeat className="size-3 shrink-0" aria-label="Recurring" />}
         </div>
       </div>

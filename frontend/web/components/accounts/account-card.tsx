@@ -33,7 +33,6 @@ export const TYPE_ICON: Record<AccountType, LucideIcon> = {
   CRYPTO: Bitcoin,
 };
 
-/** One account as its own card: type tile, name and currency, balance, and quiet actions. */
 export function AccountRow({
   account,
   onEdit,
@@ -45,18 +44,14 @@ export function AccountRow({
 }: {
   account: Account;
   onEdit?: (account: Account) => void;
-  /** Hides or shows this account's balance everywhere (saved on the account). */
   onToggleHidden?: (account: Account) => void;
   onArchive?: (account: Account) => void;
   onRestore?: (account: Account) => void;
-  /** Opens who is on the account, and for its owner, inviting people. */
   onMembers?: (account: Account) => void;
   busy?: boolean;
 }) {
-  // Parallel per-account balance query (key = currency when accountId is passed).
-  // Archived accounts are readable too, so a failed request is a real error and is
-  // shown as one, never as a balance of 0. An empty result is an account with no
-  // ledger entries yet, which really is 0.
+  // A failed request is shown as an error, never as a balance of 0 (archived accounts are readable
+  // too); an empty result really is 0.
   const { data, isLoading, isError, refetch } = useLedgerBalance({
     accountId: account.id,
   });

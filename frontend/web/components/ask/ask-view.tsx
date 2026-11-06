@@ -21,7 +21,6 @@ const SUGGESTIONS = [
   { icon: Target, text: "Am I on track with my goals?" },
 ];
 
-/** A new chat: the mark, one line, and a few questions to start from. */
 function Welcome({ onPick }: { onPick: (text: string) => void }) {
   return (
     <div className="flex min-h-[calc(100%-1rem)] flex-col items-center justify-center py-10 text-center">
@@ -62,11 +61,7 @@ function ThreadSkeleton() {
   );
 }
 
-/**
- * The Ask page: saved chats on the side (a sheet on phones), the open chat's
- * thread, and the question box. The server keeps each chat's history and
- * context; this only sends the new question and shows what comes back.
- */
+/** The server keeps each chat's history; this only sends the new question and shows what comes back. */
 export function AskView() {
   const [chatId, setChatId] = useChatParam();
   const detail = useAiChatDetail(chatId);
@@ -123,7 +118,6 @@ export function AskView() {
     setChatId(id);
     setListOpen(false);
     if (!send.isPending) setPending(null);
-    // Back to the question box, ready to type.
     requestAnimationFrame(() => inputRef.current?.focus());
   }
 
@@ -142,10 +136,8 @@ export function AskView() {
   const empty = !chatId && !showPending;
 
   return (
-    // Fills the screen under the header (and above the phone's bottom bar); only the thread scrolls.
-    // Three layers, like the dashboard: the chat list on the page, the conversation on a raised
-    // card, and charts and suggestions inset into it. Nested corners are concentric: an inner
-    // radius is the outer one minus the gap between them (card 20 → composer 12 at 8px in).
+    // Fills the screen under the header; only the thread scrolls. Three layers (list, conversation
+    // card, inset charts) with concentric corners: inner radius = outer minus the gap.
     <div className="-mt-2 grid h-[calc(100dvh-10.5rem)] min-h-[26rem] gap-5 lg:h-[calc(100dvh-7rem)] lg:grid-cols-[15rem_minmax(0,1fr)]">
       <aside className="hidden min-h-0 pt-1 lg:block">{list}</aside>
 

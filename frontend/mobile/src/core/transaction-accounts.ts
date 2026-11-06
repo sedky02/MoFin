@@ -3,12 +3,8 @@ import type { Account, LedgerItem, Transaction } from "./types";
 export const DELETED_ACCOUNT_LABEL = "Deleted account";
 
 /**
- * Display name for a ledger leg's account. Prefers the account the backend
- * embedded in the leg, then the user's account list (which must be fetched
- * with status "all" so archived accounts resolve too). Never falls back to the
- * raw id. Returns `undefined` while the list is still loading and the leg has
- * no embedded account, so callers can show a placeholder instead of flashing
- * "Deleted account".
+ * Prefers the account embedded in the leg, then the user's account list (fetched with status "all"
+ * so archived accounts resolve). Never falls back to the raw id; undefined while loading.
  */
 export function ledgerAccountName(
   item: Pick<LedgerItem, "accountId" | "account">,
@@ -20,10 +16,8 @@ export function ledgerAccountName(
 }
 
 /**
- * The account(s) a transaction moved money between, read from its ledger legs
- * (DEBIT = out of an account, CREDIT = into it). Income only has `to`, expense
- * only has `from`, a transfer has both. A reversal's legs are already flipped,
- * so its from/to are the original's swapped, which is what it actually did.
+ * Read from the ledger legs (DEBIT = out of an account, CREDIT = into it): income only has `to`,
+ * expense only `from`, a transfer both.
  */
 export function transactionAccountLegs(tx: Pick<Transaction, "items">): {
   from?: LedgerItem;
@@ -36,8 +30,8 @@ export function transactionAccountLegs(tx: Pick<Transaction, "items">): {
 }
 
 /**
- * The account a list row names: the one it touched, or "From → To" for a
- * transfer. `undefined` while a name can't be resolved yet (see ledgerAccountName).
+ * The account a list row names, or "From → To" for a transfer; undefined while a name can't be
+ * resolved (see ledgerAccountName).
  */
 export function transactionAccountLabel(
   tx: Pick<Transaction, "type" | "items">,

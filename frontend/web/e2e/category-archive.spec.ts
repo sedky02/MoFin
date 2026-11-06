@@ -1,12 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
 import { formatViolations, runAxe } from "./helpers/axe";
 
-// B-11: the delete dialog says up front when a category is in use and offers
-// Archive instead, the tile never vanishes and comes back, archived categories
-// leave the pickers, and they can be restored from the Archived tab.
-// Needs the UX fixture (`npm run e2e:seed`): "Main checking" is a USD account.
-// Each test creates its own uniquely named category and removes everything it
-// made, so the fixture stays as seeded.
+// Deleting a category in use offers Archive instead; archived ones leave the pickers and can be
+// restored. Needs `npm run e2e:seed`; each test cleans up after itself.
 test.use({ locale: "en-US" });
 
 type Json = Record<string, unknown>;
@@ -34,10 +30,8 @@ function tile(page: Page, name: string) {
 }
 
 /**
- * Records, from inside the page, every time `text` appears in or leaves the
- * page's lists, so a tile that is removed and then put back (the old
- * optimistic delete) shows up as present → absent → present. Only the page
- * content is watched: the dialog and the toast name the category too.
+ * Records each time `text` appears in or leaves the page's lists, to catch a tile removed and put
+ * back (the old optimistic delete).
  */
 async function watchPresence(page: Page, text: string) {
   await page.evaluate((needle) => {
@@ -81,7 +75,6 @@ test.describe("archiving categories", () => {
       await page.goto("/categories");
       await expect(tile(page, name)).toHaveCount(1);
 
-      // There is no delete in the app: archiving asks first.
       await expect(tile(page, name).getByRole("button", { name: `Delete ${name}` })).toHaveCount(0);
       await tile(page, name).getByRole("button", { name: `Archive ${name}` }).click();
       const dialog = page.getByRole("alertdialog");
@@ -93,7 +86,6 @@ test.describe("archiving categories", () => {
       const violations = axe.filter((v) => v.id !== "heading-order");
       expect(violations, `axe violations with the dialog open\n${formatViolations(violations)}`).toEqual([]);
 
-      // Archive: the tile goes once, and never comes back.
       await watchPresence(page, name);
       const archived = page.waitForResponse(
         (r) => r.url().includes(`/categories/${categoryId}/archive`) && r.request().method() === "PATCH",
@@ -105,21 +97,17 @@ test.describe("archiving categories", () => {
       await expect(tile(page, name)).toHaveCount(0);
       expect(await presence(page)).toEqual([true, false]);
 
-      // Gone from the API's default list, still there with status=all, and the
-      // transaction keeps it.
       expect((await firstPage(page, "/categories")).some((c) => c.id === categoryId)).toBe(false);
       expect((await firstPage(page, "/categories", { status: "all" })).some((c) => c.id === categoryId)).toBe(true);
       const kept = await page.request.get(`/api/backend/transactions/${transactionId}`);
       expect(((await kept.json()) as Json).categoryId).toBe(categoryId);
 
-      // Not offered when filing a new transaction.
       await page.addInitScript((id) => localStorage.setItem("mofin-active-account", id), accountId);
       await page.goto("/transactions/new");
       const chips = page.getByRole("radiogroup", { name: "Category" });
       await expect(chips.getByRole("radio").first()).toBeVisible();
       await expect(chips.getByRole("radio", { name: new RegExp(name) })).toHaveCount(0);
 
-      // Restore it from the archived list.
       await page.goto("/categories");
       await expect(tile(page, name)).toHaveCount(0);
       await page.getByRole("button", { name: /^Archived/ }).click();
@@ -129,8 +117,7 @@ test.describe("archiving categories", () => {
       await page.getByRole("button", { name: "Back to categories" }).click();
       await expect(tile(page, name)).toHaveCount(1);
     } finally {
-      // Leave the fixture as seeded: soft-delete the transaction, then the
-      // category is unused and can go too (restoring first in case a step failed).
+      // Soft-delete the transaction first so the category is unused and can go too.
       if (transactionId) await page.request.delete(`/api/backend/transactions/${transactionId}`);
       await page.request.patch(`/api/backend/categories/${categoryId}/restore`);
       const removed = await page.request.delete(`/api/backend/categories/${categoryId}`);
@@ -148,14 +135,13 @@ test.describe("archiving categories", () => {
       await page.getByRole("alertdialog").getByRole("button", { name: "Archive" }).click();
       await expect(tile(page, name)).toHaveCount(0);
 
-      // It is archived, not deleted: still there with status=all, and restorable.
       expect((await firstPage(page, "/categories", { status: "archived" })).some((c) => c.id === categoryId)).toBe(true);
 
       await page.getByRole("button", { name: "Undo" }).click();
       await expect(tile(page, name)).toHaveCount(1);
       expect((await firstPage(page, "/categories")).some((c) => c.id === categoryId)).toBe(true);
     } finally {
-      // Tidy the fixture through the API: restoring first in case the test stopped halfway.
+      // Restore first in case the test stopped halfway.
       await page.request.patch(`/api/backend/categories/${categoryId}/restore`);
       await page.request.delete(`/api/backend/categories/${categoryId}`);
     }

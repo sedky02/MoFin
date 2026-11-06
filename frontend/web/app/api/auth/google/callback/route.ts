@@ -8,10 +8,8 @@ import { bffHeaders } from "@/lib/bff-headers";
 const STATE_COOKIE = "google_oauth";
 
 /**
- * Google redirects here with an authorization code. We validate the CSRF state,
- * hand the code to the backend (which holds the client secret and upserts the
- * user), set the resulting tokens as httpOnly cookies on the web origin, then
- * resume the MCP connector flow if one was in progress.
+ * Validates the CSRF state, hands the code to the backend (which holds the client secret), sets the
+ * tokens as httpOnly cookies, then resumes the MCP connector flow if one was in progress.
  */
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -58,7 +56,6 @@ export async function GET(req: Request) {
 
   const tokens = (await upstream.json()) as BackendTokens;
 
-  // Resume the MCP OAuth bridge if this sign-in was initiated by it.
   const target = saved.mcpAuthorize
     ? `/api/auth/mcp-handoff?continue=${encodeURIComponent(saved.mcpAuthorize)}`
     : safeNextPath(saved.next);

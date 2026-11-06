@@ -19,7 +19,6 @@ const TILE: Record<Transaction['type'], string> = {
   TRANSFER: 'bg-muted',
 };
 
-/** The row's one-line description for screen readers and its muted line. */
 export function rowMeta(tx: Transaction, accountLabel: string | undefined, withDate: boolean): string {
   const filed = transactionCategorySummary(tx);
   const showCategory = !!tx.category || tx.type !== 'TRANSFER';
@@ -45,7 +44,6 @@ function TransactionRowView({
   tx: Transaction;
   accountLabel?: string;
   variant?: 'default' | 'glance';
-  /** The last row of a panel has no divider. */
   last?: boolean;
 }) {
   const base = transactionAmount(tx);

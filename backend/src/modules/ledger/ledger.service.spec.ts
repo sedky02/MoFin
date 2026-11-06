@@ -13,9 +13,8 @@ type TestAccount = {
 describe('LedgerService', () => {
   const account = (currency: string) => ({ id: `acc-${currency}`, currency });
 
-  // The real AccountsService over an in-memory account table, so the
-  // archived/active rules are the ones the app actually runs. Every test
-  // account belongs to user u1.
+  // The real AccountAccessService over an in-memory account table; every test account belongs to
+  // u1.
   function makeService(
     accounts: Record<string, TestAccount>,
     groupedRows: unknown[] = [],

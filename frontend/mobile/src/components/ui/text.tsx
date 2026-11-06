@@ -63,7 +63,6 @@ const ARIA_LEVEL: Partial<Record<TextVariant, string>> = {
   h4: '4',
 };
 
-/** The plain text of string children, for announcing alerts. */
 function plainText(children: React.ReactNode): string {
   if (typeof children === 'string' || typeof children === 'number') return String(children);
   if (Array.isArray(children)) return children.map(plainText).join('');

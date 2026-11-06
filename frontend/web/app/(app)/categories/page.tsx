@@ -28,7 +28,6 @@ type RowActions = {
   onEdit?: (c: Category) => void;
   onArchive?: (c: Category) => void;
   onRestore?: (c: Category) => void;
-  /** Id of the category a delete, archive or restore is in flight for. */
   busyId?: string;
 };
 
@@ -110,7 +109,6 @@ function CategoryRow({
   );
 }
 
-/** One list of categories in a single card, rows divided by hairlines. */
 function Group({
   title,
   hint,
@@ -158,7 +156,6 @@ function ListSkeleton() {
 }
 
 export default function CategoriesPage() {
-  // Two views of the same page: the active categories, or the archived ones on their own.
   const [view, setView] = React.useState<"active" | "archived">("active");
   const { data, isLoading, isError, refetch } = useCategories("active");
   const archived = useCategories("archived");
@@ -202,7 +199,6 @@ export default function CategoriesPage() {
         title="Categories"
         description="Organize your transactions. System categories are read-only."
         action={
-          // The page's actions sit together: switch view on the left, the primary action last.
           <div className="flex flex-wrap items-center gap-2">
             {view === "active" ? (
               <Button variant="outline" onClick={() => setView("archived")} className="gap-2">

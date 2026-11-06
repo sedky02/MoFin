@@ -5,10 +5,7 @@ import { ZodSchema } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
 /**
- * Bridges the project's Zod schemas into Swagger so request bodies and query
- * params are documented from the same single source of truth used for runtime
- * validation (see ZodValidationPipe). `$refStrategy: 'none'` inlines everything
- * so the schema embeds cleanly into the OpenAPI document.
+ * Documents request bodies and queries in Swagger from the same Zod schemas used for validation.
  */
 // Loosened signature: zodToJsonSchema's generic return type otherwise triggers
 // "excessively deep" (TS2589) when fed our larger schemas.

@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
 /**
- * Dynamic Client Registration request (RFC 7591). claude.ai is a public PKCE
- * client, so we only really consume `redirect_uris`; the rest is echoed back.
+ * claude.ai is a public PKCE client, so only `redirect_uris` is really consumed; the rest is echoed
+ * back.
  */
 export const registerClientSchema = z.object({
   redirect_uris: z.array(z.string().url()).min(1),
@@ -14,7 +14,6 @@ export const registerClientSchema = z.object({
 });
 export type RegisterClientDto = z.infer<typeof registerClientSchema>;
 
-/** Query parameters for GET /oauth/authorize. */
 export const authorizeQuerySchema = z.object({
   response_type: z.string(),
   client_id: z.string().min(1),
@@ -27,16 +26,12 @@ export const authorizeQuerySchema = z.object({
 });
 export type AuthorizeQueryDto = z.infer<typeof authorizeQuerySchema>;
 
-/** Body for POST /oauth/consent (the approve/deny form submission). */
 export const consentBodySchema = authorizeQuerySchema.extend({
   decision: z.enum(['approve', 'deny']),
 });
 export type ConsentBodyDto = z.infer<typeof consentBodySchema>;
 
-/**
- * Token endpoint body (application/x-www-form-urlencoded). Fields differ per
- * grant; validated loosely here and enforced per-grant in the service.
- */
+/** Fields differ per grant; validated loosely here and enforced per grant in the service. */
 export const tokenBodySchema = z.object({
   grant_type: z.string(),
   code: z.string().optional(),
@@ -47,7 +42,6 @@ export const tokenBodySchema = z.object({
 });
 export type TokenBodyDto = z.infer<typeof tokenBodySchema>;
 
-/** RFC 7009 revocation request body. */
 export const revokeBodySchema = z.object({
   token: z.string().min(1),
   token_type_hint: z.string().optional(),

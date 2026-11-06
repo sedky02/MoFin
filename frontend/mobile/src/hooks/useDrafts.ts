@@ -28,7 +28,6 @@ const PAGE = 10;
 // A language model answers slower than the 15 s default allows.
 const AI_TIMEOUT_MS = 60_000;
 
-/** Offset-paginated drafts for a given status. Cursor = offset. */
 export function useDrafts(status: DraftStatus) {
   return useInfiniteQuery({
     queryKey: draftKeys.list(status),
@@ -47,11 +46,7 @@ export function useDrafts(status: DraftStatus) {
   });
 }
 
-/**
- * PENDING count for the sidebar nav badge — a single COUNT(*) via a
- * dedicated endpoint, not a fetch-up-to-100-rows-and-count-them hack (which
- * used to silently cap the badge at 100).
- */
+/** A single COUNT(*) via a dedicated endpoint; fetching rows and counting capped the badge at 100. */
 export function usePendingDraftCount() {
   return useQuery({
     queryKey: [...draftKeys.all, "pending-count"],
@@ -63,7 +58,6 @@ export function usePendingDraftCount() {
   });
 }
 
-/** NL input → AI parse → one PENDING draft per transaction found in the sentence. */
 export function useCreateDraftIntent() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -87,9 +81,8 @@ export function useCreateDraftIntent() {
 }
 
 /**
- * The inbox and the chat show the same drafts, so a decision in one refreshes
- * both. Also on failure: a draft already approved or rejected elsewhere then
- * shows its real status instead of buttons that no longer work.
+ * The inbox and chat show the same drafts, so a decision in one refreshes both. Also on failure: a
+ * draft already handled elsewhere then shows its real status instead of dead buttons.
  */
 function refreshDraftViews(queryClient: ReturnType<typeof useQueryClient>) {
   queryClient.invalidateQueries({ queryKey: draftKeys.all });

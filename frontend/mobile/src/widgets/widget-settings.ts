@@ -4,9 +4,8 @@ import * as React from 'react';
 import { MAX_WIDGET_GOALS } from '@/widgets/goals-data';
 import { ALL_ACCOUNTS, DEFAULT_SUMMARY_CONFIG, type SummaryConfig } from '@/widgets/summary-data';
 
-// What each home screen widget shows, chosen when it is added (the app opens to the setup screen,
-// src/app/(app)/widget-setup.tsx). Android widgets get one set of data per widget type, so the
-// choice applies to every copy of that widget. Kept on this device: widgets live on its home screen.
+// What each widget shows, chosen when it is added. Android keeps one set of data per widget type,
+// so the choice applies to every copy. Stored on this device, where widgets live.
 export type WidgetSettings = {
   WeeklySummary: SummaryConfig;
   MonthlySummary: SummaryConfig;
@@ -56,7 +55,6 @@ let value: WidgetSettings = DEFAULT_WIDGET_SETTINGS;
 let loading: Promise<WidgetSettings> | undefined;
 const listeners = new Set<() => void>();
 
-/** The stored settings, loaded once. */
 export function loadWidgetSettings(): Promise<WidgetSettings> {
   loading ??= AsyncStorage.getItem(KEY)
     .then((raw) => {

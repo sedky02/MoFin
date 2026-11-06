@@ -9,13 +9,8 @@ import { DemoSeedModule } from '../src/demo/demo-seed.module';
 import { DemoSeeder } from '../src/demo/demo-seeder';
 
 /**
- * Seeds the demo account (demo@mofin.app) with three months of sample data.
- *
- *   npx prisma db seed                 creates it, or does nothing if it exists
- *   npx prisma db seed -- --reset      deletes it and creates it again
- *
- * DEMO_RESET=true does the same as --reset. The password comes from
- * DEMO_PASSWORD. Refused under NODE_ENV=production unless ALLOW_DEMO_SEED=true.
+ * Seeds the demo account (demo@mofin.app) with three months of data: `npx prisma db seed [--
+ * --reset]`. Refused in production unless ALLOW_DEMO_SEED=true.
  */
 async function main() {
   const refusal = demoSeedRefusal(process.env);

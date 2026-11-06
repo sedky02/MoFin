@@ -11,9 +11,8 @@ export const HIDDEN_ACCOUNT_ID = 'hidden';
 export const HIDDEN_ACCOUNT_NAME = 'Another account';
 
 /**
- * What's left of a transfer when its account changed owner: this ledger's side
- * alone. It records real money moved, with its other half on someone else's
- * ledger, so it can't be edited or deleted from here.
+ * This ledger's side alone: real money moved, with its other half on someone else's ledger, so it
+ * can't be edited or deleted from here.
  */
 export function isOneSidedTransfer(transaction: {
   type: TransactionType;
@@ -25,7 +24,6 @@ export function isOneSidedTransfer(transaction: {
   );
 }
 
-/** Every account a transaction touches: its legs and, for a series, where it posts. */
 export function accountIdsOf(transaction: {
   items: { accountId: string }[];
   recurringFromAccountId: string | null;
@@ -43,10 +41,8 @@ export function accountIdsOf(transaction: {
 }
 
 /**
- * A transaction as someone with these roles sees it. Being on a shared account
- * doesn't open the owner's other accounts, so a leg on one of those keeps its
- * amount (it is the same money) but loses which account it was. `canEdit` tells
- * clients whether to offer changes; the server checks again either way.
+ * A leg on an account the viewer can't reach keeps its amount (it is the same money) but loses
+ * which account it was. `canEdit` tells clients what to offer; the server checks again.
  */
 export function presentTransaction(
   transaction: LoadedTransaction,

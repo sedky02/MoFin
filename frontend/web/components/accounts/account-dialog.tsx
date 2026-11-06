@@ -60,8 +60,7 @@ export function AccountDialog({
   const updateMut = useUpdateAccount();
   const { data: accounts } = useAccounts();
 
-  // Currencies already in use across the user's accounts, surfaced as a
-  // quick-pick section at the top of the picker. Ordered by frequency.
+  // Currencies in use across the user's accounts, ordered by frequency, as a quick-pick at the top.
   const usedCurrencies = React.useMemo(() => {
     const counts = new Map<string, number>();
     for (const a of accounts ?? []) {
@@ -86,7 +85,6 @@ export function AccountDialog({
   const nameRef = React.useRef<HTMLInputElement | null>(null);
   const TypeIcon = TYPE_ICON[type];
 
-  // Reset whenever we open with a (possibly different) account.
   React.useEffect(() => {
     if (open) {
       form.reset({
@@ -117,13 +115,11 @@ export function AccountDialog({
           name: values.name,
           type: values.type,
           currency: values.currency,
-          // Left out when blank: the account starts at 0.
           ...(values.openingBalance.trim() ? { openingBalance } : {}),
         });
       }
       onOpenChange(false);
     } catch {
-      // handled by hook's onError toast / setError not needed here
     }
   }
 
@@ -140,7 +136,6 @@ export function AccountDialog({
         }}
       >
         <DialogHeader className="flex-row items-center gap-3 border-b px-4 py-3 sm:gap-3.5 sm:px-6 sm:py-4">
-          {/* How the account will look in the list, updating as you choose. */}
           <span
             aria-hidden
             className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-secondary text-muted-foreground sm:size-12"

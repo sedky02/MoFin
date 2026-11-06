@@ -2,12 +2,8 @@ import { readFileSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
 import { formatViolations, runAxe } from "./helpers/axe";
 
-// B-23b: Settings → Data downloads the user's data as JSON or CSV. Uses the
-// fixture user (`npm run e2e:seed`).
-//
-// The backend allows 10 exports an hour per user (in memory, so restarting it
-// resets the count). To leave room for reruns, only the desktop project
-// downloads; mobile checks that the card and its buttons are there.
+// Settings → Data exports JSON or CSV. The backend allows 10 exports an hour per user (in memory),
+// so only the desktop project downloads; mobile checks the buttons exist.
 
 function dataCard(page: Page) {
   return page.locator('[data-slot="card"]').filter({ has: page.getByRole("heading", { name: "Data", level: 2 }) });

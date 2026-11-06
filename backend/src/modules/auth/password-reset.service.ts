@@ -14,17 +14,8 @@ export const INVALID_RESET_TOKEN_MESSAGE =
   'This reset link is invalid or has expired. Request a new one.';
 
 /**
- * Email-based password recovery.
- *
- * - The token is 32 random bytes; only its SHA-256 is stored, so reading the
- *   table never yields a working link (same scheme as refresh tokens).
- * - Single use: redeeming it sets `usedAt` in the same transaction that
- *   changes the password, guarded by `usedAt IS NULL`, so two concurrent
- *   redemptions can't both succeed.
- * - A new request supersedes any outstanding link for that user.
- * - A successful reset revokes every first-party refresh token of the user,
- *   signing out all web sessions. Access tokens already issued stay valid
- *   until their short TTL (JWT_ACCESS_TTL) runs out.
+ * 32 random bytes, only the SHA-256 stored; single use, claimed in the transaction that changes the
+ * password; a new request supersedes the old. A reset revokes refresh tokens.
  */
 @Injectable()
 export class PasswordResetService {
@@ -38,10 +29,8 @@ export class PasswordResetService {
   ) {}
 
   /**
-   * Starts `requestReset` without waiting for it. The HTTP response therefore
-   * goes out before the user lookup, token write or SMTP round-trip, so a
-   * known and an unknown email answer in the same time with the same body.
-   * Failures are logged, never surfaced: the caller always gets 202.
+   * Runs after the response, so a known and an unknown email answer with the same body and timing;
+   * failures are logged, never surfaced.
    */
   requestResetInBackground(email: string): void {
     this.requestReset(email).catch((err: unknown) => {
@@ -53,9 +42,8 @@ export class PasswordResetService {
 
   async requestReset(email: string): Promise<void> {
     const user = await this.usersService.findByEmail(email);
-    // Unknown email: nothing to do. Google-only accounts (no passwordHash) do
-    // get a link: proving control of the inbox is what Google sign-in relies
-    // on too, and it lets them add a password.
+    // Unknown email: nothing to do. Google-only accounts do get a link: proving control of the
+    // inbox is what Google sign-in relies on, and it lets them add a password.
     if (!user) return;
 
     const token = randomBytes(32).toString('base64url');

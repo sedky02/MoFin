@@ -1,15 +1,6 @@
 /**
- * Password recovery end to end, against a real (throwaway) PostgreSQL.
- *
- * Needs its own database, never the development one:
- *
- *   createdb mofin_e2e
- *   DATABASE_URL=postgresql://postgres:postgres@localhost:5432/mofin_e2e npx prisma migrate deploy
- *   E2E_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/mofin_e2e npm run test:e2e -- password-reset
- *
- * The suite is skipped unless E2E_DATABASE_URL is set, and refuses to run when
- * that database's name doesn't contain "test" or "e2e". Outgoing mail is
- * captured in memory by overriding MailSender.
+ * Password recovery end to end on a throwaway PostgreSQL: set E2E_DATABASE_URL (name containing
+ * "test" or "e2e") or the suite is skipped. Run: npm run test:e2e -- password-reset
  */
 import { INestApplication } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
@@ -154,7 +145,6 @@ describeWithDb('Password recovery (e2e)', () => {
       Math.abs(median(timings.known) - median(timings.unknown)),
     ).toBeLessThan(100);
 
-    // Only the known address actually got an email.
     await waitForResetToken(known);
     expect(mail.sent.some((m) => m.to === unknown)).toBe(false);
   });
@@ -176,7 +166,6 @@ describeWithDb('Password recovery (e2e)', () => {
   it('a token works once; afterwards the old password and every old refresh token fail', async () => {
     const email = newEmail('flow');
     await registerUser(email, 'original-pass-1');
-    // Two separate sign-ins, so two refresh-token families.
     const first = await login(email, 'original-pass-1');
     const second = await login(email, 'original-pass-1');
     expect(first.status).toBe(201);

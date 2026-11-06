@@ -4,7 +4,6 @@ import { cn } from '@/lib/utils';
 
 const ALL = 'all';
 
-/** Choose one account or "All accounts". `undefined` as the value or the onChange argument means all. */
 export function AccountSwitcher({
   accounts,
   value,

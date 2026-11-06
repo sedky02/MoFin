@@ -1,8 +1,5 @@
-// Native Google sign-in (@react-native-google-signin/google-signin). It needs the app's development
-// build: the native module is missing from Expo Go, and the package has no web sign-in. Importing it
-// where the module is missing throws, so it is required lazily, inside try/catch, and only on a
-// platform that can have it. The ID token it returns goes to POST /auth/google/id-token, which
-// verifies it before signing anyone in.
+// Native Google sign-in; needs the development build, since the native module is missing from Expo
+// Go and the package has no web sign-in.
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { Platform } from 'react-native';
 
@@ -42,7 +39,6 @@ function loadModule(): GoogleModule | null {
   return cached;
 }
 
-/** Whether the Google button can work here, and if not, the message to show instead. */
 export function googleAvailability(): GoogleAvailability {
   if (Platform.OS === 'web') return { available: false, reason: GOOGLE_MESSAGES.web };
   if (isExpoGo()) return { available: false, reason: GOOGLE_MESSAGES.needsBuild };
@@ -53,7 +49,6 @@ export function googleAvailability(): GoogleAvailability {
 
 export type GoogleResult = { kind: 'ok'; idToken: string } | { kind: 'cancelled' };
 
-/** Opens Google's account picker. Resolves with the ID token, or `cancelled` if the user backed out. */
 export async function getGoogleIdToken(): Promise<GoogleResult> {
   const mod = loadModule();
   if (!mod || !config.googleWebClientId) throw new Error('Google sign-in is not available in this build.');
@@ -80,7 +75,6 @@ export async function getGoogleIdToken(): Promise<GoogleResult> {
   }
 }
 
-/** Forgets the Google account choice so the next sign-in shows the picker again. Never throws. */
 export async function googleSignOut(): Promise<void> {
   if (!cached || !configured) return;
   try {
@@ -90,7 +84,6 @@ export async function googleSignOut(): Promise<void> {
   }
 }
 
-/** Test helper. */
 export function resetGoogleForTests(): void {
   cached = undefined;
   configured = false;

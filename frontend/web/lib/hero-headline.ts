@@ -24,11 +24,8 @@ const monthName = (month: string, style: "short" | "long", locale?: string) =>
   new Date(`${month}-01T00:00:00Z`).toLocaleDateString(locale, { month: style, timeZone: "UTC" });
 
 /**
- * What the dashboard hero says for the chosen metric. `points` is the monthly series
- * (oldest first, last = the current month), the same figures the Monthly summary shows.
- *  - balance: the live balance (`balance.amount`/`balance.caption`) and its change this month;
- *  - expenses / income: this month's total and the change against last month.
- * More spending is shown as bad news and more income as good, whatever the sign.
+ * What the hero says for the chosen metric from monthly `points` (oldest first): the live balance,
+ * or this month's total against last; more spending is bad news, more income good.
  */
 export function heroHeadline(
   metric: HeroMetric,

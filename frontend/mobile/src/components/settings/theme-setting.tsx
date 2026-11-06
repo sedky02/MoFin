@@ -34,7 +34,6 @@ function Preview({ tone }: { tone: 'light' | 'dark' }) {
   );
 }
 
-/** System, light or dark, with a small preview of each. Applies at once and is kept on this device. */
 export function ThemeSetting() {
   const { preference, setPreference } = useThemePreference();
   return (

@@ -122,8 +122,7 @@ describe('AnalyticsService.getMonthlySummary', () => {
 
     expect(result.income).toBe('100');
     expect(result.expenses).toBe('0');
-    // Scoped to acc-a, so the Groceries item (on acc-b) is filtered out entirely —
-    // per-item attribution means it never enters the breakdown at all.
+    // Scoped to acc-a, so the acc-b Groceries item never enters the breakdown.
     expect(result.categoryBreakdown).toEqual([]);
     // Filters the transaction query itself, not just post-processing.
     expect(prisma.transaction.findMany).toHaveBeenCalledWith(

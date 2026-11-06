@@ -19,7 +19,6 @@ import { NewTransactionShortcut } from "./new-transaction-shortcut";
 import { BOTTOM_NAV_ITEMS, isNavActive } from "./nav-items";
 import { cn } from "@/lib/utils";
 
-/** The account new transactions, drafts and goals default to. "All accounts" = no default. */
 function ActiveAccountPicker() {
   const { accountId, setAccountId, accounts } = useActiveAccount();
   if (accounts.length === 0) return null;
@@ -55,9 +54,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       >
         Skip to content
       </a>
-      {/* Desktop sidebar. usePathname/usePendingDraftCount inside SidebarNav read
-          per-request data, so this subtree needs its own Suspense boundary to keep
-          the rest of the route shell statically prerenderable. */}
+      {/* Own Suspense boundary: usePathname and usePendingDraftCount read per-request data, so this subtree can't block the static shell. */}
       <aside className="sticky top-0 hidden h-dvh overflow-hidden border-r border-sidebar-border lg:block">
         <Suspense fallback={<SidebarNavSkeleton />}>
           <SidebarNav collapsed={collapsed} onToggleCollapsed={() => setCollapsed(!collapsed)} />
@@ -66,9 +63,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       <div className="flex min-h-dvh flex-col">
         <DemoBanner />
-        {/* Topbar */}
         <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border bg-background/80 px-4 backdrop-blur-md">
-          {/* Mobile: open full nav sheet */}
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="lg:hidden" aria-label="Open menu">

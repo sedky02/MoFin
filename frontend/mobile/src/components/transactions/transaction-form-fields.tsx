@@ -1,7 +1,5 @@
-// The transaction form's pickers, as phone controls: the type switcher, the category chips, a
-// dialog list for accounts and split-line categories (a popover has no room on a phone, and the
-// dialog can be opened in tests), and the Month / Year interval switch. Same labels as the web's
-// type-switcher, category-chips and account-select.
+// The form's pickers as phone controls; account and split-category lists are dialogs, since a
+// popover has no room on a phone and a dialog can be opened in tests. Same labels as the web.
 import type { LucideIcon } from 'lucide-react-native';
 import * as React from 'react';
 import { FlatList, Pressable, ScrollView, View } from 'react-native';
@@ -66,7 +64,6 @@ export function TypeSwitcher({
   );
 }
 
-/** A category's icon in its colour, drawn the same way as everywhere else (`categoryGlyph`). */
 export function CategoryGlyph({ category, size = 14 }: { category: Pick<Category, 'icon' | 'color' | 'name'>; size?: number }) {
   return <CategoryGlyphIcon category={category} size={size} color={category.color ?? undefined} />;
 }
@@ -84,7 +81,6 @@ export function CategoryChips({
   categories: Category[];
   value?: string;
   onChange: (id?: string) => void;
-  /** Opens the new-category dialog ("New" chip). */
   onCreate?: () => void;
 }) {
   return (
@@ -161,7 +157,6 @@ export function PickerField({
   onChange: (value: string | undefined) => void;
   placeholder: string;
   emptyOption?: string;
-  /** Shown in the dialog when there are no options. */
   emptyText?: string;
   invalid?: boolean;
   disabled?: boolean;
@@ -266,7 +261,6 @@ const INTERVALS: { value: RecurringInterval; label: string }[] = [
   { value: 'YEARLY', label: 'Year' },
 ];
 
-/** "Every Month / Year". Starts with neither chosen, like the web's "Choose interval" select. */
 export function IntervalSwitcher({
   value,
   onChange,

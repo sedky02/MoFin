@@ -8,23 +8,18 @@ import { cn } from '@/lib/utils';
 type Props = {
   amount: string;
   currency: string;
-  /** Abbreviate large values ("$1.2K"). */
   compact?: boolean;
-  /** Color by sign: positive = success, negative = destructive. */
   colorBySign?: boolean;
-  /** Prefix a + explicitly (for transaction rows). */
   signed?: boolean;
   className?: string;
   numberOfLines?: number;
 };
 
-/** Splits a leading + / - / − off a formatted amount: ["-", "32.500 TND"], or ["", "$5.00"]. */
 export function splitLeadingSign(text: string): [string, string] {
   const m = /^([+\-\u2212])(.*)$/s.exec(text);
   return m ? [m[1], m[2]] : ['', text];
 }
 
-/** A formatted money value. Screen readers get the full (non-compact) value. */
 export function MoneyAmount({ amount, currency, compact = false, colorBySign = false, signed = false, className, numberOfLines }: Props) {
   const parsed = tryParse(amount);
   const isNeg = parsed?.isNegative() ?? false;

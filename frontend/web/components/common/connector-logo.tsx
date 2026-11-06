@@ -17,9 +17,8 @@ export const CONNECTOR_BRAND: Record<
 };
 
 /**
- * A connected app's logo on its brand tile: Claude, ChatGPT and Gemini get their
- * own; any other app gets the first letter of its name. Decorative, so the app's
- * name next to it stays the only label.
+ * A connected app's logo on its brand tile: Claude, ChatGPT and Gemini have their own, others get
+ * the name's first letter. Decorative; the app's name next to it is the label.
  */
 export function ConnectorLogo({
   clientName,

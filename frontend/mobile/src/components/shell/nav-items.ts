@@ -41,7 +41,6 @@ export const MORE_GROUPS: MoreGroup[] = [
   },
 ];
 
-/** Every item, flat (labels and routes in one place for tests and other menus). */
 export const MORE_ITEMS: MoreItem[] = MORE_GROUPS.flatMap((g) => g.items);
 
 export type MoreCounts = {
@@ -56,9 +55,8 @@ function plural(n: number, one: string, many: string): string {
 }
 
 /**
- * The second line of a More row: live status where it helps ("3 accounts", "2 active goals",
- * "1 app connected"), otherwise what the screen is for. Falls back to the description while
- * counts load.
+ * Live status where it helps ("3 accounts", "2 active goals"), otherwise what the screen is for;
+ * falls back to the description while counts load.
  */
 export function moreSubtitle(href: MoreHref, counts: MoreCounts): string {
   switch (href) {

@@ -5,20 +5,16 @@ export const currencySchema = z
   .string()
   .regex(/^[A-Z0-9]{3,8}$/, 'Invalid currency code');
 
-/** A positive decimal kept as a string to preserve precision for Prisma.Decimal. */
+/** Kept as a string to preserve precision for Prisma.Decimal. */
 export const amountStringSchema = z
   .string()
   .regex(/^\d+(\.\d+)?$/, 'Amount must be a non-negative decimal string');
 
-/**
- * Like amountStringSchema but may carry a leading minus, for amounts that can
- * sit below zero (an account's opening balance on a credit account).
- */
+/** May carry a leading minus: an account's opening balance can sit below zero. */
 export const signedAmountStringSchema = z
   .string()
   .regex(/^-?\d+(\.\d+)?$/, 'Amount must be a decimal string');
 
-/** Any value that Date.parse can understand (mirrors the old @IsDateString). */
 export const dateStringSchema = z
   .string()
   .refine(

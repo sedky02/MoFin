@@ -32,7 +32,6 @@ export interface DraftOrigin {
   sourceClient?: string | null;
 }
 
-/** The Drafts page's own input: what a draft is when nothing else is said. */
 export const COMPOSER_ORIGIN: DraftOrigin = { source: DraftSource.COMPOSER };
 
 @Injectable()
@@ -59,9 +58,8 @@ export class DraftTransactionsService {
   }
 
   /**
-   * Several drafts from one message, all or none: a failure halfway must not
-   * leave some saved (the user would retry and get duplicates). Events go out
-   * only after the commit, so no listener sees a draft that was rolled back.
+   * All or none: a failure halfway must not leave some saved (a retry would duplicate). Events go
+   * out after the commit.
    */
   async createMany(
     userId: string,
@@ -117,9 +115,8 @@ export class DraftTransactionsService {
   }
 
   /**
-   * The user's drafts with these ids, in their current state. The chat shows
-   * the drafts an answer created this way, so approving or rejecting one in the
-   * inbox shows up in the chat too. Ids of other users' drafts are ignored.
+   * The chat shows an answer's drafts this way, so approving one in the inbox shows in the chat
+   * too. Other users' ids are ignored.
    */
   findByIds(userId: string, ids: string[]) {
     if (!ids.length) return Promise.resolve([]);
@@ -128,7 +125,6 @@ export class DraftTransactionsService {
     });
   }
 
-  /** Every draft the user has, in any state (the demo's AI draft cap). */
   countForUser(userId: string) {
     return this.prisma.draftTransaction.count({ where: { userId } });
   }
@@ -142,7 +138,6 @@ export class DraftTransactionsService {
     });
   }
 
-  /** Cheap count for the pending-drafts sidebar badge — no row fetch at all. */
   countPending(userId: string) {
     return this.prisma.draftTransaction.count({
       where: { userId, status: DraftStatus.PENDING },
@@ -182,11 +177,8 @@ export class DraftTransactionsService {
     try {
       const { transaction, approved } = await this.prisma.$transaction(
         async (db) => {
-          // Conditional update: only flips PENDING -> APPROVED. Under concurrent
-          // approvals, Postgres row-locking on this UPDATE serializes the two
-          // callers — the loser's WHERE no longer matches once the winner
-          // commits, so it affects 0 rows here instead of both racing into
-          // transactionsService.create and colliding on the unique draftId.
+          // Conditional update: under concurrent approvals Postgres row-locking makes the loser's
+          // WHERE miss, so both can't race into create and hit the unique draftId.
           const { count } = await db.draftTransaction.updateMany({
             where: { id: draft.id, status: DraftStatus.PENDING },
             data: {
@@ -233,14 +225,8 @@ export class DraftTransactionsService {
 
       return { draft: approved, transaction };
     } catch (error) {
-      // Defensive fallback for legacy-broken drafts left over from before this
-      // fix (a Transaction row committed for this draftId by an old,
-      // non-atomic approve() that crashed before advancing the draft's
-      // status): if creation still hits the unique draftId constraint, a
-      // transaction already exists here — heal the draft's status to match
-      // reality instead of leaving it stuck PENDING forever. This whole
-      // $transaction (including the updateMany above) has already rolled
-      // back at this point, so the draft is untouched and safe to correct.
+      // Legacy drafts: an old non-atomic approve() could commit a Transaction and crash before
+      // advancing the status. On the unique-draftId error, heal the status to match.
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === 'P2002'
@@ -264,11 +250,8 @@ export class DraftTransactionsService {
   }
 
   /**
-   * A non-pending draft is only a valid re-approval target when it's already
-   * APPROVED and a transaction was actually committed for it — that combination
-   * means a prior approve() call succeeded but the caller retried (network
-   * blip, double-click), so we return the existing result idempotently rather
-   * than erroring on a draft that isn't actually broken.
+   * Re-approving is valid only for an APPROVED draft with a committed transaction (a retry after a
+   * network blip), returned idempotently.
    */
   private async reconcileAlreadyApproved(draft: DraftTransaction) {
     if (draft.status === DraftStatus.APPROVED) {

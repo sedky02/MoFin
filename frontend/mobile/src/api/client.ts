@@ -1,10 +1,5 @@
-// The app's backend client. Every screen and hook calls the backend through `api` (signed-in
-// routes) or `authApi` (the routes that start or end a session). Same error shape as the web's
-// client (ApiClientError with status, body, validation).
-//
-// On a 401 the client asks session.ts for a new access token (one shared refresh for every waiting
-// request) and retries the request once. If the refresh is refused, the session ends and the root
-// layout's route guard shows sign-in; there is no redirect from here.
+// Every screen and hook calls the backend through `api` (signed-in routes) or `authApi` (routes
+// that start or end a session). Same error shape as the web's client.
 import { ApiClientError, send, newRequestId, type SearchParams, type TextResponse } from '@/api/http';
 import { getAccessToken, hasSession, refreshSession, signOut, type AuthTokens } from '@/api/session';
 
@@ -21,7 +16,6 @@ const DEMO_TIMEOUT_MS = 30_000;
 
 type RequestOpts = { body?: unknown; searchParams?: SearchParams; responseType?: 'json' | 'text' };
 
-/** A fresh access token, or an ApiClientError for the caller when there is none to be had. */
 async function renewAccessToken(): Promise<string> {
   const outcome = await refreshSession();
   if (outcome.kind === 'ok') return outcome.accessToken;
@@ -57,17 +51,15 @@ export const api = {
   patch: <T>(path: string, body?: unknown) => request<T>('PATCH', path, { body }),
   put: <T>(path: string, body?: unknown) => request<T>('PUT', path, { body }),
   delete: <T>(path: string, body?: unknown, opts?: { timeoutMs?: number }) => request<T>('DELETE', path, { body, ...opts }),
-  /** GET a file (e.g. the data export): the raw body and its Content-Type / Content-Disposition. */
   download: (path: string, searchParams?: SearchParams) =>
     request<TextResponse>('GET', path, { searchParams, responseType: 'text' }),
 };
 
-/** POST /auth/demo: a temporary demo user (or the visitor's existing one). */
 export type DemoSession = AuthTokens & { expiresAt: string; reused: boolean };
 
 /**
- * The unauthenticated auth routes. They return the backend's answer; starting the session from a
- * token pair is session.ts's `startSession`, and ending one is its `signOut`.
+ * Unauthenticated routes return the backend's answer; starting a session from a token pair is
+ * session.ts's `startSession`, ending one its `signOut`.
  */
 export const authApi = {
   login: (body: { email: string; password: string }) => send<AuthTokens>('POST', '/auth/login', { body }),
@@ -77,12 +69,9 @@ export const authApi = {
   /** 202 with the same message whether or not the email has an account. */
   forgotPassword: (body: { email: string }) => send<{ message: string }>('POST', '/auth/password/forgot', { body }),
   demo: () => send<DemoSession>('POST', '/auth/demo', { body: {}, timeoutMs: DEMO_TIMEOUT_MS }),
-  /** Native Google sign-in: the ID token the device got from Google, verified by the backend. */
   googleIdToken: (idToken: string) => send<AuthTokens>('POST', '/auth/google/id-token', { body: { idToken } }),
   // Refresh and logout use the session's stored token, so they go through session.ts: a second,
   // uncoordinated POST /auth/refresh would trip the backend's reuse detection and sign the user out.
-  /** The single-flight refresh (POST /auth/refresh with the stored token). */
   refresh: refreshSession,
-  /** POST /auth/logout with the stored token, and clears the session on this device. */
   logout: signOut,
 };

@@ -8,7 +8,6 @@ import { formatMoney, pickPrimaryCurrency } from '@/core/format';
 import type { Account, DailySeriesPoint, LedgerBalance, User } from '@/core/types';
 import { mondayOf } from '@/core/week';
 
-/** The widgets MoFin offers, by their names in app.config.ts. */
 export type SummaryWidgetName = 'WeeklySummary' | 'MonthlySummary';
 export type WidgetName = SummaryWidgetName | 'Goals';
 export const WIDGET_NAMES: readonly WidgetName[] = ['WeeklySummary', 'MonthlySummary', 'Goals'];
@@ -20,14 +19,11 @@ export function isWidgetName(value: unknown): value is WidgetName {
 export type WidgetPeriod = 'month' | 'week';
 export const PERIOD_OF: Record<SummaryWidgetName, WidgetPeriod> = { WeeklySummary: 'week', MonthlySummary: 'month' };
 
-/** "All accounts", as opposed to one account's id. */
 export const ALL_ACCOUNTS = 'all';
 
-/** What a summary widget covers, chosen when it was added. */
 export type SummaryConfig = { accountId: string };
 export const DEFAULT_SUMMARY_CONFIG: SummaryConfig = { accountId: ALL_ACCOUNTS };
 
-/** Links the widgets open. They go through the allow-list in src/lib/deep-links.ts. */
 export const WIDGET_LINKS = {
   dashboard: 'mofin://dashboard',
   goals: 'mofin://goals',
@@ -37,24 +33,18 @@ export const WIDGET_LINKS = {
 } as const;
 
 /**
- * What a summary widget draws. Every value is display-ready: the widget only lays it out.
- * - `data`: the numbers, with when they were fetched and an optional note;
- * - `message`: no numbers to show (signed out, no accounts, nothing loaded yet).
+ * Every value is display-ready: the widget only lays it out. `data` has the numbers, `message`
+ * means nothing to show (signed out, no accounts, nothing loaded).
  */
 export type SummaryWidgetProps = {
   kind: 'data' | 'message';
-  /** "This week" or "This month". */
   title: string;
-  /** "All accounts" or the account's name. */
   scope: string;
   balance: string;
   income: string;
   expenses: string;
-  /** "Updated 6 Nov, 14:32". */
   updated: string;
-  /** "", "Updating…", "Couldn't update", "Sign in to update" or a setup note. */
   note: string;
-  /** What a `message` widget says. */
   message: string;
   openUrl: string;
   refreshUrl: string;
@@ -87,11 +77,9 @@ function emptySummary(period: WidgetPeriod, message: string): SummaryWidgetProps
   };
 }
 
-/** Signed out: nothing financial stays on the home screen. */
 export const signedOutSummary = (period: WidgetPeriod) => emptySummary(period, 'Open MoFin to sign in.');
 export const noAccountsSummary = (period: WidgetPeriod) => emptySummary(period, 'Add an account in MoFin to see it here.');
 
-/** What the summary covers for `period`, as of `today` (YYYY-MM-DD in the device's zone). Weeks start on Monday. */
 export function periodRange(
   period: WidgetPeriod,
   today: string,
@@ -134,7 +122,6 @@ export function scopeBalance(
   return totalsByCurrency(rows).find((t) => t.currency === currency)?.amount ?? '0';
 }
 
-/** A week's income and expenses from its daily points. Days still to come are zero. */
 export function sumDays(points: DailySeriesPoint[]): { income: string; expenses: string } {
   return points.reduce(
     (sum, p) => ({ income: add(sum.income, p.income), expenses: add(sum.expenses, p.expenses) }),
@@ -147,7 +134,6 @@ export function maskedAmount(currency: string): string {
   return `${MASKED_AMOUNT} ${currency}`;
 }
 
-/** Whether amounts are hidden: everywhere in widgets, or for an account the user hid. */
 export function amountsHidden(hideInWidgets: boolean, account: Account | undefined): boolean {
   return hideInWidgets || isAmountHidden(account);
 }

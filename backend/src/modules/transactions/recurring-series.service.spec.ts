@@ -260,7 +260,6 @@ describe('RecurringSeriesService', () => {
       await expect(service.resumeRecurring('u1', 'r1')).rejects.toThrow(
         'Account Savings is archived',
       );
-      // Only the reason is written: still paused, cursor untouched.
       expect(prisma.transaction.updateMany).toHaveBeenCalledTimes(1);
       expect(prisma.transaction.updateMany).toHaveBeenCalledWith({
         where: {

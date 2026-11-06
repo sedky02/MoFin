@@ -2,9 +2,8 @@ import { TransactionType } from '@prisma/client';
 import { DraftContext, ProposedDraft } from './draft-context';
 
 /**
- * A regex guess is never a confident one: at most this, so the review screen
- * flags it like a model draft it had to repair. Lower still when the amount is
- * a pick between several numbers, or missing.
+ * A regex guess is never confident: capped so review flags it like a repaired model draft; lower
+ * when the amount is ambiguous or missing.
  */
 export const REGEX_CONFIDENCE = { single: 0.4, ambiguous: 0.3, noAmount: 0.2 };
 
@@ -27,9 +26,8 @@ function normalise(raw: string): string {
 }
 
 /**
- * The amount next to a currency mark when there is one ("2 coffees for 5 TND"
- * -> 5); otherwise the largest number, which is more often the price than a
- * count ("50 for 2 tickets" -> 50).
+ * Amount next to a currency mark, else the largest number (more often the price than a count: "50
+ * for 2 tickets" is 50).
  */
 function pickAmount(input: string): { amount: string; candidates: number } {
   const numbers = [...input.matchAll(NUMBER)];
@@ -52,10 +50,7 @@ function pickAmount(input: string): { amount: string; candidates: number } {
   return { amount: largest, candidates: numbers.length };
 }
 
-/**
- * The fallback when no model is configured or it fails: one draft, read with
- * a few regexes. Never blocks drafting, and never sounds sure of itself.
- */
+/** Fallback when no model is configured or it fails; never blocks drafting and never sounds sure. */
 export function parseWithRegex(ctx: DraftContext): ProposedDraft {
   const { amount, candidates } = pickAmount(ctx.input);
   const symbol = Object.keys(CURRENCY_SYMBOLS).find((s) =>

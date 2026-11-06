@@ -13,8 +13,8 @@ import { cn } from "@/lib/utils";
 type StepState = Extract<SetupState, { status: "step" }>;
 
 /**
- * The first-run setup. Every step sits in the same frame (a step bar, a title, one line, one
- * card), so moving on changes what is inside it and nothing else.
+ * Every step sits in the same frame (step bar, title, line, card), so moving on changes only what's
+ * inside.
  */
 export function Setup({ step, accounts, skip, name }: Pick<StepState, "step" | "accounts" | "skip"> & { name?: string }) {
   const index = SETUP_STEPS.indexOf(step);

@@ -4,7 +4,6 @@ import { CategoryGlyphIcon } from '@/components/categories/category-glyph';
 import type { Category } from '@/core/types';
 import { cn } from '@/lib/utils';
 
-/** A category's colour tile with its icon in that colour (see `categoryGlyph`; an old emoji icon still shows). */
 export function CategoryAvatar({
   category,
   className,

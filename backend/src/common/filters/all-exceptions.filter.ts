@@ -10,16 +10,8 @@ import { Request, Response } from 'express';
 import { Sentry } from '../sentry';
 
 /**
- * Catch-all fallback behind PrismaExceptionFilter (audit OBS-01): anything
- * NestJS's own exception handling would otherwise turn into an unreported
- * 500 gets logged at `error` and sent to Sentry here, instead of only
- * existing as an unmonitored warn-level HTTP access log line.
- *
- * Registration order matters: Nest evaluates global filters in REVERSE
- * registration order and stops at the first `@Catch()` match, so this
- * catch-all (matches everything) must be registered BEFORE
- * PrismaExceptionFilter in app.module.ts's providers array for the
- * Prisma-specific filter to still get first refusal on Prisma errors.
+ * Catch-all behind PrismaExceptionFilter: unhandled errors are logged and sent to Sentry instead of
+ * staying an unmonitored 500. Registered before it, because Nest checks filters in reverse order.
  */
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -29,8 +21,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const response = host.switchToHttp().getResponse<Response>();
     const request = host.switchToHttp().getRequest<Request>();
     const context = `${request.method} ${request.originalUrl ?? request.url}`;
-    // Readiness probes flap during routine deploys/restarts; that's expected
-    // operational noise, not an incident worth paging on.
+    // Readiness probes flap during deploys; that's noise, not an incident.
     const isHealthCheck = (request.originalUrl ?? request.url ?? '').startsWith(
       '/health',
     );
@@ -44,8 +35,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
         );
         if (!isHealthCheck) Sentry.captureException(exception);
       }
-      // An exception that knows when to try again (AiUnavailableException on
-      // a provider 429) says so in the standard header too.
+      // An exception that knows when to retry (a provider 429) says so in the standard header too.
       const retryAfter = (exception as { retryAfterSeconds?: unknown })
         .retryAfterSeconds;
       if (typeof retryAfter === 'number' && retryAfter > 0) {

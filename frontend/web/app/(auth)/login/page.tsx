@@ -47,7 +47,6 @@ export default function LoginPage() {
   const params = new URLSearchParams(search);
   const justRegistered = params.get("registered") === "1";
   const justReset = params.get("reset") === "1";
-  // Why we landed here: a Google sign-in that didn't finish, or an expired session.
   const notice = loginNotice(params);
 
   const form = useForm<LoginValues>({
@@ -82,9 +81,8 @@ export default function LoginPage() {
         }
         throw new ApiClientError(res.status, body.message ?? "Login failed.", body);
       }
-      // If this login was initiated by the MCP OAuth flow, resume the cross-origin
-      // bridge instead of going to the dashboard (full navigation — the handoff
-      // route 302s the browser to the backend, across origins).
+      // An MCP OAuth login resumes the cross-origin bridge (a full navigation: the handoff route
+      // 302s across origins) instead of going to the dashboard.
       const mcpAuthorize = new URLSearchParams(window.location.search).get("mcp_authorize");
       if (mcpAuthorize) {
         window.location.href = `/api/auth/mcp-handoff?continue=${encodeURIComponent(mcpAuthorize)}`;

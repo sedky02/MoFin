@@ -1,16 +1,8 @@
 import { RecurringInterval } from '@prisma/client';
 
 /**
- * Advances a recurring occurrence by one interval, clamping to the anchor's
- * day-of-month when the target month is shorter (e.g. Jan 31 -> Feb 28 -> Mar 31).
- * `anchor` is always the root transaction's original occurredAt, so the clamp
- * is computed against the fixed anchor day rather than compounding drift.
- *
- * UTC throughout (matching AnalyticsService.getMonthlySummary and
- * GoalsService's period bounds) — `anchorDay` must come from `getUTCDate()`
- * too, since mixing a local-time day-of-month with UTC month arithmetic here
- * would reintroduce the same server-timezone-dependent bug at month
- * boundaries (audit DATA-XX).
+ * Advances one interval, clamping to the anchor's day of month (Jan 31 -> Feb 28 -> Mar 31).
+ * `anchor` is the root's original occurredAt, so the clamp doesn't compound drift. UTC throughout.
  */
 export function computeNextOccurrence(
   anchorDay: number,
@@ -36,10 +28,8 @@ export function computeNextOccurrence(
 }
 
 /**
- * Whether a series' next occurrence falls after its end date. The end date is
- * inclusive: an occurrence landing exactly on it is still posted. A series
- * past its end is ended (CANCELLED with no next occurrence) rather than left
- * active, so the cron never posts a charge the user excluded.
+ * The end date is inclusive. A series past its end is ended (CANCELLED, no next occurrence) rather
+ * than left active, so the cron never posts a charge the user excluded.
  */
 export function isPastEndDate(
   nextOccurrenceAt: Date,
@@ -49,9 +39,8 @@ export function isPastEndDate(
 }
 
 /**
- * The first occurrence of a series on or after `day`, stepping its cursor
- * forward one interval at a time from `from` (clamped against the anchor day,
- * like the cron).
+ * Steps the cursor forward one interval at a time from `from`, clamped against the anchor day like
+ * the cron.
  */
 export function firstOccurrenceOnOrAfter(
   anchorDay: number,

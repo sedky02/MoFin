@@ -78,11 +78,8 @@ const BLANK: TransactionFormValues = {
 };
 
 /**
- * The transaction form: records a new transaction, or, given `transaction`,
- * edits that one. Editing changes every field (the ledger lines are rewritten);
- * the recurrence of a series is edited from its page instead, so the Repeat
- * section is create-only. A recurring root keeps its type and currency, since
- * its series is generated from them.
+ * Records a new transaction or, given `transaction`, edits it (the ledger lines are rewritten). A
+ * series' recurrence is edited from its page instead.
  */
 export function TransactionForm({ transaction }: { transaction?: Transaction }) {
   const router = useRouter();
@@ -107,7 +104,6 @@ export function TransactionForm({ transaction }: { transaction?: Transaction }) 
   const noAccounts = !accountsLoading && accountList.length === 0;
   const [accountDialogOpen, setAccountDialogOpen] = React.useState(false);
 
-  // The saved values an edit starts from (and Reset goes back to).
   const initialValues = React.useMemo(
     () => (transaction ? transactionFormValues(transaction) : BLANK),
     [transaction],
@@ -150,14 +146,12 @@ export function TransactionForm({ transaction }: { transaction?: Transaction }) 
     ]);
     form.setValue("categoryId", undefined);
   }
-  // Undoing the split hands the first line's category back to the transaction.
   function cancelSplit() {
     const firstLineCategory = form.getValues("items")?.[0]?.categoryId;
     itemsArray.replace([]);
     if (firstLineCategory) form.setValue("categoryId", firstLineCategory);
   }
   const [confirmTransfer, setConfirmTransfer] = React.useState(false);
-  // Which category field the "New category" dialog was opened from: the main one or a split row.
   const [newCategoryFor, setNewCategoryFor] = React.useState<"main" | number | null>(null);
   function selectCreatedCategory(c: { id: string; type: string }) {
     // A category of the other type wouldn't appear in this form's list, so leave the field alone.
@@ -179,7 +173,6 @@ export function TransactionForm({ transaction }: { transaction?: Transaction }) 
     cancelSplit();
   }
 
-  // With the currency's decimals ("96.30", not "96.3"), like a typed amount after blur.
   const itemsTotal = formatMoneyInput(
     (watchedItems ?? []).reduce((sum, item) => add(sum, parseMoneyInput(item.amountRaw) ?? "0"), "0"),
     currency || undefined,
@@ -193,10 +186,8 @@ export function TransactionForm({ transaction }: { transaction?: Transaction }) 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [splitting, itemsTotal]);
 
-  // Accounts. The form only stores an account the user picked; what is shown and
-  // submitted is derived, so there is no "was this hand-picked?" state to get wrong:
-  //   picked account → else the suggested one (active → main → only → most used → first).
-  // For a transfer's destination the default is another account in the same currency.
+  // The form stores only an account the user picked; what is shown and submitted is derived
+  // (picked, else suggested), so there's no "was this hand-picked?" state to get wrong.
   const suggestedAccountId = useSuggestedAccountId();
   const { accountId: activeAccountId } = useActiveAccount();
   const inList = (id?: string) => (id && accountList.some((a) => a.id === id) ? id : undefined);
@@ -240,10 +231,8 @@ export function TransactionForm({ transaction }: { transaction?: Transaction }) 
     form.setValue("toAccountId", undefined);
   }, [activeAccountId, editing, form]);
 
-  // If the session expires mid-save, the input waits in sessionStorage while the
-  // user signs in again and comes back here. After the effect above, so the
-  // active account settling on load doesn't clear restored accounts; a stash
-  // naming accounts this user doesn't have isn't theirs, so it's dropped.
+  // If the session expires mid-save the input waits in sessionStorage until the user is back. Runs
+  // after the effect above, so the active account settling on load doesn't clear restored accounts.
   const restored = useFormStash(form, editing ? `${UNSAVED_STASH_KEY}:${transaction.id}` : UNSAVED_STASH_KEY, {
     ready: !accountsLoading,
     accept: (v) =>
@@ -251,7 +240,6 @@ export function TransactionForm({ transaction }: { transaction?: Transaction }) 
       [v.fromAccountId, v.toAccountId].every((id) => !id || accountList.some((a) => a.id === id)),
   });
 
-  // Currency follows the account the money moves through.
   const sourceAccountId = type === "INCOME" ? effectiveToId : effectiveFromId;
   React.useEffect(() => {
     const acct = accountList.find((a) => a.id === sourceAccountId);
@@ -264,8 +252,6 @@ export function TransactionForm({ transaction }: { transaction?: Transaction }) 
     type === "TRANSFER" ? false : c.type === type,
   );
 
-  // Back to a blank expense (the account falls back to the suggested default), or,
-  // when editing, back to the transaction as saved.
   function resetForm() {
     form.reset(editing ? initialValues : { ...BLANK, occurredAt: toDatetimeLocal(), items: [] });
   }
@@ -464,7 +450,6 @@ export function TransactionForm({ transaction }: { transaction?: Transaction }) 
               )}
             />
 
-            {/* What was it for? Description + one-tap category in one grouped surface. */}
             <div className="rounded-2xl bg-muted/50 p-4">
               <FormField
                 control={form.control}
@@ -521,8 +506,6 @@ export function TransactionForm({ transaction }: { transaction?: Transaction }) 
               </div>
             )}
 
-
-            {/* Split items */}
             {type !== "TRANSFER" && splitting && (
               <div className="space-y-3 rounded-2xl bg-muted/50 p-4">
                 <div className="flex items-center justify-between">

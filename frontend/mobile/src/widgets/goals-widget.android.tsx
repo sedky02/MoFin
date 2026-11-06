@@ -14,10 +14,8 @@ import { createWidget, type WidgetEnvironment } from 'expo-widgets';
 
 import type { GoalsWidgetProps } from '@/widgets/goals-data';
 
-// The Goals home screen widget (Android): up to three goals picked when it was added, each a name,
-// a percentage and a thin bar coloured like the app's goal rings (on track, behind, over the cap,
-// achieved). Same runtime rules as summary-widgets.android.tsx: only Expo UI's Compose components,
-// nothing from outside this function. The card opens Goals; ↻ opens the app to refresh.
+// Up to three goals picked when it was added: name, percentage and a thin bar. Same runtime rules
+// as summary-widgets.android.tsx; the card opens Goals, ↻ opens the app to refresh.
 function GoalsWidget(props: GoalsWidgetProps, environment: WidgetEnvironment) {
   'widget';
   const dark = environment.colorScheme === 'dark';

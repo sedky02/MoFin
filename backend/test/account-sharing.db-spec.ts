@@ -1,6 +1,6 @@
 /**
- * Invitations, membership, ownership transfer and email verification against
- * real Postgres. Needs TEST_DATABASE_URL (see support/test-database.ts).
+ * Invitations, membership, ownership transfer and email verification against real Postgres. Needs
+ * TEST_DATABASE_URL (see support/test-database.ts).
  */
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -37,7 +37,6 @@ class FakeMail extends MailSender {
     return Promise.resolve();
   }
 
-  /** The token in the last message's link. */
   lastToken() {
     return this.sent.at(-1)!.text.match(/#token=(\S+)/)![1];
   }
@@ -71,7 +70,6 @@ describe('Account sharing (Postgres)', () => {
       data: { userId, name, type: 'BANK', currency: 'EUR' },
     });
 
-  /** An owner, their account, and someone invited to it. */
   async function setup(options: { verified?: boolean } = {}) {
     const owner = await user('owner');
     const guest = await user('guest', options.verified ?? true);
@@ -83,7 +81,6 @@ describe('Account sharing (Postgres)', () => {
     return { owner, guest, accountId, token: mail.lastToken() };
   }
 
-  /** Accepted, so the guest is a member. */
   async function shared() {
     const context = await setup();
     await invitations.accept(context.guest.id, context.token);
@@ -813,7 +810,6 @@ describe('Account sharing (Postgres)', () => {
         name: 'Pets',
         color: '#123456',
       });
-      // The old owner keeps theirs.
       expect(await prisma.category.count({ where: { id: onlyOwner.id } })).toBe(
         1,
       );

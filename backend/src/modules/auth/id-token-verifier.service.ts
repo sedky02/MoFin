@@ -14,12 +14,9 @@ import {
 } from 'jose';
 import type { GoogleIdentity } from './auth.service';
 
-/** The one message for every rejected token, so the response leaks no detail. */
 export const INVALID_ID_TOKEN_MESSAGE = 'Invalid identity token';
 
-/** What a verified ID token says about the person who signed in. */
 export interface VerifiedIdToken {
-  /** The provider's stable account id (`sub`). */
   subject: string;
   /** Lowercased and trimmed; the provider vouched for it (`email_verified`). */
   email: string;
@@ -27,39 +24,23 @@ export interface VerifiedIdToken {
 }
 
 export interface IdTokenVerifierOptions {
-  /** Accepted `iss` values. */
   issuers: string[];
-  /** Accepted `aud` values: our own client ids at the provider. */
   audiences: string[];
-  /** Resolves the signing key from the token header (remote JWKS in production). */
   keys: JWTVerifyGetKey;
-  /** Name used in log lines and the 503 message, e.g. "Google". */
   provider: string;
 }
 
 /**
- * Google ID tokens carry `iat` and `nbf` set by Google's clock. A few seconds
- * of drift on our side would otherwise reject a token the phone got a moment
- * ago as "not yet valid". 30 s is far below the token's one-hour lifetime, so
- * it does not meaningfully extend what a leaked token can do.
+ * Google's clock sets iat/nbf; 30 s of tolerance avoids rejecting a fresh token for drift, and is
+ * far below the token's hour of life.
  */
 const CLOCK_TOLERANCE_SECONDS = 30;
 
-/** Thrown by the wrapped key resolver when the provider's keys can't be loaded. */
 class SigningKeysUnavailable extends Error {}
 
 /**
- * Verifies an OpenID Connect ID token handed to us by an untrusted client
- * (the mobile app): RS256 signature against the provider's published keys,
- * issuer, audience, expiry, and a verified email. Provider-agnostic, so Apple
- * can reuse it with its own issuer, JWKS and client ids.
- *
- * Errors:
- * - anything wrong with the token itself (signature, unknown key id, claims,
- *   malformed, wrong algorithm) -> 401 with INVALID_ID_TOKEN_MESSAGE;
- * - the provider's keys can't be fetched (network, timeout, bad response)
- *   -> 503, since it is not the caller's fault and a retry may work.
- * Neither the token nor its claims are ever logged.
+ * Verifies an OIDC ID token from an untrusted client (RS256 signature, issuer, audience, expiry,
+ * verified email). Token problems are a 401; provider key-fetch failures are a 503.
  */
 export class IdTokenVerifier {
   private readonly logger: Logger;
@@ -126,7 +107,6 @@ export class IdTokenVerifier {
   }
 }
 
-/** jose's error code, e.g. ERR_JWKS_NO_MATCHING_KEY, if `err` is a jose error. */
 function joseCode(err: unknown): string | undefined {
   const code = (err as { code?: unknown } | null)?.code;
   return typeof code === 'string' && code.startsWith('ERR_J')
@@ -150,7 +130,6 @@ export const GOOGLE_JWKS_URL = 'https://www.googleapis.com/oauth2/v3/certs';
 /** DI token for Google's signing keys; tests swap in a local JWKS. */
 export const GOOGLE_ID_TOKEN_KEYS = Symbol('GOOGLE_ID_TOKEN_KEYS');
 
-/** Comma-separated GOOGLE_MOBILE_CLIENT_IDS as a list, empty entries dropped. */
 export function parseClientIds(value: string | undefined): string[] {
   return (value ?? '')
     .split(',')
@@ -159,10 +138,8 @@ export function parseClientIds(value: string | undefined): string[] {
 }
 
 /**
- * Verifies Google ID tokens sent by the mobile app. The accepted audiences are
- * GOOGLE_MOBILE_CLIENT_IDS: the web client id (the Android app sets it as
- * `webClientId`, so tokens are issued for it) and later the iOS client id.
- * Without it, sign-in answers 503 like the code flow does when unconfigured.
+ * Accepted audiences are GOOGLE_MOBILE_CLIENT_IDS (web client id, later iOS); unset, sign-in
+ * answers 503.
  */
 @Injectable()
 export class GoogleIdTokenVerifier {
@@ -194,11 +171,7 @@ export class GoogleIdTokenVerifier {
   }
 }
 
-/**
- * The verifier plus Google's published keys. createRemoteJWKSet fetches
- * lazily on first use, caches the set and refetches on an unknown key id
- * (at most every 30 s), so building it at startup costs no request.
- */
+/** createRemoteJWKSet fetches lazily and caches, so building it at startup costs no request. */
 export const googleIdTokenProviders = [
   {
     provide: GOOGLE_ID_TOKEN_KEYS,

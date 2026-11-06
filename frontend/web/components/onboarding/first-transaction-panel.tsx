@@ -8,13 +8,8 @@ const WAYS = [
 ] as const;
 
 /**
- * What the balance card shows in place of its chart while nothing is recorded: a chart of
- * nothing says nothing, so the space names the one next step and offers its two ways in as
- * equal, full-size choices. The filled one is the plain route; the other is the AI one.
- *
- * The filled tile stays brand lime. Lime on a white card is only 1.4:1 at its edge, so in
- * light mode it carries a thin olive outline (3.6:1 against the card); in dark mode lime on the
- * dark card is already 14:1 and needs none. The other tile gets a border you can actually see.
+ * Shown in place of the balance chart while nothing is recorded: a chart of nothing says nothing,
+ * so it names the one next step and offers its two ways in as equal choices.
  */
 export function FirstTransactionPanel() {
   return (

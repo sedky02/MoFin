@@ -42,7 +42,6 @@ export function DraftList({ status }: { status: DraftStatus }) {
   // React Compiler memoizes this derivation — no manual useMemo.
   const flat = data?.pages.flatMap((page) => page.data) ?? [];
 
-  // Instant card removal on approve/reject (React 19 useOptimistic).
   const [optimistic, removeOptimistic] = React.useOptimistic(
     flat,
     (state: DraftTransaction[], id: string) => state.filter((d) => d.id !== id),
@@ -64,7 +63,6 @@ export function DraftList({ status }: { status: DraftStatus }) {
   // Not optimistic: an approval can be rejected by the server (400), and
   // removing the card first would also throw away the user's review-form edits.
   function handleApprove(id: string, edits: Partial<ParsedTransactionData>) {
-    // Rejects on failure so the review form can show field errors inline.
     return approve.mutateAsync({ id, edits }).then(() => refocusAfterRemoval(id));
   }
 

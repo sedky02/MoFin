@@ -1,22 +1,14 @@
-// Incoming `mofin://` links. They may only ever open a screen (the transaction detail, the add
-// form, an invitation to answer, or the screens home screen widgets open): never a settings or delete screen, and never
-// anything that writes on open. A widget's ↻ only reads (it refetches the widget data, then opens
-// its screen). Adding a widget opens its setup screen, which only saves this phone's choice of
-// what that widget shows, and only when the user taps Done. Everything else
-// lands on the app's home route. The signed-out guard lives in the root layout (`Stack.Protected`):
-// a signed-out user is sent to the sign-in screen and the app opens normally after signing in.
+// `mofin://` links may only open a screen (detail, add form, an invitation, widget targets), never
+// settings or delete or anything that writes. The signed-out guard is in the root layout.
 export const HOME_PATH = '/';
 
 const TRANSACTION_ID = /^[A-Za-z0-9_-]{1,64}$/;
 
-/** Screens a widget opens, by the name its links use. */
 export const WIDGET_SCREENS = { dashboard: '/dashboard', goals: '/goals' } as const;
 export type WidgetScreen = keyof typeof WIDGET_SCREENS;
 
-/** The home screen widgets, by their names in app.config.ts (setup links name one). */
 const WIDGET_NAMES = ['WeeklySummary', 'MonthlySummary', 'Goals'];
 
-/** The screen a widget's ↻ returns to: one of WIDGET_SCREENS, else the dashboard. */
 export function widgetScreen(name: unknown): WidgetScreen {
   return typeof name === 'string' && Object.prototype.hasOwnProperty.call(WIDGET_SCREENS, name) ? (name as WidgetScreen) : 'dashboard';
 }
@@ -24,19 +16,16 @@ export function widgetScreen(name: unknown): WidgetScreen {
 export const INVITATION_PATH = '/invitations';
 const INVITE_TOKEN = /^[A-Za-z0-9_-]{16,256}$/;
 
-/** The invitation token in a `mofin://invitations?token=…` link, when it looks like one. */
 export function inviteToken(path: string): string | undefined {
   const query = path.match(/\?([^#]*)/)?.[1] ?? '';
   const token = new URLSearchParams(query).get('token');
   return token && INVITE_TOKEN.test(token) ? token : undefined;
 }
 
-/** True for an id that can safely go into an API path (screens reached by a typed or pasted URL). */
 export function isTransactionId(id: unknown): id is string {
   return typeof id === 'string' && TRANSACTION_ID.test(id);
 }
 
-/** Maps a path from an incoming link to a screen the link may open. */
 export function safeDeepLinkPath(path: string): string {
   let pathname = path;
   let query = '';

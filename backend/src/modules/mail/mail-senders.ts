@@ -40,10 +40,8 @@ export class SmtpMailSender extends MailSender {
 }
 
 /**
- * Fallback when no SMTP relay is configured. Outside production it logs the
- * whole message so a developer can follow a reset link from the console. In
- * production it logs only that a message was dropped: the body carries a
- * live credential (the reset link) and must never reach log storage.
+ * Fallback with no SMTP relay: logs the message outside production so a developer can follow a
+ * link; in production only that a message was dropped, since the body carries a live credential.
  */
 export class LogMailSender extends MailSender {
   private readonly logger = new Logger('MailSender');
@@ -71,8 +69,8 @@ export class LogMailSender extends MailSender {
 }
 
 /**
- * Development/test only (refused in production by env validation): writes each
- * message as a JSON file so a local end-to-end run can read the reset link.
+ * Development/test only (refused in production): writes each message as JSON so e2e runs can read
+ * the links.
  */
 export class FileCaptureMailSender extends MailSender {
   constructor(private readonly dir: string) {

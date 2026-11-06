@@ -1,10 +1,8 @@
 import { readFileSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
 
-// B-21: /login says why it opened, and a session that expires mid-save on New
-// transaction doesn't cost the user what they typed.
-// Needs the UX fixture: `npm run e2e:seed` ("Main checking" is USD, "Groceries"
-// is an expense category).
+// /login says why it opened, and a session that expires mid-save keeps what the user typed. Needs
+// `npm run e2e:seed` ("Main checking" is USD, "Groceries" an expense category).
 test.use({ locale: "en-US", storageState: { cookies: [], origins: [] } });
 
 type Credentials = { email: string; password: string };
@@ -18,7 +16,6 @@ function readJson<T>(path: string): T {
   }
 }
 
-/** The login banner. Filtered by text: Next's route announcer is a role="alert" too. */
 function banner(page: Page, text: string) {
   return page.getByRole("alert").filter({ hasText: text });
 }

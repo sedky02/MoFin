@@ -14,7 +14,6 @@ import { haptics } from '@/lib/haptics';
 
 const HEIGHT = 170;
 const AXIS_WIDTH = 52;
-/** Room above the top gridline for the value bubble. */
 const TOP_ROOM = 8;
 const BUBBLE_WIDTH = 132;
 
@@ -30,7 +29,6 @@ const DONUT_KEYS = ['chart-1', 'chart-2', 'chart-3', 'chart-4', 'chart-5', 'char
 
 const num = (value: string | undefined) => tryParse(value ?? '0')?.toNumber() ?? 0;
 
-/** "2026-10" -> "Oct" (with the year when the range crosses one), "2026-11-03" -> "Nov 3". */
 export function axisLabel(label: string, axis: AiChart['axis'], withYear = false): string {
   if (axis === 'month' && /^\d{4}-\d{2}$/.test(label)) {
     return new Date(`${label}-01T00:00:00Z`).toLocaleDateString(undefined, {
@@ -45,7 +43,6 @@ export function axisLabel(label: string, axis: AiChart['axis'], withYear = false
   return label;
 }
 
-/** Everything a screen reader says about the chart, label by label. */
 export function chartSummary(chart: AiChart): string {
   const rows = chart.labels.map((label, i) => {
     const values = chart.series.map((s) => `${chart.series.length > 1 ? `${s.name} ` : ''}${formatMoney(s.values[i] ?? '0', chart.currency)}`);

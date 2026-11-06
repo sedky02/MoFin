@@ -12,10 +12,8 @@ interface JwtPayload {
 }
 
 /**
- * Verifies first-party web access tokens. Constrained to our issuer and the
- * `mofin-web` audience, and signed with a key distinct from JWT_MCP_SECRET, so
- * an OAuth/MCP-minted token (different secret, different audience, carries a
- * `scope` claim) can never be replayed against REST endpoints (SEC-XX).
+ * Web access tokens only: our issuer, the `mofin-web` audience, and a key distinct from
+ * JWT_MCP_SECRET, so an MCP token can never be replayed on REST.
  */
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {

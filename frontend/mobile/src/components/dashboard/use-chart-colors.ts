@@ -2,7 +2,6 @@ import { useColorScheme } from 'nativewind';
 
 import { COLORS } from '@/theme/colors';
 
-/** The palette for SVG fills (which cannot read CSS variables). */
 export function useChartColors() {
   const { colorScheme } = useColorScheme();
   return COLORS[colorScheme === 'dark' ? 'dark' : 'light'];

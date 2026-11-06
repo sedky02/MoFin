@@ -31,7 +31,6 @@ export default function ForgotPasswordScreen() {
     setRateLimited(false);
     try {
       await authApi.forgotPassword({ email });
-      // Same confirmation whether or not the email has an account.
       setSentTo(email);
     } catch (err) {
       if (err instanceof ApiClientError && err.status === 429) {

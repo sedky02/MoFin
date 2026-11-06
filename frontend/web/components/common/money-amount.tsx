@@ -9,13 +9,9 @@ import { useCountUp } from "@/hooks/use-count-up";
 interface MoneyAmountProps {
   amount: string;
   currency: string;
-  /** Spring count-up on first mount (dashboard balances). */
   animate?: boolean;
-  /** Abbreviate large values ("$1.2K"). */
   compact?: boolean;
-  /** Color by sign: positive = success, negative = destructive. */
   colorBySign?: boolean;
-  /** Prefix a +/- sign explicitly (for transaction rows). */
   signed?: boolean;
   className?: string;
 }

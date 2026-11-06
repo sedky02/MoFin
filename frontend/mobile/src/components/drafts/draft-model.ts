@@ -1,6 +1,5 @@
-// Pure logic behind the drafts screens, mirroring the web's draft-card and draft-review-form. Every
-// amount goes through the copied core helpers (draftAmountInput, parseMoneyInput, tryParse); the
-// components only render what comes back.
+// Pure logic behind the drafts screens, mirroring the web's draft-card and draft-review-form; every
+// amount goes through the copied core helpers and the components only render what comes back.
 import { localDateTimeToIso } from '@/components/transactions/transaction-form-model';
 import { tryParse } from '@/core/decimal';
 import { draftAmountInput } from '@/core/draft-review';
@@ -29,7 +28,6 @@ export function quickApproveState(draft: DraftTransaction): { blocked: boolean; 
   return { blocked, reason };
 }
 
-/** "Cash → Savings", "Into Cash", "From Cash", or null when the accounts aren't known. */
 export function draftAccountSummary(p: ParsedTransactionData, accounts: Account[] | undefined): string | null {
   const name = (id?: string | null) => accounts?.find((a) => a.id === id)?.name;
   const from = name(p.fromAccountId);
@@ -39,7 +37,6 @@ export function draftAccountSummary(p: ParsedTransactionData, accounts: Account[
   return from ? `From ${from}` : null;
 }
 
-/** The draft's amount as the card shows it: an expense is negative. */
 export function draftDisplayAmount(p: ParsedTransactionData): string | null {
   if (!p.amount || !p.currency) return null;
   return p.type === 'EXPENSE' ? `-${p.amount.replace(/^-/, '')}` : p.amount;
@@ -74,7 +71,6 @@ export function initialReviewValues(draft: DraftTransaction, accounts: Account[]
   return withDefaultAccounts(values, accounts);
 }
 
-/** Fills the accounts the parser left empty (first account; transfer destination: the second) and syncs the currency. */
 export function withDefaultAccounts(values: TransactionFormValues, accounts: Account[]): TransactionFormValues {
   let next = values;
   if (accounts.length > 0) {
@@ -87,7 +83,6 @@ export function withDefaultAccounts(values: TransactionFormValues, accounts: Acc
   return syncCurrency(next, accounts);
 }
 
-/** The transaction takes its source account's currency (the receiving account's for income). */
 export function syncCurrency(values: TransactionFormValues, accounts: Account[]): TransactionFormValues {
   const sourceId = values.type === 'INCOME' ? values.toAccountId : values.fromAccountId;
   const acct = accounts.find((a) => a.id === sourceId);
@@ -96,7 +91,6 @@ export function syncCurrency(values: TransactionFormValues, accounts: Account[])
 
 export type ReviewErrors = Partial<Record<keyof TransactionFormValues, string>>;
 
-/** Validates the review form with the web's transaction schema; on success, the edits sent with the approval. */
 export function buildApproval(
   values: TransactionFormValues,
   accounts: Account[],

@@ -5,10 +5,8 @@ import { useUpdateUser, useUser } from "@/hooks/useUser";
 import type { Account } from "@/lib/types";
 
 /**
- * The user's preferred account, stored in `user.settings.mainAccountId` so it
- * follows them across devices. Resolved against the live account list, so an
- * archived or deleted account silently stops being "main" instead of scoping
- * the dashboard to something that no longer exists.
+ * Stored in `user.settings.mainAccountId` so it follows the user across devices; resolved against
+ * the live list so an archived or deleted account stops being main.
  */
 export function useMainAccount(): {
   account: Account | undefined;

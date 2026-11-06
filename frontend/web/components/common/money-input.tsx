@@ -21,7 +21,6 @@ interface MoneyInputProps {
   disabled?: boolean;
   className?: string;
   id?: string;
-  /** Hero style: bare, centred, oversized figure with the currency code above. */
   large?: boolean;
   /** Accept one leading minus (an opening balance can be below zero). */
   allowNegative?: boolean;
@@ -29,18 +28,14 @@ interface MoneyInputProps {
   "aria-describedby"?: string;
 }
 
-/** Space-joined element ids, skipping empty ones. */
 function ids(...parts: (string | undefined)[]): string | undefined {
   const joined = parts.filter(Boolean).join(" ");
   return joined || undefined;
 }
 
 /**
- * Money text field. Form state holds exactly what was typed (validated by Zod
- * via parseMoneyInput, which reads any separators); it's normalised and tidied
- * to the currency's decimals on blur, and on paste when the reading is clear.
- * While the text could be read more than one way ("1,234") or will be rounded,
- * the interpreted value is shown under the field ("= 1,234.00").
+ * Form state holds exactly what was typed (Zod validates via parseMoneyInput, which reads any
+ * separators); tidied to the currency's decimals on blur, and on paste when the reading is clear.
  */
 export function MoneyInput({
   value,

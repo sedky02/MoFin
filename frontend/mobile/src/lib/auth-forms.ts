@@ -1,7 +1,5 @@
-// Validation and copy for the sign-in screens, mirrored from the web's (auth) pages
-// (frontend/web/app/(auth)/{login,register,forgot-password}/page.tsx) and lib/demo.ts.
-// One difference: emails are trimmed before they are checked, because phone keyboards and
-// autofill often leave a trailing space (the backend trims them too).
+// Validation and copy for the sign-in screens, mirrored from the web. Emails are trimmed first,
+// since phone keyboards and autofill often leave a trailing space (the backend trims too).
 import { z } from 'zod';
 
 import { ApiClientError } from '@/api/http';
@@ -37,7 +35,6 @@ export const AUTH_COPY = {
   forgotFailed: 'Could not send the reset link.',
 } as const;
 
-/** Password strength labels for scorePassword's 0-4 (same as the web's register page). */
 export const STRENGTH = [
   { label: 'Too short', cls: 'bg-destructive' },
   { label: 'Weak', cls: 'bg-destructive' },

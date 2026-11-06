@@ -1,12 +1,7 @@
 import { expect, test, type APIRequestContext, type Locator, type Page } from "@playwright/test";
 
-// B-15: recurring series can be found and managed. An occurrence's "Generated from
-// a recurring series" badge opens its series, and the Recurring view of
-// /transactions (?view=recurring) lists every series once, by its root, with its
-// next date, amount and account, and cancels one in place. Cancelling stops the
-// series and keeps the transaction; a deleted root is left out.
-// Needs the UX fixture (`npm run e2e:seed`): "Rent (monthly)" is a monthly
-// 12.345 TND expense on Dinar. The cancel test creates and deletes its own series.
+// The Recurring view (?view=recurring) lists each series once by its root and cancels in place; an
+// occurrence's badge opens its series. Needs `npm run e2e:seed`.
 test.use({ locale: "en-US", timezoneId: "Africa/Tunis" });
 
 const RENT = "Rent (monthly)";
@@ -21,7 +16,6 @@ type Tx = {
   deletedAt?: string | null;
 };
 
-/** Every match of a search, all pages. */
 async function searchAll(request: APIRequestContext, params: Record<string, string>): Promise<Tx[]> {
   const out: Tx[] = [];
   for (let offset = 0; ; offset += 100) {
@@ -41,7 +35,6 @@ async function getTx(request: APIRequestContext, id: string): Promise<Tx> {
   return (await res.json()) as Tx;
 }
 
-/** The date as the page shows it (formatDate, en-US, in the browser's zone). */
 const shownDate = (iso: string) =>
   new Intl.DateTimeFormat("en-US", { year: "numeric", month: "short", day: "numeric", timeZone: "Africa/Tunis" }).format(
     new Date(iso),
@@ -49,7 +42,6 @@ const shownDate = (iso: string) =>
 
 const seriesList = (page: Page): Locator => page.getByRole("list", { name: "Recurring series" });
 
-/** A series' row in the Recurring view, found by the link to its root. */
 const seriesRow = (page: Page, id: string): Locator =>
   seriesList(page).getByRole("listitem").filter({ has: page.locator(`a[href="/transactions/${id}"]`) });
 

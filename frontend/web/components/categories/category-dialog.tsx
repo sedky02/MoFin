@@ -51,9 +51,7 @@ export function CategoryDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   category?: Category;
-  /** Pre-selected type for a new category (e.g. the transaction type being entered). */
   defaultType?: CategoryType;
-  /** Called with the new category after a successful create. */
   onCreated?: (category: Category) => void;
 }) {
   const isEdit = !!category;
@@ -131,7 +129,6 @@ export function CategoryDialog({
         }}
       >
         <DialogHeader className="flex-row items-center gap-3 border-b px-4 py-3 sm:gap-3.5 sm:px-6 sm:py-4">
-          {/* How it will look in the lists and pickers, updating as you choose. */}
           <CategoryAvatar category={{ name: name || "Category", color, icon }} className="size-10 sm:size-12" />
           <div className="min-w-0 flex-1">
             <DialogTitle className="text-base sm:text-lg">{isEdit ? "Edit category" : "New category"}</DialogTitle>
@@ -173,7 +170,6 @@ export function CategoryDialog({
                 )}
               />
 
-              {/* Type — only editable on create (PATCH doesn't change type). */}
               {!isEdit && (
                 <FormField
                   control={form.control}
@@ -206,7 +202,6 @@ export function CategoryDialog({
                 />
               )}
 
-              {/* Icon and colour together: both only change how the category looks. */}
               <div className="space-y-3 rounded-xl bg-muted/40 p-3 sm:space-y-5 sm:p-4">
                 <FormField
                   control={form.control}

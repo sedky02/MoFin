@@ -22,9 +22,8 @@ import { useAssistantNudge, useSetup } from '@/hooks/useSetup';
 import { useUser } from '@/hooks/useUser';
 
 /**
- * The dashboard's cards. Holds which account is selected and fans it out to every card; each card
- * fetches its own data scoped to that account, so switching accounts never needs a reload.
- * Phone order: hero, monthly summary, goals, recent.
+ * Holds the selected account and fans it out; each card fetches its own data for it, so switching
+ * accounts needs no reload. Phone order: hero, monthly summary, goals, recent.
  */
 export function DashboardBody({ year, month }: { year: number; month: number }) {
   const { data: accounts } = useAccounts();

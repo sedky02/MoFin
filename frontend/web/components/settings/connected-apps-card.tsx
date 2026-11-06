@@ -13,7 +13,6 @@ import { useConnectedApps, useDisconnectApp } from "@/hooks/useConnectedApps";
 import type { ConnectedApp } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-/** The AI apps the user approved, each with its state and a Disconnect button. */
 export function ConnectedAppsCard() {
   const apps = useConnectedApps();
   const disconnect = useDisconnectApp();

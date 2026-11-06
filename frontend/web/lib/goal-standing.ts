@@ -41,9 +41,8 @@ function elapsedShare(goal: Goal, now: Date): number | null {
 }
 
 /**
- * The ring's colour. A cancelled goal is judged by its frozen status only; an active one that is
- * still in progress is "behind" when its progress trails the share of the period already gone
- * (for a spending cap: when spending runs ahead of it).
+ * The ring's colour. A cancelled goal is judged by its frozen status; an active one is "behind"
+ * when its progress trails the share of the period gone (for a cap: spending runs ahead).
  */
 export function goalTone(goal: Goal, now: Date = new Date()): GoalTone {
   const instance = goal.currentInstance;

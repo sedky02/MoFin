@@ -1,6 +1,5 @@
-// Compares src/core (and the copied hooks) against the web originals and reports
-// same / drifted / missing. Report only: it never writes a file.
-// Exit code 1 when a file is drifted (or missing) and COPIED_FROM.md has no entry for it.
+// Compares src/core and the copied hooks against the web originals (same / drifted / missing);
+// report only, never writes. Exit 1 when a file drifted and COPIED_FROM.md has no entry.
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -36,7 +35,6 @@ const HOOKS = [
   'use-debounced-value', 'use-revealed-amount', 'useAccountSharing',
 ];
 
-/** The known, mechanical import rewrites. Everything else is a real difference. */
 function normalizeWebSource(text) {
   return text
     .replace(/^"use client";\n\n?/, '')

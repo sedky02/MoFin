@@ -6,10 +6,8 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 /**
- * "Try the demo": a plain form POST, so it works before (or without)
- * JavaScript. The BFF route gives the visitor their own temporary demo and
- * redirects to the dashboard; seeding takes a moment, so the button says so.
- * `onBrand` is the ink version for the lime band at the end of the page.
+ * A plain form POST, so it works before or without JavaScript; the BFF route redirects to the
+ * dashboard, and seeding takes a moment, so the button says so.
  */
 export function DemoButton({
   className,
@@ -26,7 +24,6 @@ export function DemoButton({
       action="/api/demo"
       method="post"
       onSubmit={() => setPending(true)}
-      // Full width on phones, like the buttons stacked beside it.
       className={cn(size === "hero" && "w-full sm:w-auto", className)}
     >
       <Button

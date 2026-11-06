@@ -1,13 +1,5 @@
-/**
- * Captures a route at desktop (1440x900) and mobile (390x844, touch) in both
- * themes into e2e/.shots/.
- *
- *   npm run e2e:shots -- /dashboard
- *
- * Needs the web app on :3001 (override with E2E_BASE_URL), the backend on :3000,
- * and `npm run e2e:seed` run once. Run with Node's built-in TypeScript support,
- * so keep this file free of enums and local imports.
- */
+// Screenshots a route, desktop and mobile in both themes, into e2e/.shots/: npm run e2e:shots -- /dashboard
+// Needs both servers and e2e:seed; runs under Node's TS support (no enums or local imports).
 import { mkdirSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -64,7 +56,7 @@ async function main() {
         try {
           localStorage.setItem("mofin-theme", t);
         } catch {
-          /* storage unavailable */
+          // storage unavailable
         }
       }, theme);
       const page = await context.newPage();

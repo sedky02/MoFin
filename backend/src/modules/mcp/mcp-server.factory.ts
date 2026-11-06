@@ -20,11 +20,8 @@ type RegisterTool = (
 ) => unknown;
 
 /**
- * Builds a per-request MCP server scoped to a single authenticated user.
- *
- * Each tool's inputSchema is the Zod raw shape from `mcpToolSchemas`, so the MCP
- * server validates arguments before invoking the handler; the handler then
- * delegates to `McpService.dispatch`, which only calls application services.
+ * Per-request MCP server scoped to one user: Zod raw shapes validate arguments before the handler,
+ * which only calls McpService.dispatch.
  */
 @Injectable()
 export class McpServerFactory {

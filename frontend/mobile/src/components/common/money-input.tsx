@@ -14,7 +14,6 @@ import {
 } from '@/core/format';
 import { cn } from '@/lib/utils';
 
-/** The empty field's placeholder: zero written with the currency's decimals. */
 export function zeroPlaceholder(currency?: string): string {
   const digits = currencyFractionDigits(currency);
   return digits > 0 ? `0.${'0'.repeat(digits)}` : '0';
@@ -27,9 +26,7 @@ type Props = {
   currency?: string;
   disabled?: boolean;
   className?: string;
-  /** Hero style: bare, centred, oversized figure with the currency code above. */
   large?: boolean;
-  /** Accept one leading minus (an opening balance can be below zero). */
   allowNegative?: boolean;
   invalid?: boolean;
   accessibilityLabel?: string;
@@ -37,12 +34,8 @@ type Props = {
 };
 
 /**
- * Money text field. Form state holds exactly what was typed; it's normalised and tidied to the
- * currency's decimals on blur. While the text could be read more than one way ("1,234") or will be
- * rounded, the interpreted value is shown under the field ("= 1,234.00").
- *
- * Mobile difference: there is no paste interception (React Native has no paste event). Pasted text
- * goes through the same blur normalisation.
+ * Form state holds what was typed; tidied to the currency's decimals on blur, with a reading shown
+ * when ambiguous or rounded ("= 1,234.00"). No paste interception on mobile (no paste event).
  */
 export function MoneyInput({
   value,

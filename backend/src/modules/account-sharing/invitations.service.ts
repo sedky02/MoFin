@@ -44,7 +44,6 @@ const short = (name: string) =>
 
 const invalid = () => new BadRequestException(INVALID_INVITATION_MESSAGE);
 
-/** What the owner sees: never the token or its hash. */
 function toResponse(invitation: AccountInvitation) {
   const { id, accountId, email, role, status, expiresAt, createdAt } =
     invitation;
@@ -52,14 +51,8 @@ function toResponse(invitation: AccountInvitation) {
 }
 
 /**
- * Invitations to a shared account. Holding the link isn't enough to join: it
- * has to be accepted while signed in with the invited address, verified. So a
- * forwarded or intercepted link is useless to anyone else.
- *
- * Only the SHA-256 of the token is stored. One row per (account, email):
- * reinviting overwrites it, which replaces the old token in the same write.
- * Nothing here looks the address up in User, so the answer never tells the
- * owner whether someone has a MoFin account.
+ * Accepting needs the invited, verified address, so a forwarded link is useless. Only the token's
+ * hash is stored; reinviting replaces it. No User lookup, so owners can't probe for accounts.
  */
 @Injectable()
 export class InvitationsService {
@@ -175,7 +168,6 @@ export class InvitationsService {
     });
   }
 
-  /** Pending and unexpired: what can still be accepted. */
   async listPending(userId: string, accountId: string) {
     await this.access.assertAccess(userId, accountId, 'manage');
     const invitations = await this.prisma.accountInvitation.findMany({
@@ -202,7 +194,6 @@ export class InvitationsService {
     if (count === 0) throw new NotFoundException('Invitation not found');
   }
 
-  /** A pending, unexpired invitation on a live account, by its token, or a 400. */
   private async findUsable(token: string) {
     const invitation = await this.prisma.accountInvitation.findUnique({
       where: { tokenHash: sha256(token) },
@@ -222,7 +213,6 @@ export class InvitationsService {
     return invitation;
   }
 
-  /** What the accept screen shows. Only someone holding the link can ask. */
   async preview(token: string) {
     const { account, invitedBy, email, role, expiresAt } =
       await this.findUsable(token);

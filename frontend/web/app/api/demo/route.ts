@@ -8,11 +8,8 @@ import { demoNoticeUrl, type DemoNotice } from "@/lib/demo";
 const DEMO_TIMEOUT_MS = 20_000;
 
 /**
- * "Try the demo" (a plain form POST from the landing page, so it works without
- * JavaScript). The backend gives this visitor their own temporary demo user, or
- * carries on with the one they already have; we set the session cookies and go
- * to the dashboard. Anything that stops it goes back to the landing page with a
- * reason it can show (?demo=busy|limited|off|failed).
+ * A plain form POST (works without JS): the backend gives the visitor their own temporary demo
+ * user, or the one they already have; we set cookies and go to the dashboard.
  */
 export async function POST(req: Request) {
   const back = (notice: DemoNotice) => NextResponse.redirect(new URL(demoNoticeUrl(notice), req.url), 303);
@@ -39,7 +36,6 @@ export async function POST(req: Request) {
     return back("failed");
   }
 
-  // Already signed in to a real account: keep that session.
   if (upstream.status === 409) return toDashboard();
   if (upstream.status === 429) return back("limited");
   if (upstream.status === 503) {

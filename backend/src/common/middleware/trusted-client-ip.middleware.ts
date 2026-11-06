@@ -16,8 +16,8 @@ function headerValue(req: Request, name: string): string | undefined {
 }
 
 /**
- * Constant-time comparison. Both sides are hashed first so the buffers are
- * always the same length and a wrong guess leaks neither content nor length.
+ * Constant time; hashing first makes both buffers the same length, so a wrong guess leaks neither
+ * content nor length.
  */
 function secretMatches(presented: string, expected: string): boolean {
   const a = createHash('sha256').update(presented).digest();
@@ -25,11 +25,7 @@ function secretMatches(presented: string, expected: string): boolean {
   return timingSafeEqual(a, b);
 }
 
-/**
- * The client IP the BFF vouches for, or undefined when the request didn't
- * come from the BFF (no secret configured, missing or wrong secret) or the
- * claimed IP isn't a valid address.
- */
+/** Undefined unless the request carries a valid BFF secret and a valid IP. */
 export function trustedClientIp(
   presentedSecret: string | undefined,
   claimedIp: string | undefined,
@@ -42,23 +38,8 @@ export function trustedClientIp(
 }
 
 /**
- * Takes the real client IP from the BFF instead of the network hop.
- *
- * In production both apps sit behind Vercel's edge, so the path is client →
- * edge → BFF → edge → backend, and `trust proxy 1` resolves `req.ip` to the
- * BFF's egress IP for every user, collapsing every per-IP rate limit onto one
- * bucket. The BFF sends the client IP it saw in `x-mofin-client-ip`, signed
- * off by the shared `BFF_SHARED_SECRET`; when the secret matches, that IP
- * replaces `req.ip` on this request, so every throttler tracker (the global
- * baseline and the route guards, which all read `req.ip`) keys on the real
- * client. Without a matching secret the header is a spoof attempt and is
- * ignored, and `req.ip` stays what `trust proxy` resolved.
- *
- * Both headers are removed afterwards, whatever the outcome, so nothing
- * downstream (handlers, request logs) ever sees the secret.
- *
- * Registered with `app.use` in main.ts, before Nest's own middleware and
- * guards.
+ * Behind Vercel every request comes from the BFF's egress IP, collapsing per-IP limits into one
+ * bucket. The BFF's client IP is trusted only with a matching secret.
  */
 export function trustedClientIpMiddleware(expectedSecret: string | undefined) {
   return (req: Request, _res: Response, next: NextFunction): void => {

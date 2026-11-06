@@ -15,13 +15,8 @@ import { isAiProviderFailure } from './llm/ai-unavailable.exception';
 export const CONTEXT_LIST_LIMIT = 100;
 
 /**
- * Turns one sentence into PENDING drafts. The pieces:
- * - ModelDraftParser asks the model and shape-checks its JSON;
- * - repairDraft keeps only ids the user owns and lowers the confidence of
- *   anything it had to fix;
- * - parseWithRegex answers when there is no model or it fails, so the box
- *   never stops working.
- * The user still approves every draft by hand: the model only proposes.
+ * The model proposes; repairDraft keeps only ids the user owns; the regex parser answers when there
+ * is no model or it fails. The user approves every draft.
  */
 @Injectable()
 export class AiService {
@@ -83,11 +78,6 @@ export class AiService {
     return [this.withFittingCategory(parseWithRegex(ctx), ctx)];
   }
 
-  /**
-   * What a parser needs to read one message for this user: their accounts and
-   * categories, and today in their time zone. Shared with the chat, whose
-   * create_draft_transaction goes through the same checks.
-   */
   async draftContext(
     userId: string,
     dto: ParseTransactionIntentDto,

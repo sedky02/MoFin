@@ -150,10 +150,7 @@ export class AccountSharingController {
   }
 }
 
-/**
- * The invitee's side. The token travels in the body, never the URL, so it stays
- * out of logs. Each route is limited per token (see authTracker).
- */
+/** The invitee's side. The token travels in the body, never the URL, so it stays out of logs. */
 @ApiTags('invitations')
 @UseGuards(InvitationTokenThrottlerGuard)
 @Controller('invitations')

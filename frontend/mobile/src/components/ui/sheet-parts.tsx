@@ -16,19 +16,16 @@ import {
 import Reanimated, { useAnimatedKeyboard, useAnimatedStyle } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-/** The sheet backdrop's fade in: short enough to read as "there at once". */
 export const BACKDROP_IN_MS = 120;
 /** The sheet's slide down on close; the backdrop fades out over the same time, so they leave together. */
 export const SHEET_OUT_MS = 200;
 
-/** How far (px) or how fast a downward drag on the handle has to go to close the sheet. */
 const CLOSE_DISTANCE = 90;
 const CLOSE_VELOCITY = 0.9;
 
 /**
- * Drag-to-close for a bottom sheet: a translateY to put on the sheet and pan handlers for its grab
- * handle. Built on PanResponder (no gesture-handler root needed) so it works on Android, iOS and web.
- * Only the handle starts a drag, so the sheet's own scrolling and inputs are untouched.
+ * Drag-to-close for a bottom sheet: a translateY plus pan handlers for its grab handle.
+ * PanResponder needs no gesture-handler root, so it works on Android, iOS and web.
  */
 export function useSheetDrag(onClose?: () => void) {
   // State, not a ref: the value is created once and read while rendering (the transform).
@@ -55,7 +52,6 @@ export function useSheetDrag(onClose?: () => void) {
   return { translateY, handlers: responder.panHandlers };
 }
 
-/** The grab handle at the top of a sheet; with drag handlers, pulling it down closes the sheet. */
 export function SheetHandle({ handlers }: { handlers?: ReturnType<typeof useSheetDrag>['handlers'] }) {
   return (
     <View
@@ -87,15 +83,8 @@ export function useSheetMaxHeight(): number {
 }
 
 /**
- * Keyboard handling for every bottom sheet (and the add-transaction screen), in one place:
- * - `lift` goes on the bottom-anchored container: it raises the sheet to sit on the keyboard, and
- *   lowers it again when the keyboard closes.
- * - `cap` goes on the sheet: its height is held to the room above the keyboard. A sheet that fits
- *   simply rides up; a taller one stays under the status bar, its body (a SheetScrollView) scrolls,
- *   and the rows after the body (the actions) stay pinned just above the keyboard.
- * Reanimated reads the real keyboard height on iOS and Android (KeyboardAvoidingView doesn't lift
- * anything under Android's edge-to-edge layout). On the web the browser resizes the page itself, so
- * the height stays 0 and nothing moves.
+ * `lift` goes on the bottom-anchored container to raise it onto the keyboard; `cap` goes on the
+ * sheet to limit its height to the room above (taller content scrolls via SheetScrollView).
  */
 export function useSheetKeyboard(callerCap?: number) {
   const screenCap = useSheetMaxHeight();
@@ -106,7 +95,6 @@ export function useSheetKeyboard(callerCap?: number) {
   return { keyboard, lift, cap };
 }
 
-/** How much room to leave between the focused field and the keyboard or the pinned actions. */
 const FOCUS_MARGIN = 24;
 
 /** The tallest a sheet may be with the keyboard up: the room above it (never below a usable minimum). */
@@ -125,16 +113,13 @@ export function revealOffset(y: number, h: number, offset: number, viewport: num
   return null;
 }
 
-/** A mounted native view that can measure itself against another one. */
 type Measurable = {
   measureLayout: (relativeTo: unknown, onSuccess: (x: number, y: number, width: number, height: number) => void) => void;
 };
 
-
 /**
- * A sheet's scrolling body. Shrinks to the room the sheet has (so the actions after it stay
- * pinned), and keeps the focused field in view: when the keyboard opens or the body shrinks, it
- * scrolls just enough to show the field. The field is never left behind the keyboard.
+ * Shrinks to the room the sheet has (so the actions after it stay pinned) and scrolls just enough
+ * to keep the focused field in view when the keyboard opens or the body shrinks.
  */
 export function SheetScrollView({
   ref: outerRef,

@@ -1,11 +1,8 @@
 import { AccountAccessService } from '../src/modules/account-access/account-access.service';
 import { ownerAccess } from './support/owner-access';
 /**
- * Default categories on registration, and archiving a category that is in
- * use, through the real controllers, services and HTTP stack. Prisma is
- * replaced by an in-memory store that applies the same filters Prisma would
- * (`archivedAt`, `deletedAt: null`), so no database is touched and it runs
- * with a plain `npm run test:e2e -- categories`.
+ * Default categories on registration and archiving a category in use, over HTTP with an in-memory
+ * Prisma that applies the same filters; no database.
  */
 import {
   CanActivate,

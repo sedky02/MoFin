@@ -19,7 +19,6 @@ export function setAmountRevealed(accountId: string, show: boolean): void {
   listeners.forEach((l) => l());
 }
 
-/** Whether the user revealed this hidden account's amounts, and a way to change it. */
 export function useRevealedAmount(accountId: string | undefined): [boolean, (show: boolean) => void] {
   const shown = React.useSyncExternalStore(
     subscribe,

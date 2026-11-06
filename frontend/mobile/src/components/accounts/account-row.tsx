@@ -16,7 +16,6 @@ import { useLedgerBalance } from '@/hooks/useLedger';
 import { AlertTriangle, Archive, ArchiveRestore, Eye, EyeOff, Pencil, Users } from '@/lib/icons';
 import { cn } from '@/lib/utils';
 
-/** One account as its own card: type tile, name and currency, balance, and its actions. */
 export function AccountRow({
   account,
   onEdit,
@@ -28,11 +27,9 @@ export function AccountRow({
 }: {
   account: Account;
   onEdit?: (account: Account) => void;
-  /** Hides or shows this account's balance everywhere (saved on the account). */
   onToggleHidden?: (account: Account) => void;
   onArchive?: (account: Account) => void;
   onRestore?: (account: Account) => void;
-  /** Opens who is on the account, and for its owner, inviting people. */
   onMembers?: (account: Account) => void;
   busy?: boolean;
 }) {

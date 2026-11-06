@@ -5,9 +5,8 @@ import { useUser } from "@/hooks/useUser";
 import type { Account } from "@/core/types";
 import { ALL_ACCOUNTS as ALL, resolveActiveAccount } from "@/core/dashboard-scope";
 
-// A per-device convenience (like a remembered tab), not server state: it only pre-fills
-// account fields, so losing it just means nothing gets pre-filled. There is no cookie
-// mirror here: the web needed it so the server could prefetch.
+// A per-device convenience (like a remembered tab), not server state: it only pre-fills account
+// fields. No cookie mirror here: the web needed it so the server could prefetch.
 const STORAGE_KEY = "mofin-active-account";
 const listeners = new Set<() => void>();
 let stored: string | undefined;
@@ -63,7 +62,6 @@ export function clearActiveAccount(): void {
   AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
 }
 
-/** Test helper: forget the in-memory copy. */
 export function resetActiveAccountCache() {
   stored = undefined;
   loaded = false;
@@ -71,11 +69,8 @@ export function resetActiveAccountCache() {
 }
 
 /**
- * The account the user is working in: their explicit pick, else their main account
- * (Settings), else none. Choosing "All accounts" is remembered as an explicit choice
- * and does not fall back to the main account. Resolved against the live account
- * list, so an archived or deleted account silently stops being "active" instead
- * of pre-filling a stale id. `undefined` = "All accounts".
+ * Explicit pick, else main, else none; "All accounts" is explicit and never falls back to main.
+ * Resolved against the live list so archived or deleted accounts stop being active.
  */
 export function useActiveAccount(): {
   /** False until the stored pick has been read. Until then `account` is the main-account fallback,

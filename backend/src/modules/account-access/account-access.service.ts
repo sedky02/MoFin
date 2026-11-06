@@ -30,19 +30,13 @@ const notAllowed = () =>
   new ForbiddenException("Your role on this account doesn't allow this");
 
 /**
- * The one place that decides who can reach an account. Roles are read from the
- * database on every check and never kept in a token, so removing a member takes
- * effect on their next request, MCP and widgets included.
- *
- * Someone with no access gets a 404, the same answer as for an id that doesn't
- * exist, so ids can't be probed. A 403 means they can see the account but their
- * role doesn't allow this action.
+ * Decides who can reach an account. Roles are read on every check, so removal applies at once. No
+ * access is a 404 (ids can't be probed); 403 means visible but not allowed.
  */
 @Injectable()
 export class AccountAccessService {
   constructor(private readonly prisma: PrismaService) {}
 
-  /** The account and the user's role on it, or an error if `action` isn't allowed. */
   async assertAccess(
     userId: string,
     accountId: string,
@@ -66,7 +60,6 @@ export class AccountAccessService {
     return { account, role };
   }
 
-  /** Ids of the accounts `userId` may perform `action` on. */
   async accessibleAccountIds(
     userId: string,
     action: AccountAction,
@@ -105,11 +98,8 @@ export class AccountAccessService {
   }
 
   /**
-   * Checks a transaction through the accounts it touches: its ledger legs, and
-   * for a recurring root the accounts its series posts to. Seeing it takes
-   * access to one of them. Changing it takes `action` on all of them, because
-   * a change moves money on each. Soft-deleted transactions pass; whether one
-   * counts is the caller's call.
+   * Seeing a transaction takes access to one of its accounts; changing it takes `action` on all of
+   * them, because a change moves money on each.
    */
   async assertTransactionAccess(
     userId: string,

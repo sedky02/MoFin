@@ -2,7 +2,6 @@ import { DarkTheme, DefaultTheme, type Theme } from 'expo-router';
 
 import { COLORS } from '@/theme/colors';
 
-/** The navigator's theme (screen background, headers, tab bar) from the generated palette. */
 export const NAV_THEME: Record<'light' | 'dark', Theme> = {
   light: {
     ...DefaultTheme,

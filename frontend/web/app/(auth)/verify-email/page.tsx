@@ -14,7 +14,6 @@ function hasPendingInvite(): boolean {
   }
 }
 
-/** Opened from the email: spends the token straight away. It only marks an address as proven. */
 export default function VerifyEmailPage() {
   const [status, setStatus] = React.useState<"loading" | "done" | "invalid">("loading");
   const [next, setNext] = React.useState("/dashboard");

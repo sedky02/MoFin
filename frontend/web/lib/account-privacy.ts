@@ -1,6 +1,5 @@
-// An account whose amounts the user chose to hide (the eye on its Accounts card). The choice is
-// stored in the account's metadata, so it follows them to every device. Its own amounts show as
-// dots (the dashboard's eye reveals them until reload), and "All accounts" figures leave it out.
+// Accounts whose amounts the user hid (the eye on the card), stored in account metadata so it
+// follows them across devices. Amounts show as dots; "All accounts" figures leave them out.
 import { subtract } from "@/lib/decimal";
 import { parseBalanceKey } from "@/lib/format";
 import type { Account, DailySeriesPoint, LedgerBalance } from "@/lib/types";

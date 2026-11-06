@@ -3,7 +3,6 @@
 import { motion } from "motion/react";
 import { SPRING_SLOW } from "../motion";
 
-/** A progress ring that fills to `progress` (0–1) once `play` is true. */
 export function GoalRing({ progress, play, size = 88 }: { progress: number; play: boolean; size?: number }) {
   const stroke = 8;
   const r = (size - stroke) / 2;

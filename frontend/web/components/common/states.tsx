@@ -50,7 +50,6 @@ export function ErrorState({
   description?: string;
   onRetry?: () => void;
   retryLabel?: string;
-  /** A custom action (e.g. a link) shown instead of the retry button. */
   action?: React.ReactNode;
   className?: string;
 }) {

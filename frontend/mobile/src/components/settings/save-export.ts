@@ -1,9 +1,5 @@
-// Native: writes the export to the app's cache folder and opens the share sheet, from which the
-// user saves it to Files, mails it, opens it in a spreadsheet, and so on. (save-export.web.ts is the
-// browser download used by the Expo web preview.)
-//
-// The file is a full plaintext copy of the user's finances, so it lives in its own folder that is
-// emptied before every export, after sharing (iOS), and whenever a session ends.
+// Writes the export to a dedicated cache folder and opens the share sheet. The file is plaintext
+// finances, so the folder is emptied before each export, after sharing (iOS) and at sign-out.
 import { Directory, File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { Platform } from 'react-native';
@@ -36,9 +32,8 @@ export async function saveExport(filename: string, text: string, format: ExportF
   try {
     await Sharing.shareAsync(file.uri, { mimeType, UTI: uti, dialogTitle: filename });
   } finally {
-    // iOS resolves once the share sheet is done with the file. Android resolves when the chooser
-    // opens and the chosen app may still be reading it, so there the folder is cleared on the
-    // next export or sign-out instead.
+    // iOS resolves when sharing is done; Android when the chooser opens (the chosen app may still
+    // read the file), so there the folder is cleared on the next export or sign-out.
     if (Platform.OS === 'ios') clearExportCache();
   }
   return 'shared';

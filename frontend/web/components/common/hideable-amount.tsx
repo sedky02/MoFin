@@ -9,8 +9,8 @@ import type { Account } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 /**
- * An account's amount, or dots when the user hid that account's amounts, with an eye button to
- * show or hide it again. Accounts that aren't hidden render `children` unchanged, with no button.
+ * Dots when the user hid the account's amounts, with an eye button to show or hide again; other
+ * accounts render `children` unchanged.
  */
 export function HideableAmount({
   account,
@@ -23,7 +23,6 @@ export function HideableAmount({
   currency: string;
   /** The eye button that reveals the amount until reload. Off where the saved choice has its own button. */
   toggle?: boolean;
-  /** For the dots: the same type size as the amount they stand for. */
   className?: string;
   children: React.ReactNode;
 }) {

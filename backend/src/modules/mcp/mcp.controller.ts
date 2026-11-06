@@ -25,14 +25,8 @@ import { OAuthService } from '../oauth/oauth.service';
 import { McpServerFactory } from './mcp-server.factory';
 
 /**
- * Real MCP server over the stateless Streamable HTTP transport.
- *
- * Authentication is handled by OAuthMcpAuthGuard (sets req.user); a fresh
- * MCP server + transport is built per request and scoped to that user. Stateless
- * means no session map and a single JSON response per call (enableJsonResponse).
- *
- * `@Public()` only skips the global web JWT guard: MCP clients carry an OAuth
- * access token, not a web one, and OAuthMcpAuthGuard still runs on every route.
+ * Stateless Streamable HTTP: a fresh server and transport per request, scoped to the authenticated
+ * user. @Public() only skips the web JWT guard; MCP clients carry an OAuth token.
  */
 @ApiTags('mcp')
 @Public()

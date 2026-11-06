@@ -49,7 +49,6 @@ export function MonthlySummaryCard({
 }: {
   year: number;
   month: number;
-  /** Currency shown for an all-accounts view (shared with the balance hero). */
   currency: string;
   currencies?: string[];
   onCurrencyChange?: (currency: string) => void;

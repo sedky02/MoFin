@@ -7,9 +7,8 @@ import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 export class JwtAuthGuard extends AuthGuard('jwt') {}
 
 /**
- * JwtAuthGuard registered as an APP_GUARD, so every route requires a web
- * access token unless it is marked `@Public()`. A method-level `@Public()`
- * opens just that route; a controller-level one opens all of its routes.
+ * Applied app-wide: every route needs a web token unless marked @Public() (method or controller
+ * level).
  */
 @Injectable()
 export class GlobalJwtAuthGuard extends JwtAuthGuard {

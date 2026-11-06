@@ -12,7 +12,6 @@ if (!__DEV__ && !/^https:\/\//i.test(apiUrl)) {
 }
 
 export const config = {
-  /** Backend base URL including `/api/v1`, no trailing slash. */
   apiUrl: apiUrl.replace(/\/+$/, ''),
   googleWebClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
   googleIosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,

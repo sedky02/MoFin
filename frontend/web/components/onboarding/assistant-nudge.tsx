@@ -4,7 +4,6 @@ import Link from "next/link";
 import { Plug, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-/** One quiet line on the dashboard, after setup: the AI assistants are what sets MoFin apart. */
 export function AssistantNudge({ onClose }: { onClose: () => void }) {
   return (
     <div

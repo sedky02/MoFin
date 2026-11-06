@@ -47,7 +47,6 @@ export class AiController {
     private readonly chats: AiChatsService,
   ) {}
 
-  /** Creates one PENDING draft per transaction found in the sentence. */
   @DemoQuota('ai-drafts')
   @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @Post('transaction-intents')
@@ -60,7 +59,6 @@ export class AiController {
     return this.aiService.createDraftsFromNaturalLanguage(user.id, dto);
   }
 
-  /** The user's saved chats, most recently active first. */
   @Get('chats')
   listChats(
     @CurrentUser() user: AuthenticatedUser,
@@ -70,7 +68,6 @@ export class AiController {
     return this.chats.list(user.id, query);
   }
 
-  /** Starts a chat with its first question; returns the chat and both saved turns. */
   @DemoQuota('ai-chat')
   @Throttle(CHAT_THROTTLE)
   @Post('chats')
@@ -82,13 +79,11 @@ export class AiController {
     return this.chatService.send(user, null, dto);
   }
 
-  /** A chat with every message, oldest first. */
   @Get('chats/:id')
   getChat(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
     return this.chats.get(user.id, id);
   }
 
-  /** Read-only Q&A over the user's own data, in the context of this chat. */
   @DemoQuota('ai-chat')
   @Throttle(CHAT_THROTTLE)
   @Post('chats/:id/messages')

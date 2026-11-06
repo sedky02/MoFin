@@ -1,17 +1,15 @@
 import { LlmMessage } from '../llm/llm-provider';
 
 /**
- * How much of a saved chat the model sees on each turn: a running summary of
- * the older messages plus the recent ones verbatim. The free provider tiers
- * are small (Groq: about 8k tokens a minute), so every part has a budget.
+ * A running summary of older messages plus the recent ones verbatim; the free provider tiers are
+ * small (about 8k tokens a minute), so every part has a budget.
  */
 
 /** Messages always sent verbatim (3 back-and-forths). */
 export const RECENT_MESSAGES = 6;
 /**
- * Older messages are folded into the summary in batches of at least this
- * many, so the summary costs one extra model call every couple of turns, not
- * every turn. Until then they stay verbatim: nothing is ever dropped.
+ * Older messages fold into the summary in batches of at least this many, so it costs a model call
+ * every couple of turns, not every turn. Until then they stay verbatim.
  */
 export const SUMMARY_BATCH = 4;
 /** Character budget for the verbatim history (about 3k tokens). */
@@ -40,9 +38,8 @@ function asLlm(message: StoredMessage): LlmMessage {
 }
 
 /**
- * The verbatim part of the context: every message the summary doesn't cover,
- * oldest first. Over the budget, the oldest are shortened (never the newest),
- * so a run of long messages can't push the request past the provider limit.
+ * Every message the summary doesn't cover; over budget the oldest are shortened (never the newest),
+ * so long messages can't push the request past the provider limit.
  */
 export function historyMessages(
   messages: StoredMessage[],
@@ -61,9 +58,8 @@ export function historyMessages(
 }
 
 /**
- * Which messages to fold into the summary after a turn, as [from, to), or
- * null when it isn't worth a model call yet. Always leaves the last
- * RECENT_MESSAGES verbatim.
+ * [from, to) to fold into the summary after a turn, or null when not worth a model call; always
+ * leaves the last RECENT_MESSAGES verbatim.
  */
 export function summaryRange(
   totalMessages: number,
@@ -80,10 +76,8 @@ const DROPPED_RESULT = JSON.stringify({
 });
 
 /**
- * Keeps the tool results of one answer within TOOL_RESULTS_CHAR_BUDGET by
- * replacing the oldest ones with a short note. Each round re-sends every
- * earlier result, so without this a 4-round answer grows past the limit.
- * Mutates `messages` in place; the newest result is always kept.
+ * Replaces the oldest tool results with a short note to stay within TOOL_RESULTS_CHAR_BUDGET: each
+ * round re-sends every earlier result. Mutates `messages`; the newest is kept.
  */
 export function trimToolResults(messages: LlmMessage[]): void {
   const tools = messages.filter((m) => m.role === 'tool');
@@ -96,7 +90,6 @@ export function trimToolResults(messages: LlmMessage[]): void {
   }
 }
 
-/** A chat title from its first question: the first line, cut at a word. */
 export function titleFrom(content: string): string {
   const line = content.trim().split('\n')[0].replace(/\s+/g, ' ');
   if (line.length <= 60) return line;

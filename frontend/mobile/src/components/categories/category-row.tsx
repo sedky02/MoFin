@@ -13,7 +13,6 @@ export type CategoryRowActions = {
   onEdit?: (c: Category) => void;
   onArchive?: (c: Category) => void;
   onRestore?: (c: Category) => void;
-  /** Id of the category an archive or restore is in flight for. */
   busyId?: string;
 };
 

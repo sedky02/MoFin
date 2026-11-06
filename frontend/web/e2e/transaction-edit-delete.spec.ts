@@ -1,11 +1,8 @@
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 import { formatViolations, runAxe } from "./helpers/axe";
 
-// Transactions are the user's own records: they can be edited (every field) and
-// deleted (soft delete, with Undo), and voiding is gone. Each test records its
-// own expense on the fixture's "Main checking" (USD) and deletes it at the end,
-// so the fixture's balances don't move between runs.
-// Needs the UX fixture: `npm run e2e:seed`.
+// Transactions can be edited and soft-deleted (with Undo). Each test records its own expense on the
+// fixture's USD account and deletes it; needs `npm run e2e:seed`.
 test.use({ locale: "en-US" });
 
 // The dev-only Next indicator and query devtools sit bottom-left, over the mobile bar,
@@ -94,12 +91,10 @@ test("editing an expense prefills the form and moves the balance by exactly the 
     await page.getByRole("link", { name: "Edit" }).click();
     await expect(page).toHaveURL(new RegExp(`/transactions/${tx.id}/edit$`));
     await expect(page.getByRole("heading", { level: 1, name: "Edit transaction" })).toBeVisible();
-    // Every field comes back as saved.
     const amount = page.getByLabel("Amount in USD");
     await expect(amount).toHaveValue("50.00");
     await expect(page.getByPlaceholder(/^Description/)).toHaveValue(description);
     await expect(page.getByRole("radio", { name: "Expense" })).toHaveAttribute("aria-checked", "true");
-    // Recurrence is edited from the series, not here.
     await expect(page.getByText("Repeat this transaction")).toHaveCount(0);
     await expectNoAxeViolations(page, "edit transaction");
 
@@ -138,13 +133,11 @@ test("deleting takes a transaction out of balances, summaries and search, and Un
     const toast = page.locator("[data-sonner-toast]").filter({ hasText: "Transaction deleted." });
     await expect(toast).toBeVisible();
 
-    // Gone from every total and list, and its page 404s.
     expect((await page.request.get(`/api/backend/transactions/${tx.id}`)).status()).toBe(404);
     expect(await balanceCents(page.request, accountId)).toBe(baseline.balance);
     expect(await expenseCents(page.request)).toBe(baseline.expenses);
     expect(await searchIds(page.request, description)).toEqual([]);
 
-    // Undo restores it and goes back to its page.
     await toast.getByRole("button", { name: "Undo" }).click();
     await expect(page).toHaveURL(new RegExp(`/transactions/${tx.id}$`));
     await expect(page.getByRole("heading", { level: 1, name: description })).toBeVisible();

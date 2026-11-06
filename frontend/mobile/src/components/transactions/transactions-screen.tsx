@@ -1,6 +1,5 @@
-// The Transactions tab: every transaction (search, filters, day groups, more loaded as you scroll),
-// or the recurring schedules when picked under More filters, like the web's /transactions page (which pages by number instead). Filter state lives here; the rules for
-// turning it into a query, chips and counts are in transactions-list-model.
+// Transactions list with search, filters, day groups and infinite scroll, or recurring schedules
+// under More filters. Queries and chips come from transactions-list-model.
 import * as React from 'react';
 import { ActivityIndicator, FlatList, Platform, Pressable, RefreshControl, View } from 'react-native';
 
@@ -43,7 +42,6 @@ type ListItem =
   | { kind: 'header'; key: string; label: string }
   | { kind: 'row'; key: string; tx: Transaction; first: boolean; last: boolean; glance: boolean };
 
-/** Drops repeated transactions (same id), keeping the first. */
 export function uniqueById(rows: Transaction[]): Transaction[] {
   const seen = new Set<string>();
   return rows.filter((tx) => (seen.has(tx.id) ? false : (seen.add(tx.id), true)));

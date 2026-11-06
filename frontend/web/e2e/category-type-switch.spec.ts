@@ -1,9 +1,7 @@
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 
-// B-04: a category picked before a type switch must not be kept (hidden) and
-// submitted, and the API must refuse a category of the wrong type.
-// Needs the UX fixture: `npm run e2e:seed` ("Main checking" is USD, "Groceries"
-// and "Dining out" are expense categories).
+// A category picked before a type switch isn't submitted, and the API refuses a wrong-type one.
+// Needs `npm run e2e:seed` (Groceries, Dining out).
 test.use({ locale: "en-US" });
 
 type Json = Record<string, unknown>;
@@ -28,7 +26,6 @@ function categoryChips(page: Page) {
   return page.getByRole("radiogroup", { name: "Category" });
 }
 
-/** The split row holding item `n` (1-based): amount, category select and row buttons. */
 function splitRow(page: Page, n: number) {
   return page.getByRole("button", { name: `Remove item ${n}` }).locator("xpath=..");
 }
@@ -46,7 +43,6 @@ async function openNewTransaction(page: Page) {
   await expect(page.getByLabel("Amount in USD").first()).toBeVisible();
 }
 
-/** Saves the form, returns the created transaction as the API stores it, then voids it. */
 async function saveAndFetch(page: Page): Promise<SavedTx> {
   await page.getByRole("button", { name: "Save transaction" }).click();
   await page.waitForURL(/\/transactions\/(?!new)[^/?#]+$/);

@@ -4,14 +4,8 @@ import { createWidget, type WidgetEnvironment } from 'expo-widgets';
 
 import type { SummaryWidgetProps } from '@/widgets/summary-data';
 
-// The "This week" and "This month" home screen widgets (Android): one layout, two widgets. It runs
-// in the widget's own runtime, which only knows Expo UI's Compose components: no hooks, no app code
-// at runtime, nothing from outside this function (types are fine, they are erased). Every string
-// arrives ready from the app (src/widgets/summary-data.ts).
-//
-// Design: one number to read at a glance (the balance), money in and out under it, quiet labels,
-// the brand lime only as a small dot. Taps: the card opens the dashboard; ↻ (a 48dp target in the
-// corner) opens the app to refresh. Both are buttons with a `url` (patches/expo-widgets+*.patch).
+// The "This week" and "This month" widgets share one layout. They run in the widget's own runtime
+// (Expo UI Compose components only): no hooks or app code; strings come from summary-data.ts.
 function SummaryWidget(props: SummaryWidgetProps, environment: WidgetEnvironment) {
   'widget';
   const dark = environment.colorScheme === 'dark';

@@ -6,7 +6,6 @@ import { cn } from '@/lib/utils';
 // Same surface as the loaded cards, so nothing jumps when the data arrives.
 const CARD = 'rounded-2xl bg-card p-5 shadow-sm shadow-black/5';
 
-/** Hidden from screen readers; the screen announces loading itself. */
 function Hidden({ className, children }: { className?: string; children: React.ReactNode }) {
   return (
     <View importantForAccessibility="no-hide-descendants" accessibilityElementsHidden className={className}>
@@ -15,7 +14,6 @@ function Hidden({ className, children }: { className?: string; children: React.R
   );
 }
 
-/** A pager row: round arrow, title and range in the middle, round arrow. */
 function PagerRow({ className, extra = false }: { className?: string; extra?: boolean }) {
   return (
     <View className={cn('flex-row items-center justify-between gap-2', className)}>
@@ -30,7 +28,6 @@ function PagerRow({ className, extra = false }: { className?: string; extra?: bo
   );
 }
 
-/** Same layout as the loaded hero: label, metric tabs, week pager, figure, caption, chart. */
 export function BalanceHeroSkeleton() {
   return (
     <Hidden className={CARD}>
@@ -44,7 +41,6 @@ export function BalanceHeroSkeleton() {
   );
 }
 
-/** The summary's body: the net box, then the donut and its legend rows. */
 export function SummarySkeleton() {
   return (
     <Hidden>
@@ -92,7 +88,6 @@ export function RecentRowsSkeleton() {
   );
 }
 
-/** The whole dashboard while the first data loads: account chips, hero, summary, goals, recent. */
 export function DashboardSkeleton() {
   return (
     <View accessibilityLabel="Loading your dashboard" aria-busy className="gap-6">

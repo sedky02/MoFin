@@ -26,7 +26,6 @@ import { useUpdateUser, useUser } from '@/hooks/useUser';
 import { SlidersHorizontal } from '@/lib/icons';
 import { cn } from '@/lib/utils';
 
-/** A radio row with a dot, sized for a thumb. */
 function Choice({
   label,
   hint,
@@ -63,7 +62,6 @@ function Choice({
   );
 }
 
-/** Preferences: primary currency, default account, and the theme (which applies at once, outside Save). */
 export function PreferencesSection() {
   const user = useUser();
   const accounts = useAccounts();

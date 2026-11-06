@@ -16,7 +16,6 @@ import { ArrowUp, Keyboard, Mic, Square } from '@/lib/icons';
 import { cn } from '@/lib/utils';
 import { useVoiceOverlayOpen, voiceOverlay } from '@/lib/voice-overlay';
 
-/** The rings around the mic while it listens. Still when the system asks for less motion. */
 function ListeningRings({ active }: { active: boolean }) {
   const reduceMotion = useReducedMotion();
   const pulse = useSharedValue(0);
@@ -40,18 +39,14 @@ function ListeningRings({ active }: { active: boolean }) {
 }
 
 /**
- * The voice overlay, opened by holding the Add button: it listens straight away, shows what it
- * hears (settled words normally, words still being recognized lighter), sends the question to Ask
- * MoFin when you pause, and shows the answer, with draft cards to approve. Tap the mic to ask a
- * follow-up in the same chat, or switch to the keyboard. Everything is saved in an Ask chat, so
- * closing loses nothing; "Open in chat" goes there.
+ * Opened by holding Add: listens at once, shows what it hears, sends the question to Ask MoFin when
+ * you pause and shows the answer with draft cards. It's all saved in an Ask chat.
  */
 export function VoiceOverlay() {
   const open = useVoiceOverlayOpen();
   const { height } = useWindowDimensions();
-  // The app's shared bottom sheet: the backdrop is there at once and stays put while the sheet slides
-  // up; on close the sheet slides down and the backdrop goes with it. It also brings the keyboard
-  // handling, the grab handle and the ✕. The content mounts only while open, so closing stops the mic.
+  // Shared bottom sheet: the backdrop stays put while the sheet slides. Content mounts only while
+  // open, so closing stops the mic.
   return (
     <Dialog open={open} onOpenChange={(next) => !next && voiceOverlay.close()}>
       <DialogContent className="gap-0 bg-card p-0" style={{ maxHeight: Math.round(height * 0.85) }}>

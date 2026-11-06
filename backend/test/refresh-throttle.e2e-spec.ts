@@ -1,10 +1,6 @@
 /**
- * Rate limiting on POST /auth/refresh, through the real guards and HTTP stack.
- *
- * Wires AuthController with the same throttler setup as AppModule (global
- * ThrottlerGuard at 300/min plus the route's own guard) and a stub
- * AuthService, so it needs no database and runs with a plain
- * `npm run test:e2e -- refresh-throttle`.
+ * Rate limiting on POST /auth/refresh through the real guards and HTTP stack, with a stub
+ * AuthService, so no database.
  */
 import { INestApplication } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
@@ -74,7 +70,6 @@ describe('POST /auth/refresh rate limiting (e2e)', () => {
     expect(res.status).toBe(429);
     expect(Number(res.headers['retry-after'])).toBeGreaterThan(0);
 
-    // Another token from the same IP is unaffected.
     await refresh('other-token').expect(201);
   });
 

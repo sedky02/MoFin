@@ -12,7 +12,6 @@ type ThemeContextValue = {
 const ThemeContext = React.createContext<ThemeContextValue | null>(null);
 const STORAGE_KEY = "mofin-theme";
 
-// Runs before hydration to prevent a flash of the wrong theme.
 export const themeInitScript = `
 (function() {
   try {

@@ -10,9 +10,8 @@ function readHint(): boolean {
 }
 
 /**
- * Whether this browser has a MoFin session, from the non-secret hint cookie.
- * False on the server and during hydration, so the prerendered page always
- * matches; it switches right after for signed-in visitors.
+ * Whether this browser has a session, from the non-secret hint cookie; false on the server and
+ * during hydration so the prerender matches.
  */
 export function useSignedIn(): boolean {
   return React.useSyncExternalStore(noop, readHint, () => false);

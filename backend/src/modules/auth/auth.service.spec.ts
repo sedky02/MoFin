@@ -189,7 +189,6 @@ describe('AuthService refresh grace window', () => {
     get: (key: string, fallback: string) => fallback,
   };
 
-  /** A minimal in-memory RefreshToken table, enough to run real rotations. */
   function makeStore() {
     const rows: Row[] = [];
     const matches = (row: Row, where: Partial<Row>) =>

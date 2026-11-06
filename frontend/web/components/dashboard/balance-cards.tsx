@@ -53,16 +53,16 @@ export function BalanceCards({
     return <ErrorState description="Couldn't load your balances." onRetry={() => refetch()} />;
   }
 
-  // Lead with the user's primary currency (same rule the monthly summary uses)
-  // instead of whichever currency the API happened to list first.
+  // Leads with the primary currency (same rule as the monthly summary), not whichever the API
+  // listed first.
   const primary = pickPrimaryCurrency(data, user, "", activeAccounts);
-  // Accounts with no ledger activity are not in the balances at all: show them at zero, in
-  // their own currency, instead of pretending there is nothing here.
+  // Accounts with no ledger activity aren't in the balances: show them at zero in their own
+  // currency.
   const scopedAccounts = (activeAccounts ?? []).filter((a) => !accountId || a.id === accountId);
   const ledgerTotals = totalsByCurrency(data ?? []);
   const noActivity = ledgerTotals.length === 0 && scopedAccounts.length > 0;
-  // All accounts leaves hidden accounts out. A currency held only in hidden accounts keeps its
-  // place in the switch, at zero, rather than vanishing.
+  // All accounts leaves hidden accounts out; a currency held only in hidden accounts keeps its
+  // place in the switch, at zero.
   const hiddenIds = accountId ? [] : hiddenAccountIds(activeAccounts);
   const shownTotals = totalsByCurrency(withoutHiddenBalances(data ?? [], hiddenIds));
   const visibleTotals = ledgerTotals.map(
@@ -89,8 +89,8 @@ export function BalanceCards({
 
   const hero = totals.find((t) => t.currency === picked) ?? totals[0];
 
-  // The all-accounts total keeps archived accounts' money (it is still the user's, and
-  // still in the ledger), so the caption says when any of it is in this number.
+  // The all-accounts total keeps archived accounts' money (still the user's), so the caption says
+  // when some of it is in this number.
   const archivedCount =
     !accountId && activeAccounts
       ? countArchivedHolding(data ?? [], activeAccounts.map((a) => a.id), hero.currency)

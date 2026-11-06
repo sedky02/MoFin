@@ -57,7 +57,6 @@ const TRUST: { Icon: LucideIcon; title: string; body: React.ReactNode }[] = [
   },
 ];
 
-/** The connector URL with its copy button, for the steps that ask you to paste it somewhere. */
 function UrlField({ label = "Connector URL" }: { label?: string }) {
   const id = React.useId();
   return (
@@ -73,7 +72,6 @@ function UrlField({ label = "Connector URL" }: { label?: string }) {
   );
 }
 
-/** Steps on a vertical line, so the order reads at a glance. */
 function Steps({ children }: { children: React.ReactNode }) {
   return (
     <ol className="relative space-y-6 before:absolute before:bottom-3 before:left-3.5 before:top-3 before:w-px before:bg-border">
@@ -130,7 +128,6 @@ export default function ConnectPage() {
       )}&connectorUrl=${encodeURIComponent(MCP_URL)}`
     : "";
 
-  /** The button that opens an assistant's settings: a link out, or a real disabled button when it can't be used. */
   function openButton(label: string, href: string, icon?: React.ReactNode) {
     return unavailable ? (
       <Button size="lg" disabled aria-describedby={describedBy} className="w-full sm:w-auto">
@@ -172,7 +169,6 @@ export default function ConnectPage() {
       )}
 
       <Tabs value={active} onValueChange={(v) => setActive(v as ClientKey)} className="gap-4">
-        {/* The one decision up front: which assistant. */}
         <TabsList
           variant="line"
           aria-label="Assistant"
@@ -347,7 +343,6 @@ export default function ConnectPage() {
             </TabsContent>
           </div>
 
-          {/* What the assistant can and can't do, as a quiet footer rather than a second card. */}
           <section aria-labelledby="how-access-works" className="mt-8 border-t border-border pt-6">
             <h2 id="how-access-works" className="sr-only">
               How access works

@@ -76,9 +76,8 @@ function DialogOverlay({
 }
 
 /**
- * A dialog's panel. On a phone every dialog is a bottom sheet by default: full width, rounded top,
- * slides up, a grab handle that closes it when pulled down, room for the home indicator, and a
- * height cap below the status bar. `sheet={false}` gives the centred card instead.
+ * On a phone every dialog is a bottom sheet by default: full width, rounded top, slides up, grab
+ * handle, height capped below the status bar. `sheet={false}` gives the centred card.
  */
 function DialogContent({
   className,

@@ -86,7 +86,6 @@ function ChangePasswordForm({ email }: { email: string }) {
       toast.success("Password changed. Other devices were signed out.");
     } catch (err) {
       handleApiError(err, { setError: form.setError, fallback: "Could not change the password." });
-      // Put the cursor on the field the server refused (e.g. a wrong current password).
       const refused = (["currentPassword", "newPassword"] as const).find((name) => form.getFieldState(name).error);
       if (refused) form.setFocus(refused);
     }

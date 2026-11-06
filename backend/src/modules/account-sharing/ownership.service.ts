@@ -29,10 +29,8 @@ export const SERIES_SPLIT_REASON =
   'One of its accounts now has a different owner. Choose another account to resume it.';
 
 /**
- * Passes an account to one of its members. The old owner stays on as an editor
- * and can leave. Ledger rows belong to the account's owner, so the whole account
- * moves in one database transaction, and balances come out exactly as they went
- * in: no amount changes, and no ledger line is added or removed.
+ * The old owner stays on as an editor. Ledger rows follow the account's owner, so everything moves
+ * in one transaction and balances come out exactly as they went in.
  */
 @Injectable()
 export class OwnershipService {
@@ -118,11 +116,8 @@ export class OwnershipService {
   }
 
   /**
-   * A past transfer between this account and another of the old owner's would
-   * now span two ledgers. Each side keeps its own record instead: this
-   * account's legs move to a new one-sided transaction, unchanged, so both
-   * balances stay exact and deleting either person's data can't touch the
-   * other's. One-sided transfers can't be edited (see TransactionsService).
+   * Transfers to the old owner's other accounts would span two ledgers: each side keeps its own
+   * one-sided record, so both balances stay exact and deletions can't reach across.
    */
   private async splitTransfersAcrossOwners(
     db: Db,
@@ -158,12 +153,8 @@ export class OwnershipService {
   }
 
   /**
-   * A series goes with its root's ledger legs, and it may only post within the
-   * ledger it ends up on. It can also point somewhere its root's legs aren't:
-   * editing a series changes only its template. So any account on the wrong side
-   * of the handover is cleared, because a pointer to an account its owner no
-   * longer holds would block deleting that account later, and the series pauses
-   * until an edit gives it a new one.
+   * Accounts on the wrong side of the handover are cleared, since a stale pointer would block
+   * deleting that account later; the series pauses until an edit sets a new one.
    */
   private async detachSeriesAcrossOwners(db: Db, accountId: string) {
     const roots = await db.transaction.findMany({
@@ -207,9 +198,8 @@ export class OwnershipService {
   }
 
   /**
-   * A shared account uses its owner's categories, so what's filed on this one
-   * moves to the new owner's: their own of the same name and type where they
-   * have one, otherwise a copy. Global categories belong to nobody and stay.
+   * A shared account uses its owner's categories: what's filed here moves to the new owner's (same
+   * name and type, else a copy). Global categories stay.
    */
   private async moveCategories(db: Db, accountId: string, newOwnerId: string) {
     const onAccount = { items: { some: { accountId } } };

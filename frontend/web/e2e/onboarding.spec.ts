@@ -1,9 +1,8 @@
 import { expect, test, type APIRequestContext } from "@playwright/test";
 import { formatViolations, runAxe } from "./helpers/axe";
 
-// First run: a new user is walked through the first account (with the currency of where the
-// device is already chosen) and the first transaction, in one frame, before the dashboard.
-// Each test registers a throwaway user (register and login are rate limited, so one each).
+// First run walks a new user through a first account (currency from the device) and a first
+// transaction. Each test registers a throwaway user (rate limited).
 test.use({ locale: "en-US", timezoneId: "Africa/Tunis", storageState: { cookies: [], origins: [] } });
 
 const API = process.env.BACKEND_URL ?? "http://localhost:3000/api/v1";
@@ -31,11 +30,9 @@ test("set up the first account and the first transaction in one flow, then land 
   expect(violations, `axe violations on step 1\n${formatViolations(violations)}`).toEqual([]);
 
   const form = main.getByRole("form", { name: "Add your first account" });
-  // A time zone in Tunis means dinars, though the browser is set to en-US.
   await expect(form.getByRole("combobox", { name: /currency/i })).toContainText("TND");
   await expect(form.getByText(/Picked from where your device is\./)).toBeVisible();
 
-  // The name follows the type until it is edited.
   await expect(form.getByLabel("Name")).toHaveValue("Main bank account");
   await form.getByRole("button", { name: "Cash" }).click();
   await expect(form.getByLabel("Name")).toHaveValue("Cash wallet");
@@ -43,7 +40,6 @@ test("set up the first account and the first transaction in one flow, then land 
   await form.getByLabel(/Balance today/).fill("120.5");
   await form.getByRole("button", { name: "Create account" }).click();
 
-  // Step 2 is the same frame with new content, on the same page.
   await expect(page).toHaveURL(/\/dashboard$/);
   await expect(main.getByRole("heading", { level: 1, name: "Record your first transaction" })).toBeVisible();
   await expect(main.getByText("Step 2 of 2")).toBeVisible();
@@ -54,18 +50,15 @@ test("set up the first account and the first transaction in one flow, then land 
   const step2 = await runAxe(page, { include: "main" });
   expect(step2, `axe violations on step 2\n${formatViolations(step2)}`).toEqual([]);
 
-  // Skipping goes to the dashboard, and stays skipped.
   await main.getByRole("button", { name: "Skip for now" }).click();
   const balance = main.getByText(/120\.500\s*TND|TND\s*120\.500/).first();
   await expect(balance).toBeVisible();
   await expect(main.getByRole("heading", { level: 1 })).toHaveCount(0);
 
-  // Nothing recorded yet: just the balance, with one way forward and nothing else to press.
   await expect(main.getByRole("heading", { level: 2, name: "Record your first transaction" })).toBeVisible();
   await expect(main.getByRole("link", { name: /Record a transaction/ })).toHaveAttribute("href", "/transactions/new");
   await expect(main.getByRole("link", { name: /Describe it in words/ })).toHaveAttribute("href", "/drafts");
   await expect(main.getByRole("link")).toHaveCount(2);
-  // A chart of nothing is gone, with its metric tabs.
   await expect(main.getByRole("tablist", { name: "Chart metric" })).toHaveCount(0);
   const empty = await runAxe(page, { include: "main" });
   await testInfo.attach("axe empty dashboard", { body: formatViolations(empty) || "no violations", contentType: "text/plain" });
@@ -78,7 +71,6 @@ test("set up the first account and the first transaction in one flow, then land 
   await expect(balance).toBeVisible();
   await expect(main.getByText("Step 2 of 2")).toHaveCount(0);
 
-  // Once something is recorded the rest of the dashboard appears, and one quiet line suggests an assistant.
   const accounts = await (await page.request.get("/api/backend/accounts?status=active&limit=100&offset=0")).json();
   const recorded = await page.request.post("/api/backend/transactions", {
     data: { type: "EXPENSE", description: "Coffee", amount: "3", currency: "TND", occurredAt: new Date().toISOString().slice(0, 10), fromAccountId: accounts.data[0].id },
@@ -88,7 +80,6 @@ test("set up the first account and the first transaction in one flow, then land 
   for (const card of ["Goals", "Monthly summary", "Recent transactions"]) {
     await expect(main.getByRole("heading", { name: card, exact: true })).toBeVisible();
   }
-  // The chart and its tabs are back now that there is something to chart.
   await expect(main.getByRole("tablist", { name: "Chart metric" })).toBeVisible();
   const nudge = main.getByRole("region", { name: "Connect an assistant" });
   await expect(nudge.getByRole("link", { name: "Connect" })).toHaveAttribute("href", "/connect");

@@ -1,13 +1,11 @@
 import { expect, test } from "@playwright/test";
 import { formatViolations, runAxe } from "./helpers/axe";
 
-// The hero's weekly chart: each day so far is a button named with its figures, the exact amount
-// is attached as its description, and a table gives the same figures. Runs on the UX fixture
-// (`npm run e2e:seed`).
+// The hero's weekly chart: each day so far is a button named with its figures, the exact amount is
+// its description, and a table repeats them. Needs `npm run e2e:seed`.
 
 test.use({ locale: "en-US" });
 
-/** "Wednesday, Nov 4" for today, as the chart names it. */
 const todayName = () =>
   new Date().toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
 

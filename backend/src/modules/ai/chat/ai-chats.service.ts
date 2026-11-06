@@ -23,7 +23,6 @@ export interface ReplyToSave {
   draftIds: string[];
 }
 
-/** Drafts by id, in their current state, for the messages being shown. */
 export type DraftsById = ReadonlyMap<string, DraftTransaction>;
 
 export function toSummaryView(chat: AiChat): AiChatSummaryView {
@@ -36,9 +35,8 @@ export function toSummaryView(chat: AiChat): AiChatSummaryView {
 }
 
 /**
- * A message as the API returns it. Its drafts come from `drafts` (read fresh),
- * not from the message, so a draft approved in the inbox shows as approved
- * here. A draft that no longer exists is left out.
+ * Drafts come from `drafts` (read fresh), so a draft approved in the inbox shows as approved here;
+ * one that no longer exists is left out.
  */
 export function toMessageView(
   message: AiChatMessage,
@@ -61,10 +59,8 @@ export function toMessageView(
 const notFound = () => new NotFoundException('Chat not found');
 
 /**
- * Storage for saved assistant chats. Every query is scoped to `userId`, so a
- * chat id from another user reads as not found. Nothing here talks to the
- * model; AiChatService does that and saves a turn only once it has a reply,
- * so a failed answer leaves no half-written chat behind.
+ * Every query is scoped to `userId`, so another user's chat id reads as not found. A turn is saved
+ * only once there is a reply, so a failed answer leaves no half-written chat.
  */
 @Injectable()
 export class AiChatsService {
@@ -73,7 +69,6 @@ export class AiChatsService {
     private readonly draftsService: DraftTransactionsService,
   ) {}
 
-  /** The current state of every draft these messages created, by id. */
   async draftsFor(
     userId: string,
     messages: Pick<AiChatMessage, 'draftIds'>[],
@@ -106,7 +101,6 @@ export class AiChatsService {
     };
   }
 
-  /** The chat and its messages, oldest first, for building the model's context. */
   async loadForReply(userId: string, chatId: string) {
     const chat = await this.prisma.aiChat.findFirst({
       where: { id: chatId, userId },
@@ -137,9 +131,8 @@ export class AiChatsService {
   }
 
   /**
-   * Saves one question and its answer together, creating the chat when
-   * `chatId` is null. The two timestamps are explicit so the order holds even
-   * when both land in the same millisecond.
+   * Saves a question and its answer together, creating the chat when chatId is null. The timestamps
+   * are explicit so the order holds within one millisecond.
    */
   async saveTurn(
     userId: string,

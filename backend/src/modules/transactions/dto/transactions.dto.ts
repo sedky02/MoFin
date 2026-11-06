@@ -6,9 +6,8 @@ import {
   dateStringSchema,
 } from '../../../common/dto/common-fields';
 
-// A single split line within a transaction's total amount, INCOME/EXPENSE only.
-// `items` is optional — omitting it (or sending exactly one) is the plain,
-// unsplit single-item transaction that already existed.
+// A split line within the total, INCOME/EXPENSE only. `items` is optional: omitted (or exactly one)
+// is the plain unsplit transaction.
 export const transactionItemInputSchema = z.object({
   amount: amountStringSchema,
   categoryId: z.string().optional(),
@@ -19,10 +18,8 @@ export type TransactionItemInputDto = z.infer<
 >;
 
 /**
- * Shape validation only. Cross-field business rules (which account is required
- * for which type, distinct transfer accounts, amount > 0, split items summing
- * to the total) live in TransactionsService.validateCommand so the
- * draft-approval and MCP paths share exactly one source of truth.
+ * Shape validation only: cross-field rules live in TransactionsService.validateCommand, so draft
+ * approval and MCP share one source of truth.
  */
 export const createTransactionSchema = z.object({
   type: z.nativeEnum(TransactionType),
@@ -51,7 +48,6 @@ export interface CreateTransactionCommand {
   categoryId?: string;
   items?: TransactionItemInputDto[];
   draftId?: string;
-  /** Who entered it, when that isn't the caller: the cron posts a series for its author. */
   createdById?: string | null;
   isRecurring?: boolean;
   recurringInterval?: RecurringInterval;
@@ -60,9 +56,8 @@ export interface CreateTransactionCommand {
 }
 
 /**
- * Replaces every field of an existing transaction (the edit form sends the
- * whole transaction, like create). Recurrence isn't part of it: a series'
- * template is edited through PATCH /transactions/:id/recurring.
+ * Replaces every field (the edit form sends the whole transaction). Recurrence isn't part of it: a
+ * series template is edited through PATCH /transactions/:id/recurring.
  */
 export const updateTransactionSchema = createTransactionSchema.omit({
   isRecurring: true,
@@ -82,9 +77,8 @@ export type UpdateTransactionCommand = Omit<
 >;
 
 /**
- * Edits the recurrence template on a root recurring transaction. Only affects
- * occurrences generated from now on — it never touches the root's own
- * TransactionItem rows or any already-generated occurrence.
+ * Edits the recurrence template; only occurrences generated from now on are affected, never the
+ * root's own entries or existing occurrences.
  */
 export const updateRecurringTransactionSchema = z.object({
   description: z.string().min(1).optional(),

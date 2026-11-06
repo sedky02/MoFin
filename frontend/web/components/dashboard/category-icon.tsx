@@ -44,7 +44,6 @@ function iconFor(name?: string | null): LucideIcon {
   return Receipt;
 }
 
-/** Best-effort icon for a free-form category/goal/merchant name; falls back to a generic receipt. */
 export function CategoryIcon({
   name,
   className,

@@ -11,7 +11,6 @@ import { CircleAlert, CircleCheck, X } from '@/lib/icons';
 import { dismissToast, getToasts, subscribeToasts, type ToastItem } from '@/lib/toast';
 import { cn } from '@/lib/utils';
 
-/** What a screen reader says for a toast. */
 export function toastAnnouncement(t: Pick<ToastItem, 'kind' | 'message' | 'description'>): string {
   const prefix = t.kind === 'error' ? 'Error: ' : '';
   return `${prefix}${t.message}${t.description ? `. ${t.description}` : ''}`;

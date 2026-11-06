@@ -1,11 +1,5 @@
-// Opens MoFin when a home screen widget is added, so the user picks what it shows right then (an
-// account for the summaries, goals for Goals). Android does this through a widget "configure"
-// activity: the widget's info XML names it (expo-widgets' `android.configureActivity`, added by
-// patches/expo-widgets+*.patch), and this plugin adds the activity itself.
-//
-// The activity has no UI. It accepts the widget at once (so it is placed even if the user leaves the
-// setup screen; it then shows its defaults), opens mofin://widget-setup?widget=<name> in the app,
-// and closes. On Android 12+ the same activity runs again from the widget's "reconfigure" button.
+// Opens MoFin when a home screen widget is added so the user picks what it shows (an account for
+// summaries, goals for Goals), via a widget "configure" activity named in the widget's info XML.
 const { AndroidConfig, withAndroidManifest, withDangerousMod } = require('expo/config-plugins');
 const fs = require('fs');
 const path = require('path');

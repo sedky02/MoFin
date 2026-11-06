@@ -26,7 +26,6 @@ function toQuery(params: SearchParams, offset: number) {
   return { ...rest, limit, offset };
 }
 
-/** Offset-paginated infinite search. Cursor = offset. */
 export function useSearchTransactions(params: SearchParams) {
   return useInfiniteQuery({
     queryKey: searchKeys.list(params as Record<string, unknown>),
@@ -42,10 +41,8 @@ export function useSearchTransactions(params: SearchParams) {
 }
 
 /**
- * Page-number paginated search (the /transactions list uses numbered pages rather than
- * infinite scroll). `total` (from the backend) tells us whether a next page exists —
- * no more over-fetching a sentinel row, which also means `limit` can safely reach
- * the pagination schema's max (100) without silently exceeding it (limit + 1 used to).
+ * Numbered pages, not infinite scroll: the backend's `total` says whether a next page exists, so no
+ * sentinel row is over-fetched.
  */
 export function useSearchPage(params: SearchParams, page: number, limit: number) {
   const offset = (page - 1) * limit;
@@ -74,7 +71,6 @@ function stripEmpty(params: SearchParams): SearchParams {
   return out;
 }
 
-/** Simple single-page fetch used for the dashboard's "recent 10". */
 export function useRecentTransactions(limit = 10, accountId?: string, enabled = true) {
   return useQuery({
     queryKey: searchKeys.list({ recent: limit, accountId }),

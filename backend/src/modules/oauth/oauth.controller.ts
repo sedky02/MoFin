@@ -42,8 +42,6 @@ export class OAuthController {
     private readonly config: ConfigService,
   ) {}
 
-  // --- Dynamic Client Registration ---
-
   @Public()
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post('register')
@@ -52,8 +50,6 @@ export class OAuthController {
     const client = await this.oauth.registerClient(dto);
     res.status(201).json(client);
   }
-
-  // --- Authorization endpoint ---
 
   @Public()
   @Get('authorize')
@@ -117,7 +113,6 @@ export class OAuthController {
       );
     }
 
-    // Authenticate the end user via the backend session cookie.
     const user = await this.oauth.resolveSession(
       getCookie(req, SESSION_COOKIE),
     );
@@ -132,7 +127,6 @@ export class OAuthController {
       return res.redirect(loginUrl);
     }
 
-    // Skip consent if the user already granted this client.
     if (await this.oauth.hasGrant(user.id, q.client_id)) {
       const code = await this.oauth.issueAuthorizationCode(user.id, q);
       return this.redirectSuccess(res, q.redirect_uri, code, q.state);
@@ -184,8 +178,6 @@ export class OAuthController {
     return this.redirectSuccess(res, dto.redirect_uri, code, dto.state);
   }
 
-  // --- Token endpoint ---
-
   @Public()
   @Post('token')
   async token(@Body() body: unknown, @Res() res: Response) {
@@ -223,8 +215,6 @@ export class OAuthController {
     throw new BadRequestException({ error: 'unsupported_grant_type' });
   }
 
-  // --- Revocation (RFC 7009) ---
-
   /** Public client, so the token itself is the credential. Always 200 per the RFC. */
   @Public()
   @Post('revoke')
@@ -233,8 +223,6 @@ export class OAuthController {
     await this.oauth.revokeToken(dto.token);
     return res.status(200).json({});
   }
-
-  // --- Connected apps (web session auth, used by the Settings page) ---
 
   @UseGuards(JwtAuthGuard)
   @Get('grants')
@@ -251,8 +239,6 @@ export class OAuthController {
     await this.oauth.revokeGrant(user.id, clientId);
     return { revoked: true };
   }
-
-  // --- Cross-origin login bridge ---
 
   @Public()
   @Post('session/handoff')
@@ -294,8 +280,6 @@ export class OAuthController {
     }
     return res.redirect(cont);
   }
-
-  // --- HTML / redirect helpers ---
 
   private redirectSuccess(
     res: Response,
@@ -377,8 +361,6 @@ export class OAuthController {
       );
   }
 }
-
-// --- small request/HTML utilities (no extra dependencies) ---
 
 function getCookie(req: Request, name: string): string | undefined {
   const header = req.headers.cookie;

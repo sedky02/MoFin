@@ -1,19 +1,10 @@
 const DATE_ONLY = /^(\d{4})-(\d{2})-(\d{2})$/;
 
 /**
- * Date-range bounds coming from the API.
- *
- * A date-only value ("2026-10-24") names a whole calendar day, so as an upper
- * bound it has to cover that day up to its last instant. Parsed as-is it is
- * 00:00 on that day, and an inclusive `lte` on it drops everything after
- * midnight. A full ISO datetime is an exact instant and stays inclusive.
- *
- * Days are UTC for now, like every other period in the API. This is the one
- * place that decides where a day starts and ends, so per-user timezones (B-18)
- * only need to change it here.
+ * A date-only value ("2026-10-24") names a whole day, so as an upper bound it must cover the day's
+ * last instant. Days are UTC; this is the one place to change for per-user time zones (B-18).
  */
 
-/** Whether `value` is a bare calendar date (YYYY-MM-DD) rather than a datetime. */
 export function isDateOnly(value: string): boolean {
   return DATE_ONLY.test(value.trim());
 }
@@ -33,15 +24,17 @@ export function exclusiveUpperBound(value: string): Date {
 }
 
 /**
- * Last instant the bound still covers (23:59:59.999 for a date-only value), for
- * period ends stored inclusively, like recurring goal periods. Timestamps are
- * stored to the millisecond, so `lte` on this equals `lt` the next day.
+ * Last instant the bound covers (23:59:59.999 for a date-only value), for periods stored
+ * inclusively; `lte` on it equals `lt` the next day.
  */
 export function inclusiveUpperBound(value: string): Date {
   return new Date(exclusiveUpperBound(value).getTime() - 1);
 }
 
-/** Prisma filter for an upper bound: `lt` the next day for a date-only value, `lte` an exact instant. */
+/**
+ * Prisma filter for an upper bound: `lt` the next day for a date-only value, `lte` an exact
+ * instant.
+ */
 export function upperBoundFilter(value: string): { lt: Date } | { lte: Date } {
   return isDateOnly(value)
     ? { lt: exclusiveUpperBound(value) }

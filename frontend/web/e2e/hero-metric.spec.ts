@@ -1,8 +1,7 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
-// B-24: the dashboard hero's headline, caption and chip follow the chosen metric, and the
-// headline uses exactly the figures of the Monthly summary for the same month and currency.
-// Runs on the UX fixture (`npm run e2e:seed`).
+// The hero's headline, caption and chip follow the chosen metric, and the headline matches the
+// Monthly summary for the same month and currency. Needs `npm run e2e:seed`.
 
 test.use({ locale: "en-US" });
 
@@ -15,12 +14,10 @@ function summaryCard(page: Page) {
   return page.locator('[data-slot="card"]').filter({ has: page.getByRole("heading", { name: "Monthly summary" }) });
 }
 
-/** The hero card: the one that holds the chart-metric tabs. */
 function hero(page: Page) {
   return page.getByRole("tablist", { name: "Chart metric" }).locator("xpath=ancestor::div[contains(@class,'rounded-hero')][1]");
 }
 
-/** The hero's headline amount (its MoneyAmount title is the full value). */
 function headline(page: Page) {
   return hero(page).locator("span[title].text-5xl");
 }

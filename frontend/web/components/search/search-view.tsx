@@ -186,7 +186,6 @@ export function SearchView({ initial, active = true }: { initial: SearchInitial;
   const byDay = sort === "newest" || sort === "oldest";
   const accountsById = accounts ? new Map(accounts.map((a) => [a.id, a])) : undefined;
 
-  // Every active filter as a chip that removes itself.
   const chips: { key: string; label: string; clear: () => void }[] = [];
   const account = accounts?.find((a) => a.id === accountId);
   if (accountId) chips.push({ key: "account", label: account ? accountOptionLabel(account) : "Account", clear: () => setAccountId("") });
@@ -235,7 +234,6 @@ export function SearchView({ initial, active = true }: { initial: SearchInitial;
 
   return (
     <div className="space-y-5">
-      {/* The common filters are always in reach: search, account and category, then the rest behind one button. */}
       <div className="grid grid-cols-2 gap-2 lg:grid-cols-[minmax(0,2.4fr)_minmax(0,1fr)_minmax(0,1fr)_auto]">
         <div className="relative col-span-2 lg:col-span-1">
           <SearchIcon className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -394,7 +392,6 @@ export function SearchView({ initial, active = true }: { initial: SearchInitial;
         </Card>
       )}
 
-      {/* What is filtering the list right now, each one a click from gone. */}
       {hasActive && (
         <div className="flex flex-wrap items-center gap-2" aria-label="Active filters" role="group">
           {chips.map((chip) => (
@@ -419,7 +416,6 @@ export function SearchView({ initial, active = true }: { initial: SearchInitial;
         </div>
       )}
 
-      {/* Results */}
       {isLoading ? (
         <SkeletonRows rows={6} />
       ) : isError ? (
@@ -444,7 +440,6 @@ export function SearchView({ initial, active = true }: { initial: SearchInitial;
       ) : (
         <>
           {byDay ? (
-            // Sorted by date: each day is a heading, then one panel of that day's rows.
             <div className="space-y-6">
               {groupByDay(rows, new Date()).map((group) => (
                 <section key={group.key} aria-label={group.label}>
@@ -473,7 +468,6 @@ export function SearchView({ initial, active = true }: { initial: SearchInitial;
             </Card>
           )}
 
-          {/* Count and paging, with how many to show per page */}
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <Select value={String(limit)} onValueChange={(v) => setLimit(Number(v))}>

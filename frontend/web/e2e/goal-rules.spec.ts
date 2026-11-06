@@ -1,10 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
 import { formatViolations, runAxe } from "./helpers/axe";
 
-// B-26: the goals UI says how each goal type behaves, the history labels the
-// open period as live and finished ones as recorded, and the "Cancel goal" confirm
-// says what cancelling really does. Read-only: nothing is created or cancelled here.
-// Needs the UX fixture: `npm run e2e:seed`.
+// Goal cards, history labels and the Cancel confirm say what they really do. Read-only; needs `npm
+// run e2e:seed`.
 
 const RULES = {
   Balance: "Saving? A Balance goal tracks the account's balance, so transfers in count.",
@@ -22,7 +20,6 @@ test("the goal dialog shows helper text for each goal type", async ({ page }) =>
   const dialog = page.getByRole("dialog", { name: "New goal" });
   const rule = dialog.getByTestId("goal-rule");
 
-  // Balance is the default type.
   await expect(rule).toContainText(RULES.Balance);
 
   for (const type of ["Income", "Expense", "Balance"] as const) {
@@ -30,7 +27,6 @@ test("the goal dialog shows helper text for each goal type", async ({ page }) =>
     await expect(rule).toContainText(RULES[type]);
   }
 
-  // The rule is part of the type group's description, so screen readers get it too.
   await expect(dialog.getByLabel("Goal type")).toHaveAccessibleDescription(/so transfers in count/);
 
   const violations = await runAxe(page);
@@ -42,8 +38,8 @@ test("the goal dialog shows helper text for each goal type", async ({ page }) =>
 test("goal history labels the open period as live, matching the card", async ({ page }) => {
   await page.goto("/goals");
   const card = goalCard(page, "Monthly spending cap");
-  // The card's progress amount (the bold one before " / target").
-  // innerText can repeat the amount (visible + screen-reader copy) on two lines.
+  // The card's progress amount (the bold one before " / target"). innerText can repeat the amount
+  // (visible + screen-reader copy) on two lines.
   const cardAmount = (await card.locator(".tabular.font-semibold").first().innerText()).trim().split("\n")[0].trim();
 
   await card.getByRole("button", { name: "Actions for Monthly spending cap" }).click();
@@ -53,10 +49,8 @@ test("goal history labels the open period as live, matching the card", async ({ 
 
   const current = dialog.getByTestId("goal-history-row").first();
   await expect(current.getByTestId("goal-history-source")).toHaveText("Current period (live)");
-  // Same progress as the card shows.
   await expect(current).toContainText(cardAmount);
 
-  // Every other row is a finished period with its recorded result.
   const rows = dialog.getByTestId("goal-history-row");
   const count = await rows.count();
   for (let i = 1; i < count; i++) {
@@ -76,7 +70,6 @@ test("the Cancel goal confirm says it stops tracking and restarts from the resto
   await expect(confirm).toContainText("Stops tracking");
   await expect(confirm).toContainText("You can restore it later; it restarts from that day.");
 
-  // Leave the fixture as it was.
   await confirm.getByRole("button", { name: "Keep goal" }).click();
   await expect(goalCard(page, "Monthly spending cap")).toBeVisible();
 });

@@ -13,23 +13,8 @@ import {
 import { bffHeaders } from "@/lib/bff-headers";
 
 /**
- * Cross-origin login bridge (web → backend).
- *
- * After the user authenticates on the web origin, this route exchanges their
- * (httpOnly) backend access token for a one-time handoff secret from the backend
- * OAuth server, then redirects the browser to the backend's /session/consume,
- * which sets a first-party backend session cookie and resumes the OAuth
- * /authorize flow. The access token never leaves the server; only the short-lived
- * handoff secret rides in the redirect URL.
- *
- * `continue` is the original backend /authorize URL we must return to. Its origin
- * is the public backend origin, so we derive the consume URL from it (this works
- * both in local dev and behind a public tunnel).
- *
- * The access token is short-lived (~15 min) while the middleware only gates on
- * the long-lived refresh token, so this route must self-heal an expired/missing
- * access token by refreshing — otherwise the middleware keeps forcing us here
- * while we keep bouncing to /login (an infinite redirect loop).
+ * Exchanges the user's httpOnly backend token for a one-time handoff secret, then redirects to the
+ * backend's session/consume so its cookie is set on its own origin.
  */
 export async function GET(req: NextRequest) {
   const cont = req.nextUrl.searchParams.get("continue");
@@ -52,9 +37,8 @@ export async function GET(req: NextRequest) {
   let accessToken = jar.get(ACCESS_COOKIE)?.value;
   const refreshToken = jar.get(REFRESH_COOKIE)?.value;
 
-  // Fall back to login, clearing cookies so the middleware sees no session and
-  // renders the form instead of force-redirecting back here (loop-breaker).
-  // `mcp_authorize` is preserved so the connect resumes after re-login.
+  // Falls back to login and clears cookies so the form renders instead of redirecting back here
+  // (loop-breaker); `mcp_authorize` is kept so the connect resumes.
   const bailToLogin = () => {
     const login = new URL("/login", req.url);
     login.searchParams.set("mcp_authorize", cont);
@@ -63,14 +47,12 @@ export async function GET(req: NextRequest) {
     return res;
   };
 
-  // No session at all → send to login.
   if (!accessToken && !refreshToken) {
     return bailToLogin();
   }
 
   let refreshed: BackendTokens | null = null;
 
-  // Access token gone but refresh alive → refresh before the handoff.
   if (!accessToken && refreshToken) {
     refreshed = await refreshTokens(refreshToken, req);
     if (!refreshed) return bailToLogin();
@@ -97,8 +79,7 @@ export async function GET(req: NextRequest) {
       upstream = await requestHandoff();
     }
   } catch {
-    // Backend unreachable or timed out — fail the connector flow visibly
-    // rather than hanging (audit PERF-XX).
+    // Backend unreachable: fail the connector flow visibly rather than hang.
     return bailToLogin();
   }
 
@@ -112,7 +93,6 @@ export async function GET(req: NextRequest) {
   consume.searchParams.set("handoff", handoff);
   consume.searchParams.set("continue", cont);
   const res = NextResponse.redirect(consume);
-  // Persist refreshed tokens so later requests use the new access token.
   if (refreshed) setAuthCookies(res, refreshed);
   return res;
 }

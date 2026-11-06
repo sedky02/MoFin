@@ -31,9 +31,8 @@ export function useNewTransactionShortcut() {
 }
 
 /**
- * The shortcut as a component that draws nothing. The hook reads the pathname, which is request data
- * on a dynamic route, so under cacheComponents it has to sit inside a <Suspense> boundary: calling
- * the hook straight in AppShell failed the prerender of /transactions/[id] (CLIENT_HOOK_DYNAMIC).
+ * Draws nothing: the pathname hook needs a <Suspense> boundary under cacheComponents; calling it in
+ * AppShell failed the /transactions/[id] prerender (CLIENT_HOOK_DYNAMIC).
  */
 export function NewTransactionShortcut(): null {
   useNewTransactionShortcut();

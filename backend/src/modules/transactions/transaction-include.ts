@@ -1,11 +1,8 @@
 import { Prisma } from '@prisma/client';
 
 /**
- * Relations every transaction response carries. Each ledger leg includes its
- * account so clients can show "Main checking → Emergency fund" without a second
- * lookup; archived accounts are still returned because the relation is a plain
- * foreign key, not filtered by `archivedAt`. An account's `metadata` is its
- * owner's own settings, so it stays out, and so does anyone's email.
+ * Each leg includes its account so clients can name it without a second lookup (archived ones too).
+ * An account's `metadata` is its owner's own settings, so it stays out, and so does anyone's email.
  */
 export const TRANSACTION_INCLUDE = {
   items: {

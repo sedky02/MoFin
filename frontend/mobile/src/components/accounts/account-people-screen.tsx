@@ -31,7 +31,6 @@ import { cn } from '@/lib/utils';
 
 const ROLES: AccountMemberRole[] = ['EDITOR', 'VIEWER'];
 
-/** Editor or viewer, side by side: two choices don't need a menu. */
 function RolePicker({
   value,
   onChange,

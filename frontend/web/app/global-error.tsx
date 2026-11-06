@@ -4,11 +4,8 @@ import * as React from "react";
 import { reportError } from "@/lib/error-reporting";
 
 /**
- * Last-resort boundary: catches an error thrown by the root layout itself (or
- * anything above every other error.tsx). Next.js requires this to render its
- * own <html>/<body> since it replaces the root layout entirely — kept
- * deliberately dependency-free (no shared components/providers) since those
- * could be part of what crashed.
+ * Last-resort boundary for errors above every other error.tsx. It replaces the root layout, so it
+ * renders its own <html>/<body> and stays dependency-free.
  */
 export default function GlobalError({ error, unstable_retry }: { error: Error & { digest?: string }; unstable_retry: () => void }) {
   React.useEffect(() => reportError(error, { boundary: "global" }), [error]);

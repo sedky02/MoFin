@@ -2,8 +2,6 @@ import { NextResponse } from "next/server";
 import { bffHeaders } from "@/lib/bff-headers";
 import { BACKEND_TIMEOUT_MS, BACKEND_URL, setAuthCookies, type BackendTokens } from "@/lib/auth-cookies";
 
-//export const dynamic = "force-dynamic";
-
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
   if (!body?.email || !body?.password) {

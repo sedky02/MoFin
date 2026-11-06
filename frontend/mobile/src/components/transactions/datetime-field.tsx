@@ -1,8 +1,5 @@
-// Native date / date-and-time field (iOS and Android). Expo web has no picker implementation, so
-// datetime-field.web.tsx renders the browser's own <input type="datetime-local"> instead.
-//
-// The value is the web form's string: "YYYY-MM-DDTHH:mm" (mode "datetime") or "YYYY-MM-DD" (mode
-// "date"), in the device's local time, so the zod schema and the submit mapping see what the web sees.
+// Native date / date-and-time field; Expo web has no picker, so datetime-field.web.tsx renders the
+// browser's input. The value is the web form's string in device local time.
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { useColorScheme } from 'nativewind';
 import * as React from 'react';
@@ -21,13 +18,9 @@ export type DateTimeFieldProps = {
   value: string;
   onChange: (value: string) => void;
   onBlur?: () => void;
-  /** Read by screen readers (the visible label sits above the field). */
   accessibilityLabel: string;
-  /** Shown while there is no value (an optional end date). */
   placeholder?: string;
-  /** Lets the value be cleared (an optional field). */
   clearable?: boolean;
-  /** The day an empty field starts from when opened. */
   initialDate?: Date;
   invalid?: boolean;
   testID?: string;

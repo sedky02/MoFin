@@ -19,7 +19,6 @@ const DELETED = [
   'connected AI apps and every signed-in session.',
 ];
 
-/** Delete account (the web's DeleteAccountCard): what goes, then the red button behind the typed word. */
 export function DeleteAccountSection() {
   const { data: user, isLoading } = useUser();
   const [open, setOpen] = React.useState(false);

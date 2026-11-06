@@ -33,9 +33,8 @@ export async function POST(req: Request) {
     return NextResponse.json(data, { status: upstream.status });
   }
 
-  // A successful reset revokes every refresh token of the account, so any
-  // session cookie in this browser is dead now; drop it so the user signs in
-  // fresh with the new password.
+  // A reset revokes every refresh token, so any session cookie here is dead: drop it so the user
+  // signs in fresh.
   const res = NextResponse.json(data);
   clearAuthCookies(res);
   return res;

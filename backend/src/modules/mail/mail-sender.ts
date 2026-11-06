@@ -5,11 +5,7 @@ export interface MailMessage {
   html?: string;
 }
 
-/**
- * Provider-agnostic outgoing mail port. Feature modules depend on this token
- * only; MailModule picks the concrete sender from configuration, and tests
- * override it with an in-memory fake to capture what was sent.
- */
+/** Feature modules depend on this token only; MailModule picks the sender and tests swap in a fake. */
 export abstract class MailSender {
   abstract send(message: MailMessage): Promise<void>;
 

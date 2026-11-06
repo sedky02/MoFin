@@ -1,10 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
 import { formatViolations, runAxe } from "./helpers/axe";
 
-// B-07: archived accounts show their real balance, and the all-accounts hero
-// adds up to the account cards it covers, archived ones included, saying so in
-// its caption. Needs the UX fixture (`npm run e2e:seed`): "Old savings" is an
-// archived EUR account holding money, "Travel wallet" an active EUR one.
+// Archived accounts show their real balance and the all-accounts hero adds up to its cards. Needs
+// `npm run e2e:seed` ("Old savings" archived EUR, "Travel wallet" active EUR).
 test.use({ locale: "en-US" });
 
 type FixtureAccount = { id: string; name: string; currency: string };
@@ -26,7 +24,6 @@ function accountCard(page: Page, name: string) {
   return page.getByRole("listitem").filter({ has: page.getByRole("heading", { name, exact: true }) });
 }
 
-/** The balance a card shows; MoneyAmount keeps the full formatted value in its title. */
 async function cardBalance(page: Page, name: string): Promise<string> {
   const card = accountCard(page, name);
   await expect(card).toHaveCount(1);
@@ -36,7 +33,6 @@ async function cardBalance(page: Page, name: string): Promise<string> {
   return (await amount.getAttribute("title")) ?? "";
 }
 
-/** Switch between the active list and the archived one (header buttons). */
 async function openView(page: Page, view: "Active" | "Archived") {
   const button =
     view === "Archived"
@@ -45,7 +41,6 @@ async function openView(page: Page, view: "Active" | "Archived") {
   if (await button.isVisible()) await button.click();
 }
 
-/** Sum of the cards in the given tab for one currency, in thousandths. */
 async function sumCards(page: Page, tab: "Active" | "Archived", accounts: FixtureAccount[], currency: string) {
   await openView(page, tab);
   let total = 0;

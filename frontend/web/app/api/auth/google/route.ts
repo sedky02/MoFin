@@ -7,11 +7,8 @@ import { secureCookies } from "@/lib/auth-cookies";
 const STATE_COOKIE = "google_oauth";
 
 /**
- * Begin Google sign-in. We are the OAuth client to Google; the registered
- * redirect URI points back at our own callback route. A short-lived state cookie
- * carries CSRF state plus any in-flight MCP authorize URL so the callback can
- * resume the connector flow after sign-in. All Google endpoints/scopes/redirect
- * come from env — nothing is hardcoded.
+ * We are Google's OAuth client; a short-lived state cookie carries CSRF state and any in-flight MCP
+ * authorize URL so the callback can resume the connector flow.
  */
 export async function GET(req: Request) {
   const clientId = process.env.GOOGLE_CLIENT_ID;

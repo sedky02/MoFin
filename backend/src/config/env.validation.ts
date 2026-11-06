@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
 /**
- * Fail fast at startup if required configuration is missing or malformed,
- * rather than discovering it on the first request that needs a secret.
+ * Fail fast at startup if required configuration is missing, not on the first request that needs a
+ * secret.
  */
 const secretSchema = z
   .string()
@@ -15,30 +15,23 @@ const envSchema = z
   .object({
     DATABASE_URL: z.string().url(),
     JWT_ACCESS_SECRET: secretSchema,
-    // Separate signing key for MCP/OAuth access tokens so an MCP-scoped token is
-    // never even a candidate signature for the first-party web verifier (SEC-XX).
+    // Separate key for MCP/OAuth tokens, so an MCP token is never a candidate signature for the web
+    // verifier.
     JWT_MCP_SECRET: secretSchema,
     JWT_ACCESS_TTL: z.string().default('15m'),
     JWT_REFRESH_TTL: z.string().default('30d'),
-    // Derives each rotated refresh token from the one it replaces, so a retry
-    // right after a rotation can get the same successor back. Changing it only
-    // affects tokens rotated in the 30 s before the change.
+    // Derives each rotated refresh token from the one it replaces, so a retry right after a
+    // rotation gets the same successor.
     REFRESH_TOKEN_SECRET: secretSchema,
     PORT: z.coerce.number().int().positive().default(3000),
-    // Shared with the web BFF, which sends it with the client IP it saw so the
-    // rate limiter keys on the real client instead of the BFF (see
-    // trusted-client-ip.middleware.ts). Required in production; when unset,
-    // the client IP comes from `trust proxy` alone.
+    // Shared with the web BFF, which sends the client IP it saw so rate limits key on the real
+    // client. Required in production.
     BFF_SHARED_SECRET: secretSchema.optional(),
 
-    // --- OAuth 2.1 authorization server (MCP custom connector) ---
-    // Public base URL of THIS backend. Must exactly match the `iss` claim and the
-    // origin claude.ai discovers. In dev this is localhost; in production set it to
-    // the public HTTPS tunnel/host. Issuer is derived from config, never the Host
-    // header, to prevent host-header spoofing of the issuer.
+    // OAuth 2.1 server (MCP connector). OAUTH_ISSUER is this backend's public URL and must match
+    // `iss`; read from config, never the Host header, to prevent spoofing.
     OAUTH_ISSUER: z.string().url().default('http://localhost:3000'),
-    // Canonical MCP resource URL used as the access token `aud`. Defaults to
-    // `${OAUTH_ISSUER}/api/v1/mcp` if omitted (resolved in env.config below).
+    // Used as the access token `aud`; defaults to `${OAUTH_ISSUER}/api/v1/mcp`.
     OAUTH_RESOURCE_URI: z.string().url().optional(),
     // Where end users log in (the Next.js web app). Used by the login bridge.
     WEB_URL: z.string().url().default('http://localhost:3001'),
@@ -56,20 +49,16 @@ const envSchema = z
     GOOGLE_CLIENT_ID: z.string().optional(),
     GOOGLE_CLIENT_SECRET: z.string().optional(),
     GOOGLE_TOKEN_URL: z.string().url().optional(),
-    // Native sign-in from the mobile app (POST /auth/google/id-token): the
-    // client ids a Google ID token may be issued for (its `aud`), comma-
-    // separated. The web client id (the Android app's `webClientId`) and later
-    // the iOS client id. Unset: that route answers 503.
+    // Client ids a Google ID token may be issued for (its `aud`), comma-separated. Unset: that
+    // route answers 503.
     GOOGLE_MOBILE_CLIENT_IDS: z.string().optional(),
 
-    // --- Observability (OBS-01) ---
-    // Unset in dev: Sentry.init is skipped and errors just log, no client needed.
+    // Unset in dev: Sentry is skipped and errors just log.
     SENTRY_DSN: z.string().url().optional(),
 
     NODE_ENV: z.string().optional(),
 
-    // --- Outgoing email (password reset) ---
-    // With SMTP_HOST unset, mail goes to a log-only sender instead (see MailModule).
+    // With SMTP_HOST unset, mail goes to a log-only sender (see MailModule).
     SMTP_HOST: z.string().min(1).optional(),
     SMTP_PORT: z.coerce.number().int().positive().default(587),
     // "true" for implicit TLS (usually port 465); otherwise STARTTLS is used when offered.
@@ -77,16 +66,15 @@ const envSchema = z
     SMTP_USER: z.string().optional(),
     SMTP_PASS: z.string().optional(),
     MAIL_FROM: z.string().min(1).default('MoFin <no-reply@mofin.local>'),
-    // Development/test only: write every outgoing email as a JSON file in this
-    // directory so local end-to-end tests can read the reset link.
+    // Development/test only: writes each email as a JSON file so local e2e tests can read the
+    // links.
     MAIL_CAPTURE_DIR: z.string().min(1).optional(),
     PASSWORD_RESET_TTL: z
       .string()
       .regex(/^\d+(s|m|h|d)$/, 'Use a duration such as 30m')
       .default('30m'),
 
-    // --- "Try the demo" (temporary per-visitor demo users) ---
-    // Unset: on outside production, off in production until set to "true".
+    // Unset: on outside production, off in production until "true".
     DEMO_ENABLED: z.enum(['true', 'false']).optional(),
     // How long a demo user lives before DemoCleanupCron deletes it.
     DEMO_TTL_HOURS: z.coerce.number().int().positive().max(168).default(24),
@@ -95,10 +83,8 @@ const envSchema = z
     // AI drafts one demo user can create.
     DEMO_AI_CAP: z.coerce.number().int().positive().default(30),
 
-    // --- AI assistant (draft parsing + data chat) ---
-    // Any OpenAI-compatible chat-completions endpoint works (Groq, Gemini,
-    // OpenRouter, OpenAI). With AI_API_KEY unset the assistant runs in
-    // fallback mode: drafts use the local regex parser, chat answers 503.
+    // Any OpenAI-compatible chat endpoint works. With AI_API_KEY unset, drafts use the local regex
+    // parser and chat answers 503.
     AI_API_KEY: z.string().min(1).optional(),
     AI_BASE_URL: z.string().url().default('https://api.groq.com/openai/v1'),
     AI_MODEL: z.string().min(1).default('openai/gpt-oss-120b'),

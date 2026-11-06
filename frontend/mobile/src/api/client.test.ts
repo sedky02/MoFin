@@ -34,7 +34,6 @@ function json(status: number, body?: unknown): Response {
   });
 }
 
-/** fetch double: records every call (and the order of fetch vs SecureStore writes) and answers with `responder`. */
 function mockFetch(responder: Responder) {
   global.fetch = jest.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const headers = (init?.headers ?? {}) as Record<string, string>;
@@ -50,7 +49,6 @@ function mockFetch(responder: Responder) {
   }) as unknown as typeof fetch;
 }
 
-/** A promise you resolve from the test, to hold a response back. */
 function deferred<T>() {
   let resolve!: (v: T) => void;
   const promise = new Promise<T>((r) => (resolve = r));

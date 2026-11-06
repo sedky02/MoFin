@@ -5,11 +5,7 @@ const UNIT_MS: Record<string, number> = {
   d: 24 * 60 * 60 * 1000,
 };
 
-/**
- * Parses the small subset of duration strings this app actually uses
- * (e.g. '15m', '30d') into milliseconds. Kept local instead of pulling in the
- * `ms` package as a direct dependency for one conversion.
- */
+/** Parses the few duration strings this app uses ('15m', '30d'); local to avoid depending on `ms`. */
 export function parseDurationMs(value: string): number {
   const match = /^(\d+)(s|m|h|d)$/.exec(value.trim());
   if (!match) throw new Error(`Unsupported duration format: ${value}`);

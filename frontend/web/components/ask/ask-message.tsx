@@ -25,7 +25,6 @@ export const TOOL_LABELS: Record<string, string> = {
   chart_daily_trend: "daily activity",
 };
 
-/** `**bold**` inside a line; everything else stays text (React escapes it). */
 function inline(text: string): React.ReactNode[] {
   return text.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
     part.startsWith("**") && part.endsWith("**") && part.length > 4 ? (
@@ -42,9 +41,8 @@ const BULLET = /^\s*[-*•]\s+/;
 const NUMBERED = /^\s*\d+[.)]\s+/;
 
 /**
- * The little formatting the assistant is asked to use: paragraphs, "- " bullets,
- * "1." lists and **bold**. Rendered as React nodes, never as HTML, so nothing a
- * model writes can inject markup.
+ * Renders the few formats the assistant is asked to use (paragraphs, bullets, numbered lists, bold)
+ * as React nodes, never HTML, so nothing a model writes can inject markup.
  */
 export function RichText({ text }: { text: string }) {
   const blocks = text.trim().split(/\n{2,}/);
@@ -85,7 +83,6 @@ export function RichText({ text }: { text: string }) {
   );
 }
 
-/** MoFin's own mark (the bar M) next to its answers, so it's plain who is speaking. */
 function AssistantAvatar() {
   return <LogoMark className="mt-0.5 size-8" />;
 }
@@ -173,7 +170,6 @@ function CopyAnswer({ text }: { text: string }) {
   );
 }
 
-/** Shown while the answer is on its way: the assistant reads data for a few seconds. */
 export function ThinkingMessage() {
   return (
     <li className="flex gap-3" aria-hidden>
@@ -192,7 +188,6 @@ export function ThinkingMessage() {
   );
 }
 
-/** The answer failed: say why, and offer the same question again. */
 export function FailedMessage({ error, onRetry }: { error: string; onRetry: () => void }) {
   return (
     <li className="flex gap-3">

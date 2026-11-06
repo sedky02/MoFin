@@ -16,9 +16,8 @@ import type { Account, Category } from '@/core/types';
 import type { SearchParams } from '@/hooks/useSearch';
 
 /**
- * The "Repeats" filter: core's two choices plus the recurring schedules, which list each series once
- * (with pause, resume and cancel) instead of the transactions. They replaced the old Recurring tab.
- * The schedules value never reaches the search params; the screen swaps in the series list.
+ * The "Repeats" filter: core's two choices plus the recurring schedules, which list each series
+ * once (with pause, resume, cancel); that value never reaches the search params.
  */
 export const SCHEDULES = 'series';
 export const REPEATS_OPTIONS: { value: string; label: string }[] = [
@@ -53,13 +52,11 @@ export const EMPTY_FILTERS: ListFilters = {
   sort: DEFAULT_SORT,
 };
 
-/** Rows fetched per request; the list loads the next batch as it nears the end. */
 export const PAGE_SIZE = 25;
 
 /**
- * The filters as the search endpoint takes them. Amount fields keep what was typed; the query
- * gets the dot-decimal reading ("1,234" -> 1234, "12,5" -> 12.5), or nothing while it can't be
- * read. Unknown type, recurrence or sort values never reach the backend.
+ * Amount fields keep what was typed; the query gets the dot-decimal reading ("1,234" -> 1234), or
+ * nothing while unreadable. Unknown type, recurrence or sort values never reach the backend.
  */
 export function toSearchParams(f: ListFilters, limit: number): SearchParams {
   return {
@@ -77,12 +74,10 @@ export function toSearchParams(f: ListFilters, limit: number): SearchParams {
   };
 }
 
-/** Narrows free text (a route param, a picker value) to a sort, falling back to the default. */
 export function sortOrDefault(value: string | undefined): TransactionSort {
   return parseSort(value) ?? DEFAULT_SORT;
 }
 
-/** Any filter at all, a non-default sort included (it is something to undo too). */
 export function hasActiveFilters(f: ListFilters): boolean {
   const p = toSearchParams(f, 0);
   return !!(p.q || p.categoryId || p.accountId || p.from || p.to || p.minAmount || p.maxAmount || p.type || p.recurrence) || f.sort !== DEFAULT_SORT;
@@ -99,11 +94,9 @@ export function panelFilterCount(f: ListFilters): number {
 export interface FilterChip {
   key: string;
   label: string;
-  /** The fields this chip empties. */
   clears: (keyof ListFilters)[];
 }
 
-/** Every active filter as a chip that removes itself. */
 export function buildChips(f: ListFilters, accounts?: Account[], categories?: Category[]): FilterChip[] {
   const chips: FilterChip[] = [];
   if (f.accountId) {
@@ -153,12 +146,10 @@ export function clearChip(f: ListFilters, chip: FilterChip): ListFilters {
   return next;
 }
 
-/** Newest-first and oldest-first lists read by day; the others (amount, next occurrence) don't. */
 export function groupsByDay(sort: TransactionSort): boolean {
   return sort === 'newest' || sort === 'oldest';
 }
 
-/** The list's footer line: "Showing 25 of 80", or "All 80 transactions" once everything is loaded. */
 export function loadedSummary(shown: number, total?: number): string {
   if (total === undefined || shown < total) return total === undefined ? `Showing ${shown}` : `Showing ${shown} of ${total}`;
   return total === 1 ? '1 transaction' : `All ${total} transactions`;

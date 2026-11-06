@@ -15,9 +15,8 @@ export function accountsRecap(accounts: Account[]): string {
 }
 
 /**
- * Step 2 of the setup: record the first transaction, or skip it. The setup ends by itself once a
- * transaction exists (useSetup), so saving needs no navigation here: `onSaved` is a no-op that
- * only stops the form from going back.
+ * The setup ends by itself once a transaction exists (useSetup), so saving needs no navigation:
+ * `onSaved` is a no-op that only stops the form going back.
  */
 export function SetupTransactionStep({ accounts, skip }: { accounts: Account[]; skip: () => void }) {
   return (

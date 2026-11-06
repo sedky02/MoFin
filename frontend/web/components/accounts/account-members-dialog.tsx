@@ -95,7 +95,6 @@ function InviteForm({ accountId }: { accountId: string }) {
   );
 }
 
-/** Who is on an account: everyone can see it, and the owner manages it from here. */
 export function AccountMembersDialog({
   account,
   onClose,

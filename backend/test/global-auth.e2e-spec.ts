@@ -1,13 +1,6 @@
 /**
- * Secure-by-default authentication, through the real guards, decorators and
- * HTTP stack:
- * - CurrentUser answers 401 on a route that has no guard at all;
- * - the global GlobalJwtAuthGuard protects any route not marked @Public();
- * - the routes that must stay open (credentials, OAuth, discovery, health,
- *   MCP behind its own guard) still reach their handlers.
- *
- * Uses stub services and an in-memory config, so it needs no database and
- * runs with a plain `npm run test:e2e -- global-auth`.
+ * Secure-by-default auth through the real guards: CurrentUser 401s on an unguarded route,
+ * GlobalJwtAuthGuard protects anything not @Public(), and public routes are an exact list.
  */
 import {
   Controller,
@@ -82,7 +75,6 @@ const mcpToken = (sub = 'user-1') =>
     },
   );
 
-/** Stands in for a user-scoped service: records the userId it was asked for. */
 const scopedService = { listFor: jest.fn((userId: string) => ({ userId })) };
 
 @Controller('forgot-guard')

@@ -1,9 +1,6 @@
 /**
- * Prisma's delegate API over arrays, for e2e specs that run the real
- * controllers and services without a database. Every model and foreign key is
- * read from schema.prisma, with Postgres semantics: CASCADE deletes the
- * children, SET NULL clears the column, RESTRICT refuses the delete while a
- * child still points at the row, and a failed transaction is rolled back.
+ * Prisma's delegate API over arrays for DB-less e2e specs; models and foreign keys come from
+ * schema.prisma, with Postgres semantics (CASCADE, SET NULL, RESTRICT, rollback).
  */
 import { readFileSync } from 'fs';
 import { join } from 'path';
@@ -13,9 +10,9 @@ export type OnDelete = 'Cascade' | 'Restrict' | 'SetNull';
 export interface Relation {
   /** Prisma delegate name of the table holding the foreign key, e.g. `goalInstance`. */
   child: string;
-  /** Relation field name, e.g. `goal` (used by relation filters). */
+  /** - */
   name: string;
-  /** Foreign key column, e.g. `goalId`. */
+  /** - */
   column: string;
   parent: string;
   onDelete: OnDelete;
@@ -61,7 +58,7 @@ export const USER_TABLES = SCHEMA.relations
   .filter((r) => r.parent === 'user')
   .map((r) => r.child);
 
-/** Prisma's delegate API over arrays, with the schema's foreign keys enforced. */
+/** - */
 export function inMemoryPrisma() {
   let tables: Record<string, Row[]> = Object.fromEntries(
     SCHEMA.tables.map((t) => [t, []]),

@@ -6,7 +6,6 @@ import { Text } from '@/components/ui/text';
 import type { GoalTone } from '@/core/goal-standing';
 import { COLORS } from '@/theme/colors';
 
-/** Ring colour per tone (the web's TONE_STYLE, as hex for SVG). */
 export function toneColor(tone: GoalTone, scheme: 'light' | 'dark'): string {
   const c = COLORS[scheme];
   switch (tone) {
@@ -23,7 +22,6 @@ export function toneColor(tone: GoalTone, scheme: 'light' | 'dark'): string {
   }
 }
 
-/** A ring that fills with a goal's progress, coloured by where the goal stands, percent inside. */
 export function GoalRing({
   ratio,
   percent,
@@ -31,9 +29,7 @@ export function GoalRing({
   overTarget = false,
   size = 60,
 }: {
-  /** 0-100, how much of the ring to fill. */
   ratio: number;
-  /** Whole percent shown in the middle. */
   percent: number;
   tone: GoalTone;
   overTarget?: boolean;

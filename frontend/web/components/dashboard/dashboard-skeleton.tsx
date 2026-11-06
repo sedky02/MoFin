@@ -1,16 +1,11 @@
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
-// Placeholders for each dashboard card. Every one copies its card's frame and spacing and
-// shows as many rows as the card does, so nothing moves or resizes when the data arrives.
-// The cards reuse the inner parts for their own loading states. The odd sizes (lg:h-5.25,
-// pointer-coarse:h-11) follow the real text, which grows a notch on desktop, and the tab
-// bars, which grow to a 44px touch target on touch screens.
+// Every skeleton copies its card's frame and spacing and shows as many rows as the card, so nothing
+// moves when data arrives.
 
-/** Heights of the six month bars, oldest first: a rising balance, like most dashboards show. */
 const BAR_HEIGHTS = ["45%", "45%", "45%", "58%", "72%", "100%"];
 
-/** The balance hero (BalanceOverview): currency switch and metric tabs, amount, caption, chip, chart. */
 export function BalanceHeroSkeleton() {
   return (
     <div className="relative flex h-full flex-1 flex-col overflow-hidden rounded-hero bg-card p-6 shadow-hero sm:p-8">
@@ -42,7 +37,6 @@ export function BalanceHeroSkeleton() {
   );
 }
 
-/** Goal tiles (GoalMiniCard): ring, name, progress. */
 export function GoalTilesSkeleton({ count = 3 }: { count?: number }) {
   return (
     <div className="grid grid-cols-1 gap-3">
@@ -76,7 +70,6 @@ function GoalsCardSkeleton() {
   );
 }
 
-/** The monthly summary's breakdown: the ring and its five-row legend. */
 export function SummaryBreakdownSkeleton() {
   return (
     <div className="flex w-full flex-col items-center gap-6 sm:flex-row">
@@ -120,10 +113,6 @@ function MonthlySummarySkeleton() {
   );
 }
 
-/**
- * The recent-transactions list: day headings, each over a row (icon tile, description and
- * category, amount). Capped like the real list on small screens.
- */
 export function RecentRowsSkeleton() {
   return (
     <div className="max-h-112 min-h-0 flex-1 overflow-hidden lg:max-h-none">
@@ -158,7 +147,6 @@ function RecentTransactionsSkeleton() {
   );
 }
 
-/** The whole dashboard (DashboardBody) while its data loads: same grid, same four cards. */
 export function DashboardSkeleton() {
   return (
     <section className="space-y-8" aria-busy="true" aria-label="Loading your dashboard">

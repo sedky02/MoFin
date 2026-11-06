@@ -1,12 +1,6 @@
 /**
- * Changing the password and signing out everywhere, through the real
- * controller, guards (global throttler + web JWT, the per-user change limit),
- * validation and AuthService.
- *
- * Prisma is replaced by in-memory User, RefreshToken and PasswordResetToken
- * tables, so it needs no database and runs with a plain
- * `npm run test:e2e -- sessions`. Sessions are real: they come from
- * POST /auth/login and are checked with POST /auth/refresh.
+ * Changing the password and signing out everywhere through the real controller, guards and
+ * AuthService, over in-memory tables; no database.
  */
 import { INestApplication } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -40,7 +34,6 @@ const ENV = {
 
 type Row = Record<string, unknown> & { id: string };
 
-/** Just enough of Prisma's API over arrays for AuthService and UsersService. */
 function inMemoryPrisma() {
   const tables: Record<'user' | 'refreshToken' | 'passwordResetToken', Row[]> =
     {
@@ -240,7 +233,6 @@ describe('Password change and sign-out everywhere (e2e)', () => {
       await refresh(rotated.body.refreshToken).expect(201);
       await refresh(otherUser.refreshToken).expect(201);
 
-      // The new password is the one that signs in now.
       await http()
         .post('/api/v1/auth/login')
         .set('X-Forwarded-For', nextIp())
@@ -284,7 +276,6 @@ describe('Password change and sign-out everywhere (e2e)', () => {
       expect(res.status).toBe(429);
       expect(Number(res.headers['retry-after'])).toBeGreaterThan(0);
 
-      // Another user is unaffected.
       await changePassword(two.accessToken, wrong).expect(400);
     });
   });

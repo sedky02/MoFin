@@ -5,9 +5,8 @@ import { ThrottlerGuard, ThrottlerRequest } from '@nestjs/throttler';
 export const EXPORT_THROTTLE = { limit: 10, ttl: 60 * 60_000 } as const;
 
 /**
- * Throttle key for the export: the signed-in user's id. The global JWT guard
- * runs before route guards, so `req.user` is set by the time this reads it;
- * the IP fallback only matters if the route is ever left without one.
+ * Keyed by user id: the global JWT guard runs first so req.user is set; the IP fallback only
+ * matters if a route lacks one.
  */
 export function exportTracker(req: Record<string, unknown>): string {
   const id = (req.user as { id?: unknown } | undefined)?.id;
@@ -15,10 +14,6 @@ export function exportTracker(req: Record<string, unknown>): string {
   return `ip:${String(req.ip)}`;
 }
 
-/**
- * Applies EXPORT_THROTTLE per user. The global ThrottlerGuard's per-IP
- * baseline still applies on top, under a different tracker.
- */
 @Injectable()
 export class ExportThrottlerGuard extends ThrottlerGuard {
   protected getTracker(req: Record<string, unknown>): Promise<string> {

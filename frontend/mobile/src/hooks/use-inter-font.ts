@@ -6,7 +6,6 @@ import { Inter_600SemiBold } from '@expo-google-fonts/inter/600SemiBold';
 import { Inter_700Bold } from '@expo-google-fonts/inter/700Bold';
 import { useFonts } from 'expo-font';
 
-/** Loads the Inter weights the `font-*` utilities in tailwind.config.js point at. */
 export function useInterFont() {
   return useFonts({ Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold });
 }

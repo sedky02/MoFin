@@ -52,7 +52,6 @@ function GoalTile({ goal, account }: { goal: Goal; account?: Account }) {
   );
 }
 
-/** Glanceable goals for the dashboard; editing, history and ending a goal live on the Goals tab. */
 export function GoalsSummary({ accountId }: { accountId?: string }) {
   const { data: goals, isLoading, isError, refetch } = useGoals();
   const { data: accounts } = useAccounts('all');

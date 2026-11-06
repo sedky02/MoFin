@@ -24,7 +24,6 @@ import {
 import { TRANSACTION_INCLUDE } from './transaction-include';
 import { TransactionsService } from './transactions.service';
 
-/** What a series posts each time: enough of its root to tell whether it still can. */
 export type SeriesTemplate = Pick<
   Transaction,
   | 'userId'
@@ -38,7 +37,6 @@ export type SeriesTemplate = Pick<
 const DIFFERENT_OWNER_PROBLEM =
   'A series can only post to accounts with the same owner';
 
-/** Why a series can't post to this account, in words for the user, or null when it can. */
 function accountProblem(
   account: Pick<Account, 'name' | 'currency' | 'archivedAt'>,
   currency: string,
@@ -51,9 +49,7 @@ function accountProblem(
 }
 
 /**
- * The lifecycle of a recurring series, from its root transaction: editing the
- * template, pausing, resuming and cancelling it, and telling whether it can
- * still post. Creating the series and posting its occurrences stay with
+ * Editing, pausing, resuming and cancelling a series. Creating it and posting occurrences stay with
  * TransactionsService, so a series change never touches a ledger entry.
  */
 @Injectable()
@@ -66,9 +62,8 @@ export class RecurringSeriesService {
   ) {}
 
   /**
-   * The root, for a change to its series: `transact` on every account it
-   * touches. Read straight from the table, because the series' own template and
-   * ledger owner are what the change works on, whatever the caller may see.
+   * Read straight from the table, because the series' own template and ledger owner are what the
+   * change works on, whatever the caller may see.
    */
   private async getRecurringRoot(userId: string, id: string) {
     await this.access.assertTransactionAccess(userId, id, 'transact');
@@ -86,9 +81,8 @@ export class RecurringSeriesService {
   }
 
   /**
-   * Edits the recurrence template. Only affects occurrences generated from
-   * now on — the root's own ledger entries and any already-generated
-   * occurrence are left untouched.
+   * Only occurrences generated from now on are affected; the root's own entries and existing
+   * occurrences are untouched.
    */
   async updateRecurring(
     userId: string,
@@ -124,10 +118,8 @@ export class RecurringSeriesService {
       );
     }
 
-    // Every occurrence posts in the series' currency, so each account must be
-    // live and in that currency, and a transfer needs two different ones. The
-    // account the series already uses is checked too: on a paused series it's
-    // often the one that broke, and the edit is how it gets replaced.
+    // Every occurrence posts in the series' currency, so each account must be live and in it; the
+    // current account is checked too, since on a paused series it's often the one that broke.
     const errors: { path: string; message: string }[] = [];
     for (const [path, accountId] of [
       ['fromAccountId', fromAccountId],
@@ -185,10 +177,8 @@ export class RecurringSeriesService {
       );
     }
 
-    // Moving the end date (or the interval) so the next occurrence falls past
-    // the end ends the series now, the same way the cron ends it after its
-    // last occurrence. Ended is final: like a cancelled series it can't be
-    // edited back to life.
+    // Moving the end date or interval so the next occurrence falls past the end ends the series
+    // now, as the cron would. Ended is final, like cancelled.
     const recurringEndDate =
       command.recurringEndDate === undefined
         ? root.recurringEndDate
@@ -197,9 +187,8 @@ export class RecurringSeriesService {
       ? isPastEndDate(nextOccurrenceAt, recurringEndDate)
       : false;
 
-    // A series the cron paused keeps its reason only while it still applies:
-    // an edit that moves it off an archived account leaves it paused (the user
-    // resumes it) without the stale reason.
+    // A cron-paused series keeps its reason only while it applies: moving it off an archived
+    // account leaves it paused without the stale reason.
     const recurringError =
       root.recurringStatus === RecurringStatus.PAUSED && root.recurringError
         ? await this.findSeriesProblem({
@@ -247,8 +236,8 @@ export class RecurringSeriesService {
   }
 
   /**
-   * Holds an active series: nothing is generated until it's resumed. A manual
-   * pause has no reason (recurringError), unlike one the cron makes.
+   * Nothing is generated until it's resumed. A manual pause has no recurringError, unlike a cron
+   * pause.
    */
   async pauseRecurring(userId: string, id: string) {
     const root = await this.getRecurringRoot(userId, id);
@@ -274,13 +263,8 @@ export class RecurringSeriesService {
   }
 
   /**
-   * Picks a paused series up again, once it can post: while the reason it was
-   * paused for still applies, this 400s with that reason and it stays paused.
-   *
-   * The occurrences that fell due while paused are skipped, not backfilled:
-   * the cursor moves to the first occurrence on or after today. The cron posts
-   * one occurrence per series per night, so a backfill would trickle a
-   * months-long gap in at one charge a night instead.
+   * Refuses with the reason while the series can't post. Occurrences due while paused are skipped,
+   * not backfilled: the cron posts one a night, so a backfill would trickle for months.
    */
   async resumeRecurring(userId: string, id: string) {
     const root = await this.getRecurringRoot(userId, id);
@@ -347,12 +331,8 @@ export class RecurringSeriesService {
   }
 
   /**
-   * Why a series can't post its next occurrence, in words the user can act on,
-   * or null when it can. These are the problems that don't go away by
-   * themselves (an archived account, a currency mismatch...): the cron pauses a
-   * series on one instead of failing on it every night, and resume refuses
-   * while one remains. Each occurrence still goes through create()'s own
-   * validation on top of this.
+   * Problems that don't go away by themselves (archived account, currency mismatch): the cron
+   * pauses on one instead of failing nightly, and resume refuses while it remains.
    */
   async findSeriesProblem(series: SeriesTemplate): Promise<string | null> {
     const {
@@ -400,7 +380,6 @@ export class RecurringSeriesService {
     return null;
   }
 
-  /** Stops future generation. Already-generated occurrences (past or future-dated) are left as-is. */
   async cancelRecurring(userId: string, id: string) {
     const root = await this.getRecurringRoot(userId, id);
     // Conditional on the status so a cron end that landed first isn't re-applied.

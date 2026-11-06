@@ -19,10 +19,7 @@ export class MembersService {
     private readonly events: EventEmitter2,
   ) {}
 
-  /**
-   * Everyone on the account, the owner first. Addresses are for the owner, who
-   * manages the list; other members see names, and their own address.
-   */
+  /** Owner first. Addresses show only to the owner and on your own row. */
   async list(userId: string, accountId: string) {
     const { role } = await this.access.assertAccess(userId, accountId, 'view');
     const account = await this.prisma.account.findUniqueOrThrow({
@@ -129,8 +126,8 @@ export class MembersService {
   }
 
   /**
-   * The accounts `userId` owns that others can reach, with who is on them: what
-   * deleting their user or resetting their data would take from those people.
+   * Accounts the user owns that others can reach: what deleting or resetting would take from those
+   * people.
    */
   async sharedAccountsOwnedBy(userId: string) {
     const accounts = await this.prisma.account.findMany({

@@ -7,11 +7,7 @@ import {
 } from '../../../common/dto/common-fields';
 import { paginationSchema } from '../../../common/dto/pagination';
 
-/**
- * Zod validates nested objects by default, so unlike the previous
- * `@IsObject()`-only annotation, every field below is now actually enforced
- * (audit A1) — including when the draft is created via the AI or MCP paths.
- */
+/** Nested objects are validated too, including for drafts created via AI or MCP. */
 export const parsedDraftTransactionSchema = z.object({
   type: z.nativeEnum(TransactionType),
   description: z.string().min(1),

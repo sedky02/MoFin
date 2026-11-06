@@ -1,15 +1,13 @@
 import * as Sentry from "@sentry/nextjs";
 
-// Unset SENTRY_DSN (local dev has no Sentry project) means Sentry.init is a
-// no-op client — every capture call elsewhere in the app stays safe to call
-// unconditionally (audit OBS-01).
+// An unset SENTRY_DSN (local dev) makes Sentry.init a no-op, so every capture call stays safe to
+// make unconditionally.
 export function register() {
   if (process.env.NEXT_RUNTIME === "nodejs") {
     Sentry.init({ dsn: process.env.SENTRY_DSN, tracesSampleRate: 0 });
   }
 }
 
-// Reports errors from Server Components/Route Handlers/Server Actions that
-// Next.js's own error handling catches before they'd otherwise reach one of
-// our error.tsx boundaries (which report via lib/error-reporting.ts instead).
+// Reports errors from Server Components, Route Handlers and Server Actions that Next.js catches
+// before an error.tsx boundary (which reports via lib/error-reporting.ts).
 export const onRequestError = Sentry.captureRequestError;

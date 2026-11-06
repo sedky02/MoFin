@@ -5,15 +5,13 @@ import { DemoButton } from "./demo-button";
 import { useSignedIn } from "./use-signed-in";
 
 /**
- * The closing invitation, set on the brand's own colour as one full-width
- * band: the page's single loud moment, after the demos have done the
- * explaining.
+ * The page's single loud moment: a full-width band on the brand colour, after the demos have done
+ * the explaining.
  */
 export function FinalCta() {
   const signedIn = useSignedIn();
   return (
     <section aria-labelledby="final-cta-title" className="bg-primary text-primary-foreground">
-      {/* Centred, with the actions right under the text, so the band reads as one block. */}
       <div className="mx-auto flex max-w-3xl flex-col items-center px-4 py-20 text-center sm:px-6 sm:py-24">
         <h2
           id="final-cta-title"

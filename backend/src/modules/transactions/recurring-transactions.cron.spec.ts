@@ -104,7 +104,6 @@ describe('RecurringTransactionsCron', () => {
     await cron.generateDueOccurrences();
 
     expect(transactionsService.create).not.toHaveBeenCalled();
-    // Only the lock transaction ran; no occurrence transaction.
     expect(prisma.$transaction).toHaveBeenCalledTimes(1);
     expect(transactionsService.announceCreated).not.toHaveBeenCalled();
     expect(prisma.transaction.update).toHaveBeenCalledWith({

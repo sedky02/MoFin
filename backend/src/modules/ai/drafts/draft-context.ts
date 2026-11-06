@@ -17,7 +17,6 @@ export interface DraftCategory {
   userId?: string | null;
 }
 
-/** Everything a parser needs to know about the user to read one message. */
 export interface DraftContext {
   input: string;
   accounts: DraftAccount[];
@@ -26,7 +25,6 @@ export interface DraftContext {
   defaultCurrency?: string;
   /** The user's IANA zone; "yesterday" and "today" are read in it. */
   timeZone: string;
-  /** Today's date (YYYY-MM-DD) in `timeZone`. */
   today: string;
   now: Date;
 }

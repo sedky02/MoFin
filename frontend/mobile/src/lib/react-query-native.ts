@@ -1,6 +1,5 @@
-// React Query's online and focus signals come from the browser by default. On a phone, connectivity
-// comes from NetInfo and "focus" is the app returning to the foreground (AppState). Paused queries
-// resume when the network is back, which is what recovers the app after airplane mode.
+// React Query takes online and focus signals from the browser; on a phone they come from NetInfo
+// and AppState, so paused queries resume when the network returns.
 import NetInfo from '@react-native-community/netinfo';
 import { focusManager, onlineManager } from '@tanstack/react-query';
 import { AppState, Platform, type AppStateStatus } from 'react-native';

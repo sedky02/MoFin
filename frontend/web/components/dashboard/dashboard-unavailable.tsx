@@ -26,17 +26,12 @@ const COPY: Record<PrefetchFailureKind, { title: string; description: string }> 
   },
 };
 
-/** Copy for each failure kind; exported for tests. */
 export function dashboardUnavailableCopy(kind: PrefetchFailureKind) {
   return COPY[kind];
 }
 
 const SIGN_IN_URL = "/login?next=%2Fdashboard&reason=expired";
 
-/**
- * Inline replacement for the dashboard when its server prefetch failed, saying
- * which way it failed. error.tsx stays the fallback for anything unexpected.
- */
 export function DashboardUnavailable({ kind }: { kind: PrefetchFailureKind }) {
   const router = useRouter();
   const [pending, startTransition] = React.useTransition();

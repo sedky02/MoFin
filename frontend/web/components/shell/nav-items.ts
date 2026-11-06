@@ -69,9 +69,8 @@ export const BOTTOM_NAV_ITEMS: NavItem[] = BOTTOM_NAV_HREFS.flatMap((href) =>
 const isUnder = (pathname: string, href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
 /**
- * Whether a nav item is the current section, for the sidebar and the bottom bar.
- * The dashboard matches exactly, other items match their section. The add form
- * sits under /transactions but is its own item, so it doesn't also light up the list.
+ * Whether a nav item is the current section: the dashboard matches exactly, others by section
+ * prefix. The add form is under /transactions but its own item, so it doesn't light up the list.
  */
 export function isNavActive(pathname: string, href: string): boolean {
   if (href === "/dashboard") return pathname === "/dashboard";

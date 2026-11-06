@@ -49,7 +49,6 @@ describe('IdTokenVerifier', () => {
       keys,
     });
 
-  /** A Google-like ID token; `claims` override the defaults (undefined drops one). */
   function sign(
     claims: JWTPayload = {},
     opts: { key?: KeyLike; kid?: string } = {},
@@ -78,7 +77,6 @@ describe('IdTokenVerifier', () => {
       .verify(await token)
       .catch((e: unknown) => e);
     expect(err).toBeInstanceOf(UnauthorizedException);
-    // One generic message whatever the reason, so nothing leaks.
     expect((err as UnauthorizedException).message).toBe(
       INVALID_ID_TOKEN_MESSAGE,
     );

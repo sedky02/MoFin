@@ -2,8 +2,6 @@ import { NextResponse } from "next/server";
 import { bffHeaders } from "@/lib/bff-headers";
 import { BACKEND_TIMEOUT_MS, BACKEND_URL } from "@/lib/auth-cookies";
 
-//export const dynamic = "force-dynamic";
-
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
   if (!body?.email || !body?.password) {
@@ -39,9 +37,7 @@ export async function POST(req: Request) {
     return NextResponse.json(data, { status: upstream.status });
   }
 
-  // No auto-login: the backend deliberately returns the same body whether or
-  // not this email was already registered (never a distinguishable 409), so
-  // there are no tokens to set here — the client logs in separately (audit
-  // SEC-XX).
+  // No auto-login: the backend returns the same body whether or not the email existed, so there are
+  // no tokens to set; the client logs in separately.
   return NextResponse.json(data);
 }

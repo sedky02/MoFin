@@ -46,10 +46,8 @@ export function TypeBadge({
 }
 
 /**
- * Confidence pill: green ≥0.8, yellow ≥0.5, red <0.5.
- * `score` is a decimal string (Prisma Decimal serializes to a string, not a
- * number), so it's parsed the same way money strings are — never coerced
- * with native +/parseFloat.
+ * Green ≥0.8, yellow ≥0.5, red <0.5. `score` is a decimal string (Prisma Decimal serializes to a
+ * string), parsed like money strings, never with native +/parseFloat.
  */
 export function ConfidencePill({
   score,

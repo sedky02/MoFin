@@ -4,9 +4,8 @@ import { Public } from '../../common/decorators/public.decorator';
 import { OAuthService } from './oauth.service';
 
 /**
- * OAuth discovery documents. These MUST be served at the origin root (no
- * `api/v1` prefix — see the setGlobalPrefix `exclude` in main.ts), because
- * claude.ai derives them from the resource origin per RFC 8414 / RFC 9728.
+ * Discovery documents must be served at the origin root (see main.ts's prefix exclude): claude.ai
+ * derives them from the resource origin per RFC 8414/9728.
  */
 @ApiExcludeController()
 @Public()

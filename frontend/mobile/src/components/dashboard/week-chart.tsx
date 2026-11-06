@@ -14,23 +14,18 @@ import { haptics } from '@/lib/haptics';
 import { cn } from '@/lib/utils';
 
 export const WEEK_CHART_HEIGHT = 170;
-/** Width of the y-axis labels on the right. */
 const AXIS_WIDTH = 56;
-/** Room above the top gridline for a bubble over the tallest bar. */
 const TOP_ROOM = 26;
 const BUBBLE_HEIGHT = 22;
-/** Room for the widest amount bubble ("-1,234.500 TND") on one line. */
 const BUBBLE_WIDTH = 120;
 
-/** What a screen reader says for one day. */
 export function dayLabel(p: DailySeriesPoint, currency: string): string {
   return `${dayLong(p.date)}: income ${formatMoney(p.income, currency)}, expenses ${formatMoney(p.expenses, currency)}, balance ${formatMoney(p.balance, currency)}`;
 }
 
 /**
- * Seven bars, Monday to Sunday, for the chosen metric, over gridlines with a y-axis of amounts on
- * the right. Bars grow from zero (down for a negative balance). Tapping a bar shows its exact amount
- * just above it (below a negative one); tapping it again hides it. Days still ahead have no bar.
+ * Seven bars Monday to Sunday over gridlines, y-axis on the right; bars grow from zero (down when
+ * negative). Tap a bar for its exact amount, tap again to hide it; days ahead have no bar.
  */
 export function WeekChart({
   points,

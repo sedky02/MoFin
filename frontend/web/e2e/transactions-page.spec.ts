@@ -1,12 +1,7 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
-// B-19: the transaction list lives at /transactions (/search redirects there),
-// is called Transactions everywhere, filters by type, recurrence and archived
-// accounts, sorts by date or amount, and names each row's account.
-// Needs the UX fixture (`npm run e2e:seed`): a monthly 12.345 TND "Rent (monthly)"
-// on Dinar, a monthly $500 "Emergency fund transfer" from Main checking, five
-// "Groceries run" expenses (180.50 to 208.50), a deleted "Duplicate charge
-// (deleted)", and "Old savings", archived after its opening deposit.
+// The list lives at /transactions (/search redirects), filters by type, recurrence and archived
+// accounts, sorts, and names each row's account. Needs `npm run e2e:seed`.
 test.use({ locale: "en-US" });
 
 type Tx = {
@@ -25,7 +20,6 @@ async function searchApi(page: Page, params: Record<string, string>): Promise<{ 
   return (await res.json()) as { data: Tx[]; total: number };
 }
 
-/** Result rows: every link to a transaction's page in the main area. */
 const rows = (page: Page): Locator => page.locator('main a[href^="/transactions/"]:not([href="/transactions/new"])');
 
 function row(page: Page, description: string): Locator {
@@ -41,7 +35,6 @@ async function settled(page: Page) {
   if (await footer.isVisible()) await expect(footer).not.toContainText("updating");
 }
 
-/** The rarer filters start collapsed behind a "More filters" button (open already when the URL carries some). */
 async function openFilters(page: Page) {
   const toggle = page.getByRole("button", { name: /^More filters/ });
   if ((await toggle.getAttribute("aria-expanded")) === "false") await toggle.click();

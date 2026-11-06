@@ -10,9 +10,8 @@ import { handleApiError } from "@/lib/form-errors";
 
 export type GoalListStatus = "active" | "archived" | "all";
 
-// No infinite-scroll UI for goals or goal history — 100 (the backend's max
-// page size) comfortably covers a real user's list while keeping the
-// endpoint itself bounded rather than truly unbounded.
+// No infinite scroll: 100 (the backend's max page) is effectively everything while the endpoint
+// stays bounded.
 const GOALS_PAGE_SIZE = 100;
 
 export function useGoals(status: GoalListStatus = "active", enabled = true) {
@@ -87,7 +86,6 @@ export function useUpdateGoal() {
   });
 }
 
-/** Cancels a goal (archives it server-side), moving it from Active to Cancelled. Reversible via useRestoreGoal. */
 export function useArchiveGoal() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -110,7 +108,6 @@ export function useArchiveGoal() {
   });
 }
 
-/** Brings a cancelled goal back to Active. Recurring goals resume; missed periods are caught up by the daily job. */
 export function useRestoreGoal() {
   const queryClient = useQueryClient();
   return useMutation({

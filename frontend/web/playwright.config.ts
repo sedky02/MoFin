@@ -2,9 +2,8 @@ import { defineConfig, devices } from "@playwright/test";
 
 const BASE_URL = process.env.E2E_BASE_URL ?? "http://localhost:3001";
 
-// The backend (:3000) and `next dev` (:3001) are started by hand. The webServer
-// block only exists so a missing server fails with a clear message; it never
-// starts anything on its own when one is already listening.
+// The backend (:3000) and `next dev` (:3001) are started by hand; the webServer block only makes a
+// missing server fail clearly and never starts anything.
 export default defineConfig({
   testDir: "./e2e",
   testMatch: /.*\.spec\.ts|.*\.setup\.ts/,

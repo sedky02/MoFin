@@ -1,20 +1,13 @@
 import { AccountMemberRole, Prisma } from '@prisma/client';
 
-/** Everyone who can reach an account: its owner, or a member with a role. */
 export type AccountRole = 'OWNER' | AccountMemberRole;
 
 /**
- * What someone may want to do with an account:
- * - `view`: read it and everything on it;
- * - `transact`: add, edit and delete its transactions, run its recurring
- *   series, and aim drafts at it;
- * - `goals`: create, edit and end the goals linked to it;
- * - `manage`: change the account itself, its members and its invitations;
- * - `leave`: stop being a member. The owner can't: an account always has one.
+ * view: read. transact: change transactions, series and drafts. goals: linked goals. manage: the
+ * account, members, invitations. leave: members only.
  */
 export type AccountAction = 'view' | 'transact' | 'goals' | 'manage' | 'leave';
 
-/** The whole permission model. Everything else asks this table. */
 const ALLOWED: Record<AccountAction, readonly AccountRole[]> = {
   view: ['OWNER', AccountMemberRole.EDITOR, AccountMemberRole.VIEWER],
   transact: ['OWNER', AccountMemberRole.EDITOR],
@@ -28,9 +21,8 @@ export function can(role: AccountRole, action: AccountAction): boolean {
 }
 
 /**
- * Prisma filter for the accounts `userId` may perform `action` on, to compose
- * into a query. Goes through relations rather than a list of ids, so it can
- * nest under `items: { some: { account: ... } }` as well.
+ * Prisma filter for accounts `userId` may do `action` on; built from relations so it nests under
+ * `items: { some: { account } }`.
  */
 export function accountScope(
   userId: string,

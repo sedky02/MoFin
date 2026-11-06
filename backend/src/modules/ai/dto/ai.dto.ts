@@ -40,9 +40,7 @@ export interface AiChatMessageView {
   id: string;
   role: 'user' | 'assistant';
   content: string;
-  /** Tools the assistant looked at to answer, in call order, without repeats. */
   usedTools: string[];
-  /** Charts computed from the ledger, shown under the reply. */
   charts: AiChart[];
   /**
    * Drafts this answer created, in their current state: one approved or
@@ -63,7 +61,6 @@ export interface AiChatDetailView extends AiChatSummaryView {
   messages: AiChatMessageView[];
 }
 
-/** What sending a message returns: the chat (new or updated) and the two saved turns. */
 export interface AiChatTurnView {
   chat: AiChatSummaryView;
   messages: [AiChatMessageView, AiChatMessageView];

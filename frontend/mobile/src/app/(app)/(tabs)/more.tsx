@@ -81,9 +81,8 @@ function Group({ title, highlight, children }: { title: string; highlight?: bool
 }
 
 /**
- * The More tab: who is signed in, then everything the tab bar has no room for, grouped (your money,
- * the AI assistant, the app), each row with a coloured icon and a live line ("3 accounts",
- * "2 active goals", "1 app connected") so it's clear what is behind it.
+ * Who is signed in, then everything the tab bar has no room for, grouped, each row with a live line
+ * ("3 accounts", "2 active goals").
  */
 export default function MoreScreen() {
   const insets = useSafeAreaInsets();
@@ -102,7 +101,6 @@ export default function MoreScreen() {
 
   return (
     <ScrollView className="flex-1 bg-background" contentContainerClassName="gap-6 p-4" contentContainerStyle={{ paddingBottom: 24 + insets.bottom }}>
-      {/* Who is signed in; opens the profile. */}
       <Link href="/settings/profile" asChild>
         <Pressable
           role="link"

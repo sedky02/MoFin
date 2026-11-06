@@ -14,7 +14,6 @@ import type { Category } from '@/core/types';
 import { useArchiveCategory, useCategories, useRestoreCategory } from '@/hooks/useCategories';
 import { Archive, ArrowLeft, Plus, Search, Tags } from '@/lib/icons';
 
-/** One list of categories in a single card, rows divided by hairlines. */
 function Group({ title, hint, items, ...actions }: { title: string; hint?: string; items: Category[] } & CategoryRowActions) {
   if (items.length === 0) return null;
   return (

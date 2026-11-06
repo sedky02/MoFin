@@ -1,11 +1,6 @@
 /**
- * For specs that need real Postgres: what the in-memory fake can't show, such
- * as raw SQL, relation filters and foreign keys. Run them with
- *
- *   TEST_DATABASE_URL="postgresql://…@localhost:5432/mofin_test" npm run test:db
- *
- * These specs write to the database, so anything but a local one named
- * `*_test` is refused, whatever the environment says.
+ * For specs needing real Postgres: TEST_DATABASE_URL=postgresql://…/mofin_test npm run test:db
+ * Anything but a local database named `*_test` is refused.
  */
 export function testDatabaseUrl(): string {
   const raw = process.env.TEST_DATABASE_URL;

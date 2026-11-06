@@ -3,12 +3,10 @@ import type { Goal } from "@/core/types";
 export interface CancelledGroup {
   /** "2026-09", so groups sort and compare as plain strings. */
   key: string;
-  /** "September 2026", in UTC like the rest of the goal dates. */
   label: string;
   goals: Goal[];
 }
 
-/** Cancelled goals as a history: newest cancelled first, grouped under the month they were cancelled in. */
 export function groupCancelledGoals(goals: Goal[]): CancelledGroup[] {
   const cancelled = goals
     .filter((g) => g.archivedAt)

@@ -21,11 +21,8 @@ import { cn } from '@/lib/utils';
 export const CONFIRM_WORD = 'DELETE';
 
 /**
- * A destructive action behind a typed word. There is no password to ask for (a Google-only
- * account has none), so the word is what stops a stray tap: the action button stays disabled until
- * it is typed (surrounding spaces are ignored, as on the web). `onConfirm` does the work and
- * throws on failure, which shows as a toast; on success the dialog closes itself unless
- * `closeWhenDone` is false, for an action that navigates away.
+ * No password exists for Google-only accounts, so the typed word stops a stray tap. `onConfirm`
+ * throws to show a toast; on success it closes unless `closeWhenDone` is false.
  */
 export function TypeToConfirmDialog({
   open,

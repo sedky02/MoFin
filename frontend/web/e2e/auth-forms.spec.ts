@@ -1,12 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
 
-// B-46: the register and login forms validate calmly, say things once, and carry
-// the email from register to login. Registration is rate limited per email + IP
-// and answers the same whether or not the email exists, so the spec registers
-// once per project with a fresh address.
+// Register and login validate calmly and carry the email across. Registration is rate limited, so
+// the spec registers once per project with a fresh address.
 test.use({ locale: "en-US", storageState: { cookies: [], origins: [] } });
 
-/** Field errors and banners. Filtered by text: Next's route announcer is a role="alert" too. */
 function alerts(page: Page, text: string) {
   return page.getByRole("alert").filter({ hasText: text });
 }

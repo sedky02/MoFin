@@ -32,13 +32,12 @@ export class OAuthService {
     private readonly config: ConfigService,
   ) {}
 
-  // --- Config-derived URLs (issuer comes from config, never the Host header) ---
+  // Issuer comes from config, never the Host header.
 
   get issuer(): string {
     return this.config.getOrThrow<string>('OAUTH_ISSUER').replace(/\/$/, '');
   }
 
-  /** Canonical MCP resource URL, used as the access-token audience. */
   get resourceUri(): string {
     return (
       this.config.get<string>('OAUTH_RESOURCE_URI') ??
@@ -71,8 +70,6 @@ export class OAuthService {
     };
   }
 
-  // --- Dynamic Client Registration (RFC 7591) ---
-
   async registerClient(dto: RegisterClientDto) {
     for (const uri of dto.redirect_uris) {
       this.assertRedirectUriAllowed(uri);
@@ -103,9 +100,8 @@ export class OAuthService {
     };
   }
 
-  // Open client registration: any host may register. Security still rests on
-  // exact redirect_uri matching at /authorize, mandatory login, and per-user
-  // consent. We only enforce https (localhost permitted for local dev).
+  // Open registration: any host may register. Security rests on exact redirect_uri matching,
+  // mandatory login and per-user consent; we only enforce https (localhost for dev).
   private assertRedirectUriAllowed(uri: string) {
     let parsed: URL;
     try {
@@ -120,7 +116,6 @@ export class OAuthService {
     }
   }
 
-  /** The name a client registered with ("Claude"), for labelling what it did. */
   async clientName(clientId: string): Promise<string | null> {
     const client = await this.prisma.oAuthClient.findUnique({
       where: { clientId },
@@ -128,8 +123,6 @@ export class OAuthService {
     });
     return client?.clientName ?? null;
   }
-
-  // --- Authorization endpoint helpers ---
 
   async getClientOrThrow(clientId: string) {
     const client = await this.prisma.oAuthClient.findUnique({
@@ -139,7 +132,6 @@ export class OAuthService {
     return client;
   }
 
-  /** Exact-string match against the registered set — no prefix/wildcard matching. */
   assertRedirectUriRegistered(
     client: { redirectUris: string[] },
     redirectUri: string,
@@ -166,7 +158,6 @@ export class OAuthService {
     });
   }
 
-  /** Connected AI apps for the settings page. `active` = a live (unrevoked, unexpired) refresh token exists. */
   async listGrants(userId: string) {
     const [grants, liveTokens] = await Promise.all([
       this.prisma.oAuthGrant.findMany({ where: { userId } }),
@@ -189,10 +180,8 @@ export class OAuthService {
   }
 
   /**
-   * Fully disconnects a client: forgets the consent (so the next connect asks
-   * again), revokes every refresh token it holds, and drops unused auth codes.
-   * Access tokens already issued are stateless JWTs and stay valid until they
-   * expire (JWT_ACCESS_TTL, 15m by default) but can no longer be renewed.
+   * Forgets the consent, revokes every refresh token and drops unused codes. Issued access tokens
+   * are stateless and live until they expire, but can't be renewed.
    */
   async revokeGrant(userId: string, clientId: string) {
     const [grant] = await this.prisma.$transaction([
@@ -210,9 +199,8 @@ export class OAuthService {
   }
 
   /**
-   * RFC 7009 token revocation. Always succeeds from the caller's point of view
-   * (an unknown/expired token must not reveal anything); a refresh token takes
-   * its whole rotation family with it.
+   * Always succeeds from the caller's view (an unknown token must not reveal anything); a refresh
+   * token takes its whole rotation family with it.
    */
   async revokeToken(token: string) {
     const stored = await this.prisma.oAuthRefreshToken.findUnique({
@@ -225,10 +213,7 @@ export class OAuthService {
     });
   }
 
-  /**
-   * Issue a single-use authorization code. The raw code is returned to the caller
-   * (placed in the redirect); only its hash is persisted.
-   */
+  /** Only the code's hash is persisted; the raw code goes to the caller for the redirect. */
   async issueAuthorizationCode(
     userId: string,
     q: AuthorizeQueryDto,
@@ -251,8 +236,6 @@ export class OAuthService {
     return rawCode;
   }
 
-  // --- Token endpoint ---
-
   async exchangeAuthorizationCode(params: {
     code: string;
     codeVerifier: string;
@@ -271,9 +254,8 @@ export class OAuthService {
     });
 
     if (record && claim.count === 0) {
-      // A used code presented again: whoever has it may also hold the tokens it
-      // bought, so the client's refresh tokens for this user are revoked
-      // (RFC 6749 §4.1.2). Access tokens already issued expire on their own.
+      // A used code presented again: whoever has it may hold the tokens it bought, so the client's
+      // refresh tokens for this user are revoked (RFC 6749 §4.1.2).
       await this.prisma.oAuthRefreshToken.updateMany({
         where: {
           userId: record.userId,
@@ -284,7 +266,6 @@ export class OAuthService {
       });
     }
     if (!record || claim.count === 0) {
-      // Either unknown or already used → reject (replay defense).
       throw new BadRequestException({
         error: 'invalid_grant',
         error_description: 'code invalid or already used',
@@ -372,9 +353,8 @@ export class OAuthService {
     });
     if (!user) throw new BadRequestException({ error: 'invalid_grant' });
 
-    // Claim the presented token and create its successor in one transaction,
-    // so two concurrent refreshes with the same token can't both rotate it:
-    // the loser claims nothing and is treated as a reuse.
+    // Claim the token and create its successor in one transaction, so two concurrent refreshes
+    // can't both rotate it: the loser claims nothing and counts as reuse.
     const successor = randomBytes(32).toString('base64url');
     const next = await this.prisma.$transaction(async (tx) => {
       const { count } = await tx.oAuthRefreshToken.updateMany({
@@ -461,13 +441,9 @@ export class OAuthService {
     };
   }
 
-  // --- Cross-origin login bridge ---
-
   /**
-   * Called by the web BFF (authenticated with the user's backend access token).
-   * Creates a backend authorize-session and returns a one-time handoff secret to
-   * place in the consume redirect. The handoff secret is rotated at consume time
-   * so the value that travels in the URL never remains the live cookie value.
+   * Called by the web BFF with the user's backend token: creates an authorize session and returns a
+   * one-time handoff secret, rotated at consume time so the URL value is never the live cookie.
    */
   async createHandoff(accessToken: string): Promise<string> {
     let payload: { sub: string; email?: string };
@@ -493,10 +469,7 @@ export class OAuthService {
     return handoff;
   }
 
-  /**
-   * Consume a handoff secret: validate it, then rotate the session to a fresh
-   * secret (single-use of the URL-exposed value) and return the new cookie value.
-   */
+  /** Validates the handoff, then rotates to a fresh secret so the URL-exposed value is single-use. */
   async consumeHandoff(handoff: string): Promise<string> {
     const session = await this.prisma.authSession.findUnique({
       where: { sessionToken: sha256(handoff) },
@@ -516,7 +489,6 @@ export class OAuthService {
     return fresh;
   }
 
-  /** Resolve a live session cookie value to the user, or null. */
   async resolveSession(
     cookieValue: string | undefined,
   ): Promise<{ id: string; email: string } | null> {
@@ -532,13 +504,10 @@ export class OAuthService {
   }
 }
 
-// --- crypto helpers ---
-
 function base64urlSha256(input: string): string {
   return createHash('sha256').update(input).digest('base64url');
 }
 
-/** Parse a JWT-style duration ('15m', '1h', '900s', '30d', or a number) to seconds. */
 function parseDurationSeconds(ttl: string | number): number {
   if (typeof ttl === 'number') return ttl;
   const match = /^(\d+)\s*([smhd])?$/.exec(ttl.trim());

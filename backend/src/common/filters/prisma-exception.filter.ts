@@ -16,27 +16,8 @@ type CaughtPrismaError =
   | Prisma.PrismaClientUnknownRequestError;
 
 /**
- * Translates Prisma errors into proper HTTP responses instead of leaking them
- * as unhandled 500s, or — the bug this filter used to have — flattening every
- * unrecognized error into a 400 (audit A5/DATA-XX).
- *
- *  - P2002 unique-constraint violation              -> 409 Conflict
- *  - P2025 record-not-found                         -> 404 Not Found
- *  - P2003 foreign-key violation                     -> 409 Conflict (references a row
- *                                                        that doesn't/no longer exists —
- *                                                        plausible under a benign race,
- *                                                        not necessarily a bug)
- *  - P2024 connection-pool timeout                   -> 503 Service Unavailable
- *  - PrismaClientInitializationError (P1xxx)          -> 503 Service Unavailable
- *  - PrismaClientRustPanicError/UnknownRequestError   -> 503 Service Unavailable
- *  - any other P2xxx                                 -> 400 Bad Request
- *
- * The 503 vs 400 distinction is not cosmetic: the frontend's retry policy
- * (query-client.ts) never retries a 4xx, so mislabeling a transient DB
- * connectivity blip or pool exhaustion as 400 turns it into a
- * permanent-looking failure the user cannot retry past. All non-4xx branches
- * log at `error` (not `warn`) with the request context, so an outage is
- * actually visible/alertable instead of sitting in a warn log no one watches.
+ * Maps Prisma errors to HTTP: unique/foreign-key 409, not found 404, pool and engine failures 503,
+ * else 400. The frontend never retries a 4xx, hence 503.
  */
 @Catch(
   Prisma.PrismaClientKnownRequestError,
@@ -53,9 +34,7 @@ export class PrismaExceptionFilter implements ExceptionFilter {
     const context = `${request.method} ${request.originalUrl ?? request.url}`;
 
     if (!(exception instanceof Prisma.PrismaClientKnownRequestError)) {
-      // Connectivity failure, engine crash, or a genuinely unclassified
-      // error — none of these are caused by the request's shape, so they're
-      // operational/transient, not a client error.
+      // Not caused by the request's shape, so it is operational and transient, not a client error.
       this.logger.error(
         `Prisma ${exception.constructor.name} during ${context}: ${exception.message}`,
         exception.stack,

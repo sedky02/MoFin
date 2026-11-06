@@ -11,16 +11,14 @@ import { voiceOverlay } from '@/lib/voice-overlay';
 import { cn } from '@/lib/utils';
 import { COLORS } from '@/theme/colors';
 
-/** The route that is an action (opens the add form) rather than a place; drawn as the raised + button. */
 /** Holding Add this long opens the voice overlay instead of the form. */
 export const VOICE_HOLD_MS = 350;
 
 export const ADD_ROUTE = 'add';
 
 /**
- * The bottom tab bar. The press feedback stays inside each button: the stock bar used a borderless
- * Android ripple whose circle spread past the bar. The current tab gets a pill behind its icon, and
- * Add is a filled circle in the middle, since it is the main action rather than a place.
+ * Press feedback stays inside each button (the stock bar's borderless Android ripple spread past
+ * the bar). The current tab gets a pill; Add is a filled circle, the main action.
  */
 export function AppTabBar({ state, descriptors, emitter, navigateToTab, insets }: BottomTabBarProps) {
   const { colorScheme } = useColorScheme();

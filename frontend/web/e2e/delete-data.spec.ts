@@ -1,11 +1,8 @@
 import { expect, test } from "@playwright/test";
 import { formatViolations, runAxe } from "./helpers/axe";
 
-// Settings → Data → Delete all data removes everything the user recorded and keeps the account:
-// still signed in, same profile, starter categories back, and the dashboard starts over
-// from the first-run welcome.
-//
-// Uses a throwaway user per project, never the shared fixture user.
+// Delete all data keeps the account and session but starts the dashboard over.
+// Uses a throwaway user per project.
 
 test.describe("settings delete data", () => {
   test.use({ storageState: { cookies: [], origins: [] } });
@@ -19,7 +16,6 @@ test.describe("settings delete data", () => {
     const login = await page.request.post("/api/auth/login", { data: { email, password } });
     expect(login.ok(), `login failed with ${login.status()}`).toBeTruthy();
 
-    // Something to delete: an account with a balance, a transaction and a category of their own.
     const account = await page.request.post("/api/backend/accounts", {
       data: { name: "Cash", type: "CASH", currency: "EUR", openingBalance: "50" },
     });
@@ -37,7 +33,6 @@ test.describe("settings delete data", () => {
     ).toBeTruthy();
 
     await page.goto("/settings");
-    // A row of the Data card, next to the exports: not a red card of its own.
     const data = page.locator("#data");
     await expect(data.getByText("Danger zone")).toBeVisible();
     await expect(data.getByRole("heading", { name: "Delete all data", level: 3 })).toBeVisible();
@@ -56,7 +51,6 @@ test.describe("settings delete data", () => {
     const confirm = form.getByLabel("Type DELETE to confirm");
     const submit = form.getByRole("button", { name: "Delete data" });
 
-    // Without the word, nothing is deleted.
     await submit.click();
     await expect(form.getByText("Type DELETE to confirm.")).toBeVisible();
     const stillThere = await page.request.get("/api/backend/accounts?status=all&limit=100&offset=0");
@@ -67,7 +61,6 @@ test.describe("settings delete data", () => {
 
     await expect(page.getByText("All your data was deleted.")).toBeVisible();
     await expect(dialog).toBeHidden();
-    // Still on Settings, still signed in.
     await expect(page).toHaveURL(/\/settings$/);
     expect((await page.request.get("/api/backend/users/me")).ok()).toBeTruthy();
 
@@ -77,7 +70,6 @@ test.describe("settings delete data", () => {
     expect(categories.data.map((c: { name: string }) => c.name)).not.toContain("My own");
     expect(categories.data.map((c: { name: string }) => c.name)).toContain("Food");
 
-    // The dashboard starts over.
     await page.goto("/dashboard");
     await expect(page.getByRole("heading", { level: 1, name: "Add your first account" })).toBeVisible();
     await expect(page.getByRole("form", { name: "Add your first account" })).toBeVisible();

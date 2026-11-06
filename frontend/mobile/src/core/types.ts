@@ -34,7 +34,6 @@ export interface UserSettings {
   defaultCurrency?: string;
   /** Account the dashboard summary defaults to; absent = all accounts. */
   mainAccountId?: string;
-  // open-ended; backend stores arbitrary JSON settings
   [key: string]: unknown;
 }
 
@@ -49,13 +48,9 @@ export interface Account {
   archivedAt?: string | null;
   createdAt: string;
   updatedAt: string;
-  /** The owner's id. */
   userId?: string;
-  /** This viewer's role on the account. */
   role?: AccountRole;
-  /** Other people can reach it. */
   isShared?: boolean;
-  /** Everyone on it, the owner included. */
   memberCount?: number;
   ownerName?: string | null;
 }
@@ -80,7 +75,6 @@ export interface AccountInvitation {
   createdAt: string;
 }
 
-/** What someone holding an invitation link sees before answering it. */
 export interface InvitationPreview {
   accountName: string;
   currency: string;
@@ -118,16 +112,15 @@ export interface LedgerItem {
   account?: Account;
   categoryId?: string | null;
   category?: Category | null;
-  // Backend field name; DEBIT = out of account, CREDIT = into account.
+  // out -
   direction: LedgerItemType;
   amount: string;
   currency: string;
   memo?: string | null;
 }
 
-// A Transaction is the business event; it has NO amount of its own — the money
-// lives in `items` (double-entry ledger legs). Use transactionAmount() in
-// lib/format to derive the display amount.
+// A transaction has no amount of its own: the money lives in `items` (ledger legs); use
+// transactionAmount() in lib/format.
 export interface Transaction {
   id: string;
   type: TransactionType;
@@ -145,9 +138,8 @@ export interface Transaction {
   createdBy?: { id: string; displayName?: string | null } | null;
   updatedBy?: { id: string; displayName?: string | null } | null;
 
-  // Recurrence — only meaningful on the root transaction that started a
-  // series (isRecurring true, parentTransactionId null). Generated
-  // occurrences carry parentTransactionId pointing back to that root.
+  // Recurrence is only meaningful on the root that started a series (isRecurring, no
+  // parentTransactionId); occurrences point back to it.
   isRecurring: boolean;
   recurringInterval?: RecurringInterval | null;
   recurringStatus?: RecurringStatus | null;
@@ -161,10 +153,8 @@ export interface Transaction {
   recurringError?: string | null;
   lastFailedAt?: string | null;
   parentTransactionId?: string | null;
-
 }
 
-// Shape the AI parser fills in and the review form edits.
 export interface ParsedTransactionData {
   type: TransactionType;
   description: string;
@@ -186,7 +176,6 @@ export interface DraftTransaction {
   reason?: string | null;
   /** Where it came from: the Drafts page input, the chat (typed or spoken), or a connected app. */
   source: DraftSource;
-  /** The connected app's name, for MCP drafts ("Claude"). */
   sourceClient?: string | null;
   createdAt: string;
   updatedAt: string;
@@ -194,7 +183,6 @@ export interface DraftTransaction {
 
 export type DraftSource = "COMPOSER" | "CHAT" | "VOICE" | "MCP";
 
-// A single period's snapshot — history is a series of these per goal.
 export interface GoalInstance {
   id: string;
   goalId: string;
@@ -206,20 +194,16 @@ export interface GoalInstance {
   computedAt: string;
 }
 
-// Only on history rows: LIVE = the open period, computed now (same as the
-// card); PERIOD_END = recorded when the period ended, never recomputed;
-// ENDED = frozen when the goal was cancelled.
+// Only on history rows: LIVE = the open period, computed now; PERIOD_END = recorded when the period
+// ended; ENDED = frozen when the goal was cancelled.
 export type GoalProgressSource = "LIVE" | "PERIOD_END" | "ENDED";
 
 export interface GoalHistoryInstance extends GoalInstance {
   progressSource: GoalProgressSource;
 }
 
-// BALANCE/INCOME are "reach" goals: achieved once progress hits the target,
-// and it stays achieved for the rest of the period. EXPENSE is "stay under":
-// over the cap shows Failed, but it's only judged when the period ends.
-// `currentInstance` is the open period with live progress, or for a cancelled
-// goal the period as it was frozen when the goal was cancelled.
+// BALANCE/INCOME are "reach" goals: achieved once progress hits the target, and it stays so.
+// EXPENSE is "stay under": over the cap is Failed, achieved only at period end.
 export interface Goal {
   id: string;
   accountId: string;
@@ -256,13 +240,10 @@ export interface MonthlySummary {
   // analytics.service.ts computes this via `.toFixed(4)` — a decimal string, not a number.
   savingsRate: string;
   categoryBreakdown: CategoryBreakdownItem[];
-  /** Currencies with income/expense this month (any currency, within the account scope). */
   activeCurrencies?: string[];
   /** Income by category; absent on payloads cached before it existed. */
   incomeBreakdown?: CategoryBreakdownItem[];
 }
-
-// ---- Error shapes ----
 
 export interface ApiError400 {
   message: string;
@@ -272,7 +253,6 @@ export interface ApiError400 {
 export interface ApiError {
   statusCode: number;
   message: string;
-  /** Machine-readable reason on some errors, e.g. AI_UNAVAILABLE or DEMO_LIMIT. */
   code?: string;
 }
 

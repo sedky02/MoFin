@@ -9,7 +9,6 @@ let value: string | null = null;
 let loaded = false;
 const listeners = new Set<() => void>();
 
-/** The device's preferred language as a BCP-47 tag ("fr-TN"), or en-US when it can't be read. */
 export function deviceLocale(): string {
   try {
     return getLocales()[0]?.languageTag || 'en-US';
@@ -18,7 +17,6 @@ export function deviceLocale(): string {
   }
 }
 
-/** Languages offered in Preferences, besides the device default. The recognizer decides what it supports. */
 export const VOICE_LOCALES: { value: string; label: string }[] = [
   { value: 'en-US', label: 'English (US)' },
   { value: 'en-GB', label: 'English (UK)' },
@@ -45,7 +43,6 @@ function load() {
     .catch(() => {});
 }
 
-/** The chosen voice language ('' = device default) and a way to change it. */
 export function useVoiceLocalePreference(): [string, (next: string) => void] {
   React.useEffect(load, []);
   const current = React.useSyncExternalStore(
@@ -66,7 +63,6 @@ export function useVoiceLocalePreference(): [string, (next: string) => void] {
   return [current, set];
 }
 
-/** The language to recognize in: the chosen one, or the device's. */
 export function useVoiceLocale(): string {
   const [chosen] = useVoiceLocalePreference();
   return chosen || deviceLocale();

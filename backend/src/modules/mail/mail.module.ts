@@ -8,9 +8,8 @@ import {
 } from './mail-senders';
 
 /**
- * Picks the concrete sender from configuration, in this order:
- * SMTP_HOST → real SMTP; MAIL_CAPTURE_DIR (non-production) → JSON files;
- * otherwise → log-only (full body outside production, a warning in it).
+ * Picks the sender: SMTP_HOST → real SMTP; MAIL_CAPTURE_DIR (non-production) → JSON files; else
+ * log-only.
  */
 export function createMailSender(config: ConfigService): MailSender {
   const isProduction = config.get<string>('NODE_ENV') === 'production';

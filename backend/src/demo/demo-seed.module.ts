@@ -11,10 +11,8 @@ import { UsersService } from '../modules/users/users.service';
 import { DemoSeeder } from './demo-seeder';
 
 /**
- * Just the services the demo seed writes through, without their modules: the
- * modules bring controllers (and their guards, which want the throttler and
- * JWT setup) and the nightly jobs, none of which a seed needs. Only
- * DATABASE_URL is read.
+ * Only the services the seed writes through, not their modules: those bring controllers, guards and
+ * nightly jobs a seed doesn't need.
  */
 @Module({
   imports: [

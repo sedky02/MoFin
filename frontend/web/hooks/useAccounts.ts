@@ -11,9 +11,8 @@ import { useHydrationSafe } from "@/hooks/use-hydrating";
 
 export type AccountListStatus = "active" | "archived" | "all";
 
-// No infinite-scroll UI for accounts — a real user's account count never
-// approaches this, so 100 (the backend's max page size) is effectively
-// "everything" while the endpoint itself is never actually unbounded.
+// No infinite scroll: 100 (the backend's max page) is effectively everything while the endpoint
+// stays bounded.
 const ACCOUNTS_PAGE_SIZE = 100;
 
 // The app shell fetches the active list too, so a page reading it hydrates after it is
@@ -38,9 +37,8 @@ export function useAccounts(status: AccountListStatus = "active", enabled = true
 }
 
 /**
- * An opening balance is part of the account's balance, so creating or editing
- * an account can move every balance view: cards, hero totals, the balance
- * chart and Balance goals.
+ * An opening balance is part of the balance, so creating or editing an account can move every
+ * balance view.
  */
 function invalidateBalances(queryClient: QueryClient) {
   queryClient.invalidateQueries({ queryKey: accountKeys.all });
@@ -53,7 +51,6 @@ export interface CreateAccountInput {
   name: string;
   type: AccountType;
   currency: string;
-  /** Decimal string; omitted means 0. */
   openingBalance?: string;
   metadata?: Record<string, unknown>;
 }
@@ -95,7 +92,6 @@ export function useArchiveAccount() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => api.delete<void>(`/accounts/${id}`),
-    // Optimistically drop the account from the cached active list.
     onMutate: async (id) => {
       const key = accountKeys.list("active");
       await queryClient.cancelQueries({ queryKey: key });
@@ -119,7 +115,6 @@ export function useRestoreAccount() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => api.patch<Account>(`/accounts/${id}/restore`),
-    // Optimistically drop the account from the cached archived list.
     onMutate: async (id) => {
       const key = accountKeys.list("archived");
       await queryClient.cancelQueries({ queryKey: key });

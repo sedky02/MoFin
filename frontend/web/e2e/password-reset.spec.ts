@@ -2,10 +2,8 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { expect, test } from "@playwright/test";
 
-// Needs the backend started with MAIL_CAPTURE_DIR (see backend/.env.example),
-// so the reset email lands as a JSON file this spec can read. E2E_MAIL_DIR
-// points at that directory; the default matches MAIL_CAPTURE_DIR=.mail-outbox
-// in backend/.
+// Needs the backend started with MAIL_CAPTURE_DIR (backend/.env.example); E2E_MAIL_DIR points at it
+// (default .mail-outbox).
 const API = process.env.BACKEND_URL ?? "http://localhost:3000/api/v1";
 const MAIL_DIR = resolve(process.env.E2E_MAIL_DIR ?? "../../backend/.mail-outbox");
 
@@ -74,7 +72,6 @@ test.describe("password recovery", () => {
     await page.getByRole("button", { name: "Sign in" }).click();
     await expect(page).toHaveURL(/\/dashboard/);
 
-    // The same link can't be used twice.
     await page.context().clearCookies();
     await page.goto(`${link.pathname}${link.hash}`);
     await page.getByLabel("New password", { exact: true }).fill("Third#Pass3xx");

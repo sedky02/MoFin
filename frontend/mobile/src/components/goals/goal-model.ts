@@ -7,14 +7,11 @@ import type { Account, Goal, GoalType } from '@/core/types';
 
 export const TYPE_LABEL: Record<GoalType, string> = { BALANCE: 'Balance', INCOME: 'Income', EXPENSE: 'Expense' };
 
-/** Tones whose progress amount takes the state colour; on track and cancelled rows keep it plain. */
 export const COLOURED_AMOUNT: GoalTone[] = ['failed', 'behind', 'achieved'];
 
 export type GoalRowModel = {
   currency: string;
-  /** 0-100, how much of the ring to fill. */
   ratio: number;
-  /** Whole percent in the middle of the ring, capped at 100 like the web's ring. */
   percent: number;
   tone: GoalTone;
   overTarget: boolean;

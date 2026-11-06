@@ -20,11 +20,8 @@ const toJsonSchema = zodToJsonSchema as unknown as (
 ) => Record<string, unknown>;
 
 /**
- * The read tools the chat may use, straight from MCP. The one writing tool,
- * create_draft_transaction, is separate (CREATE_DRAFT_TOOL): it only ever makes
- * a pending draft, through the same checks as the Drafts page's parser.
- * `list_accounts` is left out: the system prompt already lists the accounts,
- * and every tool offered costs tokens on every call.
+ * Read tools from MCP. create_draft_transaction is separate; list_accounts is left out because the
+ * prompt already lists accounts and every tool costs tokens.
  */
 export const CHAT_MCP_TOOLS: ReadonlyArray<McpToolName> = [
   'search_transactions',
@@ -39,17 +36,14 @@ export type ChatMcpToolName = (typeof CHAT_MCP_TOOLS)[number];
 export const LIST_CATEGORIES_TOOL = 'list_categories';
 
 /**
- * The one tool that writes: it makes a PENDING draft, never a transaction.
- * The user sees it as a card under the answer and approves, edits or rejects
- * it there or in the Drafts inbox. It runs through the same checks as the
- * Drafts page's own parser (ids must be the user's, dates in their zone).
+ * The one tool that writes: a PENDING draft, never a transaction, shown as a card to approve, edit
+ * or reject. Same checks as the Drafts page parser.
  */
 export const CREATE_DRAFT_TOOL = 'create_draft_transaction';
 
 /**
- * Argument schemas the chat validates against: the MCP ones, except that the
- * monthly summary loses `refresh`. A model has no reason to bypass the
- * analytics cache, and every forced recompute is a full month of queries.
+ * The MCP schemas, minus `refresh` on the monthly summary: a model has no reason to bypass the
+ * cache, and each recompute is a month of queries.
  */
 export const chatToolSchemas: Record<ChatMcpToolName, ZodTypeAny> = {
   ...mcpToolSchemas,
@@ -57,9 +51,8 @@ export const chatToolSchemas: Record<ChatMcpToolName, ZodTypeAny> = {
 };
 
 /**
- * Shorter descriptions than MCP's, which are written for outside assistants
- * reading them once. The chat re-sends every tool on every model call, and the
- * free provider tier is about 8k tokens a minute.
+ * Shorter than MCP's: the chat re-sends every tool on every call, and the free tier is about 8k
+ * tokens a minute.
  */
 const CHAT_DESCRIPTIONS: Partial<Record<ChatMcpToolName, string>> = {
   search_transactions:
@@ -154,9 +147,8 @@ function strip(value: unknown): unknown {
 }
 
 /**
- * Serialises a tool result for the model within a size budget. A paginated
- * result loses rows from the end until it fits and says so, so the model
- * knows to narrow the search instead of assuming it saw everything.
+ * A paginated result loses rows from the end until it fits and says so, so the model narrows the
+ * search instead of assuming it saw everything.
  */
 export function compactToolResult(result: unknown): string {
   const stripped = strip(result);

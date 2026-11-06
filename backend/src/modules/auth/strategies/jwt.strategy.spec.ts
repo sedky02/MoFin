@@ -4,9 +4,8 @@ import * as jwt from 'jsonwebtoken';
 import { JwtStrategy } from './jwt.strategy';
 
 /**
- * Regression test for SEC-XX: an MCP/OAuth access token (different signing
- * secret, different audience, carries a `scope` claim) must never be usable
- * as a first-party web session token.
+ * Regression (SEC-XX): an MCP/OAuth token (different secret, audience, `scope` claim) must never
+ * work as a web session token.
  */
 describe('JwtStrategy MCP token isolation', () => {
   const WEB_SECRET = 'a'.repeat(32);

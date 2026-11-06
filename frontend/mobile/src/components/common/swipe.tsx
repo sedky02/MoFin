@@ -1,6 +1,5 @@
-// Horizontal swipes: stepping through weeks and months, and moving between the tabs. Both follow the
-// finger 1:1, resist where there is nothing further, and spring into place (critically damped, so
-// nothing bounces). The buttons stay; a swipe is a faster way to do the same thing.
+// Horizontal swipes for weeks, months and tabs: they follow the finger 1:1, resist at the edges and
+// spring into place (critically damped). The buttons stay; a swipe is a faster way.
 import * as React from "react";
 import type { StyleProp, ViewStyle } from "react-native";
 import {
@@ -17,10 +16,8 @@ import { scheduleOnRN } from "react-native-worklets";
 
 import { haptics } from "@/lib/haptics";
 
-/** A step needs this much travel, or a flick at least this fast. */
 const COMMIT_DISTANCE = 56;
 const COMMIT_VELOCITY = 600;
-/** How far the new content starts from, sliding in from the side the finger went to. */
 const ENTER_OFFSET = 36;
 const SPRING = { dampingRatio: 1, duration: 380 } as const;
 
@@ -122,7 +119,6 @@ export const SWIPE_TABS = [
 ] as const;
 export type SwipeTab = (typeof SWIPE_TABS)[number];
 
-/** The tab a swipe from `current` lands on, or null at either end. */
 export function adjacentTab(
   current: string,
   direction: "prev" | "next",

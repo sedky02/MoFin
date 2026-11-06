@@ -45,7 +45,6 @@ function Chip({
   );
 }
 
-/** The chip order: the chosen scope first (an account, or All accounts), then the rest in list order. */
 export function chipOrder(accounts: Account[], value?: string): (Account | 'all')[] {
   const chosen = accounts.find((a) => a.id === value);
   if (!chosen) return ['all', ...accounts];
@@ -53,10 +52,8 @@ export function chipOrder(accounts: Account[], value?: string): (Account | 'all'
 }
 
 /**
- * The dashboard's account scope as a row of chips: the chosen one first, then All accounts and the
- * other accounts, one tap to switch, scrolling sideways when there are many, and a + at the end to
- * add an account. Replaces the dropdown in the header, which hid the choices behind a tap and read
- * as a form field. The currency shows only when accounts mix currencies.
+ * Account scope as chips (chosen first, then All accounts, then the rest) with a + to add; replaces
+ * the dropdown that hid the choices. Currency shows only when mixed.
  */
 export function AccountChips({
   accounts,
@@ -67,7 +64,6 @@ export function AccountChips({
   accounts: Account[];
   value?: string;
   onChange: (accountId?: string) => void;
-  /** The + chip: add an account. */
   onAdd?: () => void;
 }) {
   const ref = React.useRef<ScrollViewInstance>(null);

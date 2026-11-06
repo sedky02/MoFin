@@ -39,13 +39,8 @@ import { UsersModule } from './modules/users/users.module';
     HealthModule,
     EventEmitterModule.forRoot({ wildcard: false }),
     ScheduleModule.forRoot(),
-    // Global baseline rate limit; auth endpoints tighten this further (audit
-    // B5) via AuthThrottlerGuard. 300/min accommodates a dashboard's normal
-    // burst of parallel fetches (accounts, transactions, goals, analytics,
-    // etc. firing on load/refetch) per real client IP — see main.ts's
-    // `trust proxy` setting and trusted-client-ip.middleware.ts, which are
-    // what make "per real client IP" true instead of this counting the whole
-    // user base as one BFF client.
+    // 300/min fits a dashboard's burst of parallel fetches per real client IP (see
+    // trusted-client-ip.middleware.ts).
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 300 }]),
     AuthModule,
     UsersModule,
@@ -69,16 +64,14 @@ import { UsersModule } from './modules/users/users.module';
     MaintenanceModule,
   ],
   providers: [
-    // Global guards run in registration order: rate limit first, so an
-    // unauthenticated flood is still throttled, then require a web access
-    // token on every route not marked @Public().
+    // Guards run in registration order: rate limit first, then the JWT check on every route not
+    // marked @Public().
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: GlobalJwtAuthGuard },
     // After the JWT guard, so it sees req.user.
     { provide: APP_GUARD, useClass: DemoRestrictionsGuard },
-    // Order matters: Nest checks global filters in REVERSE registration
-    // order, so AllExceptionsFilter (registered first, checked last) is the
-    // fallback behind PrismaExceptionFilter's more specific `@Catch()` scope.
+    // Nest checks filters in reverse registration order, so the catch-all goes first and Prisma's
+    // specific filter wins.
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
     { provide: APP_FILTER, useClass: PrismaExceptionFilter },
   ],

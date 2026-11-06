@@ -1,11 +1,7 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
-// B-06: an all-accounts monthly summary never adds two currencies together, and its
-// currency switch lists every currency with activity in the viewed month, archived
-// accounts included. The first group uses the UX fixture (`npm run e2e:seed`; its
-// archived "Old savings" EUR account has activity four months back). The second sets up
-// its own user with one active TND account and an archived EUR account that has activity
-// this month: the case where the summary used to show TND + EUR labelled TND.
+// An all-accounts summary never adds currencies together and its switch lists every currency active
+// that month, archived included. First group needs `npm run e2e:seed`.
 
 test.use({ locale: "en-US" });
 
@@ -29,7 +25,6 @@ function monthBounds(offset: number) {
   return { start, end };
 }
 
-/** Every transaction of the signed-in user in [start, end), through the BFF. */
 async function transactionsIn(page: Page, start: Date, end: Date): Promise<SearchTx[]> {
   const out: SearchTx[] = [];
   for (let offset = 0; ; offset += 100) {
@@ -45,7 +40,6 @@ async function transactionsIn(page: Page, start: Date, end: Date): Promise<Searc
   return out.filter((t) => new Date(t.occurredAt) < end);
 }
 
-/** Income and expenses per currency, from the transactions' own items. */
 function totalsByCurrency(transactions: SearchTx[]) {
   const totals = new Map<string, { income: number; expenses: number }>();
   for (const tx of transactions) {
@@ -72,12 +66,10 @@ function summaryCard(page: Page) {
   return page.locator('[data-slot="card"]').filter({ has: page.getByRole("heading", { name: "Monthly summary" }) });
 }
 
-/** The full value (MoneyAmount's title) of the summary strip's Income or Expenses line. */
 function stripAmount(card: Locator, label: "Income" | "Expenses") {
   return card.locator(`xpath=.//dt[normalize-space()='${label}']/following-sibling::dd[1]//span[@title]`);
 }
 
-/** The amount in thousandths, or null while the card is still loading. */
 async function readMilli(amount: Locator): Promise<number | null> {
   const title = await amount.getAttribute("title", { timeout: 1000 }).catch(() => null);
   return title ? toMilli(title.replace(/[^0-9.-]/g, "")) : null;
@@ -87,7 +79,6 @@ function monthLabel(offset: number) {
   return monthBounds(offset).start.toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
 }
 
-/** Currency codes the summary's switch offers ([] when it shows no switch). */
 async function switchOptions(page: Page, card: Locator): Promise<string[]> {
   const trigger = card.getByRole("combobox", { name: "Currency" });
   if ((await trigger.count()) === 0) return [];
@@ -116,7 +107,6 @@ async function showAllAccounts(page: Page, baseURL: string | undefined) {
   await page.addInitScript((key) => localStorage.setItem(key, "all"), ACTIVE_ACCOUNT_COOKIE);
 }
 
-/** Records the monthly-summary requests the page makes from the browser. */
 function recordSummaryRequests(page: Page) {
   const urls: URL[] = [];
   page.on("request", (req) => {

@@ -1,10 +1,5 @@
-// Where the refresh token survives an app restart. Native: the Keychain / Keystore through
-// expo-secure-store, and nowhere else. Web (the Expo web preview only): SecureStore has no web
-// implementation, so it falls back to localStorage, or memory when that is blocked. The access
-// token is never stored; it lives in memory in session.ts.
-//
-// Writes are serialized: a "save the rotated token" that started before a "sign out" finishes
-// first, so the delete always lands last and a signed-out device never keeps a token.
+// Where the refresh token survives a restart: Keychain/Keystore via expo-secure-store on native;
+// the Expo web preview falls back to localStorage, since SecureStore has no web implementation.
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 

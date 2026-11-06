@@ -1,11 +1,6 @@
 /**
- * Who can do what on a shared account, through the real app: every route that
- * touches an account, and every MCP and chat tool, as the owner, an editor, a
- * viewer and someone with no access. Runs the full AppModule against Postgres.
- * Needs TEST_DATABASE_URL (see support/test-database.ts).
- *
- * A new route fails the coverage check below until it is listed here, or
- * listed as not touching accounts, with the reason.
+ * Every account route and MCP/chat tool as owner, editor, viewer and non-member, against Postgres
+ * (needs TEST_DATABASE_URL). A new route fails until listed or exempted with a reason.
  */
 import { INestApplication, RequestMethod } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -162,7 +157,6 @@ describe('Authorization on shared accounts (Postgres)', () => {
     fromAccountId: accountId,
   });
 
-  /** A shared account with one of everything on it, and four people. */
   async function world() {
     const people = {
       owner: await user('owner'),
@@ -307,7 +301,6 @@ describe('Authorization on shared accounts (Postgres)', () => {
     fromAccountId: accountId,
   });
 
-  /** Every route that reaches an account, and what each role gets from it. */
   const ROUTES: Record<
     string,
     {

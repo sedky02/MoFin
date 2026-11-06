@@ -1,6 +1,5 @@
-// WCAG 2.x contrast (4.5:1 for text) for the token pairs the app actually renders text on, in both
-// themes. The tokens are generated from the web (npm run theme:sync); a failure here is reported,
-// not patched in colors.ts: fix it in the component class that uses the pair.
+// WCAG 2.x text contrast (4.5:1) for the token pairs the app renders, in both themes. Tokens are
+// generated (npm run theme:sync), so fix a failure in the component class, not colors.ts.
 import { COLORS } from '@/theme/colors';
 
 type Tokens = (typeof COLORS)['light'];
@@ -17,7 +16,6 @@ export function contrast(a: string, b: string): number {
   const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
   return (hi! + 0.05) / (lo! + 0.05);
 }
-/** `fg` at `alpha` over `bg`. */
 function over(fg: string, alpha: number, bg: string): string {
   const f = parseInt(fg.replace('#', ''), 16);
   const g = parseInt(bg.replace('#', ''), 16);

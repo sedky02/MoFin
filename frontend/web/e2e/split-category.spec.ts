@@ -1,12 +1,7 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
-// B-05: a split's categories live on its lines. The transaction itself carries none (the
-// API refuses one), the monthly summary files every line under its own category (a blank
-// line under "Uncategorized", never under the pre-split pick), the search category filter
-// finds a split by any of its lines, and its row reads "Split · N categories".
-// The first group uses the UX fixture (`npm run e2e:seed`): "Supermarket and pharmacy
-// receipt" is split 71.30 Groceries / 25.00 Utilities this month. The second sets up its
-// own user and splits a transaction through the form after picking a category first.
+// A split's categories live on its lines: summary, search and the row ("Split · N categories") all
+// follow its lines. The first group needs `npm run e2e:seed`.
 
 test.use({ locale: "en-US" });
 
@@ -36,7 +31,6 @@ async function api(page: Page, method: "GET" | "POST" | "DELETE", path: string, 
   return text ? JSON.parse(text) : undefined;
 }
 
-/** UTC bounds of the current calendar month (the API's month). */
 function thisMonth() {
   const now = new Date();
   const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
@@ -44,7 +38,6 @@ function thisMonth() {
   return { start, end, year: start.getUTCFullYear(), month: start.getUTCMonth() + 1 };
 }
 
-/** Every transaction this month matching `params`, through the BFF. */
 async function search(page: Page, params: Record<string, string> = {}): Promise<Tx[]> {
   const { start, end } = thisMonth();
   const out: Tx[] = [];
@@ -66,7 +59,6 @@ async function search(page: Page, params: Record<string, string> = {}): Promise<
   return out;
 }
 
-/** This month's all-accounts expense breakdown in `currency`, by category name, in thousandths. */
 async function expenseBreakdown(page: Page, currency: string): Promise<Map<string, number>> {
   const { year, month } = thisMonth();
   const summary = (await api(
@@ -78,9 +70,8 @@ async function expenseBreakdown(page: Page, currency: string): Promise<Map<strin
 }
 
 /**
- * What each category's expense total should be, read from the transactions themselves:
- * a split line counts under its own category (or Uncategorized), and only an unsplit
- * transaction falls back to its own category.
+ * Each category's expected expense total: a split line counts under its own category (or
+ * Uncategorized), an unsplit transaction under its own.
  */
 function expectedBreakdown(transactions: Tx[], currency: string): Map<string, number> {
   const totals = new Map<string, number>();
@@ -96,7 +87,6 @@ function expectedBreakdown(transactions: Tx[], currency: string): Map<string, nu
   return totals;
 }
 
-/** The search/recent-list row for the transaction described exactly `description`. */
 function row(page: Page, description: string): Locator {
   const escaped = description.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   return page.getByRole("link", { name: new RegExp(`^${escaped}`) });
@@ -152,9 +142,8 @@ test.describe("split categories (split after picking a category)", () => {
   const PREFIX = "B05 receipt";
 
   /**
-   * Idempotent: signs in (registering on first run), makes sure the USD account and the
-   * expense category exist, and voids the receipts earlier runs left, so this run's split
-   * is the only spending the month's summary counts.
+   * Idempotent: signs in (registering first time), ensures the USD account and expense category
+   * exist, and voids earlier receipts so this run's split is the only spending counted.
    */
   async function setUp(page: Page, baseURL: string | undefined) {
     await page.request.post("/api/auth/register", { data: { email: EMAIL, password: PASSWORD, displayName: "B05" } });

@@ -15,11 +15,8 @@ import { SearchService } from '../search/search.service';
 import { McpToolName } from './dto/mcp.dto';
 
 /**
- * Routes a validated MCP tool call to the owning application service.
- *
- * Arguments arrive already parsed by the MCP server against the tool's Zod
- * `inputSchema`, so dispatch trusts them. MCP remains an interface layer: it
- * only calls application services and never touches Prisma directly.
+ * Arguments are already parsed against the tool's Zod schema, so dispatch trusts them. MCP is an
+ * interface layer: it only calls application services, never Prisma.
  */
 @Injectable()
 export class McpService {
@@ -34,10 +31,7 @@ export class McpService {
     private readonly categoriesService: CategoriesService,
   ) {}
 
-  /**
-   * Runs one tool as `userId`. `origin` labels the drafts it creates (which
-   * connected app made them); it defaults to plain MCP.
-   */
+  /** `origin` labels drafts with the connected app that made them; defaults to plain MCP. */
   dispatch(
     userId: string,
     tool: McpToolName,
@@ -93,10 +87,7 @@ export class McpService {
       }
     }
   }
-  /**
-   * The draft as the assistant sent it, with its account and category checked
-   * (they must be the user's) and filled in server-side when left out.
-   */
+  /** Checks the account and category are the user's and fills in what the assistant left out. */
   private async createDraft(
     userId: string,
     dto: CreateDraftTransactionDto,

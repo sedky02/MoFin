@@ -18,7 +18,6 @@ import { Input } from "@/components/ui/input";
 import { SubmitButton } from "@/components/common/submit-button";
 import { handleApiError } from "@/lib/form-errors";
 
-/** The word to type, and the value the backend's `confirm` field must carry. */
 export const CONFIRM_WORD = "DELETE";
 
 const schema = z.object({
@@ -29,10 +28,8 @@ const schema = z.object({
 type Values = z.infer<typeof schema>;
 
 /**
- * A destructive action behind a typed word. There is no password to ask for (a Google-only
- * account has none), so the word is what stops a stray click. `onConfirm` does the work and
- * throws on failure, which shows as a toast; on success the dialog closes itself unless
- * `closeWhenDone` is false, for an action that navigates away.
+ * No password exists for Google-only accounts, so the typed word stops a stray click. `onConfirm`
+ * throws to show a toast; on success it closes unless `closeWhenDone` is false.
  */
 export function TypeToConfirmDialog({
   open,
@@ -54,7 +51,6 @@ export function TypeToConfirmDialog({
   pendingText: string;
   failureMessage: string;
   closeWhenDone?: boolean;
-  /** Anything the person should read before typing the word. */
   warning?: React.ReactNode;
   onConfirm: () => Promise<void>;
 }) {

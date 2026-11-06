@@ -40,10 +40,8 @@ function subscribeToHash(onChange: () => void) {
 
 export default function ResetPasswordPage() {
   const router = useRouter();
-  // The token is in the `#token=…` fragment, which only exists client-side:
-  // null while prerendering and hydrating, the live hash afterwards. On
-  // success router.replace swaps this history entry out, so the token doesn't
-  // stay in the back stack.
+  // The token is in the `#token=…` fragment (client-side only: null while prerendering);
+  // router.replace on success removes it from the back stack.
   const hash = React.useSyncExternalStore(
     subscribeToHash,
     () => window.location.hash,

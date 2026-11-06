@@ -2,10 +2,8 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { settle } from "./helpers/axe";
 
-// B-32: on a coarse pointer every interactive element's effective target (its
-// box united with any ::before / ::after hit slop) is at least 44 px, and the
-// segmented options split the space so tapping an option's centre selects it.
-// Needs the UX fixture (`npm run e2e:seed`).
+// On a coarse pointer every interactive target (box plus ::before/::after hit slop) is at least
+// 44px, and tapping a segmented option's centre selects it. Needs `npm run e2e:seed`.
 
 test.beforeEach(async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "mobile", "touch targets only apply to the coarse-pointer project");
@@ -61,7 +59,6 @@ async function measure(page: Page): Promise<Measured[]> {
         const w = parseFloat(p.width);
         const h = parseFloat(p.height);
         if (!(w > 0 && h > 0)) continue;
-        // Offsets are relative to the padding box.
         const pl = r.left + parseFloat(cs.borderLeftWidth) + parseFloat(p.left);
         const pt = r.top + parseFloat(cs.borderTopWidth) + parseFloat(p.top);
         if (Number.isNaN(pl) || Number.isNaN(pt)) continue;
@@ -97,7 +94,6 @@ for (const route of ROUTES) {
   });
 }
 
-// Tapping the centre of each option of a segmented control selects that option.
 test("tapping the centre of each segmented option selects it", async ({ page }) => {
   const groups = [
     { route: "/dashboard", option: '[role="tablist"] [role="tab"]', state: "aria-selected" },

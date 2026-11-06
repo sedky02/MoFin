@@ -10,13 +10,11 @@ import { AppFrame } from "./mock/app-frame";
 import { MockDashboard } from "./mock/mock-dashboard";
 import { useSignedIn } from "./use-signed-in";
 
-/** Smooths the scroll-linked values so the window eases into each new size. */
 const SCROLL_SPRING = { stiffness: 140, damping: 30, mass: 0.6 };
 
 /**
- * The headline and the actions are plain, static markup (visible before and
- * without JavaScript); the motion is the app window below, which grows and
- * tips toward you as you scroll to it.
+ * Headline and actions are static markup (visible without JavaScript); only the app window below
+ * moves.
  */
 export function Hero() {
   const frameRef = React.useRef<HTMLDivElement>(null);
@@ -30,7 +28,6 @@ export function Hero() {
 
   return (
     <section className="px-4 pt-12 pb-16 sm:px-6 sm:pt-20">
-      {/* One centred column: headline, what it does, then the two ways in. */}
       <div className="mx-auto flex max-w-3xl flex-col items-center text-center">
         <h1 className="text-[2.9rem] leading-[1] font-semibold tracking-[-0.045em] text-balance sm:text-7xl">
           Know where your money goes.

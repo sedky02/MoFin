@@ -81,7 +81,6 @@ export function ErrorState({
   );
 }
 
-/** Placeholder boxes are hidden from screen readers; the screen announces loading itself. */
 export function SkeletonCard({ className }: { className?: string }) {
   return (
     <View

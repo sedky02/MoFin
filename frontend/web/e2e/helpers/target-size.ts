@@ -12,13 +12,8 @@ export type SmallTarget = {
 const MIN = 24;
 
 /**
- * Effective target size per WCAG 2.2 SC 2.5.8 (24x24 CSS px). Reports visible
- * interactive elements whose box is below 24px in either axis, and whether the
- * spacing exception applies (a 24px circle centred on the target must not
- * intersect any other target).
- *
- * `minSize` can be raised (e.g. 44) to audit against the stricter AAA / platform
- * guidance; the spacing exception is only evaluated against 24.
+ * Visible interactive elements below `minSize` (default 24px, WCAG 2.5.8) in either axis, and
+ * whether the spacing exception applies (only evaluated against 24).
  */
 export async function findSmallTargets(page: Page, minSize = MIN): Promise<SmallTarget[]> {
   return page.evaluate(

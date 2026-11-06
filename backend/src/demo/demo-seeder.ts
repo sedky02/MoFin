@@ -27,10 +27,7 @@ import {
 
 type Db = Prisma.TransactionClient;
 
-/**
- * A seed is a few hundred writes, so its transaction gets more room than
- * Prisma's 5s default. Shared with the per-visitor demo, which seeds the same way.
- */
+/** A seed is a few hundred writes, so its transaction gets more room than Prisma's 5s default. */
 export const SEED_TRANSACTION_OPTIONS = { maxWait: 10_000, timeout: 60_000 };
 
 export interface SeededCounts {
@@ -42,7 +39,6 @@ export interface SeededCounts {
 export interface DemoSeedOptions {
   plan: DemoPlan;
   password: string;
-  /** Delete an existing demo account and create it again. */
   reset: boolean;
 }
 
@@ -56,14 +52,8 @@ export type DemoSeedResult =
     } & SeededCounts);
 
 /**
- * Writes a demo plan through the same services the API uses, so every
- * transaction is validated and posted to the ledger exactly like one a user
- * enters: the seed never writes a ledger row itself.
- *
- * `seedUserData` is the one place the sample data is written. The demo account
- * (`run`, from prisma/seed.ts) and each visitor's temporary demo user both go
- * through it, inside a transaction that also creates the user, so a failure
- * leaves nothing behind.
+ * Writes the plan through the API's own services, so each transaction is validated and posted like
+ * a user's. seedUserData runs inside the transaction that creates the user.
  */
 @Injectable()
 export class DemoSeeder {
@@ -85,9 +75,8 @@ export class DemoSeeder {
     if (existing && !reset) return { status: 'exists', userId: existing.id };
     if (existing) await this.usersService.deleteUserData(existing.id);
 
-    // Same cost factor as AuthService, and the same default categories as a
-    // registration, since createUser is the path registration takes. Hashed
-    // before the transaction opens, so the slow part doesn't hold it.
+    // Same cost factor as AuthService. Hashed before the transaction opens, so the slow part
+    // doesn't hold it.
     const passwordHash = await bcrypt.hash(password, 12);
     const { userId, counts } = await this.prisma.$transaction(async (tx) => {
       const user = await this.usersService.createUser(
@@ -110,13 +99,8 @@ export class DemoSeeder {
   }
 
   /**
-   * Fills a freshly created user with the plan's accounts, categories,
-   * transactions, recurring series and goals, all through `tx`. The caller owns
-   * the transaction (and creates the user in it).
-   *
-   * TransactionsService doesn't emit TransactionCreated for writes made in a
-   * caller's transaction; the only listener clears the analytics cache, and a
-   * new user has none yet.
+   * The caller owns the transaction. TransactionsService doesn't emit TransactionCreated inside
+   * one; the only listener clears the analytics cache, which a new user doesn't have.
    */
   async seedUserData(
     tx: Db,
@@ -193,9 +177,8 @@ export class DemoSeeder {
   }
 
   /**
-   * Creates the series' root, then posts each occurrence and moves the
-   * series' cursor, the way RecurringTransactionsCron does, so the series
-   * looks exactly like one the nightly job has been running.
+   * Creates the root, then posts each occurrence and moves the cursor like
+   * RecurringTransactionsCron, so it looks like a series the nightly job has run.
    */
   private async createSeries(
     tx: Db,
@@ -242,10 +225,8 @@ export class DemoSeeder {
   }
 
   /**
-   * Judges and closes a recurring goal's periods that ended before `now` and
-   * opens the next one, as GoalsService.rolloverExpiredInstances does one
-   * period a night. Done here for this goal only, so the demo opens with its
-   * history filled in without touching anyone else's goals.
+   * Closes the goal's periods that ended before `now` and opens the next, as the nightly rollover
+   * does, so the demo opens with history.
    */
   private async closePastPeriods(
     tx: Db,

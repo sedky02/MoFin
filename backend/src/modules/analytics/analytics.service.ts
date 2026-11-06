@@ -24,7 +24,6 @@ type DailySeries = {
   currency: string;
   timeZone: string;
   points: {
-    /** YYYY-MM-DD in `timeZone`. */
     date: string;
     income: string;
     expenses: string;
@@ -33,7 +32,6 @@ type DailySeries = {
   }[];
 };
 
-/** `YYYY-MM-DD` plus `n` days, on the calendar (no time zone involved). */
 function addDays(date: string, n: number): string {
   const d = new Date(`${date}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() + n);
@@ -48,9 +46,8 @@ export class AnalyticsService {
   ) {}
 
   /**
-   * The accounts a figure covers: the one asked for, checked, or every account
-   * the caller can reach. Always before any cache read, because a cached entry
-   * can outlive the access it was computed with.
+   * The account asked for (checked) or every account the caller can reach. Always before a cache
+   * read, since a cache entry can outlive the access it was computed with.
    */
   private async accountsInScope(
     userId: string,
@@ -69,9 +66,8 @@ export class AnalyticsService {
     accountId?: string,
     currency?: string,
   ) {
-    // Without an account to pin the currency, the totals would add different currencies
-    // together (an archived account's activity still counts). The DTO checks this too;
-    // repeated here so MCP, which validates only the raw shape, can't skip it.
+    // The DTO checks this too; repeated because MCP validates only the raw shape. Without an
+    // account to pin the currency, totals would add currencies together.
     if (!accountId && !currency) {
       throw new BadRequestException(
         'currency is required when accountId is not given',
@@ -128,10 +124,8 @@ export class AnalyticsService {
       });
     };
 
-    // Split lines carry their own category, and a line left blank is "Uncategorized". Only an
-    // unsplit (single-item) transaction falls back to its top-level category, which is where
-    // that shape keeps it. Splits saved before the top-level category was rejected may still
-    // carry a stale one; it must not soak up their uncategorized lines.
+    // A split line carries its own category (blank is "Uncategorized"); only an unsplit transaction
+    // falls back to its top-level one, since old splits may carry a stale one.
     type SummaryTransaction = (typeof transactions)[number];
     const addLine = (
       target: CategoryTotals,
@@ -218,12 +212,7 @@ export class AnalyticsService {
     return payload;
   }
 
-  /**
-   * Income, expenses and closing balance for each of the last `months` calendar
-   * months (UTC, oldest first), in one currency. Every closing balance includes
-   * the opening balances of the accounts in scope: they are what the accounts
-   * held before their first entry. They never count as income.
-   */
+  /** Closing balances include the accounts' opening balances, which never count as income. */
   async getMonthlySeries(
     userId: string,
     months: number,
@@ -252,11 +241,8 @@ export class AnalyticsService {
   }
 
   /**
-   * Income, expenses and closing balance for `days` days from `from`, with days counted in
-   * `timeZone` (the phone's), so a late-evening purchase lands on the day it was made. Same rules
-   * as the monthly series: one grouped query, deleted transactions left out, transfers move the
-   * balance but are neither income nor expense, opening balances added to every balance. Not
-   * cached: a week is small and changes with every new transaction.
+   * Days are counted in `timeZone` (the phone's), so a late-evening purchase lands on its own day.
+   * Not cached: a week is small and changes with every transaction.
    */
   async getDailySeries(
     userId: string,
@@ -315,11 +301,7 @@ export class AnalyticsService {
     return { currency, timeZone, points };
   }
 
-  /**
-   * Sum of the opening balances in `currency` (archived accounts included, like
-   * their ledger entries). Read fresh on every call rather than cached with the
-   * series, so editing an account's opening balance shows up straight away.
-   */
+  /** Read fresh rather than cached with the series, so editing an opening balance shows up at once. */
   private async openingBalanceTotal(
     currency: string,
     accountIds: string[],
@@ -332,11 +314,8 @@ export class AnalyticsService {
   }
 
   /**
-   * The ledger part of getMonthlySeries. One grouped query over the whole
-   * history — not N month queries and not row-by-row summing in Node. Deleted
-   * transactions are left out of all three. Cached 15 min and
-   * cleared whenever any transaction changes (a back-dated entry shifts every
-   * later month's closing balance).
+   * One grouped query over the whole history, not N month queries. Cached 15 min and cleared on any
+   * transaction change (a back-dated entry shifts every later closing balance).
    */
   private async getLedgerMonthlySeries(
     userId: string,
@@ -419,8 +398,7 @@ export class AnalyticsService {
     return payload;
   }
 
-  // v3: payload gained `incomeBreakdown` — bump so pre-existing cache rows
-  // (missing it) aren't served stale after this change deploys.
+  // v3: payload gained `incomeBreakdown`; bumped so older cache rows aren't served stale.
   private monthlySummaryCacheKey(
     year: number,
     month: number,
@@ -431,7 +409,6 @@ export class AnalyticsService {
     return `monthly-summary:v3:${year}:${month}${accountId ? `:${accountId}` : ''}${currency ? `:cur:${currency}` : ''}`;
   }
 
-  /** Their "all accounts" figures covered a different set of accounts. */
   @OnEvent(DomainEvents.AccountAccessChanged)
   async invalidateOnAccessChange(event: AccountAccessChangedEvent) {
     await this.prisma.analyticsCache.deleteMany({
@@ -447,10 +424,8 @@ export class AnalyticsService {
     const year = event.occurredAt.getUTCFullYear();
     const month = event.occurredAt.getUTCMonth() + 1;
     const base = this.monthlySummaryCacheKey(year, month);
-    // Clears both the unscoped and every account-scoped cache entry for this month at once —
-    // cheap to over-invalidate a cache, and we don't know which accounts this transaction's
-    // items touched without an extra query. Matching `${base}:` (not a bare startsWith(base))
-    // avoids "month 1" wrongly matching "month 10/11/12".
+    // Clears the unscoped and every account-scoped entry for the month (over-invalidating is
+    // cheap). `${base}:` avoids "month 1" matching 10/11/12.
     await this.prisma.analyticsCache.deleteMany({
       where: {
         // Everyone on the accounts it touched, not just who changed it.

@@ -7,7 +7,6 @@ import { MoneyInput } from "@/components/common/money-input";
 
 afterEach(cleanup);
 
-/** Controlled MoneyInput, as the forms use it. Records every value it was given. */
 function Harness({
   currency,
   large,

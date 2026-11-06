@@ -25,7 +25,6 @@ export default function RegisterScreen() {
   const form = useForm<RegisterValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: { email: '', password: '', displayName: '' },
-    // Validate on blur, then on every change once a field was touched (as on the web).
     mode: 'onTouched',
   });
   const { isSubmitting, errors } = form.formState;

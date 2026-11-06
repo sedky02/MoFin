@@ -49,7 +49,6 @@ export function setThemePreference(next: ThemePreference): void {
   });
 }
 
-/** The user's light / dark / system choice, remembered on the device. */
 export function useThemePreference(): { preference: ThemePreference; setPreference: (p: ThemePreference) => void } {
   const preference = React.useSyncExternalStore(
     subscribe,

@@ -24,7 +24,6 @@ import { authorLine } from '@/core/account-sharing';
 import { useDeleteTransaction, useTransaction } from '@/hooks/useTransactions';
 import { ArrowDown, ArrowDownLeft, ArrowUpRight, ChevronRight, Pencil, Repeat, Trash2 } from '@/lib/icons';
 
-/** Back to wherever the user came from, else the list (a deep link has no history). */
 export function leaveToList() {
   if (router.canGoBack()) router.back();
   else router.replace('/transactions');
@@ -35,7 +34,6 @@ export function isNotFound(isError: boolean, error: unknown, tx: Transaction | u
   return !tx && (!isError || (error instanceof ApiClientError && error.status === 404));
 }
 
-/** The warning in the delete confirmation: a series root also stops its series. */
 export function deleteDescription(tx: Pick<Transaction, 'isRecurring' | 'parentTransactionId'>): string {
   return tx.isRecurring && !tx.parentTransactionId
     ? "It's removed from your balances, summaries and goals, and the recurring series stops. Transactions the series already created stay. You can undo this right after."

@@ -243,7 +243,6 @@ describe('CategoriesService archiving', () => {
     });
     expect(result.archivedAt).toBeInstanceOf(Date);
     expect(result.isSystem).toBe(false);
-    // The transactions that use it keep it.
     expect(prisma.transaction.updateMany).not.toHaveBeenCalled();
     expect(prisma.transactionItem.updateMany).not.toHaveBeenCalled();
     expect(prisma.category.delete).not.toHaveBeenCalled();

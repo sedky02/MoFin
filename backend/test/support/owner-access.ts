@@ -8,9 +8,8 @@ type OwnedAccount = {
 };
 
 /**
- * AccountAccessService over a spec's fixtures, for e2e specs whose fake Prisma
- * has no memberships: each account is reachable by its owner alone. Sharing
- * itself is proved against Postgres in authorization.db-spec.ts.
+ * Stand-in AccountAccessService for e2e specs whose fake Prisma has no memberships: only an
+ * account's owner reaches it.
  */
 export function ownerAccess(
   accounts: OwnedAccount[],

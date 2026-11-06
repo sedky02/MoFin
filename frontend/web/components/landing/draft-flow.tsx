@@ -40,12 +40,8 @@ const DESCRIPTION =
   "In this example, someone asks Claude to add $12.50 for lunch at Panera. Claude uses MoFin's create_draft_transaction tool, the entry waits in MoFin as a draft, and once it's approved it goes into the ledger and the Everyday checking balance goes from $4,230.90 to $4,218.40.";
 
 /**
- * How an entry gets in, as it really happens: you ask Claude, Claude
- * calls MoFin's create_draft_transaction tool, and the draft waits in MoFin
- * until you approve it. The steps on the left follow along. The demo follows your scroll: on a
- * desktop it stays pinned until the entry is in the ledger, and scrolling faster plays it
- * faster. Every area that changes keeps the size of its largest state, so nothing on the page
- * moves. With reduced motion nothing is pinned or animated: it shows the finished result.
+ * How an entry really gets in: Claude calls create_draft_transaction and the draft waits in MoFin
+ * until you approve it. On desktop the demo follows your scroll.
  */
 export function HowItWorks() {
   const reduceMotion = Boolean(useReducedMotion());
@@ -60,7 +56,6 @@ export function HowItWorks() {
 
   const stage = reduceMotion ? STAGES.length : stageAtMarks(progress, MARKS);
   const typed = stage === TYPING ? typedBetween(QUESTION, progress, MARKS[TYPING - 1], MARKS[SENT - 1]) : "";
-  // The reply is written out over most of the stretch before the draft appears.
   const replyEnd = MARKS[REPLIED - 1] + (MARKS[DRAFT - 1] - MARKS[REPLIED - 1]) * 0.8;
   const reply = reduceMotion ? REPLY : stage >= REPLIED ? typedBetween(REPLY, progress, MARKS[REPLIED - 1], replyEnd) : "";
   const activeStep = stage >= APPROVED ? 2 : stage >= DRAFT ? 1 : stage >= TYPING ? 0 : -1;
@@ -132,7 +127,6 @@ export function HowItWorks() {
             </Reserve>
           </ChatWindow>
 
-          {/* The hand-off from Claude to MoFin */}
           <div className="flex h-12 items-center justify-center">
             <motion.div
               className="h-full w-px origin-top bg-gradient-to-b from-border to-primary"
@@ -142,7 +136,6 @@ export function HowItWorks() {
             />
           </div>
 
-          {/* MoFin */}
           <div className="overflow-hidden rounded-hero border border-border bg-card shadow-hero">
             <div className="flex items-center gap-2.5 border-b border-border px-5 py-3">
               <LogoMark className="size-7" />
@@ -221,7 +214,6 @@ function Messages({
       <div className={cn("transition-opacity duration-300", question ? "opacity-100" : "opacity-0")}>
         <UserBubble text={QUESTION} />
       </div>
-      {/* Thinking and the tool call share one row. */}
       <div className="h-9">
         {slot === "think" && <Thinking dot="bg-[#d97757]" />}
         {slot === "tool" && (

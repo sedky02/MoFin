@@ -1,4 +1,3 @@
-/** Why "Try the demo" sent the visitor back to the landing page. */
 export type DemoNotice = "busy" | "limited" | "off" | "failed";
 
 export const DEMO_NOTICES: Record<DemoNotice, string> = {
@@ -16,7 +15,6 @@ export function parseDemoNotice(value: string | string[] | undefined): DemoNotic
   return typeof value === "string" && value in DEMO_NOTICES ? (value as DemoNotice) : null;
 }
 
-/** "23 h", "40 min", or null once it has ended. */
 export function timeLeft(expiresAt: string, now: number = Date.now()): string | null {
   const ms = new Date(expiresAt).getTime() - now;
   if (!Number.isFinite(ms) || ms <= 0) return null;

@@ -1,19 +1,6 @@
 /**
- * Native Google sign-in from the mobile app (POST /auth/google/id-token),
- * through the real controller, guards (global throttler + web JWT, the
- * per-client credential limit), validation, GoogleIdTokenVerifier,
- * AuthService and UsersService.
- *
- * Only Google's published keys are swapped: the verifier gets a local JWKS
- * whose private key the test holds, so it can sign real RS256 ID tokens.
- * The first suite uses the in-memory database from support/in-memory-prisma.ts,
- * so it needs no database and runs with `npm run test:e2e -- google-id-token`.
- *
- * The second runs the whole AppModule against a real (throwaway) PostgreSQL,
- * set up as described in password-reset.e2e-spec.ts, and is skipped unless
- * E2E_DATABASE_URL is set:
- *
- *   E2E_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/mofin_e2e npm run test:e2e -- google-id-token
+ * Native Google sign-in (POST /auth/google/id-token) through the real controller, guards and
+ * verifier; only Google's published keys are swapped for a local JWKS.
  */
 import { INestApplication } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -56,7 +43,6 @@ const WEB_CLIENT_ID = 'web-client.apps.googleusercontent.com';
 const E2E_DATABASE_URL = process.env.E2E_DATABASE_URL;
 const describeWithDb = E2E_DATABASE_URL ? describe : describe.skip;
 
-/** A local stand-in for Google: its JWKS and a signer for RS256 ID tokens. */
 async function fakeGoogle() {
   const pair = await generateKeyPair('RS256');
   const attackerKey = (await generateKeyPair('RS256')).privateKey;
@@ -268,7 +254,6 @@ describe('POST /auth/google/id-token (e2e)', () => {
       expect(Number(res.headers['retry-after'])).toBeGreaterThan(0);
       expect(db.tables().user).toHaveLength(GOOGLE_ID_TOKEN_THROTTLE.limit);
 
-      // Another IP is unaffected.
       await signIn(
         await idToken({ sub: 'nat-31', email: 'nat31@example.com' }),
         nextIp(),
@@ -280,7 +265,6 @@ describe('POST /auth/google/id-token (e2e)', () => {
       const forged = await idToken({}, google.attackerKey);
       for (let i = 0; i < GOOGLE_ID_TOKEN_THROTTLE.limit; i++)
         await signIn(forged, ip).expect(401);
-      // Even a valid token is refused once the limit is hit.
       await signIn(await idToken(), ip).expect(429);
       expect(db.tables().user).toHaveLength(0);
     });
@@ -288,9 +272,8 @@ describe('POST /auth/google/id-token (e2e)', () => {
     it('gives no fresh bucket to a body with a random email field', async () => {
       const ip = nextIp();
       const forged = await idToken({}, google.attackerKey);
-      // Each request carries a different email: under the old email+IP key
-      // each would have had a bucket of its own. Now they are all 400s and
-      // all count against the one per-IP bucket.
+      // Each request has a different email, yet all are 400s counting against one per-IP bucket
+      // (under the old email+IP key each had its own).
       for (let i = 0; i < GOOGLE_ID_TOKEN_THROTTLE.limit; i++) {
         await request(app.getHttpServer())
           .post('/api/v1/auth/google/id-token')

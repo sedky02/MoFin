@@ -1,13 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { AuthThrottlerGuard } from '../../common/guards/auth-throttler.guard';
 
-/** New demo users per client IP. */
 export const DEMO_THROTTLE = { limit: 3, ttl: 60 * 60_000 } as const;
 
 /**
- * DEMO_THROTTLE per client IP (the one the BFF vouched for, see
- * trusted-client-ip.middleware.ts). Each demo is a few hundred rows, so this
- * is what stops one client from filling the database or the active-demo cap.
+ * Each demo is a few hundred rows, so this limit stops one client filling the database or the
+ * active-demo cap.
  */
 @Injectable()
 export class DemoThrottlerGuard extends AuthThrottlerGuard {

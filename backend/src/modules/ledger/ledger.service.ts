@@ -16,13 +16,8 @@ export interface LedgerPlan {
 }
 
 /**
- * Sign convention (MoFin-specific — note it is NOT textbook double-entry):
- *   CREDIT  => money INTO an account  => contributes +amount to its balance
- *   DEBIT   => money OUT of an account => contributes -amount to its balance
- *
- * INCOME and EXPENSE are single-sided (no contra/equity account); only TRANSFER
- * produces a balanced debit+credit pair. Balances are always derived from these
- * entries plus the account's opening balance, never stored.
+ * MoFin's own sign convention: CREDIT adds to an account's balance, DEBIT subtracts. Only TRANSFER
+ * posts a debit+credit pair; balances are derived, never stored.
  */
 @Injectable()
 export class LedgerService {
@@ -174,9 +169,8 @@ export class LedgerService {
       ...(query.currency ? { currency: query.currency } : {}),
     };
 
-    // Net CREDIT/DEBIT per (account, currency) in the database — a handful of
-    // grouped rows, not the whole ledger's worth of TransactionItem rows
-    // pulled into Node and summed there (audit PERF-XX).
+    // Net CREDIT/DEBIT per (account, currency) in the database, not the whole ledger summed in
+    // Node.
     const rows = await this.prisma.transactionItem.groupBy({
       by: ['accountId', 'currency', 'direction'],
       where,

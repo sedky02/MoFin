@@ -30,7 +30,6 @@ export interface TransactionCreatedEvent {
   accountIds: string[];
 }
 
-/** The people whose set of reachable accounts just changed. */
 export interface AccountAccessChangedEvent {
   userIds: string[];
 }

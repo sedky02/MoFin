@@ -14,12 +14,8 @@ function toFormPath(path: string): string {
 }
 
 /**
- * Central mutation/form error handling per the tanstack-query-conventions skill:
- * - 400 → map field errors into the form via setError (returns true if mapped)
- * - 429 → "Too many requests" toast
- * - 409 → conflict toast with the server message
- * - 504 → "slow" toast, distinct from a generic/broken failure (audit PERF-XX)
- * - otherwise → generic toast (or the server message if present)
+ * Central mutation/form error handling (tanstack-query-conventions): 400 maps field errors into the
+ * form, 429 and 409 get fixed toasts, anything else falls back to the server message.
  */
 export function handleApiError<T extends FieldValues>(
   error: unknown,

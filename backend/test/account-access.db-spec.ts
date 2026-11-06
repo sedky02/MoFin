@@ -1,7 +1,6 @@
 /**
- * AccountAccessService against real Postgres: the rules themselves are unit
- * tested in account-access.spec.ts, this proves the queries and foreign keys
- * behind them. Needs TEST_DATABASE_URL (see support/test-database.ts).
+ * AccountAccessService against real Postgres: unit tests cover the rules, this proves the queries
+ * and foreign keys. Needs TEST_DATABASE_URL (see support/test-database.ts).
  */
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';

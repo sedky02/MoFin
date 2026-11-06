@@ -15,7 +15,6 @@ export const TYPE_ICON: Record<AccountType, LucideIcon> = {
   CRYPTO: Bitcoin,
 };
 
-/** The four account types as tappable tiles, the chosen one ringed. */
 export function AccountTypePicker({
   value,
   onChange,

@@ -17,11 +17,8 @@ import { UsersService } from '../users/users.service';
 import { ChangePasswordDto, LoginDto, RegisterDto } from './dto/auth.dto';
 import { WEB_AUDIENCE } from './auth.constants';
 
-// Precomputed once at module load (not per-request) so `login` always pays
-// the same bcrypt.compare cost whether or not the email exists — otherwise
-// short-circuit evaluation on `!user?.passwordHash` skips the ~100ms compare
-// entirely for unknown emails / Google-only accounts, a measurable timing
-// side-channel for account enumeration (audit SEC-XX).
+// Computed once at load so login always pays the same bcrypt cost, or unknown emails would answer
+// measurably faster (account enumeration).
 const DUMMY_PASSWORD_HASH = bcrypt.hashSync(
   randomBytes(32).toString('hex'),
   12,
@@ -31,9 +28,7 @@ const DUMMY_PASSWORD_HASH = bcrypt.hashSync(
 // instead of counting as reuse (B-22).
 const ROTATION_GRACE_MS = 30_000;
 
-/** A Google account whose ID token has been checked. */
 export interface GoogleIdentity {
-  /** Google's stable account id (`sub`). */
   googleId: string;
   email: string;
   displayName?: string;
@@ -52,11 +47,8 @@ export class AuthService {
   ) {}
 
   /**
-   * Always returns the same message regardless of whether `dto.email` was
-   * already registered — a distinguishable 409 ("already exists") or an
-   * auto-login response would otherwise let anyone probe which emails have
-   * MoFin accounts (audit SEC-XX). No auto-login on success: the client must
-   * log in separately, which is what keeps the response uniform.
+   * Always the same message, whether or not the email exists, and no auto-login, so responses can't
+   * be used to probe for accounts.
    */
   async register(dto: RegisterDto): Promise<{ message: string }> {
     const passwordHash = await bcrypt.hash(dto.password, 12);
@@ -85,9 +77,8 @@ export class AuthService {
 
   async login(dto: LoginDto) {
     const user = await this.usersService.findByEmail(dto.email);
-    // No `&&`/early-return short-circuit before this — bcrypt.compare must run
-    // unconditionally (against a dummy hash when there's no real one) so a
-    // nonexistent email doesn't respond measurably faster than a real one.
+    // bcrypt.compare runs unconditionally (against a dummy hash when none), so unknown emails don't
+    // answer faster.
     const passwordMatches = await bcrypt.compare(
       dto.password,
       user?.passwordHash ?? DUMMY_PASSWORD_HASH,
@@ -103,18 +94,8 @@ export class AuthService {
   }
 
   /**
-   * Refresh tokens are opaque strings persisted (hashed) server-side with a
-   * familyId, mirroring OAuthService.exchangeRefreshToken: rotate on every
-   * use, and if a token is presented that was already revoked/rotated (reuse,
-   * the classic signal of a stolen token), revoke the whole family so the
-   * thief's and the legitimate holder's tokens both stop working.
-   *
-   * One exception: a token rotated less than ROTATION_GRACE_MS ago gets the
-   * same successor back, as long as that successor is still live. Several
-   * tabs, or requests sent before the browser stored the new cookie, present
-   * the old token right after a rotation; that is not theft. The successor is
-   * an HMAC of the presented token (see successorOf), so it can be recomputed
-   * here and checked against the stored hash without ever storing it.
+   * Rotates on every use; presenting a rotated token (a theft signal) revokes the family. Within
+   * ROTATION_GRACE_MS the same successor is returned, since tabs race a rotation.
    */
   async refreshTokens(refreshToken: string) {
     const stored = await this.prisma.refreshToken.findUnique({
@@ -175,13 +156,7 @@ export class AuthService {
     };
   }
 
-  /**
-   * Returns the existing successor (with a new access token) when `stored`
-   * was rotated within the grace window to `successor` and that successor is
-   * still live. Returns null otherwise: revoked without rotation (logout or
-   * family revocation), rotated too long ago, rotated before successors were
-   * derived, or the successor itself already rotated or revoked.
-   */
+  /** Null unless the token was rotated within the grace window and its successor is still live. */
   private async reissueRecentRotation(
     stored: { revokedAt: Date | null; rotatedToId: string | null },
     successor: string,
@@ -214,9 +189,8 @@ export class AuthService {
   }
 
   /**
-   * The refresh token that replaces `refreshToken` on rotation. Deterministic
-   * (HMAC with REFRESH_TOKEN_SECRET) so a retry within the grace window can
-   * be given the same successor. Login tokens stay random.
+   * Deterministic (HMAC with REFRESH_TOKEN_SECRET) so a retry in the grace window gets the same
+   * successor; login tokens stay random.
    */
   private successorOf(refreshToken: string): string {
     return createHmac(
@@ -227,7 +201,6 @@ export class AuthService {
       .digest('base64url');
   }
 
-  /** Revokes every refresh token in the presented token's family. */
   async logout(refreshToken: string): Promise<void> {
     const stored = await this.prisma.refreshToken.findUnique({
       where: { tokenHash: sha256(refreshToken) },
@@ -240,17 +213,8 @@ export class AuthService {
   }
 
   /**
-   * Changes the password of a signed-in user after checking the current one.
-   *
-   * Every other web session of the account is signed out: all refresh tokens
-   * are revoked except those in the family of `dto.refreshToken`, the
-   * caller's own session (ignored unless it belongs to this user). Any
-   * outstanding password reset link is spent too, since it was issued for
-   * the old password. Access tokens already issued elsewhere stay valid
-   * until their short TTL (JWT_ACCESS_TTL) runs out.
-   *
-   * A wrong current password is a 400 with a field error rather than a 401:
-   * the session itself is fine, and the BFF reads a 401 as "session over".
+   * Signs out every other web session and spends outstanding reset links. A wrong current password
+   * is a 400, not a 401: the BFF reads 401 as "session over".
    */
   async changePassword(
     userId: string,
@@ -300,11 +264,7 @@ export class AuthService {
     return { message: 'Password changed.' };
   }
 
-  /**
-   * Signs the user out of every web session, the caller's included, by
-   * revoking all of their refresh tokens. As with a password change, access
-   * tokens already issued keep working until their short TTL runs out.
-   */
+  /** Access tokens already issued keep working until their short TTL runs out. */
   async revokeAllSessions(userId: string): Promise<void> {
     await this.prisma.refreshToken.updateMany({
       where: { userId, revokedAt: null },
@@ -313,11 +273,8 @@ export class AuthService {
   }
 
   /**
-   * Exchange a Google authorization code for MoFin tokens. The web BFF calls
-   * this server-to-server after Google redirects back, so the id_token arrives
-   * directly from Google's token endpoint over TLS — we validate its claims
-   * (aud/iss/exp/email_verified) without a separate JWKS signature check, which
-   * is acceptable for the authorization-code flow over a trusted channel.
+   * The BFF calls this server-to-server, so the id_token comes straight from Google over TLS; its
+   * claims are validated without a separate JWKS signature check.
    */
   async loginWithGoogle(code: string, redirectUri: string) {
     const clientId = this.config.get<string>('GOOGLE_CLIENT_ID');
@@ -339,9 +296,8 @@ export class AuthService {
           redirect_uri: redirectUri,
           grant_type: 'authorization_code',
         }),
-        // A hung Google request must not hang this request indefinitely —
-        // 10s since this is a one-off external call, not the user-facing BFF
-        // proxy path (audit PERF-XX).
+        // 10s: a one-off external call, not the BFF proxy path; a hung request must not hang this
+        // one.
         signal: AbortSignal.timeout(10_000),
       });
     } catch (err) {
@@ -384,11 +340,8 @@ export class AuthService {
   }
 
   /**
-   * Starts a session for a Google account whose identity was already
-   * verified: by the code flow (`loginWithGoogle`) or by the mobile ID token
-   * route (GoogleIdTokenVerifier). Links by googleId, else by an existing
-   * account with the same email (Google vouched for it), else creates a
-   * passwordless user. Either way the address counts as verified.
+   * Links by googleId, else by the account with the same email, else creates a passwordless user.
+   * The address counts as verified.
    */
   async signInWithGoogle(identity: GoogleIdentity) {
     const { googleId, displayName } = identity;
@@ -411,11 +364,8 @@ export class AuthService {
   }
 
   /**
-   * Attaches Google to an existing account. Registering never proved the
-   * address, so an unverified account may have been opened by someone other
-   * than its real owner, waiting for them to sign in. Its password and sessions
-   * go, or that person would keep access to the account the real owner now
-   * uses; a genuine owner can set a new password by reset.
+   * Registering never proved the address, so an unverified account may belong to someone else: its
+   * password and sessions go. A real owner can reset the password.
    */
   private linkGoogle(
     user: { id: string; emailVerifiedAt: Date | null },
@@ -446,7 +396,6 @@ export class AuthService {
     });
   }
 
-  /** A new session (fresh token family) for a user created without a password. */
   startSession(user: { id: string; email: string }) {
     return this.issueTokens(
       user.id,
@@ -455,10 +404,6 @@ export class AuthService {
     );
   }
 
-  /**
-   * The user a refresh token belongs to while it is still usable as is: not
-   * revoked, not rotated, not expired. Null otherwise. Doesn't rotate it.
-   */
   async liveSessionUser(refreshToken: string) {
     const stored = await this.prisma.refreshToken.findUnique({
       where: { tokenHash: sha256(refreshToken) },
@@ -475,11 +420,8 @@ export class AuthService {
   }
 
   /**
-   * Mints a fresh access token (JWT) and refresh token (opaque, persisted
-   * hashed) for `userId`, linking the new refresh token into `familyId`, a
-   * fresh random id on login, so `logout`/reuse-detection can revoke every
-   * token ever issued from a single login in one update. Rotation during
-   * refresh creates its successor in `refreshTokens` instead.
+   * familyId is fresh per login, so logout or reuse detection can revoke every token from one login
+   * in one update.
    */
   private async issueTokens(userId: string, email: string, familyId: string) {
     const accessToken = await this.signAccessToken(userId, email);

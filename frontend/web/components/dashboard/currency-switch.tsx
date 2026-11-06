@@ -9,14 +9,10 @@ const MAX_PILLS = 3;
 export interface CurrencyOption {
   code: string;
   overdrawn?: boolean;
-  /** A currency other than the selected one that has data worth switching to. */
   activity?: boolean;
 }
 
-/**
- * Dashboard currency switch (shared by the balance hero and the monthly summary):
- * pills for a few currencies, a dropdown for many. Renders nothing for one.
- */
+/** Pills for a few currencies, a dropdown for many; renders nothing for one. */
 export function CurrencySwitch({
   currencies,
   value,
@@ -81,8 +77,8 @@ export function CurrencySwitch({
 }
 
 /**
- * Inline currency picker that reads as part of a subtitle ("All accounts · TND ⌄"):
- * text-sized, no border or fill until hovered. A dot marks that another currency has data.
+ * Reads as part of a subtitle ("All accounts · TND ⌄"): no border or fill until hovered; a dot
+ * marks another currency with data.
  */
 export function CurrencyMenu({
   currencies,

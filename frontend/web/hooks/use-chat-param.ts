@@ -19,10 +19,8 @@ function subscribe(listener: () => void) {
 }
 
 /**
- * The open chat, kept in `?chat=<id>` so a chat can be linked to, reloaded and
- * reached with Back/Forward. Read from `window.location` rather than
- * useSearchParams, which under cacheComponents would need a Suspense boundary
- * around the whole page. Server render: no chat (the client fills it in).
+ * The open chat lives in `?chat=<id>` to be linkable and Back/Forward-able; read from
+ * window.location because useSearchParams would need a Suspense boundary under cacheComponents.
  */
 export function useChatParam(): [string | null, (id: string | null) => void] {
   const value = React.useSyncExternalStore(subscribe, read, () => null);

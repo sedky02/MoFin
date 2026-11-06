@@ -39,9 +39,8 @@ export function HeaderIconButton({
 }
 
 /**
- * The one header every screen uses (tabs and pushed screens alike): an optional leading button, the
- * title in the same size and weight everywhere, then optional trailing content. `insetTop` adds the
- * status bar height (off for a modal sheet that doesn't reach the top of the screen).
+ * One header for tabs and pushed screens: optional leading button, title, trailing content.
+ * `insetTop` adds the status bar height (off for a modal sheet that doesn't reach the top).
  */
 export function HeaderBar({
   title,

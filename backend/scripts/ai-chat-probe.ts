@@ -1,10 +1,6 @@
 /**
- * Sends the real chat request (system prompt shape + the chat tools) through
- * OpenAiCompatibleProvider and prints the provider's status and error body.
- *
- *   AI_API_KEY=... npx ts-node scripts/ai-chat-probe.ts
- *
- * AI_BASE_URL and AI_MODEL default to the app's defaults. Prints no key.
+ * Sends the real chat request through OpenAiCompatibleProvider and prints the status and error
+ * body: AI_API_KEY=... npx ts-node scripts/ai-chat-probe.ts
  */
 import { buildChatTools } from '../src/modules/ai/ai-chat-tools';
 import { OpenAiCompatibleProvider } from '../src/modules/ai/llm/openai-compatible.provider';

@@ -29,9 +29,8 @@ function subscribe(cb: () => void) {
 }
 
 /**
- * Mirror the choice into a cookie. The server can't read localStorage, and the dashboard
- * prefetches its data on the server for the account being shown, so it needs the same value.
- * The cookie carries an account id (not a secret) and is not httpOnly.
+ * Mirrored into a cookie because the server can't read localStorage and the dashboard prefetches
+ * for the account being shown; it carries an account id, not a secret.
  */
 function writeCookie(value: string | undefined) {
   try {
@@ -55,11 +54,8 @@ export function setActiveAccountId(id?: string) {
 }
 
 /**
- * The account the user is working in: their explicit pick, else their main account
- * (Settings), else none. Choosing "All accounts" is remembered as an explicit choice
- * and does not fall back to the main account. Resolved against the live account
- * list, so an archived or deleted account silently stops being "active" instead
- * of pre-filling a stale id. `undefined` = "All accounts".
+ * Explicit pick, else the main account, else none. "All accounts" is remembered as an explicit
+ * choice and never falls back to main.
  */
 export function useActiveAccount(initialStored?: string): {
   account: Account | undefined;
@@ -70,9 +66,8 @@ export function useActiveAccount(initialStored?: string): {
   const { data } = useAccounts();
   const { data: user } = useUser();
   const accounts = data ?? [];
-  // The server snapshot is what SSR and the first client render agree on (no hydration
-  // mismatch). Callers that know the stored choice on the server (the dashboard reads
-  // the cookie) pass it in, so the prefetched data matches what is first rendered.
+  // The server snapshot is what SSR and the first client render agree on; callers that know the
+  // stored choice on the server (the dashboard reads the cookie) pass it in.
   const stored = React.useSyncExternalStore(subscribe, read, () => initialStored);
   // Keep the cookie in step with localStorage, including for people who chose before
   // the cookie existed.

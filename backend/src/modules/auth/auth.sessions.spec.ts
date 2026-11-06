@@ -26,7 +26,6 @@ describe('AuthService password change and sign-out everywhere', () => {
     passwordHash = await bcrypt.hash('old-password', 4);
   });
 
-  /** In-memory User, RefreshToken and PasswordResetToken tables; `where` supports `{ not }`. */
   function makeStore() {
     const users: UserRow[] = [
       { id: 'u1', email: 'a@b.com', passwordHash },
@@ -118,7 +117,6 @@ describe('AuthService password change and sign-out everywhere', () => {
       config as never,
     );
     let families = 0;
-    /** A fresh login session for `userId`, in its own family like AuthService.login. */
     const login = async (userId = 'u1') => {
       families += 1;
       const { refreshToken } = await service['issueTokens'](
@@ -134,7 +132,6 @@ describe('AuthService password change and sign-out everywhere', () => {
     return { service, login, row, user, resets };
   }
 
-  /** The field errors of the BadRequestException `promise` rejects with. */
   async function fieldErrors(promise: Promise<unknown>) {
     const err = await promise.then(
       () => null,
@@ -280,7 +277,6 @@ describe('AuthService password change and sign-out everywhere', () => {
       });
 
       expect(row(mine).revokedAt).not.toBeNull();
-      // The other user's own session is left alone.
       expect(row(theirs).revokedAt).toBeNull();
     });
 

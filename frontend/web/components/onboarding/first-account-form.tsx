@@ -18,9 +18,8 @@ import { accountKeys, searchKeys } from "@/lib/query-keys";
 import type { Account } from "@/lib/types";
 
 /**
- * The first account, right on the dashboard instead of two pages away. Everything has a
- * default (type, a name for it, the currency of where the device is), so the common case
- * is one tap; the opening balance is optional.
+ * The first account on the dashboard, with a default for everything (type, name, the device's
+ * currency), so the common case is one tap.
  */
 export function FirstAccountForm() {
   const createMut = useCreateAccount();
@@ -45,7 +44,6 @@ export function FirstAccountForm() {
         name: values.name,
         type: values.type,
         currency: values.currency,
-        // Left out when blank: the account starts at 0.
         ...(values.openingBalance.trim()
           ? { openingBalance: openingBalanceValue(values.openingBalance, values.currency) }
           : {}),

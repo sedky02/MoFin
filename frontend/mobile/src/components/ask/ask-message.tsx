@@ -28,7 +28,6 @@ export const TOOL_LABELS: Record<string, string> = {
   chart_daily_trend: 'daily activity',
 };
 
-/** `**bold**` inside a line; everything else stays text. */
 function inline(text: string, key: string): React.ReactNode[] {
   return text.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
     part.startsWith('**') && part.endsWith('**') && part.length > 4 ? (
@@ -44,7 +43,6 @@ function inline(text: string, key: string): React.ReactNode[] {
 const BULLET = /^\s*[-*•]\s+/;
 const NUMBERED = /^\s*(\d+)[.)]\s+/;
 
-/** Paragraphs, "- " bullets, "1." lists and **bold**: the little formatting the assistant uses. */
 export function RichText({ text }: { text: string }) {
   const blocks = text.trim().split(/\n{2,}/);
   return (
@@ -82,7 +80,6 @@ export function RichText({ text }: { text: string }) {
   );
 }
 
-/** MoFin's own mark next to its answers; a red alert circle when an answer failed. */
 function Avatar({ tone = 'assistant' }: { tone?: 'assistant' | 'error' }) {
   if (tone === 'assistant') {
     return (
@@ -164,7 +161,6 @@ export function AssistantMessage({ message }: { message: AiChatMessage }) {
   );
 }
 
-/** Shown while the answer is on its way. */
 export function ThinkingMessage() {
   return (
     <View className="flex-row gap-3" accessibilityLiveRegion="polite" accessibilityLabel="MoFin is looking at your data">

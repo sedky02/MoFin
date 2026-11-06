@@ -11,11 +11,8 @@ export const INVALID_VERIFICATION_TOKEN_MESSAGE =
   'This verification link is invalid or has expired. Request a new one.';
 
 /**
- * Proves a password user controls their address, the way PasswordResetService
- * proves it for a reset: 32 random bytes, only the SHA-256 stored, one use, and
- * a new request supersedes the old link. Signing up never asks for this; it is
- * only needed when something depends on the address, such as accepting an
- * invitation.
+ * Proves control of the address like PasswordResetService: 32 random bytes, only the SHA-256
+ * stored, one use, a new request supersedes the old. Signup never asks for it.
  */
 @Injectable()
 export class EmailVerificationService {
@@ -25,7 +22,6 @@ export class EmailVerificationService {
     private readonly config: ConfigService,
   ) {}
 
-  /** Emails a link to the signed-in user, unless their address is already verified. */
   async sendLink(userId: string): Promise<{ alreadyVerified: boolean }> {
     const user = await this.prisma.user.findUniqueOrThrow({
       where: { id: userId },

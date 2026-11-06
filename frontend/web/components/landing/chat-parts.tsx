@@ -7,10 +7,8 @@ import { cn } from "@/lib/utils";
 import { AnthropicLogo } from "@/components/common/ai-logos";
 
 /**
- * Keeps a box at the size of its largest state. `reserve` is rendered
- * invisibly in the same grid cell as the live content, so the box is exactly
- * as tall as that state at every width, and whatever appears or swaps inside
- * never pushes the page around.
+ * Keeps a box at the size of its largest state: `reserve` renders invisibly in the same grid cell,
+ * so nothing swapping inside pushes the page.
  */
 export function Reserve({
   reserve,
@@ -65,24 +63,18 @@ export function ChatWindow({
   );
 }
 
-/** The message as the user sends it: whole, on the right. */
 export function UserBubble({ text }: { text: string }) {
   return (
     <div className="ml-auto w-fit max-w-[85%] rounded-2xl rounded-br-md bg-muted px-4 py-2.5 text-sm">{text}</div>
   );
 }
 
-/**
- * The text box at the bottom of the chat. The question is typed here, left to
- * right like any text field, then sent as one message.
- */
 export function Composer({
   text,
   full,
   typing,
   placeholder,
 }: {
-  /** What's typed so far ("" once sent). */
   text: string;
   /** The whole message, to keep the box at its final height while typing. */
   full: string;

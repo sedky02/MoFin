@@ -4,9 +4,8 @@ import { currencyName } from '@/core/currency-names';
 export type CurrencyOption = { code: string; name: string; group?: string };
 
 /**
- * The rows of the currency picker (same rules as the web's picker). A search matches the code or the
- * name, with codes that start with the query first. With no search, currencies already in use come
- * first under "In use", and the rest under "All currencies" when there are pinned ones.
+ * The picker's rows (same rules as the web): search matches code or name with code prefixes first;
+ * with no search, currencies in use come first under "In use", then "All currencies".
  */
 export function currencyOptions(query: string, pinned: string[] = []): CurrencyOption[] {
   const q = query.trim().toLowerCase();

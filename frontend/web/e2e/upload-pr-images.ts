@@ -1,20 +1,5 @@
-/**
- * Uploads PNGs to GitHub as attachments (github.com/user-attachments/...), so
- * they render in a private repo's PR description without a signed-in session on
- * the viewer's side being tied to a branch.
- *
- *   npm run e2e:upload -- <pr-number> <file-or-dir>... [--out urls.json]
- *
- * Opens a headed Chromium with a persistent profile (E2E_GH_PROFILE, default
- * ~/.cache/mofin-gh-profile) on the PR page. On the first run, sign in to GitHub
- * in that window; the session is kept for later runs. The files are attached to
- * the PR's comment box, the generated markdown is read back and the box is
- * cleared again. Nothing is ever submitted.
- *
- * Prints one line per file, `<file>\t<url>`, and writes the same as JSON to
- * --out when given. Run with Node's built-in TypeScript support, so keep this
- * file free of enums and local imports.
- */
+// Attaches PNGs to a PR comment box on GitHub and prints `<file>\t<url>` lines: npm run e2e:upload -- <pr> <path>...
+// Needs a signed-in headed profile (E2E_GH_PROFILE); nothing is submitted. Node TS: no enums or local imports.
 import { readdirSync, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, resolve } from "node:path";

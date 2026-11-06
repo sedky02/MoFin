@@ -9,7 +9,6 @@ import { toast } from "@/lib/toast";
 const AI_TIMEOUT_MS = 60_000;
 const PAGE = 30;
 
-/** The user's saved chats, most recently active first. */
 export function useAiChats() {
   return useInfiniteQuery({
     queryKey: aiChatKeys.list(),
@@ -34,9 +33,8 @@ export function useAiChatDetail(id: string | null) {
 }
 
 /**
- * Asks a question: in `chatId`, or in a new chat when it is null. The server
- * saves the question and the answer together and returns both, so the chat's
- * cache is updated in place instead of refetched.
+ * The server saves question and answer together and returns both, so the chat cache is updated in
+ * place instead of refetched.
  */
 export function useSendChatMessage() {
   const queryClient = useQueryClient();
@@ -48,7 +46,6 @@ export function useSendChatMessage() {
     }: {
       chatId: string | null;
       content: string;
-      /** Spoken questions label the drafts they lead to as voice. */
       inputMode?: "text" | "voice";
     }) =>
       api.post<AiChatTurn>(

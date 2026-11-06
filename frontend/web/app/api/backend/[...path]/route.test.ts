@@ -18,7 +18,6 @@ function call(path = ["accounts"]) {
   return GET(req, { params: Promise.resolve({ path }) });
 }
 
-/** Answers backend calls: 401 for the data request, `refresh` for /auth/refresh. */
 function backend(refresh: () => Response | Promise<Response>, retry?: () => Response) {
   fetchMock.mockImplementation(async (input, init) => {
     const url = String(input);

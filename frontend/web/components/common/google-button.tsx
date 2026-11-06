@@ -1,9 +1,8 @@
 "use client";
 
 /**
- * Starts Google sign-in by navigating to the web BFF initiate route. Carries the
- * in-flight MCP authorize URL (if present) so the connector flow resumes after
- * Google returns. Full navigation — we are leaving the SPA for an OAuth redirect.
+ * Navigates to the BFF initiate route (a full navigation: we leave the SPA for an OAuth redirect),
+ * carrying the in-flight MCP authorize URL so the connector flow resumes.
  */
 export function GoogleButton({ label = "Continue with Google" }: { label?: string }) {
   function start() {

@@ -3,14 +3,8 @@ import { z } from 'zod';
 import { currencySchema } from '../../../common/dto/common-fields';
 
 /**
- * A chart attached to an assistant reply. Every number in it comes from the
- * ledger through AnalyticsService, never from the model: the model only
- * picks which chart and for what period. Amounts are decimal strings, like
- * everywhere else in the API.
- *
- * One shape for every kind, so clients need a single renderer contract:
- * - donut: one series, a slice per label;
- * - bar/line: labels on the x axis, one or more series of the same length.
+ * Every number comes from the ledger via AnalyticsService, never the model. One shape for donut,
+ * bar and line, so clients need one renderer contract.
  */
 export interface AiChart {
   kind: 'donut' | 'bar' | 'line';
@@ -83,7 +77,6 @@ export function isChartTool(name: string): name is ChartToolName {
 const decimal = (value: string | number | Prisma.Decimal) =>
   new Prisma.Decimal(String(value));
 
-/** Biggest categories first; past MAX_DONUT_SLICES they are summed as "Other". */
 export function categoryDonut(
   breakdown: Array<{ category: string; amount: string }>,
   title: string,
@@ -182,10 +175,7 @@ export function dailyTrend(
   };
 }
 
-/**
- * What the model is told about a chart it asked for: the same numbers, small,
- * so it can talk about them without repeating every value.
- */
+/** The model sees the same numbers, small, so it can discuss them without repeating every value. */
 export function chartForModel(chart: AiChart, index: number) {
   return {
     shownToUser: true,

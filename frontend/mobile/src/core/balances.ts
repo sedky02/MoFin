@@ -1,11 +1,9 @@
-// Pure helpers for the all-accounts balance hero. The unscoped /ledger/balance
-// response covers every account the user owns, archived ones included: archived
-// accounts are read-only, but their money is still theirs and still in the ledger.
+// The unscoped /ledger/balance covers every account, archived included: archived accounts are
+// read-only but their money is still the user's.
 import { parseBalanceKey } from "@/core/format";
 import { add, tryParse } from "@/core/decimal";
 import type { LedgerBalance } from "@/core/types";
 
-/** Sum balances by currency (never across currencies). key = "<accountId>:<currency>". */
 export function totalsByCurrency(balances: LedgerBalance[]): { currency: string; amount: string }[] {
   const totals = new Map<string, string>();
   for (const { key, balance } of balances) {
@@ -16,17 +14,16 @@ export function totalsByCurrency(balances: LedgerBalance[]): { currency: string;
 }
 
 /**
- * Zero totals, one per currency of `accounts`, for an account that exists but has no ledger
- * activity yet (the balance endpoint lists nothing for it). Order follows the accounts.
+ * Zero totals for an account with no ledger activity yet (the balance endpoint lists nothing for
+ * it).
  */
 export function zeroTotals(accounts: { currency: string }[]): { currency: string; amount: string }[] {
   return [...new Set(accounts.map((a) => a.currency))].map((currency) => ({ currency, amount: "0" }));
 }
 
 /**
- * How many accounts outside `activeAccountIds` (i.e. archived) hold a non-zero
- * balance in `currency`. Those are part of the all-accounts total, so the hero
- * says so; an archived account at zero changes nothing and isn't counted.
+ * Archived accounts holding a non-zero balance count in the all-accounts total, so the hero says
+ * so; one at zero changes nothing.
  */
 export function countArchivedHolding(
   balances: LedgerBalance[],
@@ -43,7 +40,6 @@ export function countArchivedHolding(
   return archived.size;
 }
 
-/** Hero caption for the all-accounts view, naming archived accounts when they count. */
 export function allAccountsCaption(currency: string, archivedCount: number): string {
   const base = `Across all ${currency} accounts`;
   if (archivedCount === 0) return base;

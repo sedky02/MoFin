@@ -8,18 +8,15 @@ import type { Category, CategoryType, Paginated } from "@/lib/types";
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/form-errors";
 
-// No infinite-scroll UI for categories — 100 (the backend's max page size)
-// comfortably covers a real user's category list while keeping the endpoint
-// itself bounded rather than truly unbounded.
+// No infinite scroll: 100 (the backend's max page) is effectively everything while the endpoint
+// stays bounded.
 const CATEGORIES_PAGE_SIZE = 100;
 
 type CategoryListStatus = "active" | "archived" | "all";
 
 /**
- * Active categories by default, which is what every picker wants: archived
- * ones are left out by the backend. The categories page asks for "archived"
- * to list them for restoring. With `accountId` (see categoryScope) they are the ones that fit
- * that account: a shared account uses its owner's.
+ * Active by default, which is what every picker wants; archived ones come only when asked. With
+ * `accountId` (see categoryScope): the categories that fit that account.
  */
 export function useCategories(
   status: CategoryListStatus = "active",
@@ -42,7 +39,6 @@ export function useCategories(
   });
 }
 
-/** Drops a category from a cached list once the server has confirmed it left. */
 function removeFromList(
   queryClient: ReturnType<typeof useQueryClient>,
   status: CategoryListStatus,
@@ -100,9 +96,8 @@ export function useUpdateCategory() {
   });
 }
 
-// Neither removes the tile optimistically: it goes once the server has confirmed. Categories are
-// never deleted from the app: archiving hides one from the pickers and keeps it on past
-// transactions, and it can always be restored.
+// Neither removes the tile optimistically. Categories are never deleted from the app: archiving
+// hides one from pickers and keeps it on past transactions.
 export function useArchiveCategory() {
   const queryClient = useQueryClient();
   return useMutation({

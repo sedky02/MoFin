@@ -1,8 +1,8 @@
 import type { Goal, GoalProgressSource } from "@/core/types";
 
 /**
- * One line saying what a goal counts. Income/Expense goals count every transaction of that
- * type on the goal's account (transfers excluded); Balance goals follow the account balance.
+ * Income/Expense goals count every transaction of that type on the goal's account (transfers
+ * excluded); Balance goals follow the account balance.
  */
 export function goalScopeLabel(type: Goal["type"], accountName?: string | null): string {
   const account = accountName?.trim() || "this account";

@@ -3,9 +3,8 @@ import { getCalendars, getLocales } from 'expo-localization';
 import { guessCurrency, type DeviceHints } from '@/core/onboarding';
 
 /**
- * What the device says about where it is, in the shape `guessCurrency` reads. The time zone
- * decides first. Languages are passed as tags; `guessCurrency` can only read a region from them
- * where `Intl.Locale` exists (not on Hermes), so on a phone the time zone does the work.
+ * What the device says about where it is, as `guessCurrency` reads it. The time zone decides first:
+ * language tags give no region without `Intl.Locale` (not on Hermes).
  */
 export function getDeviceHints(): DeviceHints {
   let timeZone: string | undefined;

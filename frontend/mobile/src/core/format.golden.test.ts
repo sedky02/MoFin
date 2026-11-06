@@ -1,6 +1,5 @@
-// Golden strings for money display. They run in Node (en-US ICU) here; the same table is meant
-// to be rendered on a device to confirm Hermes' Intl agrees (see docs/mobile phase 2, manual QA).
-// If this fails on Hermes only, the fix belongs in a fallback, not in the expected strings.
+// Golden money strings, run in Node (en-US ICU) and meant to be rendered on a device to confirm
+// Hermes' Intl agrees. If only Hermes fails, fix a fallback, not these strings.
 import { currencyFractionDigits, currencySymbol, formatMoney, formatMoneyInput } from "@/core/format";
 import { GOLDEN_MONEY } from "@/core/golden-money";
 import { CURRENCIES } from "@/core/constants";

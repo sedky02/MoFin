@@ -12,8 +12,6 @@ import { useActiveAccount } from '@/hooks/useActiveAccount';
 import { useCreateDraftIntent } from '@/hooks/useDrafts';
 import { Sparkles } from '@/lib/icons';
 
-/** One text box: the sentence, an optional default account and the "Draft it" button. */
-/** `autoFocus`: open with the keyboard up (arriving from the add sheet's "Describe it"). */
 export function DraftComposer({ autoFocus = false }: { autoFocus?: boolean } = {}) {
   const [input, setInput] = React.useState('');
   const { accountId: activeAccountId } = useActiveAccount();

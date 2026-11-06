@@ -17,7 +17,6 @@ import { useUser } from '@/hooks/useUser';
 import { Database, Download } from '@/lib/icons';
 import { toast } from '@/lib/toast';
 
-/** Data: export as JSON or CSV, then (set apart, in red) delete everything and start over. */
 export function DataSection() {
   const { data: user, isLoading } = useUser();
   const [pending, setPending] = React.useState<ExportFormat | null>(null);

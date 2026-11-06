@@ -8,30 +8,23 @@ import { AppModule } from './app.module';
 import { trustedClientIpMiddleware } from './common/middleware/trusted-client-ip.middleware';
 import { initSentry } from './common/sentry';
 
-// Sentry.init must run before anything that could throw, so it's the very
-// first thing in bootstrap. process.env directly (not ConfigService) because
-// no DI container exists yet at this point.
+// Sentry must init before anything that can throw; process.env because there is no DI container
+// yet.
 initSentry(process.env.SENTRY_DSN);
 
 async function bootstrap() {
-  // bufferLogs queues Nest's own startup logs until app.useLogger(...) below
-  // swaps in the pino-backed logger, so nothing is lost/duplicated.
+  // bufferLogs holds startup logs until the pino logger is installed below.
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     bufferLogs: true,
   });
   app.useLogger(app.get(Logger));
   const config = app.get(ConfigService);
-  // The BFF (Next.js) is the only thing that ever calls this backend directly.
-  // Trusting one hop makes req.ip the address that hop forwarded, which is the
-  // real client locally. Behind Vercel's edge that hop is the BFF itself, so
-  // the BFF also sends the client IP it saw, vouched for by
-  // BFF_SHARED_SECRET; this middleware runs before every guard and makes that
-  // IP req.ip for the throttlers (B-103).
+  // The BFF is the only direct caller; behind Vercel it is the trusted hop, so
+  // trustedClientIpMiddleware swaps in the client IP it vouches for as req.ip (B-103).
   app.set('trust proxy', 1);
   app.use(trustedClientIpMiddleware(config.get<string>('BFF_SHARED_SECRET')));
-  // OAuth discovery documents (RFC 8414 / RFC 9728) must live at the origin root,
-  // so they are excluded from the `api/v1` prefix. The authorize/token/register
-  // endpoints stay under the prefix — claude.ai reads their URLs from the metadata.
+  // OAuth discovery documents (RFC 8414/9728) must live at the origin root, so they skip the
+  // `api/v1` prefix; authorize/token/register stay under it.
   app.setGlobalPrefix('api/v1', {
     exclude: [
       {
@@ -52,13 +45,8 @@ async function bootstrap() {
     ],
   });
 
-  // Input validation is handled per-route by ZodValidationPipe; the Prisma
-  // exception filter, throttler guard, and structured (pino) request logging
-  // are registered globally in AppModule.
-
-  // Outside production, let browser clients on localhost (the Expo web preview)
-  // call the API directly. Production stays without CORS: only the BFF and the
-  // native app call it there, and neither needs it.
+  // Outside production, localhost browser clients (the Expo web preview) may call the API directly;
+  // production has no CORS.
   if (config.get<string>('NODE_ENV') !== 'production') {
     app.enableCors({
       origin: [/^http:\/\/localhost:\d+$/, /^http:\/\/127\.0\.0\.1:\d+$/],

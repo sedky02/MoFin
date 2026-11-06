@@ -1,6 +1,5 @@
 import { z } from 'zod';
 
-/** True for an IANA zone name the runtime knows ("Africa/Tunis", "UTC"). */
 export function isTimeZone(value: string): boolean {
   try {
     new Intl.DateTimeFormat('en', { timeZone: value });
@@ -10,13 +9,11 @@ export function isTimeZone(value: string): boolean {
   }
 }
 
-/** An IANA time zone sent by a client (the browser's or the phone's). */
 export const timeZoneSchema = z
   .string()
   .max(64)
   .refine(isTimeZone, 'unknown time zone');
 
-/** The calendar date (YYYY-MM-DD) that `instant` falls on in `timeZone`. */
 export function localDate(instant: Date, timeZone = 'UTC'): string {
   // en-CA formats as YYYY-MM-DD.
   return new Intl.DateTimeFormat('en-CA', {
@@ -27,7 +24,6 @@ export function localDate(instant: Date, timeZone = 'UTC'): string {
   }).format(instant);
 }
 
-/** Minutes `timeZone` is ahead of UTC at `instant` (Tunis: 60, New York: -300 or -240). */
 function offsetMinutes(instant: Date, timeZone: string): number {
   const name = new Intl.DateTimeFormat('en-US', {
     timeZone,
@@ -42,10 +38,8 @@ function offsetMinutes(instant: Date, timeZone: string): number {
 }
 
 /**
- * Noon on a calendar date in `timeZone`, as an instant. A transaction dated
- * "yesterday" is stored at local noon so that it shows on that same day in the
- * user's zone, whatever their offset (UTC midnight would read as the day
- * before anywhere west of Greenwich).
+ * A transaction dated "yesterday" is stored at local noon, so it shows on that day in the user's
+ * zone (UTC midnight reads as the day before west of Greenwich).
  */
 export function localNoon(date: string, timeZone = 'UTC'): Date {
   const utcNoon = new Date(`${date}T12:00:00Z`);

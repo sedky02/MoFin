@@ -61,7 +61,6 @@ export default function RootLayout() {
   const scheme = colorScheme === 'dark' ? 'dark' : 'light';
   const signedIn = status === 'signedIn';
   return (
-    // Gestures (swiping weeks, months and tabs) need this root around everything.
     <GestureHandlerRootView style={{ flex: 1 }}>
     <QueryClientProvider client={getQueryClient()}>
       <ThemeProvider value={NAV_THEME[scheme]}>

@@ -1,11 +1,5 @@
-# The whole MoFin stack for a local demo: Postgres, the API and the web app.
-#
-#   cp .env.example .env      # optional: every value below has a demo default
-#   docker compose up --build
-#
-# Then open http://localhost:3001 and sign in with the demo account.
-# The defaults are for local demos only; never reuse them for a real deployment.
-# For Postgres alone (running the apps with npm), see backend/docker-compose.yml.
+# Local-demo stack (Postgres, API, web): `docker compose up --build`, then sign in with the demo account at
+# http://localhost:3001. Defaults are for demos only (optional: cp .env.example .env); Postgres alone: backend/docker-compose.yml.
 
 services:
   postgres:

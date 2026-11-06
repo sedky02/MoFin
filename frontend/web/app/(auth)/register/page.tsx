@@ -80,9 +80,8 @@ export default function RegisterPage() {
         }
         throw new ApiClientError(res.status, body.message ?? "Registration failed.", body);
       }
-      // No auto-login (the backend never signals whether the email was new,
-      // see SEC-XX) — send the user to log in, preserving the MCP bridge
-      // param so it resumes there instead.
+      // No auto-login (the backend never signals whether the email was new): send the user to log
+      // in, keeping the MCP bridge param.
       const params = new URLSearchParams(window.location.search);
       const mcpAuthorize = params.get("mcp_authorize");
       const loginUrl = new URL("/login", window.location.origin);
@@ -177,7 +176,6 @@ export default function RegisterPage() {
                 {!passwordError && (
                   <FormDescription>Use at least 8 characters.</FormDescription>
                 )}
-                {/* Strength indicator */}
                 <div className="mt-1.5 flex items-center gap-2">
                   <div className="flex h-1.5 flex-1 gap-1">
                     {[0, 1, 2, 3].map((i) => (

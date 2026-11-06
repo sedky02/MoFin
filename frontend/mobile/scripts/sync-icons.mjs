@@ -1,11 +1,6 @@
 #!/usr/bin/env node
-// Keeps the app's lucide icons out of the package barrel. Metro doesn't tree-shake, so
-// `import { Wallet } from 'lucide-react-native'` puts all ~1,600 icons in the bundle. This script:
-//   1. collects every icon the app imports (from 'lucide-react-native' or '@/lib/icons'),
-//   2. writes src/lib/icons.ts, which re-exports each one from its own file
-//      ('lucide-react-native/icons/<file>'), so only those reach the bundle,
-//   3. points value imports of 'lucide-react-native' at '@/lib/icons' (type imports stay).
-// Usage: node scripts/sync-icons.mjs [--check]   (--check: exit 1 if anything would change)
+// Metro doesn't tree-shake, so importing from 'lucide-react-native' bundles ~1,600 icons. This
+// collects the icons the app imports and re-exports each from its own file in src/lib/icons.ts.
 import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 

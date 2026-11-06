@@ -14,13 +14,8 @@ import { AnalyticsController } from '../src/modules/analytics/analytics.controll
 import { AnalyticsService } from '../src/modules/analytics/analytics.service';
 
 /**
- * HTTP-level check of GET /analytics/monthly-summary: the real controller,
- * validation pipe and service behind the `api/v1` prefix, with Prisma replaced
- * by an in-memory store. No database is touched.
- *
- * The fixture is one active TND account plus an archived EUR account that still
- * had income and spending this month, the case where an all-accounts summary
- * used to add the two currencies together.
+ * GET /analytics/monthly-summary over an in-memory Prisma: an active TND account plus an archived
+ * EUR one with activity, where all-accounts used to add currencies together.
  */
 
 const USER_ID = 'user-1';

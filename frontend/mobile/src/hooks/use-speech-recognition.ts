@@ -1,6 +1,5 @@
-// Speech to text, in one place: permission, availability, on-device recognition when the phone has
-// it, the transcript as it comes in, errors, and stopping when the screen using it goes away. The
-// voice overlay and the Ask chat's mic both use this hook; nothing else talks to the recognizer.
+// Speech to text in one place (permission, availability, on-device recognition when available,
+// transcript, errors, stopping when the screen goes away); nothing else talks to the recognizer.
 import * as React from 'react';
 import { Linking } from 'react-native';
 import {
@@ -15,13 +14,10 @@ import { useVoiceLocale } from '@/lib/voice-locale';
 export type SpeechStatus = 'idle' | 'starting' | 'listening' | 'stopping';
 
 export type SpeechErrorKind =
-  /** Microphone or speech permission refused: Settings is the way back. */
   | 'permission'
-  /** No recognizer on this device, or none for this language. */
   | 'unavailable'
   /** Nothing was said before the recognizer gave up. */
   | 'no-speech'
-  /** It broke mid-session (network, audio, interrupted). */
   | 'failed';
 
 export interface SpeechError {
@@ -29,7 +25,6 @@ export interface SpeechError {
   message: string;
 }
 
-/** The message for each way a session can fail, in the app's voice. */
 export function speechErrorFor(code: ExpoSpeechRecognitionErrorCode, locale: string, detail = ''): SpeechError | null {
   switch (code) {
     case 'aborted':
@@ -56,10 +51,8 @@ export function openSpeechSettings(): void {
 }
 
 /**
- * Listens on `start()` and calls `onDone(text)` with what was said once listening ends (on its
- * own after a pause, or on `stop()`). `abort()` and leaving the screen drop the session without
- * calling `onDone`. Only the session this hook started is handled, so two screens using it don't
- * read each other's speech.
+ * Calls `onDone(text)` when listening ends (a pause or `stop()`); `abort()` and leaving the screen
+ * drop the session without it. Events from other sessions are ignored.
  */
 export function useSpeechRecognition({ onDone }: { onDone?: (text: string) => void } = {}) {
   const locale = useVoiceLocale();
@@ -119,14 +112,12 @@ export function useSpeechRecognition({ onDone }: { onDone?: (text: string) => vo
     begin(ExpoSpeechRecognitionModule.supportsOnDeviceRecognition());
   }, [begin, locale]);
 
-  /** Stop listening and send what was heard. */
   const stop = React.useCallback(() => {
     if (!active.current) return;
     setStatus('stopping');
     ExpoSpeechRecognitionModule.stop();
   }, []);
 
-  /** Stop listening and drop what was heard. */
   const abort = React.useCallback(() => {
     if (!active.current) return;
     aborted.current = true;
@@ -199,9 +190,7 @@ export function useSpeechRecognition({ onDone }: { onDone?: (text: string) => vo
   return {
     status,
     listening: status === 'starting' || status === 'listening',
-    /** Settled words, shown normally. */
     finalText: finalText(transcript),
-    /** Words still being recognized, shown lighter. */
     interimText: transcript.interim,
     error,
     locale,

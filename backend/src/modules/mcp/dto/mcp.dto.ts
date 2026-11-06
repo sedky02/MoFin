@@ -11,15 +11,8 @@ import { getBalanceQuerySchema } from '../../ledger/dto/ledger.dto';
 import { searchTransactionsSchema } from '../../search/dto/search.dto';
 
 /**
- * Per-tool argument schemas. Previously MCP arguments were forwarded with
- * `as never` and never validated (audit A2) — a direct violation of the
- * "MCP must never bypass validation" rule. Each tool's args are now parsed
- * with the same schema the corresponding HTTP route uses.
- *
- * `approve_draft_transaction` is deliberately NOT exposed here: an AI holding
- * one mcp-scoped token must not be able to both create and approve a draft,
- * since approval is the human-confirmation checkpoint the whole draft flow
- * exists to enforce (SEC-XX). Approval only happens via the web UI.
+ * Each tool's args use the same schema as its HTTP route, so MCP can't bypass validation.
+ * approve_draft_transaction is not exposed: one token must not both create and approve.
  */
 export const mcpToolSchemas = {
   create_draft_transaction: createDraftTransactionSchema,

@@ -3,10 +3,8 @@ import { DELETED_ACCOUNT_LABEL, transactionAccountLegs } from "./transaction-acc
 import type { Account, Transaction } from "./types";
 
 /**
- * How a series root reads in the Recurring view. A root carries the series
- * template (amount, accounts, schedule), which an edit can move away from the
- * root's own ledger legs, so the view reads the template and only falls back
- * to the legs for what the template doesn't name.
+ * How a series root reads in the Recurring view: from the series template (amount, accounts,
+ * schedule), which an edit can move away from the root's own legs, falling back to the legs.
  */
 
 type SeriesRoot = Pick<
@@ -49,9 +47,8 @@ export function seriesPausedLabel(tx: Pick<Transaction, "recurringStatus" | "rec
 }
 
 /**
- * The next date an active series posts on. None once it's paused, cancelled
- * or ended: such a root can still carry the date it would have posted next,
- * already in the past for a series the job paused.
+ * The next date an active series posts on; none once paused, cancelled or ended, since such a root
+ * can still carry a date already in the past (a series the job paused).
  */
 export function seriesNextOccurrence(tx: Pick<Transaction, "recurringStatus" | "nextOccurrenceAt">): string | undefined {
   return seriesIsActive(tx) && tx.nextOccurrenceAt ? tx.nextOccurrenceAt : undefined;
@@ -62,10 +59,8 @@ export function seriesIntervalLabel(tx: Pick<Transaction, "recurringInterval">):
 }
 
 /**
- * The account(s) the series posts to from now on, "From → To" for a transfer.
- * A name comes from the account list (fetched with status "all", so archived
- * accounts resolve), else from a root leg on the same account. `undefined`
- * while a name can't be resolved yet.
+ * The account(s) the series posts to now, "From → To" for a transfer. Names come from the full
+ * account list (archived included), else a root leg; `undefined` while unresolved.
  */
 export function seriesAccountLabel(
   tx: SeriesRoot,

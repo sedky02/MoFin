@@ -11,16 +11,14 @@ const SKIPPED_KEY = "mofin-setup-skipped";
 const NUDGE_CLOSED_KEY = "mofin-assistant-nudge-closed";
 
 export type SetupState =
-  /** No setup to show: it is over, or what decides it is still loading (the dashboard has its own). */
   | { status: "off" }
   /** There is an account but not yet whether anything is recorded: wait, so nothing flashes. */
   | { status: "loading" }
   | { status: "step"; step: SetupStep; accounts: Account[]; skip: () => void };
 
 /**
- * Where the first-run setup is: the first account, then the first transaction, which can be
- * skipped. Counted from the data (the same lists the dashboard reads), so a step done any other
- * way is done, and a demo never sees it. Mobile rewrite of the web hook (same keys and rules).
+ * Where the first-run setup is: first account, then first transaction (skippable). Counted from the
+ * data, so a step done any other way is done. Mobile rewrite of the web hook (same keys and rules).
  */
 export function useSetup(): SetupState {
   const [skipped, skip] = useStoredFlag(SKIPPED_KEY);

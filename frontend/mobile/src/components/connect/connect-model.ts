@@ -1,7 +1,5 @@
-// The connect page's data, as on the web: the connector name, the deep link that opens Claude with
-// the URL filled in, ChatGPT's settings page and the Gemini CLI config. The web reads the connector
-// URL from NEXT_PUBLIC_MCP_URL (the backend's /api/v1/mcp); the app derives the same URL from its
-// API base so there is no second value to keep in step.
+// The connect page's data, as on the web. The web reads the connector URL from NEXT_PUBLIC_MCP_URL;
+// the app derives it from its API base, so there is no second value to keep in step.
 
 export const CONNECTOR_NAME = 'MoFin — Monitor your Finances';
 export const CHATGPT_SETTINGS_URL = 'https://chatgpt.com/#settings/Connectors';
@@ -18,7 +16,6 @@ export const CLIENTS = [
 
 export type ClientKey = (typeof CLIENTS)[number]['key'];
 
-/** The remote MCP endpoint for an API base such as https://host/api/v1. Empty when there is no base. */
 export function mcpUrlFor(apiUrl: string | undefined): string {
   const base = (apiUrl ?? '').replace(/\/+$/, '');
   return base ? `${base}/mcp` : '';
@@ -42,7 +39,6 @@ export function unavailableMessage(mcpUrl: string, isDemo: boolean | undefined):
   return mcpUrl ? null : NOT_AVAILABLE;
 }
 
-/** The status line under the client header for a connected app. */
 export function connectedMessage(state: 'active' | 'connected', appName: string): string {
   return state === 'active'
     ? `${appName} is connected to your account.`

@@ -14,12 +14,7 @@ export class PrismaService
     super({ adapter: new PrismaPg(config.getOrThrow<string>('DATABASE_URL')) });
   }
 
-  /**
-   * Extended client with `.paginate()` on every model. Same underlying
-   * connection/engine as `this` — `$extends` is a pure composition step,
-   * not a new client. A field initializer (not a getter) so it's computed
-   * once per instance, not on every access.
-   */
+  /** A field initializer, not a getter, so it is computed once per instance. */
   readonly paginated = this.$extends(paginationExtension);
 
   async onModuleInit() {

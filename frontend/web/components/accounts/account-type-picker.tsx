@@ -5,7 +5,6 @@ import { ACCOUNT_TYPES } from "@/lib/constants";
 import type { AccountType } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-/** The four account types as tappable tiles, the chosen one ringed. */
 export function AccountTypePicker({
   value,
   onChange,

@@ -50,7 +50,6 @@ export function axisLabel(label: string, axis: AiChart["axis"], withYear = false
   return label;
 }
 
-/** Long form for screen readers and tooltips: "October 2026", "Tuesday, November 3". */
 function longLabel(label: string, axis: AiChart["axis"]): string {
   if (axis === "month" && /^\d{4}-\d{2}$/.test(label)) {
     return new Date(`${label}-01T00:00:00Z`).toLocaleDateString(undefined, {
@@ -70,16 +69,14 @@ function longLabel(label: string, axis: AiChart["axis"]): string {
   return label;
 }
 
-/** Every label for a few bars; with many (a month of days), about seven, evenly spread. */
 function showLabelAt(i: number, count: number): boolean {
   const every = Math.ceil(count / 7);
   return every <= 1 || i % every === 0 || i === count - 1;
 }
 
 /**
- * A chart the assistant attached to an answer. Every number came from the
- * ledger on the server. Hand-rolled like the dashboard's charts (no charting
- * dependency), with a hidden table carrying the same data for screen readers.
+ * Every number came from the ledger. Hand-rolled like the dashboard charts, with a hidden table
+ * carrying the same data for screen readers.
  */
 export function AskChart({ chart }: { chart: AiChart }) {
   return (
@@ -149,7 +146,6 @@ function SeriesLegend({ chart }: { chart: AiChart }) {
   );
 }
 
-/** Y axis gridlines plus the plot area; children draw inside the plot. */
 function Plot({
   chart,
   scale,
@@ -195,7 +191,6 @@ function Plot({
   );
 }
 
-/** The value bubble shown over a hovered or tapped point. */
 function Bubble({
   chart,
   index,

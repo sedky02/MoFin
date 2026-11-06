@@ -10,7 +10,6 @@ export interface DonutSegment {
   color: string;
 }
 
-/** A ring split into arcs (stroke dashes), with `center` content over the hole. */
 export function Donut({
   segments,
   size = 176,

@@ -6,7 +6,6 @@ import type { User } from "@/core/types";
 import { toast } from "@/lib/toast";
 import { handleApiError } from "@/core/form-errors";
 
-/** The signed-in user. */
 export function useUser() {
   return useQuery({
     queryKey: userKeys.me,

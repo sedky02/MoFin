@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 /**
- * Submit button that reflects the enclosing <form action={...}> pending state via
- * React 19's useFormStatus(). Must be rendered INSIDE such a form.
+ * Reflects the enclosing <form action> pending state via useFormStatus(); must be rendered inside
+ * such a form.
  */
 export function SubmitButton({
   children,

@@ -3,7 +3,6 @@ import type { Page } from "@playwright/test";
 
 export const AXE_TAGS = ["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa", "best-practice"];
 
-/** Waits for the page to settle (networkidle + 1.5 s), then runs axe with the project tag set. */
 export async function settle(page: Page) {
   await page.waitForLoadState("networkidle");
   await page.waitForTimeout(1500);

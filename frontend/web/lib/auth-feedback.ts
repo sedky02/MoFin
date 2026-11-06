@@ -1,11 +1,8 @@
-// Why /login opened. The Google routes redirect with ?error=<code> and the API
-// client with ?reason=expired; the login page maps those to fixed copy and
-// never renders the query value itself (it comes from the URL).
+// Why /login opened. The login page maps the ?error= and ?reason= codes to fixed copy and never
+// renders the query value itself (it comes from the URL).
 import { safeNextPath, DEFAULT_AFTER_LOGIN } from "@/lib/safe-next";
 
-/** Every ?error= code the auth routes emit. */
 export type LoginErrorCode = "google_failed" | "google_unconfigured";
-/** Every ?reason= the app emits. */
 export type LoginReason = "expired" | "signed_out" | "account_deleted";
 
 const ERROR_MESSAGES: Record<LoginErrorCode, string> = {
@@ -22,7 +19,6 @@ const REASON_MESSAGES: Record<LoginReason, string> = {
 
 export type LoginNotice = { kind: "error" | "info"; message: string };
 
-/** The banner for /login's query string, or null when it carries nothing to explain. */
 export function loginNotice(params: URLSearchParams): LoginNotice | null {
   const error = params.get("error");
   if (error) {
@@ -38,7 +34,6 @@ export function loginNotice(params: URLSearchParams): LoginNotice | null {
   return null;
 }
 
-/** `/login?error=<code>`, keeping the post-login return path when there is one. */
 export function loginErrorUrl(code: LoginErrorCode, next?: string | null): string {
   const qs = new URLSearchParams({ error: code });
   const safe = safeNextPath(next);

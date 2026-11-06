@@ -58,7 +58,6 @@ export function useStoredFlag(key: string): [set: boolean, set: () => void] {
   return [value, set];
 }
 
-/** Test helper: forget what was cached in memory. */
 export function resetStoredFlagCache(): void {
   cache.clear();
   loading.clear();

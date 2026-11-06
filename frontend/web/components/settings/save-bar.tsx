@@ -4,11 +4,8 @@ import { Button } from "@/components/ui/button";
 import { SubmitButton } from "@/components/common/submit-button";
 
 /**
- * "You have unsaved changes" with Discard and Save. Rendered inside the settings
- * form (the Save button submits it) but fixed to the bottom of the screen, not
- * sticky: the form ends after Preferences, so a sticky bar would be left behind
- * between the cards. It is centred over the content column (the sidebar takes
- * 16rem from lg up) and lifted above the mobile bottom bar.
+ * Rendered inside the settings form (Save submits it) but fixed to the bottom, not sticky: the form
+ * ends after Preferences, so a sticky bar would be left behind.
  */
 export function SaveBar({ onDiscard }: { onDiscard: () => void }) {
   return (

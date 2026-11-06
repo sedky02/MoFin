@@ -5,16 +5,8 @@ import { PrismaService } from '../../database/prisma.service';
 const LOCK_TRANSACTION_TIMEOUT_MS = 30 * 60 * 1000;
 
 /**
- * Runs `work` only if no other process holds the Postgres advisory lock `key`,
- * so a @Cron job that @nestjs/schedule fires on every replica runs once.
- * Returns false, without running `work`, when another instance holds it.
- *
- * It is a transaction lock (pg_try_advisory_xact_lock), held by one
- * interactive transaction for the whole run. A session lock would be taken and
- * released through the connection pool, possibly on different connections, and
- * could stay held on the first one and silently skip every later run. A
- * transaction lock is released by Postgres on commit, rollback or a dropped
- * connection.
+ * Runs `work` only if no other process holds the advisory lock, so a @Cron job fires once across
+ * replicas. A transaction lock, since a pooled session lock could stay held.
  */
 export async function withAdvisoryLock(
   prisma: PrismaService,

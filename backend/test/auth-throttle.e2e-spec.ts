@@ -1,10 +1,6 @@
 /**
- * Rate limiting on the credential routes (register, login, password forgot /
- * reset), through the real guards and HTTP stack.
- *
- * Wires AuthController with the same throttler setup as AppModule (global
- * ThrottlerGuard at 300/min plus the routes' own guard) and stub services, so
- * it needs no database and runs with a plain `npm run test:e2e -- auth-throttle`.
+ * Rate limiting on the credential routes through the real guards and HTTP stack; AuthController is
+ * wired with AppModule's throttler setup and stub services, so no database.
  */
 import { INestApplication } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
@@ -70,7 +66,6 @@ describe('Credential route rate limiting (e2e)', () => {
       .set('X-Forwarded-For', ip)
       .send(body);
 
-  // Each route keyed on the submitted email + IP.
   describe.each([
     {
       path: 'login',
@@ -176,7 +171,6 @@ describe('Credential route rate limiting (e2e)', () => {
     expect(res.status).toBe(429);
     expect(Number(res.headers['retry-after'])).toBeGreaterThan(0);
 
-    // Another IP is unaffected.
     await post(
       'password/forgot',
       { email: 'one-more@example.test' },

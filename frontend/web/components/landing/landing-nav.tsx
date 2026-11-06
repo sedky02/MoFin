@@ -10,9 +10,8 @@ const navLink =
   "inline-flex min-h-11 items-center rounded-lg px-2.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:px-3";
 
 /**
- * Sticky over the page (the one place a translucent bar is doing a job).
- * Visitors get "Sign in" and the demo at every width; signed-in visitors get
- * a way back to the app instead.
+ * Sticky over the page, where a translucent bar does a job. Visitors get "Sign in" and the demo at
+ * every width; signed-in visitors get a way back to the app.
  */
 export function LandingNav() {
   const signedIn = useSignedIn();

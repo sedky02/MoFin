@@ -35,17 +35,15 @@ interface ProviderError {
   code: string;
   message: string;
   /**
-   * Groq's `failed_generation` on a tool_use_failed: the model's own broken
-   * tool call. Used only to repair it (repairToolCall); never logged, since it
-   * can carry the user's ids and amounts.
+   * Groq's failed_generation for tool_use_failed: used only to repair the call; never logged, since
+   * it can carry ids and amounts.
    */
   failedGeneration?: string;
 }
 
 /**
- * The provider's own error code and message, capped. These describe the
- * failure ("invalid_api_key", "model_not_found", "tool_use_failed"); they are
- * not our prompt or the model's reply, so they are safe to log.
+ * The provider's own error code and message, capped: they describe the failure, not our prompt or
+ * the reply, so they are safe to log.
  */
 async function readProviderError(response: Response): Promise<ProviderError> {
   try {
@@ -75,10 +73,8 @@ async function readProviderError(response: Response): Promise<ProviderError> {
 }
 
 /**
- * Rebuilds a tool call the model wrote with one known slip: a stray quote
- * after a number (`"month":11"`, seen from gpt-oss on Groq). Returns null for
- * anything else, so only that exact slip is ever "fixed". The arguments still
- * go through the tool's Zod schema before anything runs.
+ * Rebuilds a tool call with one known slip: a stray quote after a number (`"month":11"`, seen from
+ * gpt-oss on Groq). Anything else returns null; arguments still go through the tool's Zod schema.
  */
 export function repairToolCall(
   failedGeneration: string,
@@ -154,18 +150,9 @@ function toWireMessage(message: LlmMessage) {
 }
 
 /**
- * Talks to any `/chat/completions` endpoint that follows the OpenAI shape
- * (Groq, Gemini's compatibility endpoint, OpenRouter, OpenAI) with plain
- * `fetch`: no vendor SDK. Never logs the prompt or the reply.
- *
- * Failures are split by whose fault they are:
- * - timeout, network, 429, 413, 5xx: AiUnavailableException (503), retryable;
- * - any other 4xx (bad key, unknown model, a request the provider rejects):
- *   AiProviderRejectedException (502), a bug or misconfiguration on our side.
- * Groq answers 400 `tool_use_failed` when the model itself wrote a malformed
- * tool call; that is the model's slip, not ours, so it gets one more try.
+ * Plain-fetch client for any OpenAI-shaped endpoint; never logs prompts or replies. Retryable
+ * failures are 503, other 4xx are our bug (502); Groq's tool_use_failed gets one retry.
  */
-/** Temperature for the second try after the model wrote a malformed tool call. */
 export const RETRY_TEMPERATURE = 0.7;
 
 export class OpenAiCompatibleProvider extends LlmProvider {

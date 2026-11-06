@@ -9,9 +9,8 @@ export const AUTH_THROTTLE = { limit: 5, ttl: 60_000 } as const;
 export const FORGOT_PASSWORD_THROTTLE = { limit: 5, ttl: 15 * 60_000 } as const;
 
 /**
- * Per-IP cap on POST /auth/password/forgot, applied by the global guard from
- * the route's @Throttle. The per-email limit alone would let one IP send
- * reset emails to any number of addresses.
+ * Per-IP cap on forgot-password: the per-email limit alone would let one IP mail any number of
+ * addresses.
  */
 export const FORGOT_PASSWORD_IP_THROTTLE = {
   limit: 20,
@@ -19,17 +18,8 @@ export const FORGOT_PASSWORD_IP_THROTTLE = {
 } as const;
 
 /**
- * Throttle key for the credential routes:
- * - the submitted email plus IP, when the body has an email (login, register,
- *   forgot password);
- * - a hash of the presented reset token, when the body has one (reset
- *   password), so the bucket follows the token rather than whoever shares
- *   the IP. The raw token is never part of the key;
- * - the IP alone otherwise.
- *
- * `req.ip` is the client IP the BFF vouched for when it sent one (see
- * trusted-client-ip.middleware.ts), so every tracker here keys on the real
- * client rather than the BFF.
+ * Key for credential routes: email + IP, else a hash of the reset token, else the IP.
+ * req.ip is the client IP the BFF vouched for.
  */
 export function authTracker(req: Record<string, unknown>): string {
   const body = req.body as { email?: unknown; token?: unknown } | undefined;
@@ -41,14 +31,8 @@ export function authTracker(req: Record<string, unknown>): string {
 }
 
 /**
- * Applies AUTH_THROTTLE per authTracker key. IP alone is what the default
- * tracker uses, but every request from every user in this app arrives via
- * the same BFF hop — keying by IP+email is what actually stops credential
- * stuffing (many passwords against one email) and distributed attempts
- * against many emails from behind the same NAT/proxy from drowning each
- * other out (SEC-XX). The routes carry no @Throttle of their own, so the
- * global ThrottlerGuard only applies its app-wide per-IP baseline on top as
- * a backstop instead of also enforcing this tight limit per IP.
+ * Keyed by IP + email: every user arrives via one BFF hop, so IP alone can't stop credential
+ * stuffing. No @Throttle on routes, so the global limit is a backstop.
  */
 @Injectable()
 export class AuthThrottlerGuard extends ThrottlerGuard {
@@ -73,7 +57,6 @@ export class AuthThrottlerGuard extends ThrottlerGuard {
   }
 }
 
-/** AuthThrottlerGuard with FORGOT_PASSWORD_THROTTLE instead. */
 @Injectable()
 export class ForgotPasswordThrottlerGuard extends AuthThrottlerGuard {
   protected throttle(): { limit: number; ttl: number } {
@@ -81,14 +64,11 @@ export class ForgotPasswordThrottlerGuard extends AuthThrottlerGuard {
   }
 }
 
-/** Per-user limit on POST /auth/password/change. */
 export const CHANGE_PASSWORD_THROTTLE = { limit: 5, ttl: 60_000 } as const;
 
 /**
- * Throttle key for password change: the signed-in user's id, so a stolen
- * session can't use the route to guess the current password faster than the
- * login route allows, whatever IPs it comes from. The global JWT guard runs
- * first, so `req.user` is set by the time this guard reads it.
+ * Keyed by user id, so a stolen session can't guess the current password faster than the login
+ * route allows.
  */
 export function userTracker(req: Record<string, unknown>): string {
   const id = (req.user as { id?: unknown } | undefined)?.id;
@@ -96,7 +76,6 @@ export function userTracker(req: Record<string, unknown>): string {
   return `ip:${String(req.ip)}`;
 }
 
-/** CHANGE_PASSWORD_THROTTLE per userTracker key. */
 @Injectable()
 export class ChangePasswordThrottlerGuard extends AuthThrottlerGuard {
   protected throttle(): { limit: number; ttl: number } {
@@ -114,7 +93,6 @@ export const EMAIL_VERIFICATION_THROTTLE = {
   ttl: 15 * 60_000,
 } as const;
 
-/** EMAIL_VERIFICATION_THROTTLE per userTracker key. */
 @Injectable()
 export class EmailVerificationThrottlerGuard extends ChangePasswordThrottlerGuard {
   protected throttle(): { limit: number; ttl: number } {
@@ -125,7 +103,6 @@ export class EmailVerificationThrottlerGuard extends ChangePasswordThrottlerGuar
 /** Per-user limit on creating invitations: each one mails an address the sender picks. */
 export const INVITATION_THROTTLE = { limit: 10, ttl: 60 * 60_000 } as const;
 
-/** INVITATION_THROTTLE per userTracker key. */
 @Injectable()
 export class InvitationThrottlerGuard extends ChangePasswordThrottlerGuard {
   protected throttle(): { limit: number; ttl: number } {
@@ -136,7 +113,6 @@ export class InvitationThrottlerGuard extends ChangePasswordThrottlerGuard {
 /** Limit per presented invitation token on its preview, accept and decline routes. */
 export const INVITATION_TOKEN_THROTTLE = { limit: 20, ttl: 60_000 } as const;
 
-/** INVITATION_TOKEN_THROTTLE per authTracker key: the bucket follows the token. */
 @Injectable()
 export class InvitationTokenThrottlerGuard extends AuthThrottlerGuard {
   protected throttle(): { limit: number; ttl: number } {
@@ -145,35 +121,19 @@ export class InvitationTokenThrottlerGuard extends AuthThrottlerGuard {
 }
 
 /**
- * Per-IP limit on POST /auth/google/id-token (native Google sign-in from the
- * mobile app).
- *
- * Why 30 a minute: phones on mobile data sit behind carrier-grade NAT, where
- * one public IPv4 is shared by hundreds or thousands of subscribers. At the
- * old AUTH_THROTTLE (5/min) the sixth person on that IP to tap "Continue with
- * Google" within a minute locked everyone on it out for 60 s. A user signs in
- * here once per install or sign-out (refresh tokens keep them signed in
- * after that), so 30/min (one every 2 s, sustained) leaves room for a busy
- * carrier IP while still capping what one client can push through.
- *
- * This limit is not what stops forged tokens: GoogleIdTokenVerifier's RS256
- * signature check against Google's keys does that, and no number of tries
- * gets past it. The cap only bounds the CPU (signature checks) and database
- * work (user lookup, refresh token write) one IP can cause, alongside the
- * global 300/min per-IP baseline.
+ * Per-IP only: phones on carrier NAT share an IP, so 5/min locked out whole carriers. Forged tokens
+ * are stopped by the signature check, not this limit; it only bounds CPU and database work per IP.
  */
 export const GOOGLE_ID_TOKEN_THROTTLE = { limit: 30, ttl: 60_000 } as const;
 
 /**
- * Throttle key for POST /auth/google/id-token: the client IP only. It never
- * reads the body, which this guard sees before validation, so no field a
- * client adds (an `email`, say) can move it into a fresh bucket.
+ * IP only, and never reads the body (seen before validation), so no client-added field can open a
+ * fresh bucket.
  */
 export function googleIdTokenTracker(req: Record<string, unknown>): string {
   return `google-id-token:${String(req.ip)}`;
 }
 
-/** GOOGLE_ID_TOKEN_THROTTLE per googleIdTokenTracker key. */
 @Injectable()
 export class GoogleIdTokenThrottlerGuard extends AuthThrottlerGuard {
   protected throttle(): { limit: number; ttl: number } {
@@ -188,10 +148,6 @@ export class GoogleIdTokenThrottlerGuard extends AuthThrottlerGuard {
 /** Per-user limit on the destructive routes: DELETE /users/me and POST /users/me/reset-data. */
 export const DELETE_ACCOUNT_THROTTLE = { limit: 5, ttl: 60_000 } as const;
 
-/**
- * DELETE_ACCOUNT_THROTTLE per userTracker key: a stolen session can't hammer
- * the destructive routes.
- */
 @Injectable()
 export class DeleteAccountThrottlerGuard extends ChangePasswordThrottlerGuard {
   protected throttle(): { limit: number; ttl: number } {

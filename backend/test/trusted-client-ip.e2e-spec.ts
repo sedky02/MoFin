@@ -1,12 +1,6 @@
 /**
- * Rate limits keyed on the client IP the BFF vouches for (B-103).
- *
- * Deployed, every request reaches the backend from the BFF's egress IP, so
- * this suite sends one fixed X-Forwarded-For for every request (what
- * `trust proxy 1` resolves to behind the edge) and varies only the
- * `x-mofin-client-ip` header the BFF adds. Same wiring as auth-throttle (the
- * global ThrottlerGuard plus the routes' own guards, stub services, no
- * database), with the middleware registered the way main.ts does it.
+ * Rate limits keyed on the BFF-vouched client IP: one fixed X-Forwarded-For (the BFF's egress),
+ * varying only `x-mofin-client-ip`; middleware wired as in main.ts.
  */
 import { INestApplication } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
@@ -88,7 +82,6 @@ describe('Trusted client IP from the BFF (e2e)', () => {
       }
       await login('same@example.com', '203.0.113.7', SECRET).expect(429);
 
-      // Same BFF hop, same email, different real client: its own bucket.
       await login('same@example.com', '198.51.100.1', SECRET).expect(201);
     });
 
@@ -112,7 +105,6 @@ describe('Trusted client IP from the BFF (e2e)', () => {
       }
       await login('one-more@example.com', '203.0.113.7', SECRET).expect(429);
 
-      // Another client behind the same BFF is unaffected.
       await login('one-more@example.com', '198.51.100.1', SECRET).expect(201);
     });
   });

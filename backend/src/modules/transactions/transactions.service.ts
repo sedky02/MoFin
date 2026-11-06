@@ -45,17 +45,8 @@ export class TransactionsService {
   ) {}
 
   /**
-   * Creates a transaction and its ledger entries atomically. Pass `db` when
-   * the caller needs this create to participate in a larger transaction (e.g.
-   * the recurring cron creating an occurrence and advancing its cursor in one
-   * commit) — in that case the caller owns the transaction boundary and is
-   * responsible for emitting TransactionCreated once its own transaction
-   * commits, since emitting beforehand could let listeners react to a row a
-   * later step in that same transaction rolls back.
-   *
-   * `userId` is who is posting. The rows go on the ledger of the account's
-   * owner, and `createdById` records who entered them (the series' author, for
-   * the cron, which posts as the owner).
+   * Pass `db` to join a larger transaction (e.g. the cron advancing a cursor); the caller then owns
+   * the boundary and emits TransactionCreated after it commits.
    */
   async create(userId: string, command: CreateTransactionCommand, db?: Db) {
     this.validateCommand(command);
@@ -131,9 +122,8 @@ export class TransactionsService {
   }
 
   /**
-   * Tells listeners (the analytics cache) a transaction now exists. create()
-   * calls it itself; a caller that passed `db` calls it once its own
-   * transaction has committed.
+   * create() calls it itself; a caller that passed `db` calls it once its own transaction has
+   * committed.
    */
   announceCreated(
     transaction: Pick<Transaction, 'id' | 'userId' | 'occurredAt'> & {
@@ -148,7 +138,6 @@ export class TransactionsService {
     } satisfies TransactionCreatedEvent);
   }
 
-  /** The category rules, on the ledger the transaction goes on: a shared account uses its owner's categories. */
   private async assertCategories(
     ledgerUserId: string,
     command: CreateTransactionCommand | UpdateTransactionCommand,
@@ -187,12 +176,8 @@ export class TransactionsService {
   }
 
   /**
-   * Replaces a transaction's fields and ledger lines. Transactions are the
-   * user's own records, so an edit rewrites them in place: the same validation
-   * as create runs on the new values, then the old lines are swapped for the
-   * new ones in one database transaction, so balances move by exactly the
-   * difference. A recurring root keeps its type and currency, because its
-   * series template generates future occurrences from them.
+   * Rewrites in place with create's validation, swapping lines in one transaction so balances move
+   * by the difference. A recurring root keeps its type and currency.
    */
   async update(userId: string, id: string, command: UpdateTransactionCommand) {
     const existing = await this.findChangeable(userId, id);
@@ -270,10 +255,8 @@ export class TransactionsService {
   }
 
   /**
-   * Soft-deletes a transaction: its rows stay (so it can be restored) but it
-   * drops out of every balance, report, goal and list. Deleting the root of a
-   * recurring series stops the series, because the cron skips deleted roots;
-   * occurrences it already generated are separate records and stay.
+   * Rows stay so it can be restored, but it leaves every balance, report, goal and list. Deleting a
+   * series root stops the series; generated occurrences stay.
    */
   async remove(userId: string, id: string) {
     const existing = await this.findChangeable(userId, id);
@@ -291,7 +274,6 @@ export class TransactionsService {
     );
   }
 
-  /** Undoes a delete. A restored recurring root picks its series up again. */
   async restore(userId: string, id: string) {
     await this.assertChangeable(userId, id);
     const claimed = await this.prisma.transaction.updateMany({
@@ -313,10 +295,8 @@ export class TransactionsService {
   }
 
   /**
-   * The caller may change it: `transact` on every account it touches. Someone
-   * who can't reach it gets the same 404 as for a missing id. A one-sided
-   * transfer is a record of money that moved, with its other half on another
-   * ledger, so it stays as it is.
+   * `transact` on every account it touches; no access is the 404 of a missing id. A one-sided
+   * transfer records money that moved with its other half on another ledger, so it stays as it is.
    */
   private async assertChangeable(userId: string, id: string) {
     await this.access.assertTransactionAccess(userId, id, 'transact');
@@ -331,7 +311,6 @@ export class TransactionsService {
     }
   }
 
-  /** assertChangeable, for a transaction that isn't deleted. */
   private async findChangeable(userId: string, id: string) {
     await this.assertChangeable(userId, id);
     const transaction = await this.prisma.transaction.findFirst({
@@ -414,9 +393,8 @@ export class TransactionsService {
           'Transfers cannot be split into multiple items',
         );
       }
-      // A split's categories live on its lines. A top-level one as well would be a second,
-      // conflicting answer, and analytics/search/the list would each pick a different one.
-      // A single item is still the plain unsplit shape, so the top-level category is fine there.
+      // A split's categories live on its lines; a top-level one would give analytics, search and
+      // the list a second, conflicting answer. A single item may have one.
       if (command.items.length > 1 && command.categoryId) {
         throw new BadRequestException(
           'A split transaction cannot have its own category; set a category on each split line instead',

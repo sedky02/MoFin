@@ -1,8 +1,7 @@
 import { expect, test } from "@playwright/test";
 
-// B-27: every goal card and the goal dialog says what the goal counts; dashboard tiles
-// show it only as a tooltip, so the dashboard stays clean.
-// Needs the UX fixture: `npm run e2e:seed`.
+// Goal cards and the dialog say what the goal counts; dashboard tiles show it only as a tooltip.
+// Needs `npm run e2e:seed`.
 
 const EXPENSE = "Counts all expenses from Main checking";
 const INCOME = "Counts all income into Main checking";

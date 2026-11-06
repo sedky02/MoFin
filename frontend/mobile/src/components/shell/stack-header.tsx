@@ -6,9 +6,8 @@ import { backFallbackHref } from '@/lib/back-fallback';
 import { ArrowLeft, X } from '@/lib/icons';
 
 /**
- * Header for every pushed screen: a round back arrow (or ✕ on a modal sheet), then the title, in the
- * same style as the tab screens. With no history (a page opened from a link or reloaded in the
- * browser) the button goes to the screen's usual parent instead of doing nothing.
+ * A round back arrow (✕ on a modal sheet), then the title. With no history (a link or browser
+ * reload) the button goes to the screen's usual parent instead of doing nothing.
  */
 export function StackHeader({ navigation, route, options, back }: NativeStackHeaderProps) {
   const title = typeof options.title === 'string' ? options.title : route.name;

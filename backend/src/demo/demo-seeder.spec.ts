@@ -20,8 +20,7 @@ function makeSeeder(existing: { id: string } | null) {
     status: GoalStatus;
   }[] = [];
 
-  // The transaction client the seed runs on; everything it reads or writes
-  // goes through here, never through `prisma` itself.
+  // The transaction client the seed runs on; nothing goes through `prisma` itself.
   const db = {
     transaction: { update: jest.fn() },
     category: { findMany: jest.fn(async () => categoryRows) },

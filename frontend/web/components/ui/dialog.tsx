@@ -47,7 +47,6 @@ function DialogOverlay({
   )
 }
 
-/** Whether a pointer event landed within the element's box. */
 function isInside(element: Element | null, event: Event) {
   if (!element || !("clientX" in event)) return false
   const { clientX: x, clientY: y } = event as PointerEvent
@@ -74,9 +73,8 @@ function DialogContent({
           "fixed top-1/2 left-1/2 z-50 grid max-h-[calc(100dvh-2rem)] w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto rounded-xl bg-popover p-4 text-sm text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
           className
         )}
-        // An open select turns pointer events off on this content but not on the overlay, so a
-        // press inside the dialog falls through to the overlay and reads as outside. Going by
-        // where the press landed tells the two apart, and anything but the overlay never closes.
+        // An open select disables pointer events on the content but not the overlay, so a press
+        // inside falls through and reads as outside; going by where it landed tells them apart.
         onInteractOutside={(event) => {
           onInteractOutside?.(event)
           const original = event.detail.originalEvent

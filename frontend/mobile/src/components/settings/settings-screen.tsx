@@ -3,7 +3,6 @@ import * as React from 'react';
 import { ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-/** One Settings screen: its title in the stack header, a scrolling page that clears the keyboard and the home indicator. */
 export function SettingsScreen({ title, children }: { title: string; children: React.ReactNode }) {
   const insets = useSafeAreaInsets();
   return (

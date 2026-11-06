@@ -41,7 +41,6 @@ function forgetToken() {
   try {
     localStorage.removeItem(PENDING_INVITE_KEY);
   } catch {
-    // Nothing kept, nothing to forget.
   }
 }
 

@@ -7,9 +7,8 @@ import { ExportFormat } from './dto/export.dto';
 import { csvText, toCsv } from './export.csv';
 
 /**
- * Exact text of a stored Decimal, e.g. "12.345". Never through Number, which
- * would round large or long amounts; toFixed() without digits keeps every
- * stored digit and never switches to exponent notation.
+ * Exact text of a Decimal: never through Number (rounds), and toFixed() keeps every digit without
+ * exponent notation.
  */
 export function money(value: Prisma.Decimal): string {
   return value.toFixed();
@@ -40,17 +39,11 @@ export interface ExportFile {
   body: string;
 }
 
-/** The rows an export needs, already scoped to one user. */
 type ExportRows = Awaited<ReturnType<ExportService['load']>>;
 
 /**
- * Builds a download of everything a user can read: accounts (archived and
- * shared ones too), the categories those use, transactions that aren't deleted,
- * and goals. Read-only, and every query is filtered to the accounts the caller
- * can reach, so a transfer's leg on someone's private account stays out.
- *
- * Rows are mapped field by field rather than spread, so internal columns
- * (userId, draft links, soft-delete markers) never reach the file.
+ * Everything the user can read, filtered to accounts they reach so a private leg of a transfer
+ * stays out. Rows are mapped field by field so internal columns never leak.
  */
 @Injectable()
 export class ExportService {
@@ -213,11 +206,8 @@ export class ExportService {
   }
 
   /**
-   * One row per transaction line, so a transfer is two rows (out of one
-   * account, into the other) and a split expense is one row per part.
-   * Amounts are signed from the account's side: money in is positive, money
-   * out negative, so an account's opening balance (in the JSON export) plus
-   * the sum of its rows gives its balance.
+   * One row per ledger line (a transfer is two). Amounts are signed from the account's side, so
+   * opening balance plus the rows gives its balance.
    */
   toCsv({ transactions }: ExportRows): string {
     const rows = transactions.flatMap((t) =>

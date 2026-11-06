@@ -4,9 +4,8 @@ import { categoryIconFor } from "@/lib/category-icons";
 import type { Category } from "@/lib/types";
 
 /**
- * A category's icon, wherever it is shown. A chosen icon renders as a line
- * icon; an emoji saved by an older version still shows as that emoji; with
- * neither, one is picked from the name. Decorative: the name next to it labels it.
+ * A chosen icon renders as a line icon; an emoji from an older version still shows; with neither,
+ * one is picked from the name. Decorative: the name next to it labels it.
  */
 export function CategoryGlyph({
   category,

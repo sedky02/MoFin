@@ -60,7 +60,6 @@ function setup(
     categories as never,
     new ModelDraftParser(llm),
   );
-  /** The i-th draft of the (single) createMany call. */
   const saved = (i = 0): SavedDraft => drafts.createMany.mock.calls[0][1][i];
   return { service, drafts, saved };
 }

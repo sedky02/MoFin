@@ -12,10 +12,8 @@ export type ContrastResult = {
 };
 
 /**
- * Rendered contrast of an element's text colour, composited over the first
- * solid background found walking up the ancestors (semi-transparent layers are
- * blended in order). Colours are normalised through a canvas so oklch(), lab()
- * and color-mix() values from getComputedStyle are handled.
+ * Contrast of an element's text over its first solid ancestor background; colours go through a
+ * canvas so oklch(), lab() and color-mix() work.
  */
 export async function getContrast(locator: Locator): Promise<ContrastResult> {
   return locator.evaluate((el) => {
@@ -40,7 +38,6 @@ export async function getContrast(locator: Locator): Promise<ContrastResult> {
       return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
     };
 
-    // Collect background layers from the element up to the root.
     const layers: number[][] = [];
     for (let n: Element | null = el; n; n = n.parentElement) {
       const bg = toRgba(getComputedStyle(n).backgroundColor);

@@ -3,20 +3,14 @@ import type { Category, Transaction } from "./types";
 export const UNCATEGORIZED_LABEL = "Uncategorized";
 
 export interface TransactionCategorySummary {
-  /** True when the transaction is split into several lines. */
   split: boolean;
-  /** "Groceries", "Uncategorized", or for a split across several categories "2 categories". */
   label: string;
-  /** The one category that describes the whole transaction; null when there isn't one. */
   category: Pick<Category, "name" | "color"> | null;
 }
 
 /**
- * What a transaction is filed under, for list rows. An unsplit transaction uses
- * its own category. A split carries no category of its own (older ones may still
- * have the stale pre-split pick, which is ignored); its lines are grouped by
- * category instead, and uncategorized lines count as one group, the same
- * "Uncategorized" bucket the monthly summary shows.
+ * What a transaction is filed under, for list rows: an unsplit one uses its own category; a split
+ * has none of its own (older ones may carry a stale pre-split pick that must be ignored).
  */
 export function transactionCategorySummary(
   tx: Pick<Transaction, "type" | "category" | "items">,

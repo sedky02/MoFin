@@ -1,13 +1,8 @@
 import { expect, test, type APIRequestContext } from "@playwright/test";
 import { formatViolations, runAxe } from "./helpers/axe";
 
-// B-23a: Settings → Security changes the password (keeping this session and
-// signing out the others) and signs out everywhere.
-//
-// Uses a throwaway user per project, never the shared fixture user, whose
-// password other specs rely on. Credential routes are rate limited per
-// email + IP, so this signs in twice per user: once for the "other device",
-// once for the browser under test.
+// Changing the password keeps this session and signs out the others; sign out everywhere.
+// Uses a throwaway user; rate limits allow two sign-ins per user.
 
 async function signIn(request: APIRequestContext, email: string, password: string) {
   const res = await request.post("/api/auth/login", { data: { email, password } });
@@ -25,7 +20,6 @@ test.describe("settings security card", () => {
     const registered = await page.request.post("/api/auth/register", { data: { email, password: oldPassword } });
     expect(registered.ok(), `register failed with ${registered.status()}`).toBeTruthy();
 
-    // Another device, signed in before the change.
     const otherDevice = await browser.newContext({ baseURL: testInfo.project.use.baseURL });
     await signIn(otherDevice.request, email, oldPassword);
 
@@ -40,7 +34,6 @@ test.describe("settings security card", () => {
     await testInfo.attach("axe settings", { body: formatViolations(violations) || "no violations", contentType: "text/plain" });
     expect(violations, `axe violations on /settings\n${formatViolations(violations)}`).toEqual([]);
 
-    // A wrong current password is shown on the field, and the session survives it.
     await form.getByLabel("Current password").fill("not-my-password");
     await form.getByLabel("New password", { exact: true }).fill(newPassword);
     await form.getByLabel("Repeat new password").fill(newPassword);
@@ -52,16 +45,13 @@ test.describe("settings security card", () => {
     await form.getByRole("button", { name: "Change password" }).click();
     await expect(page.getByText("Password changed. Other devices were signed out.")).toBeVisible();
 
-    // This browser is still signed in and can keep working, including a refresh.
     expect((await page.request.post("/api/auth/refresh")).status()).toBe(200);
     await page.goto("/transactions");
     await expect(page).toHaveURL(/\/transactions/);
 
-    // The other device's session is over: its refresh token is refused.
     expect((await otherDevice.request.post("/api/auth/refresh")).status()).toBe(401);
     await otherDevice.close();
 
-    // Sign out everywhere, this browser included.
     await page.goto("/settings");
     // A click on the server-rendered button before hydration does nothing.
     await page.waitForLoadState("networkidle");

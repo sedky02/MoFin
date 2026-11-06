@@ -1,9 +1,8 @@
 import { cn } from "@/lib/utils";
 
 /**
- * MoFin logo: the Bar M mark (three bars from the balance chart forming an M, tallest last for the
- * current month) and the "MoFin" wordmark. Built to the logo guidelines: 48-unit grid, wordmark at
- * 0.75 × the mark's height with a 0.25 × gap, ink wordmark on light grounds and lime on dark.
+ * The Bar M mark (three balance-chart bars forming an M, tallest last) and the wordmark, built to
+ * the logo guidelines (48-unit grid, wordmark 0.75× the mark's height).
  */
 export function Logo({
   className,
@@ -24,7 +23,6 @@ export function Logo({
   );
 }
 
-/** The mark on its own (lime tile, ink bars). Same drawing as `app/icon.svg`. */
 export function LogoMark({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 48 48" className={cn("shrink-0", className)} aria-hidden="true">

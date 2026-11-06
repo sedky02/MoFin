@@ -19,10 +19,8 @@ import {
 } from "@/lib/transaction-list-params";
 
 /**
- * The /transactions page's two views: every transaction (searchable), and
- * the recurring series (?view=recurring). The list stays mounted while hidden
- * so its filters survive a trip to the Recurring view; its URL sync pauses
- * (<Activity>) and writes its filters back on return.
+ * The list stays mounted while hidden so its filters survive a trip to the Recurring view; its URL
+ * sync pauses (<Activity>) so it doesn't overwrite the Recurring URL.
  */
 export function TransactionsViews({
   initialView,
@@ -53,7 +51,6 @@ export function TransactionsViews({
         title={TRANSACTIONS_TITLE}
         description={TRANSACTIONS_DESCRIPTION}
         className="mb-3"
-        // A small toggle beside the title, not a bar across the page.
         action={
           <div className="flex flex-wrap items-center gap-2">
             <TabsList className="group-data-horizontal/tabs:h-10">

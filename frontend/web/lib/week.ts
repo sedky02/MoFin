@@ -1,6 +1,5 @@
-// The dashboard's weekly chart: which days, what they're called, the y-axis scale and what the
-// headline says. Days are local calendar days (YYYY-MM-DD) in the viewer's time zone; weeks start
-// on Monday. Shared by the web dashboard and the mobile app (copied to its src/core).
+// Weekly chart logic: days, labels, y-axis scale and headline. Days are local calendar days
+// (YYYY-MM-DD) in the viewer's zone, weeks start Monday. Copied to mobile's src/core.
 import { add, subtract, tryParse } from "@/lib/decimal";
 import type { HeroChip, HeroHeadline, HeroMetric } from "@/lib/hero-headline";
 import type { DailySeriesPoint } from "@/lib/types";
@@ -115,10 +114,8 @@ function chip(delta: string, suffix: string, prefix: string | null, upIsBad: boo
 }
 
 /**
- * What the hero says for a week. `points` is 14 days: the week before, then the week shown.
- *  - balance: this week shows the live balance; an earlier week shows its closing balance. The chip
- *    is the week's change.
- *  - expenses / income: the week's total so far, and the change against the week before.
+ * What the hero says for a week from 14 `points` (week before, then week shown): balance (live, or
+ * closing for an earlier week) or the expense/income total, each with its change.
  */
 export function weekHeadline(
   metric: HeroMetric,

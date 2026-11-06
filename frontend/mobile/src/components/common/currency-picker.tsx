@@ -12,7 +12,6 @@ import { cn } from '@/lib/utils';
 type Props = {
   value: string;
   onChange: (code: string) => void;
-  /** Codes to list first, under "In use". */
   pinned?: string[];
   disabled?: boolean;
   className?: string;
@@ -20,9 +19,8 @@ type Props = {
 };
 
 /**
- * A currency field with a search box. Matches the code or the name, so "euro" and "eur" both find EUR.
- * Currencies already in use come first while the search is empty. Opens a dialog on a phone, since a
- * popover has no room for a keyboard and a list.
+ * Matches the code or the name ("euro" and "eur" both find EUR); currencies in use come first while
+ * the search is empty. A dialog on a phone, since a popover has no room for a keyboard and a list.
  */
 export function CurrencyPicker({ value, onChange, pinned = [], disabled, className, accessibilityLabel = 'Currency' }: Props) {
   const [open, setOpen] = React.useState(false);

@@ -6,7 +6,6 @@ import {
 } from "@/core/recurring-edit";
 import type { Account, Transaction } from "@/core/types";
 
-/** The fixture's monthly rent: 12.345 TND out of "Dinar". */
 function rent(overrides: Partial<Transaction> = {}): Transaction {
   return {
     id: "rent",

@@ -109,7 +109,6 @@ describe('TransactionsService.validateCommand', () => {
   });
 
   it('still accepts a top-level category on a single-item transaction', async () => {
-    // Gets past validation and fails later, on the bare categories stub, not with the split error.
     const result = service.create('u1', {
       ...base,
       categoryId: 'groceries',
@@ -278,10 +277,8 @@ describe('TransactionsService category type', () => {
 });
 
 describe('computeNextOccurrence', () => {
-  // UTC throughout (audit DATA-XX): a local-time constructor here would pass
-  // or fail depending on the machine's TZ, exactly the bug being fixed. Every
-  // date below is built with Date.UTC and every anchorDay comes from
-  // getUTCDate(), mirroring the real callers.
+  // UTC throughout: a local-time constructor would pass or fail depending on the machine's TZ.
+  // Dates use Date.UTC and anchorDay comes from getUTCDate(), like the real callers.
   it('advances by one month, keeping the anchor day', () => {
     const next = computeNextOccurrence(
       15,
@@ -319,9 +316,8 @@ describe('computeNextOccurrence', () => {
   });
 
   it('is unaffected by the server TZ at a month boundary (23:30 on the 31st stays the 31st)', () => {
-    // A transaction entered at 23:30 UTC on Jan 31st must still anchor to the
-    // 31st and land on Feb 28th — not silently roll to Feb 1st because the
-    // server happens to run in a timezone ahead of UTC.
+    // A transaction at 23:30 UTC on Jan 31st must still anchor to the 31st and land on Feb 28th,
+    // not roll to Feb 1st on a server ahead of UTC.
     const lateOnThe31st = new Date(Date.UTC(2026, 0, 31, 23, 30));
     const next = computeNextOccurrence(
       lateOnThe31st.getUTCDate(),
@@ -655,7 +651,6 @@ describe('TransactionsService edit, delete and restore', () => {
           type: TransactionType.EXPENSE,
           description: 'Groceries (fixed)',
           currency: 'USD',
-          // No category in the edit clears the old one rather than keeping it.
           categoryId: null,
           occurredAt: edit.occurredAt,
         },
@@ -754,7 +749,6 @@ describe('TransactionsService edit, delete and restore', () => {
         }),
       ).rejects.toThrow("can't be split");
 
-      // A generated occurrence is an ordinary record: it can change type.
       const occurrence = setup({
         found: { ...root, parentTransactionId: 'root' },
       });

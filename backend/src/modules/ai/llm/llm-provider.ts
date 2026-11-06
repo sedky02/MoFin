@@ -13,7 +13,6 @@ export type LlmMessage =
 export interface LlmTool {
   name: string;
   description: string;
-  /** JSON Schema for the arguments object. */
   parameters: Record<string, unknown>;
 }
 
@@ -33,10 +32,8 @@ export interface LlmCompletion {
 }
 
 /**
- * The seam between MoFin and a model vendor. Abstract class (not an interface)
- * so it can be a Nest injection token. One implementation today, for any
- * OpenAI-compatible endpoint; a native adapter for another API can slot in
- * behind the same shape.
+ * Abstract class so it can be a Nest injection token; one OpenAI-compatible implementation today,
+ * others can slot in behind the same shape.
  */
 export abstract class LlmProvider {
   /** False when no API key is configured: callers use their fallback. */

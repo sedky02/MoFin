@@ -27,10 +27,8 @@ const ICONS: Record<SettingsSectionId, LucideIcon> = {
 };
 
 /**
- * Jump links to each Settings section: a row of pills that sticks under the top
- * bar on small screens, a sticky list beside the content from lg up. The
- * highlighted entry follows the scroll position; clicking one highlights it and
- * keeps it until the reader scrolls again by hand.
+ * Pills sticking under the top bar on small screens, a sticky list from lg up; the highlighted
+ * entry follows scroll, and a clicked one stays highlighted while the page scrolls to it.
  */
 export function SettingsNav() {
   const [active, setActive] = React.useState<SettingsSectionId>(SETTINGS_SECTIONS[0].id);
@@ -58,7 +56,6 @@ export function SettingsNav() {
     const schedule = () => {
       if (!frame) frame = requestAnimationFrame(measure);
     };
-    // Any scrolling the reader does themselves releases a clicked entry.
     const release = () => {
       pinned.current = null;
     };
@@ -96,9 +93,7 @@ export function SettingsNav() {
     <nav
       aria-label="Settings sections"
       className={cn(
-        // Small screens: pills pinned under the 3.5rem top bar, edge to edge.
         "sticky top-14 z-20 -mx-4 mb-6 border-b border-border bg-background/95 px-4 py-2 backdrop-blur-md sm:-mx-6 sm:px-6",
-        // lg: a plain sticky list beside the content.
         "lg:top-20 lg:mx-0 lg:mb-0 lg:self-start lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none",
       )}
     >

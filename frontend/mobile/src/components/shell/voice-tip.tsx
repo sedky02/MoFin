@@ -8,14 +8,11 @@ import { useUser } from '@/hooks/useUser';
 
 export const VOICE_TIP_KEY = 'mofin-voice-tip-shown';
 const TIP_WIDTH = 280;
-/** How long the tip stays up if nobody taps it. */
 const TIP_MS = 8000;
 
 /**
- * "Hold to add or ask with your voice", once per device, above the Add button. It waits until the
- * first-run setup is over (so it doesn't compete with it) and is marked as shown the moment it
- * appears, so it never comes back, even if the app closes while it is up. A tap, a hold of the Add
- * button or a few seconds hide it.
+ * Shown once per device above Add: it waits until first-run setup is over and is marked shown the
+ * moment it appears, so it never returns, even if the app closes while it is up.
  */
 export function VoiceTip({ dismissed }: { dismissed: boolean }) {
   const [shown, markShown] = useStoredFlag(VOICE_TIP_KEY);

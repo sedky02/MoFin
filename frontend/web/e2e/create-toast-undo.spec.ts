@@ -1,8 +1,7 @@
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 
-// The toast after saving a new transaction offers Undo (soft-deletes it again) and
-// View (opens it) for 10 s. Each test removes what it creates, so the fixture's
-// balances don't move between runs. Needs the UX fixture: `npm run e2e:seed`.
+// The toast after saving offers Undo and View for 10 s. Each test removes what it creates so
+// balances don't drift; needs `npm run e2e:seed`.
 test.use({ locale: "en-US" });
 
 type Tx = { id: string };
@@ -31,7 +30,6 @@ async function searchIds(request: APIRequestContext, q: string): Promise<string[
   return ((await res.json()) as { data: Tx[] }).data.map((t) => t.id);
 }
 
-/** Fills and saves the New transaction form (a USD expense on the default account) and returns the new id. */
 async function saveNewExpense(page: Page, description: string, amountText: string): Promise<string> {
   await page.goto("/transactions/new");
   await expect(page.getByRole("heading", { level: 1, name: "New transaction" })).toBeVisible();

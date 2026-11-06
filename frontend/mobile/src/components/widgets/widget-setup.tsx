@@ -83,9 +83,8 @@ function Row({
 }
 
 /**
- * What the launcher opens when a MoFin widget is added (mofin://widget-setup?widget=…), and again
- * when the user reconfigures it. The widget is already on the home screen with its defaults; Done
- * saves the choice, updates the widgets, and returns to the home screen.
+ * Opened by the launcher when a widget is added (mofin://widget-setup?widget=…) or reconfigured.
+ * The widget already shows defaults; Done saves the choice and goes home.
  */
 export function WidgetSetup({ widget }: { widget: WidgetName }) {
   const insets = useSafeAreaInsets();

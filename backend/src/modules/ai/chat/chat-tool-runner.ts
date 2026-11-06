@@ -76,7 +76,6 @@ const invalid = (zodError: ZodError): ToolRunResult =>
       .map((issue) => `${issue.path.join('.')}: ${issue.message}`),
   });
 
-/** `YYYY-MM-DD` minus `n` calendar days. */
 function daysBefore(date: string, n: number): string {
   const d = new Date(`${date}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() - n);
@@ -84,11 +83,8 @@ function daysBefore(date: string, n: number): string {
 }
 
 /**
- * Runs one tool call from the chat model, always as `userId` (from the JWT,
- * never from the model). Anything off the allowlist is refused. The only tool
- * that writes makes a pending draft, never a transaction. Arguments are
- * validated before anything runs; errors go back to the model as text so it
- * can retry or explain.
+ * Runs one tool call as `userId` (from the JWT, never the model); anything off the allowlist is
+ * refused. The only write is a pending draft; errors go back as text.
  */
 @Injectable()
 export class ChatToolRunner {
@@ -159,10 +155,8 @@ export class ChatToolRunner {
   }
 
   /**
-   * A pending draft from the model's arguments, checked like the Drafts page's
-   * parser output: ids must be the user's (others are dropped and the
-   * confidence lowered), the date is read in the user's zone. Never a
-   * transaction: the user approves it.
+   * A pending draft from the model's arguments, checked like the Drafts page parser: foreign ids
+   * are dropped and confidence lowered, dates read in the user's zone.
    */
   private async createDraft(
     ctx: ToolRunContext,

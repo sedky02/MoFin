@@ -4,7 +4,6 @@ import { Button, type ButtonProps } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { cn } from '@/lib/utils';
 
-/** A full-width primary button that shows `pendingText` and a spinner while its action runs. */
 export function SubmitButton({
   pending,
   pendingText,

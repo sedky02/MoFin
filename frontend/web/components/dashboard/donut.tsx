@@ -11,10 +11,7 @@ export interface DonutSegment {
 
 const subscribeNever = () => () => {};
 
-/**
- * Lightweight hand-rolled SVG donut (no charting dependency). Animates each arc
- * in on mount via stroke-dashoffset.
- */
+/** Hand-rolled SVG donut (no charting dependency); arcs animate in via stroke-dashoffset. */
 export function Donut({
   segments,
   size = 168,
@@ -52,7 +49,6 @@ export function Donut({
         role="img"
         aria-label={ariaLabel}
       >
-        {/* track */}
         <circle
           cx={size / 2}
           cy={size / 2}

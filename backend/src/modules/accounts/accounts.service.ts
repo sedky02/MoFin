@@ -9,9 +9,7 @@ import {
   UpdateAccountDto,
 } from './dto/accounts.dto';
 
-// Undefined stays undefined: create falls back to the column's 0, update leaves it as is.
-// Optional on the methods the demo seed uses, so it can run them inside its own
-// transaction; every route omits it and keeps using this.prisma.
+// Optional on the methods the demo seed uses, so it can run them in its own transaction.
 type Db = Prisma.TransactionClient;
 
 type AccountWithAccess = Account & {
@@ -20,10 +18,7 @@ type AccountWithAccess = Account & {
   _count: { members: number };
 };
 
-/**
- * An account as `userId` sees it. `metadata` holds the owner's own choices, so
- * a member gets only theirs, in the same place clients already read it from.
- */
+/** A member gets only their own hide-amount choice in `metadata`, where clients already read it. */
 function accountView(row: AccountWithAccess, userId: string) {
   const { members, user, _count, ...account } = row;
   const isOwner = account.userId === userId;
@@ -64,9 +59,8 @@ export class AccountsService {
   }
 
   /**
-   * The accounts `userId` can reach, their own and shared with them, each with
-   * their role. `action` narrows it, as the draft flows do to the accounts they
-   * may write to.
+   * Own and shared accounts, each with the viewer's role; `action` narrows it (drafts only want
+   * accounts they can write to).
    */
   async list(
     userId: string,

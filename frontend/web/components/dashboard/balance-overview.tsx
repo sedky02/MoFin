@@ -35,18 +35,13 @@ const TABS: { value: Metric; label: string }[] = [
   { value: "balance", label: "Balance" },
 ];
 
-// The pager's arrows: a segment of the pill each, with a clear hover and a visible disabled state.
 const arrow =
   "inline-flex size-8 items-center justify-center rounded-full text-foreground transition-colors hover:bg-card hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:text-muted-foreground/40 pointer-coarse:size-11";
 
 const dayText = (p: DailySeriesPoint, currency: string) =>
   `${dayLong(p.date)}: income ${formatMoney(p.income, currency)}, expenses ${formatMoney(p.expenses, currency)}, balance ${formatMoney(p.balance, currency)}`;
 
-/**
- * The dashboard hero as one component: headline balance, the week's change, a week pager and a
- * chart with a bar per day (Monday to Sunday) and a y-axis. Hovering, focusing or clicking a bar
- * shows its exact amount above it. Days are counted in the viewer's time zone.
- */
+/** Hover, focus or click a bar for its exact amount. Days are counted in the viewer's time zone. */
 export function BalanceOverview({
   amount,
   currency,
@@ -65,19 +60,13 @@ export function BalanceOverview({
   caption: string;
   overdrawn: boolean;
   accountId?: string;
-  /** The one account shown, if any: its amounts stay dots while the user keeps them hidden. */
   account?: Account;
   /** All accounts: hidden accounts in this currency, whose figures the chart leaves out. */
   hiddenIds?: string[];
-  /** Every currency the user holds; a switch is shown when there is more than one. */
   currencies?: { code: string; overdrawn: boolean }[];
   onCurrencyChange?: (currency: string) => void;
-  /** Shown under the headline when there is no activity yet (the first step to take). */
   emptyAction?: React.ReactNode;
-  /**
-   * Nothing is recorded at all: shown in place of the chart and its metric tabs, which would
-   * only chart nothing (and stands in for `emptyAction`).
-   */
+  /** Nothing is recorded at all: replaces the chart and its metric tabs (and `emptyAction`). */
   emptyPanel?: React.ReactNode;
 }) {
   const [metric, setMetric] = React.useState<Metric>("balance");
@@ -108,12 +97,10 @@ export function BalanceOverview({
     hidden.forEach((q) => void q.refetch());
   };
   const all = data ? withoutHiddenSeries(data.points, hidden.map((q) => q.data?.points ?? [])) : [];
-  // While the next week loads, the previous one stays on screen (dimmed).
   const ready = all[7]?.date === monday;
   const week = all.slice(7);
   const atCurrent = monday === thisMonday;
 
-  // Headline, caption and chip all follow the chosen metric (see lib/week.ts).
   const headline = weekHeadline(metric, ready ? all : [], monday, today, { amount, caption });
 
   const values = week.map((p) => (p.date > today ? 0 : (tryParse(p[metric])?.toNumber() ?? 0)));
@@ -136,7 +123,6 @@ export function BalanceOverview({
             <span className="label-sm text-primary-text!">{currency} balance</span>
           )}
         </div>
-        {/* The shared Tabs control: one tab stop, arrow keys move between metrics. */}
         {!emptyPanel && !masked && (
           <Tabs value={metric} onValueChange={(v) => setMetric(v as Metric)}>
             <TabsList aria-label="Chart metric">
@@ -195,11 +181,9 @@ export function BalanceOverview({
         </p>
       ) : (
         <>
-          {/* The chart's own toolbar, set off from the headline: which week on the left, the pager on the right. */}
           <div className="mt-7 flex flex-wrap items-center justify-between gap-3 border-t border-border/70 pt-5">
             <p aria-live="polite" className="flex items-baseline gap-2">
               <span className="text-base font-semibold tracking-[-0.01em]">{weekTitle(monday, today)}</span>
-              {/* The range already is the title for older weeks. */}
               {weekTitle(monday, today) !== weekRange(monday) && (
                 <span className="text-sm text-muted-foreground tabular">{weekRange(monday)}</span>
               )}
@@ -246,7 +230,6 @@ export function BalanceOverview({
           ) : (
             <div className={cn("mt-5 flex flex-1 flex-col transition-opacity", !ready && "opacity-50")} style={{ minHeight: 190 }}>
               <div className="flex flex-1 gap-3">
-                {/* Bars over gridlines; each day is a column with its bar between zero and its value. */}
                 <div className="relative flex-1">
                   {scale.ticks.map((t) => (
                     <div
@@ -286,7 +269,6 @@ export function BalanceOverview({
                                 )}
                                 style={{ top: `${top}%`, bottom: `${v === 0 ? 100 - zero - 1 : bottom}%` }}
                               />
-                              {/* The exact amount, above the bar (below it when negative). */}
                               <span
                                 id={`${chartId}-v-${i}`}
                                 className={cn(
@@ -308,7 +290,6 @@ export function BalanceOverview({
                     })}
                   </div>
                 </div>
-                {/* Y axis: the amount at each gridline. */}
                 <div aria-hidden className="relative w-20 shrink-0 whitespace-nowrap text-xs text-muted-foreground tabular">
                   {scale.ticks.map((t) => (
                     <span key={t} className="absolute right-0 -translate-y-1/2" style={{ top: `${scaleY(t, scale) * 100}%` }}>

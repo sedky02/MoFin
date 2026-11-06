@@ -19,10 +19,8 @@ import { useAssistantNudge, useSetup } from "@/hooks/useSetup";
 import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
 
 /**
- * The dashboard's cards, rendered from the query cache. Holds which
- * account is selected and fans it out to every card — each card refetches its
- * own data scoped to that account via its existing hook, so switching accounts
- * never needs a full page reload.
+ * Holds the selected account and fans it out; each card refetches its own data for it, so switching
+ * accounts never needs a page reload.
  */
 export function DashboardBody({ year, month }: { year: number; month: number }) {
   const { data: accounts } = useAccounts();
@@ -80,11 +78,7 @@ export function DashboardBody({ year, month }: { year: number; month: number }) 
     <section className="space-y-8">
       {nudge.show && <AssistantNudge onClose={nudge.close} />}
 
-      {/* Bento grid, matching the Stitch "Refined Quanto Dark" layout: a large balance hero
-          paired with Goals, then Monthly Summary paired with Recent Transactions. It is one
-          grid so that below lg, where everything stacks, the order can differ from the desktop
-          one: the summary comes before Goals (order-*), which matters more on a small screen.
-          From lg the order classes are off and the source order is the desktop layout. */}
+      {/* Bento grid: balance hero beside Goals, Monthly Summary beside Recent Transactions; one grid so the stacked order below lg can differ from the desktop order. */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:gap-y-8">
         <div className="order-1 lg:order-none lg:col-span-8">
           <BalanceCards

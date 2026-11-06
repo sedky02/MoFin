@@ -1,31 +1,19 @@
-// The signed-in session: the access token (memory only), the refresh token (memory + token-store),
-// and the status the root layout routes on.
-//
-// The backend rotates the refresh token on every use and treats a second use of an old token as
-// theft (reuse detection revokes the whole family; a 30 s grace covers exact retries). So:
-// - refreshSession() is single-flight: every caller waiting on a 401 shares one POST /auth/refresh;
-// - the rotated token is saved before anyone retries with the new access token;
-// - each session has a generation number, and a refresh that finishes after a sign-out (or a new
-//   sign-in) is thrown away and revoked instead of bringing the old session back.
-//
-// Never log, toast or put a token in a query key. Errors here carry statuses, not tokens.
+// Access token in memory only, refresh token in memory plus token-store. The backend treats reuse
+// of a rotated refresh token as theft, so refreshes are single-flight.
 import * as React from 'react';
 
 import { ApiClientError, send } from '@/api/http';
 import { tokenStore } from '@/api/token-store';
 import type { User } from '@/core/types';
 
-/** The pair login, register-then-login, demo, Google and refresh all return. */
 export type AuthTokens = { accessToken: string; refreshToken: string };
 
 export type SessionStatus = 'restoring' | 'signedIn' | 'signedOut';
-/** Why the last session ended: the user signed out, or the backend refused the refresh token. */
 export type SessionEndReason = 'signed_out' | 'expired';
 export type SessionState = { status: SessionStatus; endReason?: SessionEndReason };
 
 export type RefreshOutcome =
   | { kind: 'ok'; accessToken: string }
-  /** The backend refused the token (invalid, expired, reused) or there is no session: signed out. */
   | { kind: 'rejected' }
   /** Rate limited, 5xx, timeout or offline. Says nothing about the token, so the session is kept. */
   | { kind: 'unavailable' };
@@ -58,7 +46,6 @@ export function subscribeSession(listener: () => void): () => void {
   };
 }
 
-/** Runs whenever a session ends (sign-out, rejected refresh). The app clears its caches here. */
 export function onSessionEnd(listener: (reason: SessionEndReason) => void): () => void {
   endListeners.add(listener);
   return () => {
@@ -75,15 +62,13 @@ export function getAccessToken(): string | undefined {
 }
 
 /**
- * This device's refresh token, for the one signed-in route that has to name its own session:
- * POST /auth/password/change keeps that token's family and revokes every other one. Never log,
- * toast or store it anywhere else.
+ * For the one signed-in route that names its own session (POST /auth/password/change keeps that
+ * token's family). Never log, toast or store it elsewhere.
  */
 export function currentRefreshToken(): string | undefined {
   return refreshToken;
 }
 
-/** True while there is a refresh token to use (signed in, possibly without a live access token). */
 export function hasSession(): boolean {
   return refreshToken !== undefined;
 }
@@ -102,7 +87,6 @@ function warnNotSaved() {
   console.warn('MoFin: could not save the session to secure storage; it will last until the app closes.');
 }
 
-/** Best-effort revoke of a refresh token's family (sign-out, or a refresh result nobody wants). */
 function revoke(token: string): Promise<void> {
   return send<void>('POST', '/auth/logout', { body: { refreshToken: token }, timeoutMs: LOGOUT_TIMEOUT_MS }).then(
     () => undefined,
@@ -111,9 +95,8 @@ function revoke(token: string): Promise<void> {
 }
 
 /**
- * Starts a session from a token pair (login, demo, Google). The refresh token is saved before the
- * status flips, so the app never shows a signed-in screen for a session that won't survive a restart
- * unless secure storage itself failed.
+ * Saves the refresh token before the status flips, so the app never shows a signed-in screen for a
+ * session that won't survive a restart.
  */
 export async function startSession(tokens: AuthTokens): Promise<void> {
   if (!isTokens(tokens)) throw new Error('The sign-in response had no session.');
@@ -131,7 +114,6 @@ export async function startSession(tokens: AuthTokens): Promise<void> {
   setState({ status: 'signedIn' });
 }
 
-/** Forgets the session on this device. Returns once the stored token is deleted. */
 function endSession(reason: SessionEndReason): Promise<void> {
   generation += 1;
   refreshing = undefined;
@@ -152,10 +134,8 @@ function endSession(reason: SessionEndReason): Promise<void> {
 }
 
 /**
- * Signs out: forgets the session here at once (memory, secure storage, then the app's caches via
- * onSessionEnd) and revokes it on the backend with POST /auth/logout. The local clear goes first so
- * nothing can refresh the session while the logout call is in flight, and an offline sign-out still
- * signs out; the logout revokes the whole token family, including any token rotated meanwhile.
+ * Forgets the session here first (memory, secure storage, caches via onSessionEnd), then revokes it
+ * with POST /auth/logout, so nothing can refresh it meanwhile.
  */
 export async function signOut(): Promise<void> {
   const token = refreshToken;
@@ -163,8 +143,8 @@ export async function signOut(): Promise<void> {
 }
 
 /**
- * Exchanges the refresh token for a new pair. Single-flight: concurrent callers get the same promise,
- * so the backend sees one refresh however many requests hit a 401 together.
+ * Single-flight: concurrent callers share one promise, so the backend sees one refresh however many
+ * requests hit a 401 together.
  */
 export function refreshSession(): Promise<RefreshOutcome> {
   if (refreshing) return refreshing;
@@ -220,9 +200,8 @@ async function runRefresh(token: string, gen: number): Promise<RefreshOutcome> {
 }
 
 /**
- * Runs once at launch, behind the splash: reads the stored refresh token, refreshes it once and
- * loads /users/me. Resolves with the user (null when signed out, or when the backend couldn't be
- * reached: then the session is kept and requests refresh when the network is back).
+ * Runs once at launch behind the splash: refreshes the stored token once and loads /users/me; null
+ * when signed out or the backend couldn't be reached (then the session is kept).
  */
 export function restoreSession(): Promise<{ user: User | null }> {
   if (!restoring) {
@@ -270,7 +249,6 @@ async function runRestore(): Promise<{ user: User | null }> {
   }
 }
 
-/** Test helper: back to a fresh launch. */
 export function resetSessionForTests(): void {
   state = { status: 'restoring' };
   accessToken = undefined;

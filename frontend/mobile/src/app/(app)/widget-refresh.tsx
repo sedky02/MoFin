@@ -5,9 +5,8 @@ import { WIDGET_SCREENS, widgetScreen } from '@/lib/deep-links';
 import { requestWidgetSync } from '@/widgets/widget-sync';
 
 /**
- * Where a widget's ↻ lands (mofin://refresh?to=…). It is inside the signed-in group, so an expired
- * session goes to the sign-in screen first. It refetches the widget data (the widget shows
- * "Updating…" meanwhile) and goes straight on to the widget's screen.
+ * A widget's ↻ lands here (mofin://refresh?to=…): refetch the widget data, then go to its screen.
+ * Inside the signed-in group, so an expired session signs in first.
  */
 export default function WidgetRefreshScreen() {
   const { to } = useLocalSearchParams<{ to?: string }>();

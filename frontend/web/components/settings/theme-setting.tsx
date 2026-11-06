@@ -9,7 +9,6 @@ const OPTIONS = [
   { value: "dark", label: "Dark", Icon: Moon, page: "bg-[#050505]", card: "bg-[#1c1b1b]", line: "bg-[#55585a]" },
 ] as const;
 
-/** Light/dark choice with a small preview of each. Applies at once and is kept on this device, so it isn't part of the Save bar. */
 export function ThemeSetting() {
   const { theme, setTheme } = useTheme();
   return (

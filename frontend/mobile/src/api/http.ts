@@ -1,16 +1,11 @@
-// One HTTP call to the backend, with no session logic: JSON in and out, 204 handling, the web's
-// error shape (ApiClientError) and a timeout. `client.ts` adds the bearer token and the refresh;
-// `session.ts` uses this directly for the token routes.
-//
-// Tokens never go into an error message or a log line from here: errors carry only the status and
-// the backend's own message.
+// One HTTP call with no session logic: JSON in and out, 204 handling, the web's error shape
+// (ApiClientError) and a timeout; client.ts adds the bearer token and refresh.
 import { config } from '@/config';
 import type { ApiError, ApiError400 } from '@/core/types';
 
 export class ApiClientError extends Error {
   status: number;
   body: ApiError | ApiError400 | undefined;
-  /** Present when status === 400: field-level validation errors. */
   validation?: ApiError400['errors'];
 
   constructor(status: number, message: string, body?: ApiError | ApiError400) {
@@ -30,14 +25,11 @@ export type SendOpts = {
   body?: unknown;
   searchParams?: SearchParams;
   accessToken?: string;
-  /** Reused by a retry so both backend log lines correlate to one call. */
   requestId?: string;
   timeoutMs?: number;
-  /** 'text': resolve with the raw body and its file headers (a download), not parsed JSON. Errors are the same. */
   responseType?: 'json' | 'text';
 };
 
-/** What `responseType: 'text'` resolves with: the body as sent, and the headers that name the file. */
 export type TextResponse = { text: string; contentType: string | null; contentDisposition: string | null };
 
 // The web's BFF gave up on the backend after 8 s. The app talks to it directly over a phone
@@ -70,11 +62,6 @@ export function newRequestId(): string {
   return out;
 }
 
-/**
- * Sends one request. Resolves with the parsed JSON (undefined for 204 or an empty body), rejects
- * with ApiClientError for a non-2xx answer or a timeout (504, like the web's BFF). A network
- * failure rejects with fetch's own error, which never contains the request headers.
- */
 export async function send<T>(method: string, path: string, opts: SendOpts = {}): Promise<T> {
   const {
     body,

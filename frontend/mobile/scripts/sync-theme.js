@@ -1,10 +1,6 @@
 #!/usr/bin/env node
-// Derives the mobile colour tokens from the web app's globals.css, so the two palettes can't drift.
-//   node scripts/sync-theme.js          rewrites src/global.css and src/theme/colors.ts
-//   node scripts/sync-theme.js --check  exits 1 if either file is out of date (for CI / pre-commit)
-// React Native Reusables reads colours as HSL triplets (`hsl(var(--primary))`), so every hex
-// token is converted. The dark `border` and `input` are translucent white on the web; a triplet
-// can't carry alpha, so they are flattened over the dark `card` colour.
+// Derives the mobile colour tokens from the web globals.css so the palettes can't drift; --check
+// fails if src/global.css or src/theme/colors.ts is out of date.
 const fs = require("node:fs");
 const path = require("node:path");
 
@@ -21,7 +17,6 @@ const TOKENS = [
   "chart-1", "chart-2", "chart-3", "chart-4", "chart-5", "chart-6", "bar",
 ];
 
-/** The text of the first `selector { ... }` block that starts a line, or throws. */
 function block(css, selector) {
   const start = css.search(new RegExp(`^${selector.replace(/[.:]/g, "\\$&")} \\{`, "m"));
   if (start < 0) throw new Error(`No "${selector}" block in the web globals.css`);
@@ -29,7 +24,6 @@ function block(css, selector) {
   return css.slice(start, end);
 }
 
-/** `--name: value;` pairs of a block, as a map (multi-line values are skipped: they are shadows, not colours). */
 function declarations(body) {
   const out = {};
   for (const m of body.matchAll(/^\s+--([\w-]+):\s*([^;\n]+);/gm)) out[m[1]] = m[2].trim();
@@ -39,7 +33,6 @@ function declarations(body) {
 const hexToRgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
 const rgbToHex = (rgb) => "#" + rgb.map((v) => Math.round(v).toString(16).padStart(2, "0")).join("");
 
-/** `#rrggbb` or `rgba(r, g, b, a)` as an opaque rgb array, flattening any alpha over `backdrop` (rgb array). */
 function toRgb(value, backdrop) {
   if (/^#[0-9a-f]{6}$/i.test(value)) return hexToRgb(value);
   const m = value.match(/^rgba\(\s*(\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\s*\)$/);
@@ -49,7 +42,6 @@ function toRgb(value, backdrop) {
   return [1, 2, 3].map((i) => alpha * Number(m[i]) + (1 - alpha) * backdrop[i - 1]);
 }
 
-/** rgb array to "H S% L%" with two decimals: the error back in rgb stays under half a unit. */
 function toHslTriplet([r, g, b]) {
   const [R, G, B] = [r, g, b].map((v) => v / 255);
   const max = Math.max(R, G, B), min = Math.min(R, G, B), d = max - min;
@@ -66,7 +58,6 @@ function toHslTriplet([r, g, b]) {
   return `${f(h)} ${f(s * 100)}% ${f(l * 100)}%`;
 }
 
-/** Inverse of toHslTriplet, used by the test to prove the round trip stays within one rgb unit. */
 function hslTripletToRgb(triplet) {
   const [h, s, l] = triplet.split(" ").map((v) => parseFloat(v));
   const S = s / 100, L = l / 100;
@@ -75,7 +66,6 @@ function hslTripletToRgb(triplet) {
   return [r + m, g + m, b + m].map((v) => Math.round(v * 255));
 }
 
-/** Parses the web file into { light, dark } maps of token to opaque rgb array, plus the radius. */
 function parseWebTokens(css) {
   const light = declarations(block(css, ":root"));
   const dark = declarations(block(css, ".dark"));

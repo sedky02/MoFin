@@ -10,13 +10,8 @@ import { computeNextOccurrence } from '../modules/transactions/recurrence';
 import { CreateTransactionCommand } from '../modules/transactions/dto/transactions.dto';
 
 /**
- * The demo account's data, as a plain list: what the seed writes, with no
- * database involved. Accounts and categories are referenced by key and name;
- * the writer swaps in the ids once they exist. Everything is derived from
- * `now` and a fixed seed, so the same day always produces the same data.
- *
- * The plan covers the current month and the two before it (so every month on
- * a chart is a full one except the current), and never goes past `now`.
+ * The demo data as a plain list, no database: derived from `now` and a fixed seed, so a day always
+ * yields the same data. Covers this month and the two before, never past `now`.
  */
 
 export const DEMO_EMAIL = 'demo@mofin.app';
@@ -52,7 +47,6 @@ export interface DemoTransactionPlan {
   items?: DemoSplitLine[];
 }
 
-/** A recurring series: its root (the first posting) and the occurrences generated since. */
 export interface DemoRecurringPlan {
   root: DemoTransactionPlan;
   interval: RecurringInterval;
@@ -158,7 +152,6 @@ export function createRandom(seed: number) {
     next,
     int,
     pick: <T>(items: readonly T[]): T => items[int(0, items.length - 1)],
-    /** `count` distinct integers in [min, max], ascending. */
     distinct(count: number, min: number, max: number): number[] {
       const pool = Array.from({ length: max - min + 1 }, (_, i) => min + i);
       const chosen: number[] = [];
@@ -169,7 +162,6 @@ export function createRandom(seed: number) {
   };
 }
 
-/** Whole cents to a 2-decimal amount string ("1234.50"). */
 export function toAmount(cents: number): string {
   return (cents / 100).toFixed(2);
 }
@@ -546,7 +538,6 @@ export function buildDemoPlan(now: Date, seed = DEMO_SEED): DemoPlan {
   };
 }
 
-/** Ids of what the writer created, by plan key and category name. */
 export interface DemoIds {
   accounts: Record<DemoAccountKey, string>;
   categories: Record<string, string>;
@@ -563,7 +554,6 @@ function idOf(
   return id;
 }
 
-/** The command TransactionsService.create takes for a planned transaction. */
 export function toCreateCommand(
   transaction: DemoTransactionPlan,
   ids: DemoIds,
@@ -585,7 +575,6 @@ export function toCreateCommand(
   };
 }
 
-/** Every posting the plan makes, recurring root and occurrences included, in date order. */
 export function allPostings(plan: DemoPlan): DemoTransactionPlan[] {
   const series = plan.recurring.flatMap(({ root, occurrences }) => [
     root,
@@ -596,7 +585,6 @@ export function allPostings(plan: DemoPlan): DemoTransactionPlan[] {
   );
 }
 
-/** Posting counts per account, category and month, for the seed's summary. */
 export function summarizePlan(plan: DemoPlan) {
   const byAccount: Record<string, number> = {};
   const byCategory: Record<string, number> = {};

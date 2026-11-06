@@ -45,14 +45,8 @@ const PROMPT_CATEGORIES = 60;
 type ChatWithMessages = AiChat & { messages: AiChatMessage[] };
 
 /**
- * Answers questions about the user's own data in a saved chat. Per turn:
- * 1. load the chat (summary + messages the summary doesn't cover);
- * 2. run the tool loop: the model reads data through read-only tools and may
- *    ask for charts, which are computed here from the ledger;
- * 3. save the question and the answer together;
- * 4. fold older messages into the summary when enough have piled up.
- * Only step 3 writes, and only after a reply exists, so a failed answer costs
- * no quota and leaves nothing behind.
+ * Answers questions over the user's data in a saved chat. Only the final save writes, and only once
+ * a reply exists, so a failed answer costs no quota and leaves nothing behind.
  */
 @Injectable()
 export class AiChatService {
@@ -67,7 +61,6 @@ export class AiChatService {
     private readonly categories: CategoriesService,
   ) {}
 
-  /** Asks a question in `chatId`, or starts a new chat when it is null. */
   async send(
     user: { id: string; email: string },
     chatId: string | null,
@@ -199,8 +192,8 @@ export class AiChatService {
   }
 
   /**
-   * One tool call. A chart is kept for the reply and summarised for the model;
-   * a draft is kept for the reply, where it shows as a card to approve.
+   * A chart is kept for the reply and summarised for the model; a draft is kept as a card to
+   * approve.
    */
   private async runCall(
     ctx: ToolRunContext,
@@ -236,9 +229,8 @@ export class AiChatService {
   }
 
   /**
-   * Folds messages that left the recent window into the chat's summary. Best
-   * effort: the answer is already saved, and if this fails those messages
-   * simply stay verbatim until the next turn tries again.
+   * Best effort: the answer is already saved; on failure those messages stay verbatim until the
+   * next turn.
    */
   private async summarize(chatId: string, before: ChatWithMessages | null) {
     if (!before) return;

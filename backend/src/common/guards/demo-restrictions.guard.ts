@@ -18,26 +18,8 @@ import { AuthenticatedUser } from '../types/authenticated-user';
 import { isDemoEmail } from '../utils/demo-identity';
 
 /**
- * Everything a temporary demo user may not do, in one place. Registered as an
- * APP_GUARD after GlobalJwtAuthGuard, so `req.user` is set on every signed-in
- * route; demo users are recognised by their reserved email domain, without a
- * database read. Real users and public routes pass straight through.
- *
- * - `@DemoBlocked()` routes answer 403 DEMO_BLOCKED.
- * - `@DemoQuota('ai-drafts')` routes answer 429 DEMO_LIMIT once the user has
- *   DEMO_AI_CAP drafts, and `@DemoQuota('ai-chat')` once they have asked
- *   DEMO_AI_CHAT_CAP chat questions. Both are counted in the database, so they
- *   hold across restarts and across serverless instances; a chat question is
- *   only saved once it was answered, so a failed answer costs nothing.
- *
- * One route checks for itself: POST /oauth/session/handoff is public and
- * verifies its own bearer token, so OAuthService.createHandoff refuses demo
- * users there with the same demoBlocked() error.
- *
- * Nothing else needs stubbing today: password-reset email skips password-less
- * users (and `.invalid` receives no mail), the AI parser is local, and there
- * are no uploads, webhooks, billing or SMS. New routes of those kinds should
- * carry `@DemoBlocked()`.
+ * @DemoBlocked() routes answer 403, @DemoQuota() routes 429 past the cap. POST
+ * /oauth/session/handoff is public, so OAuthService.createHandoff refuses demo users itself.
  */
 @Injectable()
 export class DemoRestrictionsGuard implements CanActivate {

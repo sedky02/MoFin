@@ -1,16 +1,5 @@
-/**
- * Idempotent UX fixture seed. Talks to the backend over HTTP only
- * (default http://localhost:3000/api/v1), so every business rule still applies.
- *
- *   npm run e2e:seed
- *
- * Re-running logs in as the existing fixture user, then creates only the
- * accounts / categories / transactions / goals / drafts that are still missing.
- * Credentials and a few ids for the specs are written to e2e/.auth/ (gitignored).
- *
- * Run with Node's built-in TypeScript support: keep this file free of enums,
- * parameter properties and local imports.
- */
+// Idempotent fixture seed that goes through the HTTP API only, so every business rule applies.
+// Runs under Node's built-in TS support: no enums, parameter properties or local imports.
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -19,8 +8,7 @@ const API = process.env.BACKEND_URL ?? "http://localhost:3000/api/v1";
 const EMAIL = process.env.UX_FIXTURE_EMAIL ?? "ux-fixture@mofin.test";
 const PASSWORD = process.env.UX_FIXTURE_PASSWORD ?? "UxFixture#2026";
 const DISPLAY_NAME = "UX Fixture";
-// Africa/Tunis is UTC+1 year-round. The backend has no dedicated timezone
-// field, so it is stored in the free-form profile settings.
+// Africa/Tunis is UTC+1 all year; the backend has no timezone field, so it lives in profile settings.
 const TZ = { timezone: "Africa/Tunis", utcOffsetMinutes: 60 };
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -60,7 +48,6 @@ async function listAll(path: string): Promise<Json[]> {
   return out;
 }
 
-/** `hour` o'clock local (UTC+1) on `day` of the month `monthsAgo` months back, as a UTC ISO string. */
 function localDate(monthsAgo: number, day: number, hour = 10): string {
   const now = new Date();
   const base = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - monthsAgo, 1));
@@ -83,8 +70,6 @@ async function seed() {
   console.log(`Logged in as ${EMAIL}`);
 
   await call("PATCH", "/users/me", { displayName: DISPLAY_NAME, settings: TZ });
-
-  // --- Accounts -----------------------------------------------------------
   const accountDefs = [
     { name: "Main checking", type: "BANK", currency: "USD" },
     { name: "Emergency fund", type: "SAVINGS", currency: "USD" },
@@ -98,8 +83,6 @@ async function seed() {
     acc[def.name] =
       existingAccounts.find((a) => a.name === def.name) ?? (await call("POST", "/accounts", def));
   }
-
-  // --- Categories ---------------------------------------------------------
   const categoryDefs = [
     { name: "Salary", type: "INCOME" },
     { name: "Freelance", type: "INCOME" },
@@ -117,8 +100,6 @@ async function seed() {
       existingCategories.find((c) => c.name === def.name && c.type === def.type) ??
       (await call("POST", "/categories", def));
   }
-
-  // --- Transactions -------------------------------------------------------
   // A transaction counts as existing when description + timestamp match.
   const existingTx = await listAll("/search/transactions");
   const txKey = (description: string, occurredAt: string) =>
@@ -142,7 +123,6 @@ async function seed() {
   const dinarId = acc["Dinar"].id;
   const oldId = acc["Old savings"].id;
 
-  // Opening balances. Old savings gets its activity before being archived.
   await ensureTx({
     type: "INCOME", description: "Old savings opening deposit", amount: "800.00", currency: "EUR",
     occurredAt: localDate(4, 2), toAccountId: oldId,
@@ -199,7 +179,6 @@ async function seed() {
     occurredAt: localDate(1, 12), fromAccountId: travelId, categoryId: cat["Dining out"].id,
   });
 
-  // Split expense: one receipt, two categories.
   const { tx: split } = await ensureTx({
     type: "EXPENSE", description: "Supermarket and pharmacy receipt", amount: "96.30", currency: "USD",
     occurredAt: localDate(0, 4), fromAccountId: mainId,
@@ -209,28 +188,22 @@ async function seed() {
     ],
   });
 
-  // Deleted expense: recorded by mistake, then deleted (soft delete, so it's
-  // hidden from every list and total). Deleted rows aren't returned by search,
-  // so each run records and deletes a fresh one; none of them ever shows up.
+  // Deleted rows aren't searchable, so each run records and deletes a fresh one.
   const { tx: deleted, isNew: deletedIsNew } = await ensureTx({
     type: "EXPENSE", description: "Duplicate charge (deleted)", amount: "59.00", currency: "USD",
     occurredAt: localDate(0, 7), fromAccountId: mainId, categoryId: cat["Dining out"].id,
   });
   if (deletedIsNew) await call("DELETE", `/transactions/${deleted.id}`);
 
-  // Monthly recurring rent in TND (3 decimals).
   await ensureTx({
     type: "EXPENSE", description: "Rent (monthly)", amount: "12.345", currency: "TND",
     occurredAt: localDate(4, 5), fromAccountId: dinarId, categoryId: cat["Rent"].id,
     isRecurring: true, recurringInterval: "MONTHLY",
   });
 
-  // Archive Old savings now that it has activity.
   if (!acc["Old savings"].archivedAt) {
     await call("DELETE", `/accounts/${oldId}`);
   }
-
-  // --- Goals --------------------------------------------------------------
   const periodStart = localDate(0, 1, 0);
   const goalDefs = [
     { name: "Freelance income target", type: "INCOME", targetAmount: "1000.00", accountId: mainId },
@@ -242,8 +215,6 @@ async function seed() {
     if (existingGoals.some((g) => g.name === def.name)) continue;
     await call("POST", "/goals", { ...def, isRecurring: true, recurrenceUnit: "MONTH", periodStart });
   }
-
-  // --- Drafts (2 pending) -------------------------------------------------
   const draftDefs = [
     {
       rawInput: "coffee with Sam 6.50",
@@ -267,8 +238,6 @@ async function seed() {
     if (existingDrafts.some((d) => d.rawInput === def.rawInput)) continue;
     await call("POST", "/draft-transactions", def);
   }
-
-  // --- Output for the specs ----------------------------------------------
   mkdirSync(authDir, { recursive: true });
   writeFileSync(
     resolve(authDir, "credentials.json"),

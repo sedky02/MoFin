@@ -46,10 +46,7 @@ export class UsersController {
     return this.usersService.updateProfile(user.id, dto);
   }
 
-  /**
-   * Deletes the caller's account and all of its data. Needs `confirm: "DELETE"`
-   * in the body, and is limited per user.
-   */
+  /** Needs `confirm: "DELETE"` in the body, and is limited per user. */
   @UseGuards(DeleteAccountThrottlerGuard)
   @DemoBlocked()
   @Delete('me')
@@ -63,9 +60,8 @@ export class UsersController {
   }
 
   /**
-   * Deletes everything the caller recorded and keeps the account: profile,
-   * sign-in methods, sessions and connected AI apps all stay. Needs
-   * `confirm: "DELETE"` in the body, and shares the delete limit.
+   * Keeps the profile, sign-ins, sessions and connected AI apps. Needs `confirm: "DELETE"` and
+   * shares the delete limit.
    */
   @UseGuards(DeleteAccountThrottlerGuard)
   @DemoBlocked()

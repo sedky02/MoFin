@@ -39,9 +39,8 @@ export function TransactionDetail({ id }: { id: string }) {
   const [confirmDelete, setConfirmDelete] = React.useState(false);
   const { data: tx, isLoading, isError, error, refetch } = useTransaction(id);
 
-  // Older responses carried legs without their account: the account list resolves
-  // those, with archived accounts included.
-  // The list also says which accounts are shared, for showing who entered this.
+  // Older responses carried legs without their account, so the account list (archived included)
+  // resolves those; it also says which accounts are shared, for showing who entered this.
   const accountsQuery = useAccounts("all");
   const { data: user } = useUser();
   const accountsById = React.useMemo<ReadonlyMap<string, Account> | undefined>(() => {
@@ -97,7 +96,6 @@ export function TransactionDetail({ id }: { id: string }) {
         </Link>
       </Button>
 
-      {/* Summary */}
       <Card className="border-0 p-6 shadow-sm">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
@@ -151,7 +149,6 @@ export function TransactionDetail({ id }: { id: string }) {
 
         {author && <p className="mt-3 text-xs text-muted-foreground">{author}</p>}
 
-        {/* Someone with the right role can change it or remove it. */}
         {tx.canEdit !== false && (
         <div className="mt-4 flex flex-wrap gap-2 border-t border-border pt-4">
           <Button asChild variant="outline" size="sm" className="gap-1.5">
@@ -173,10 +170,8 @@ export function TransactionDetail({ id }: { id: string }) {
         </div>
         )}
 
-        {/* Recurring series management — only on the root of a series. */}
         {tx.isRecurring && !tx.parentTransactionId && <RecurringPanel tx={tx} />}
 
-        {/* Generated occurrences just link back to the series they belong to. */}
         {tx.parentTransactionId && (
           <div className="mt-4 border-t border-border pt-4">
             <Badge asChild variant="outline" className="h-6 gap-1">
@@ -207,7 +202,6 @@ export function TransactionDetail({ id }: { id: string }) {
         }}
       />
 
-      {/* Ledger legs: one per account the money moved out of or into */}
       <Card className="mt-6 overflow-hidden border-0 p-0 shadow-sm">
         <div className="border-b border-border px-5 py-3.5">
           <h2 className="text-sm font-semibold">Ledger entries</h2>
@@ -304,7 +298,6 @@ function AccountNamePlaceholder() {
   );
 }
 
-/** One end of a transfer: a small label over the account name. */
 function AccountTile({ label, name }: { label: string; name: React.ReactNode }) {
   return (
     <div className="min-w-0 rounded-lg bg-muted/50 px-3 py-2.5">

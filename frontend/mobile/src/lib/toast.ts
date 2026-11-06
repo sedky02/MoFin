@@ -13,7 +13,6 @@ export type ToastOptions = {
   /** Milliseconds; `Infinity` keeps it until dismissed. */
   duration?: number;
   action?: ToastAction;
-  /** A second, secondary button (sonner's `cancel`). */
   cancel?: ToastAction;
 };
 
@@ -74,13 +73,11 @@ function show(kind: ToastKind, message: string, options?: ToastOptions): string 
   return id;
 }
 
-/** Remove one toast, or all of them when no id is given. */
 export function dismissToast(id?: string): void {
   items = id === undefined ? [] : items.filter((t) => t.id !== id);
   emit();
 }
 
-/** Test helper. */
 export function resetToasts(): void {
   items = [];
   counter = 0;

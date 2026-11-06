@@ -13,9 +13,8 @@ import { getQueryClient } from '@/lib/query-client';
 let sessionEffectsInstalled = false;
 
 /**
- * On every sign-out or rejected refresh: drop every cached query (another user may sign in next)
- * and forget the Google account choice, the stored active-account pick and any exported file left in
- * the cache (another user may sign in on this device next).
+ * On sign-out or rejected refresh, drop every cached query, the Google account choice, the stored
+ * active-account pick and any exported file (another user may sign in next).
  */
 export function installSessionEffects(): void {
   if (sessionEffectsInstalled) return;

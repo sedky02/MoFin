@@ -1,10 +1,8 @@
 import { z } from 'zod';
 import { isDemoEmail } from '../../../common/utils/demo-identity';
 
-// Emails are normalized (trimmed + lowercased) so register and login always
-// agree — the email column is case-sensitive-unique, so without this a user who
-// registers `Foo@x.com` cannot log in as `foo@x.com`, and duplicate accounts can
-// be created for the same address in different cases.
+// Normalized so register and login agree: the email column is case-sensitive-unique, so `Foo@x.com`
+// would otherwise not log in as `foo@x.com`.
 const emailField = z.string().trim().toLowerCase().email();
 
 // The one rule every new password follows: register, reset and change.
@@ -41,9 +39,8 @@ export const forgotPasswordSchema = z.object({
 });
 export type ForgotPasswordDto = z.infer<typeof forgotPasswordSchema>;
 
-// Same password rule as registration. The token is the base64url value from
-// the emailed link (43 chars for 32 bytes); the upper bound just stops an
-// arbitrarily large string from being hashed.
+// The base64url token from the emailed link; the cap only stops an arbitrarily large string being
+// hashed.
 export const resetPasswordSchema = z.object({
   token: z.string().min(1).max(256),
   password: newPasswordField,
@@ -55,9 +52,8 @@ export const verifyEmailSchema = z.object({
 });
 export type VerifyEmailDto = z.infer<typeof verifyEmailSchema>;
 
-// `refreshToken` is the caller's own session token, which the web BFF reads
-// from its cookie and forwards so that session survives the change. Without
-// it every session of the account is signed out, the caller's included.
+// `refreshToken` is the caller's own session, forwarded by the BFF so it survives the change;
+// without it every session is signed out, the caller's included.
 export const changePasswordSchema = z.object({
   currentPassword: z.string().min(1),
   newPassword: newPasswordField,
@@ -73,11 +69,8 @@ export const googleLoginSchema = z.object({
 });
 export type GoogleLoginDto = z.infer<typeof googleLoginSchema>;
 
-// Sent by the mobile app after native Google sign-in: the ID token Google gave
-// the device. Untrusted until GoogleIdTokenVerifier checks it. Google's tokens
-// are around 1–2 KB; the cap only stops an arbitrarily large string. Strict:
-// the app sends `{ idToken }` and nothing else, so any other field is a 400
-// rather than being silently dropped.
+// The ID token Google gave the device; untrusted until GoogleIdTokenVerifier checks it. Strict, so
+// any extra field is a 400 instead of silently dropped.
 export const googleIdTokenSchema = z
   .object({
     idToken: z.string().min(1).max(8192),

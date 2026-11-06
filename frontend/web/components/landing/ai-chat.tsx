@@ -60,23 +60,17 @@ const ASSISTANTS: Assistant[] = [
 const STAGES = [300, 1500, 500, 1100, 800, 1500] as const;
 
 /**
- * What asking your assistant about MoFin looks like: the question typed and sent, the MoFin tool it
- * reads, and an answer built from your real numbers. Scrolling plays Claude's conversation: the
- * section stays pinned while it plays, then lets go. Scrolling faster plays it faster, and scrolling
- * back rewinds it. ChatGPT's plays only when you pick it, once, on its own clock. With reduced
- * motion nothing is pinned or animated: each conversation shows finished.
+ * Scrolling plays Claude's conversation while the section stays pinned; ChatGPT's plays on its own
+ * timer.
  */
 export function AiChat() {
   const reduceMotion = Boolean(useReducedMotion());
   const track = React.useRef<HTMLDivElement>(null);
   const [progress, setProgress] = React.useState(0);
   const [active, setActive] = React.useState(0);
-  // Picking ChatGPT again plays it again.
   const [round, setRound] = React.useState(0);
 
-  // 0 when the section is about to be pinned, 1 when its scroll runs out.
   const { scrollYProgress } = useScroll({ target: track, offset: ["start 0.6", "end end"] });
-  // A little spring, so a quick flick of the wheel still plays smoothly instead of jumping.
   const smooth = useSpring(scrollYProgress, { stiffness: 140, damping: 28, mass: 0.4 });
   useMotionValueEvent(smooth, "change", (v) => setProgress(Math.min(1, Math.max(0, v))));
 
@@ -152,13 +146,11 @@ export function AiChat() {
   );
 }
 
-/** Plays as far as the scroll has gone. */
 function ScrollConversation({ assistant: a, q }: { assistant: Assistant; q: number }) {
   const { stage, typed, answer } = chatFrame(q, a.question, a.answer);
   return <ConversationView assistant={a} stage={stage} typed={typed} answer={answer} />;
 }
 
-/** Plays once on its own clock, from the moment it is shown. */
 function TimedConversation({ assistant: a }: { assistant: Assistant }) {
   const reduceMotion = Boolean(useReducedMotion());
   const [stage] = useSequence(STAGES, true, reduceMotion);
@@ -198,7 +190,6 @@ function ConversationView({
           <div className={cn("transition-opacity duration-300", stage >= SENT ? "opacity-100" : "opacity-0")}>
             <UserBubble text={a.question} />
           </div>
-          {/* Thinking and the tool call share one row. */}
           <div className="h-9">
             {stage === THINKING && <Thinking dot={a.dot} />}
             {stage >= TOOL_CALL && (
@@ -207,11 +198,9 @@ function ConversationView({
               </motion.div>
             )}
           </div>
-          {/* The answer's space is kept while it streams in, so the card below stays put. */}
           <Reserve reserve={<p className="max-w-[92%] text-sm leading-relaxed">{a.answer}</p>}>
             <p className="max-w-[92%] text-sm leading-relaxed">{answer}</p>
           </Reserve>
-          {/* The card's space is always there; the card fades in when it's ready. */}
           <motion.div
             className="rounded-2xl border border-border bg-background/60 p-4"
             initial={false}

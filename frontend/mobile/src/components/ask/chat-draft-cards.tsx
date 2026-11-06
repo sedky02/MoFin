@@ -5,9 +5,8 @@ import type { DraftTransaction, ParsedTransactionData } from '@/core/types';
 import { useApproveDraft, useRejectDraft } from '@/hooks/useDrafts';
 
 /**
- * The drafts an Ask answer created, as cards with Approve, Review & edit and Reject. Same card,
- * same requests as the Drafts inbox: a decision here refreshes the inbox and the reverse, and a
- * draft already handled elsewhere shows its status instead of buttons.
+ * Same cards and requests as the Drafts inbox: a decision here refreshes the inbox and vice versa,
+ * and a draft handled elsewhere shows its status instead of buttons.
  */
 export function ChatDraftCards({ drafts }: { drafts: DraftTransaction[] }) {
   const approve = useApproveDraft();

@@ -3,7 +3,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AskChatList } from '@/components/ask/ask-chat-list';
 
-/** Ask MoFin from the More tab: the same chat list as the Ask switch on the AI drafts tab. */
 export default function AskScreen() {
   const insets = useSafeAreaInsets();
   return (

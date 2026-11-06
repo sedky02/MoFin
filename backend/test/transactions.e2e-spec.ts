@@ -19,11 +19,8 @@ import { RecurringSeriesService } from '../src/modules/transactions/recurring-se
 import { TransactionsService } from '../src/modules/transactions/transactions.service';
 
 /**
- * HTTP-level check of the transaction response shape: real controllers and
- * services behind the real `api/v1` prefix, with Prisma replaced by an
- * in-memory store. The store only joins `items[].account` when the query asks
- * for it (like Prisma does), so dropping the include from the service makes
- * these tests fail. No database is touched.
+ * HTTP-level check of the transaction response shape over an in-memory store that only joins
+ * `items[].account` when the query asks, so dropping the include fails these tests.
  */
 
 const USER_ID = 'user-1';
@@ -342,7 +339,6 @@ describe('Transactions API (e2e)', () => {
       'tx-archived',
     ]);
 
-    // A second delete finds nothing live to delete.
     expect((await send('DELETE', '/transactions/tx-transfer')).status).toBe(
       404,
     );
@@ -351,7 +347,6 @@ describe('Transactions API (e2e)', () => {
     expect(restored.status).toBe(201);
     expect((await restored.json()).id).toBe('tx-transfer');
     expect((await get('/transactions/tx-transfer')).status).toBe(200);
-    // Restoring a live transaction is a 404 too.
     expect(
       (await send('POST', '/transactions/tx-transfer/restore')).status,
     ).toBe(404);

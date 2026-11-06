@@ -9,7 +9,6 @@ import { WifiOff } from '@/lib/icons';
 
 export const OFFLINE_MESSAGE = "You're offline. Showing what was loaded; changes will work once you're back online.";
 
-/** A calm strip under the header while the device has no connection. Hidden when online. */
 export function OfflineBanner() {
   const online = useIsOnline();
   const insets = useSafeAreaInsets();

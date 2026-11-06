@@ -29,11 +29,6 @@ const HISTORY = [
 // Months met in a row, counting back from the latest.
 const STREAK = HISTORY.slice().reverse().findIndex((m) => !m.met);
 
-/**
- * Goals as three cards: a savings goal filling up to its milestones, a
- * spending limit filling day by day, and a recurring goal's month-by-month
- * record. Each plays once as it scrolls into view.
- */
 export function GoalsShowcase() {
   const ref = React.useRef<HTMLDivElement>(null);
   const play = useInView(ref, { once: true, amount: 0.3 });
@@ -178,7 +173,6 @@ function BudgetCard({ play }: { play: boolean }) {
         </span>
       </div>
 
-      {/* Each day's spending stacks up toward the limit. */}
       <div className="relative mt-3 flex h-4 gap-0.5 overflow-hidden rounded-full bg-muted">
         {DAILY.map((pct, i) => (
           <motion.span

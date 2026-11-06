@@ -8,7 +8,6 @@ import { cn } from "@/lib/utils";
 
 export const MAX_QUESTION_CHARS = 2000;
 
-/** The question box: grows with the text, Enter sends, Shift+Enter makes a new line. */
 export function AskComposer({
   value,
   onChange,
@@ -43,9 +42,8 @@ export function AskComposer({
       onClick={(e) => {
         if (!(e.target as HTMLElement).closest("button")) e.currentTarget.querySelector("textarea")?.focus();
       }}
-      // One row, docked into the card: a filled field with no border or shadow of its own that
-      // lifts to white with a ring while you type. 10px corners on phones (6px inside the card's
-      // 16px), 12px on wider screens where it sits clear of the card's corners.
+      // One row docked into the card: a borderless filled field that lifts to white with a ring
+      // while typing. Corners are concentric with the card (10px on phones, 12px wider).
       className="flex items-end gap-2 rounded-[0.625rem] bg-secondary/70 p-1.5 ring-1 ring-transparent transition-[background-color,box-shadow] focus-within:bg-card focus-within:shadow-surface focus-within:ring-ring/50 sm:rounded-[0.75rem]"
     >
       <Textarea

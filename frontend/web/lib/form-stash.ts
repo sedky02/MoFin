@@ -1,7 +1,5 @@
-// Unsaved form input put aside across a session-expired redirect, so signing
-// back in doesn't cost the user what they typed. sessionStorage keeps it to
-// this tab; one key per form, read once, ignored once stale. Only form values
-// go in here, never credentials or tokens.
+// Unsaved input kept across a session-expired redirect so signing back in doesn't cost what the
+// user typed: sessionStorage, one key per form, read once, ignored once stale.
 
 export const FORM_STASH_MAX_AGE_MS = 30 * 60 * 1000;
 

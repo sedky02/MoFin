@@ -5,7 +5,6 @@ import { CategoryIcon } from "@/components/dashboard/category-icon";
 
 afterEach(cleanup);
 
-/** The lucide icon a name gets, from the class lucide puts on its svg. */
 function iconOf(name: string | undefined): string {
   const { container } = render(<CategoryIcon name={name} />);
   const svg = container.querySelector("svg");

@@ -10,10 +10,8 @@ import {
 } from '@prisma/client';
 import { GoalsService } from './goals.service';
 
-// B-26: a goal is judged when its period ends. These tests run the service
-// against a small in-memory stand-in for Prisma so the rules can be checked
-// end to end: live progress for the open period, sticky ACHIEVED, frozen ended
-// goals, and finished periods that never get recomputed.
+// B-26: a goal is judged when its period ends. Runs the service against an in-memory Prisma
+// stand-in to check live progress, sticky ACHIEVED, frozen ended goals and final finished periods.
 
 type Row = Record<string, unknown>;
 type FakeTransaction = {
@@ -35,7 +33,6 @@ function compare(a: unknown, b: unknown): number {
   return a === b ? 0 : (a as number) < (b as number) ? -1 : 1;
 }
 
-/** Just enough of Prisma's `where` semantics for GoalsService's queries. */
 function matches(row: Row, where: Row): boolean {
   return Object.entries(where).every(([key, cond]) => {
     if (key === 'OR') return (cond as Row[]).some((c) => matches(row, c));

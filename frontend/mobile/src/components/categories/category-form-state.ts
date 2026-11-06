@@ -29,7 +29,6 @@ export function validateCategoryDraft(draft: CategoryDraft): { ok: true; values:
   return parsed.success ? { ok: true, values: parsed.data } : { ok: false, error: parsed.error.issues[0].message };
 }
 
-/** The message shown on the Name field when the name is taken (409). */
 export function duplicateNameMessage(type: CategoryType, name: string): string {
   return `You already have ${type === 'INCOME' ? 'an income' : 'an expense'} category called “${name}”.`;
 }

@@ -23,7 +23,6 @@ function subscribe(listener: () => void) {
   };
 }
 
-/** True while the voice overlay is open. */
 export function useVoiceOverlayOpen(): boolean {
   return React.useSyncExternalStore(subscribe, () => open, () => false);
 }

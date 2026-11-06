@@ -71,7 +71,6 @@ export function DraftCard({
       )}
     >
       <div className="p-4">
-        {/* Raw input quote */}
         <div className="flex items-start gap-2.5">
           {variant === "chat" ? (
             <p className="flex-1 text-xs font-medium text-muted-foreground">Draft transaction</p>
@@ -91,7 +90,6 @@ export function DraftCard({
           )}
         </div>
 
-        {/* Parsed summary */}
         <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
           {p.type && <TypeBadge type={p.type} />}
           <span className="text-sm font-medium">{p.description}</span>
@@ -111,7 +109,6 @@ export function DraftCard({
           )}
         </div>
 
-        {/* PENDING actions */}
         {isPending && (
           <div className="mt-4 flex items-center gap-2">
             <Button
@@ -152,7 +149,6 @@ export function DraftCard({
           </div>
         )}
 
-        {/* Reject reason inline */}
         {isPending && rejectOpen && (
           <div className="mt-3 flex flex-col gap-2 rounded-lg bg-secondary/60 p-3 sm:flex-row">
             <Input
@@ -179,7 +175,6 @@ export function DraftCard({
         )}
       </div>
 
-      {/* Expandable review form */}
       {isPending && expanded && (
         <div className="px-4 pb-4">
           <DraftReviewForm
@@ -191,7 +186,6 @@ export function DraftCard({
         </div>
       )}
 
-      {/* Rejected reason display */}
       {draft.status === "REJECTED" && draft.reason && (
         <div className="border-t border-border bg-secondary/30 px-4 py-2.5 text-xs text-muted-foreground">
           Reason: {draft.reason}

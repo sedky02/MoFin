@@ -28,7 +28,6 @@ const FORMATS: { format: Format; label: string; title: string; description: stri
   },
 ];
 
-/** Settings card that downloads everything the user has in MoFin, or deletes it and starts over. */
 export function DataCard({ user, isLoading }: { user?: User; isLoading: boolean }) {
   const [pending, setPending] = React.useState<Format | null>(null);
 
@@ -37,7 +36,6 @@ export function DataCard({ user, isLoading }: { user?: User; isLoading: boolean 
     try {
       await downloadFile(`/api/backend/export?format=${format}`, `mofin-export.${format}`);
     } catch (err) {
-      // The backend allows a handful of exports an hour per user.
       if (err instanceof ApiClientError && err.status === 429) {
         toast.error("You've exported several times this hour. Try again later.", { id: "export-429" });
       } else {
@@ -69,7 +67,6 @@ export function DataCard({ user, isLoading }: { user?: User; isLoading: boolean 
             </Button>
           </SettingsRow>
         ))}
-        {/* Set apart from the exports: this one is not reversible. */}
         <div className="pt-3">
           {!user?.isDemo && (
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-destructive">Danger zone</p>

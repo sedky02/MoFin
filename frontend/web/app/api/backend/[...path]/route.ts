@@ -13,13 +13,9 @@ import {
 } from "@/lib/auth-cookies";
 import { bffHeaders } from "@/lib/bff-headers";
 
-//export const dynamic = "force-dynamic";
-
 type Ctx = { params: Promise<{ path: string[] }> };
 
-// This proxy sits in the user-facing request path, so a hung backend must not
-// hang every dashboard load — a short timeout turns "spinner forever" into an
-// explicit, actionable 504 (audit PERF-XX).
+// A hung backend must not hang every dashboard load: a short timeout becomes an explicit 504.
 const PROXY_TIMEOUT_MS = 8_000;
 // The assistant calls a language model (the chat may make several round trips
 // to it), which routinely takes longer than 8 s.
@@ -29,18 +25,6 @@ function timeoutFor(targetPath: string): number {
   return targetPath === "ai" || targetPath.startsWith("ai/") ? AI_PROXY_TIMEOUT_MS : PROXY_TIMEOUT_MS;
 }
 
-// ---- Module-level refresh lock ----
-// Concurrent 401s for the SAME refresh token share one in-flight refresh so we
-// don't stampede /auth/refresh. Keyed by refresh token so different users'
-// requests (which race on a shared Node process) never share state.
-// See RefreshOutcome for what "rejected" vs "unavailable" mean to the session.
-//
-// A successful rotation stays in the map for REFRESH_REUSE_MS. Requests the
-// browser sent before it received the rotated cookies still carry the old
-// refresh token, and their 401 can arrive after the refresh has finished.
-// Presenting that token to the backend again counts as reuse and revokes the
-// whole session, so they get the same new pair instead. Failures are
-// released at once so the next 401 can try again.
 const REFRESH_REUSE_MS = 30_000;
 const refreshPromises = new Map<string, Promise<RefreshOutcome>>();
 
@@ -60,7 +44,6 @@ async function refreshTokens(refreshToken: string, req: Request): Promise<Refres
   return promise;
 }
 
-// ---- Forwarding ----
 async function forward(
   req: Request,
   targetPath: string,
@@ -91,9 +74,7 @@ async function forward(
       signal: AbortSignal.timeout(timeoutFor(targetPath)),
     });
   } catch (err) {
-    // Explicit 504 instead of letting the route handler throw (which Next
-    // would turn into a generic, indistinguishable 500) — this is what lets
-    // handleApiError on the client tell "slow" apart from "broken".
+    // Explicit 504, so handleApiError can tell "slow" from "broken" instead of a generic 500.
     const timedOut = err instanceof Error && err.name === "TimeoutError";
     return Response.json(
       {
@@ -118,7 +99,6 @@ async function handle(req: Request, ctx: Ctx): Promise<Response> {
   const accessToken = cookieStore.get(ACCESS_COOKIE)?.value;
   const refreshToken = cookieStore.get(REFRESH_COOKIE)?.value;
 
-  // We can only read the body once; clone for a potential retry.
   const reqForFirst = req.clone();
   const upstream = await forward(reqForFirst, targetPath, accessToken, requestId);
 
@@ -126,7 +106,6 @@ async function handle(req: Request, ctx: Ctx): Promise<Response> {
     return passthrough(upstream, requestId);
   }
 
-  // 401 → try one refresh (deduped via the module lock), then retry once.
   if (!refreshToken) {
     return clearedUnauthorized();
   }
@@ -136,16 +115,14 @@ async function handle(req: Request, ctx: Ctx): Promise<Response> {
     return clearedUnauthorized();
   }
   if (outcome.kind === "unavailable") {
-    // Keep the cookies: the session may be perfectly valid, the backend was
-    // just rate limiting, down or slow. The client can retry instead of being
-    // logged out.
+    // Keep the cookies: the session may be valid and the backend just rate limiting, down or slow,
+    // so the client can retry instead of being logged out.
     return refreshUnavailableResponse(outcome.retryAfter);
   }
 
   const { tokens } = outcome;
   const retry = await forward(req.clone(), targetPath, tokens.accessToken, requestId);
   const res = await passthrough(retry, requestId);
-  // Rotate cookies onto the retried response.
   applyTokenCookies(res, tokens);
   return res;
 }
@@ -163,8 +140,7 @@ async function passthrough(upstream: Response, requestId: string): Promise<NextR
     const value = upstream.headers.get(name);
     if (value) res.headers.set(name, value);
   }
-  // Lets a report from the user reference this id to find the matching
-  // backend log line without needing DB/timestamp correlation.
+  // Lets a user's report reference this id to find the backend log line.
   res.headers.set("x-request-id", requestId);
   return res;
 }

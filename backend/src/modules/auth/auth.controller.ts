@@ -65,11 +65,8 @@ export class AuthController {
     private readonly googleIdTokenVerifier: GoogleIdTokenVerifier,
   ) {}
 
-  // Tighter limit on credential endpoints to blunt brute-force / abuse (audit
-  // B5), keyed on submitted email + IP (not IP alone, see AuthThrottlerGuard)
-  // so it actually stops credential stuffing instead of just rate-limiting
-  // "whoever is behind this BFF" as a single client. No @Throttle here: the
-  // global guard would read it too and apply the same limit per IP.
+  // Credential routes are keyed on email + IP (see AuthThrottlerGuard) so credential stuffing is
+  // actually limited. No @Throttle here: the global guard would apply the same limit per IP.
   @Public()
   @UseGuards(AuthThrottlerGuard)
   @Post('register')
@@ -99,12 +96,8 @@ export class AuthController {
   }
 
   /**
-   * Always 202 with the same body, whether or not the email has an account.
-   * The work (lookup, token, email) runs after the response is sent, so the
-   * timing doesn't tell the two cases apart either. Rate-limited per
-   * email + IP to stop the endpoint being used to flood an inbox, and per IP
-   * (the global guard reads this @Throttle) so one client can't mail many
-   * addresses.
+   * Always 202 with the same body, run after the response, so neither content nor timing reveals
+   * whether the email exists. Limited per email + IP and per IP.
    */
   @Public()
   @UseGuards(ForgotPasswordThrottlerGuard)
@@ -168,7 +161,6 @@ export class AuthController {
     return this.authService.changePassword(user.id, dto);
   }
 
-  /** Signs out every web session of the caller, this one included. */
   @ApiBearerAuth('jwt')
   @DemoBlocked()
   @Post('sessions/revoke-all')
@@ -192,13 +184,8 @@ export class AuthController {
   }
 
   /**
-   * Native Google sign-in from the mobile app: the body is the ID token the
-   * device got from Google, so it is verified here (signature against
-   * Google's keys, issuer, audience, expiry, verified email) before anyone is
-   * signed in. Same response as login. Limited per IP only, never per body
-   * field (see GoogleIdTokenThrottlerGuard for the limit and why it suits
-   * carrier NAT), so forged tokens can't be tried in bulk. No @Throttle here:
-   * the global guard keeps its 300/min per-IP baseline on top.
+   * The ID token is verified (signature, issuer, audience, expiry, verified email) before anyone is
+   * signed in. Limited per IP only (see GoogleIdTokenThrottlerGuard).
    */
   @Public()
   @UseGuards(GoogleIdTokenThrottlerGuard)

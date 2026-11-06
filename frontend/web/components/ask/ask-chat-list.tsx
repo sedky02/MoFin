@@ -17,7 +17,6 @@ import { localIso, addDaysIso } from "@/lib/week";
 import { cn } from "@/lib/utils";
 import type { AiChatSummary } from "@/lib/types";
 
-/** Today / Yesterday / Previous 7 days / Earlier, by when the chat was last active. */
 export function groupChats(chats: AiChatSummary[], now: Date): { label: string; chats: AiChatSummary[] }[] {
   const today = localIso(now);
   const yesterday = addDaysIso(today, -1);
@@ -138,7 +137,6 @@ function ChatRow({
   );
 }
 
-/** The saved chats, with "New chat" on top. Used in the side column and in the mobile sheet. */
 export function AskChatList({
   activeId,
   onOpen,

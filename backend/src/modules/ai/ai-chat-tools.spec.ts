@@ -1,6 +1,5 @@
 import { buildChatTools } from './ai-chat-tools';
 
-/** Collects every value stored under `key` anywhere in a nested schema. */
 function valuesOf(node: unknown, key: string): unknown[] {
   if (Array.isArray(node)) return node.flatMap((n) => valuesOf(n, key));
   if (node && typeof node === 'object') {
@@ -25,7 +24,6 @@ describe('buildChatTools', () => {
           expect(typeof value).toBe('number');
         }
       }
-      // OpenAPI-only keyword.
       expect(valuesOf(tool.parameters, 'nullable')).toEqual([]);
     }
   });

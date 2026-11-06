@@ -11,15 +11,8 @@ import { TransactionsService } from './transactions.service';
 const ADVISORY_LOCK_KEY = 727_002_001;
 
 /**
- * Generates the next Transaction(s) for each active recurring series. Runs
- * daily and catches up one occurrence at a time per series so an outage of
- * any length is caught up gradually rather than all at once, mirroring
- * GoalsService's rollover job.
- *
- * A series that can't post for a reason that won't fix itself (an archived
- * account, a currency mismatch...) is PAUSED with that reason instead of
- * failing every night; the user resumes it once it's fixed. Anything else
- * (the database going away mid-run) is logged and retried on the next run.
+ * Daily, one occurrence per series at a time, so an outage catches up gradually. A series that
+ * can't post for a lasting reason is PAUSED with that reason.
  */
 @Injectable()
 export class RecurringTransactionsCron {
@@ -58,9 +51,7 @@ export class RecurringTransactionsCron {
 
     for (const root of dueRoots) {
       try {
-        // A series whose cursor is already past its end date (e.g. one
-        // created or edited before create/updateRecurring ended it on the
-        // spot) ends here without posting anything.
+        // A series whose cursor is already past its end date ends here without posting anything.
         if (isPastEndDate(root.nextOccurrenceAt!, root.recurringEndDate)) {
           await this.prisma.transaction.update({
             where: { id: root.id },
@@ -78,10 +69,8 @@ export class RecurringTransactionsCron {
           continue;
         }
 
-        // Occurrence creation and cursor advance commit atomically: a crash
-        // between them is impossible, and the @@unique([parentTransactionId,
-        // occurredAt]) constraint rejects a duplicate outright if this ever
-        // retries against a row that was (pre-fix) left half-applied.
+        // Occurrence and cursor advance commit atomically; the unique (parentTransactionId,
+        // occurredAt) constraint rejects a duplicate if a retry meets a half-applied row.
         const created = await this.prisma.$transaction(async (db) => {
           const occurrence = await this.transactionsService.create(
             root.userId,
@@ -122,9 +111,8 @@ export class RecurringTransactionsCron {
 
         this.transactionsService.announceCreated(created);
       } catch (error) {
-        // create() rejecting the occurrence (a 4xx) means the template itself
-        // is invalid in a way findSeriesProblem doesn't know about yet, and
-        // it would fail the same way tomorrow.
+        // A 4xx from create() means the template is invalid in a way findSeriesProblem doesn't know
+        // yet, and would fail the same way tomorrow.
         if (error instanceof HttpException && error.getStatus() < 500) {
           await this.pause(root.id, error.message).catch((pauseError: Error) =>
             this.logger.error(
@@ -142,10 +130,7 @@ export class RecurringTransactionsCron {
     }
   }
 
-  /**
-   * Holds a series that can't post, keeping the reason for the user. Only an
-   * ACTIVE series is paused, so a cancel that landed during the run wins.
-   */
+  /** Only an ACTIVE series is paused, so a cancel that landed during the run wins. */
   private async pause(rootId: string, reason: string): Promise<void> {
     await this.prisma.transaction.updateMany({
       where: { id: rootId, recurringStatus: RecurringStatus.ACTIVE },

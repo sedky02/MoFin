@@ -5,9 +5,8 @@ import { cn } from "@/lib/utils";
 const SHOWN = NAV_ITEMS.filter((i) => i.href !== "/transactions/new" && i.href !== "/settings");
 
 /**
- * MoFin's own window around a mock screen: the real sidebar (same items and
- * icons as components/shell/nav-items.ts) beside the content, not a generic
- * browser frame. Decorative.
+ * MoFin's own window around a mock screen: the real sidebar (same items and icons as nav-items.ts),
+ * not a generic browser frame. Decorative.
  */
 export function AppFrame({ children, className }: { children: React.ReactNode; className?: string }) {
   return (

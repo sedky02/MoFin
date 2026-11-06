@@ -1,11 +1,7 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
-// B-16: editing a recurring series keeps the currency's decimals. The 12.345
-// TND rent opens as 12.345, and a save that only touches the description
-// doesn't send the amount, so future occurrences stay at 12.345. The field shows "TND"
-// once, after the amount, never drawn over the digits.
-// Needs the UX fixture: `npm run e2e:seed` ("Rent (monthly)" is a monthly
-// 12.345 TND expense on "Dinar").
+// Editing a series keeps the currency's decimals: the 12.345 TND rent opens as 12.345 and a
+// description-only save doesn't resend the amount. Needs `npm run e2e:seed`.
 test.use({ locale: "en-US" });
 
 const RENT = "Rent (monthly)";
@@ -19,7 +15,6 @@ type SeriesRoot = {
   recurringStatus?: string | null;
 };
 
-/** The fixture's rent series root, found by exact description through the BFF. */
 async function findRentRoot(page: Page): Promise<SeriesRoot> {
   const res = await page.request.get("/api/backend/search/transactions", {
     params: { q: RENT, limit: 20, offset: 0 },

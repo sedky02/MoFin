@@ -1,12 +1,6 @@
 /**
- * Deleting an account, and deleting just its data (DELETE /users/me and
- * POST /users/me/reset-data), through the real controllers, guards (global
- * throttler + web JWT, the per-user delete limit), validation, UsersService
- * and AuthService (to check the login afterwards).
- *
- * Prisma is replaced by an in-memory database whose foreign keys are read
- * from schema.prisma, with Postgres semantics (see support/in-memory-prisma.ts).
- * So it needs no database and runs with a plain `npm run test:e2e -- delete-account`.
+ * DELETE /users/me and POST /users/me/reset-data through real controllers, guards and validation,
+ * over an in-memory Prisma following schema.prisma's foreign keys.
  */
 import { INestApplication } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -411,7 +405,6 @@ describe('deleting an account and its data (e2e)', () => {
     expect(Number(res.headers['retry-after'])).toBeGreaterThan(0);
     expect(ownedBy(db, 'u1').user).toBe(1);
 
-    // Another user is unaffected.
     await deleteAccount(tokenFor('u2'), {}).expect(400);
   });
 

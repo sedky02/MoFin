@@ -1,10 +1,7 @@
 import { expect, test } from "@playwright/test";
 
-// B-105: the dashboard's server prefetch runs on the Next server, so browser
-// route interception can't fake a backend failure. The server / timeout /
-// unreachable states are covered in unit tests (lib/server-api.test.ts and
-// components/dashboard/dashboard-unavailable.test.tsx); this spec drives the
-// one real condition reachable without test-only backend endpoints.
+// The dashboard prefetch runs on the Next server, so browser route interception can't fake a
+// backend failure; the error states are unit-tested instead (lib/server-api.test.ts).
 test.use({ locale: "en-US", storageState: { cookies: [], origins: [] } });
 
 test("an invalid session with no refresh cookie ends on the sign-in page", async ({ page, context, baseURL }) => {

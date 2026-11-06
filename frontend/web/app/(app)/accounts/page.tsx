@@ -24,7 +24,6 @@ const GROUPS: { type: AccountType; title: string }[] = [
   { type: "CRYPTO", title: "Crypto" },
 ];
 
-/** A titled section of account cards; each account stays its own card. */
 function Group({
   title,
   hint,
@@ -79,7 +78,6 @@ function ListSkeleton() {
 }
 
 export default function AccountsPage() {
-  // Two views of the same page: the active accounts, or the archived ones on their own.
   const [view, setView] = React.useState<"active" | "archived">("active");
 
   const active = useAccounts("active");
@@ -104,7 +102,6 @@ export default function AccountsPage() {
   const { data: archiveMembers } = useAccountMembers(toArchive?.isShared ? toArchive.id : undefined);
   const othersOnArchive = (archiveMembers ?? []).filter((m) => !m.isYou).map(memberName);
 
-  // Instant list removal on archive (React 19 useOptimistic).
   const [optimisticAccounts, removeOptimistic] = React.useOptimistic(
     active.data ?? [],
     (state: Account[], id: string) => state.filter((a) => a.id !== id),
@@ -137,7 +134,6 @@ export default function AccountsPage() {
         title="Accounts"
         description="Cash, bank, savings and crypto — each tracked by the ledger."
         action={
-          // The page's actions sit together: switch view on the left, the primary action last.
           <div className="flex flex-wrap items-center gap-2">
             {view === "active" ? (
               <Button variant="outline" onClick={() => setView("archived")} className="gap-2">

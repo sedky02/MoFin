@@ -1,14 +1,8 @@
 import { expect, test, type APIRequestContext, type Locator, type Page } from "@playwright/test";
 import { formatViolations, runAxe } from "./helpers/axe";
 
-// B-13: a recurring series that can't post is paused with the reason instead of
-// failing every night and showing a "Next on" date that has already passed. The
-// user can pause and resume a series too; resuming refuses (and says why) while
-// the series still can't post, and picks up from the next date on or after today.
-// The nightly job is what pauses a series on its own, and it can't be triggered
-// from here, so these tests pause through the API and the UI. Each test creates
-// its own series on the fixture's "Main checking" (`npm run e2e:seed`) and
-// deletes it at the end.
+// A series that can't post is paused with the reason, and resuming is refused until it can. The
+// nightly job isn't triggerable here, so tests pause via API/UI. Needs `npm run e2e:seed`.
 test.use({ locale: "en-US", timezoneId: "Africa/Tunis" });
 
 type Tx = {
@@ -53,13 +47,11 @@ async function getTx(request: APIRequestContext, id: string): Promise<Tx> {
   return (await res.json()) as Tx;
 }
 
-/** Takes the test's 1.00 back out of the fixture's balances. */
 async function deleteSeries(request: APIRequestContext, id: string) {
   const res = await request.delete(`/api/backend/transactions/${id}`);
   expect(res.ok(), `deleting the test series failed with ${res.status()}`).toBeTruthy();
 }
 
-/** The date as the page shows it (formatDate, en-US, in the browser's zone). */
 const shownDate = (iso: string) =>
   new Intl.DateTimeFormat("en-US", { year: "numeric", month: "short", day: "numeric", timeZone: "Africa/Tunis" }).format(
     new Date(iso),
@@ -75,7 +67,6 @@ const seriesAction = (page: Page, id: string, action: "pause" | "resume") =>
     (res) => res.request().method() === "POST" && res.url().endsWith(`/transactions/${id}/recurring/${action}`),
   );
 
-/** A series' row in the Recurring view, found by the link to its root. */
 const seriesRow = (page: Page, id: string): Locator =>
   page
     .getByRole("list", { name: "Recurring series" })

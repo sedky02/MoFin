@@ -1,10 +1,8 @@
 /**
- * The landing demos are driven by scroll, not by a timer. One number from 0 to 1 says how far through
- * the section the visitor has scrolled; these turn it into what a conversation shows. Scrolling faster
- * plays it faster, and scrolling back rewinds it.
+ * Demos are driven by scroll, not a timer: one number from 0 to 1 says how far the visitor has
+ * scrolled, so scrolling faster plays faster and scrolling back rewinds.
  */
 
-// Stage reached as a conversation's progress `q` (0-1) passes each mark.
 export const TYPING = 1;
 export const SENT = 2;
 export const THINKING = 3;
@@ -25,13 +23,10 @@ const share = (q: number, from: number, to: number) => Math.min(1, Math.max(0, (
 
 export interface ChatFrame {
   stage: number;
-  /** The question as far as it has been typed (only while it is being typed). */
   typed: string;
-  /** The answer as far as it has been written. */
   answer: string;
 }
 
-/** What a conversation shows at progress `q`: its stage, and how much of the question and answer is typed. */
 export function chatFrame(q: number, question: string, answer: string): ChatFrame {
   const stage =
     q >= MARKS.card ? CARD
@@ -50,10 +45,7 @@ export function chatFrame(q: number, question: string, answer: string): ChatFram
   };
 }
 
-/**
- * For a sequence written as delays between stages (the way the demos were first timed): the point
- * in 0-1 at which each stage begins, with the same proportions as the delays.
- */
+/** For stages written as delays: the point in 0-1 where each begins, in the same proportions. */
 export function marksFromDelays(delays: readonly number[]): number[] {
   const total = delays.reduce((sum, d) => sum + d, 0);
   let at = 0;
@@ -63,12 +55,10 @@ export function marksFromDelays(delays: readonly number[]): number[] {
   });
 }
 
-/** The stage reached at progress `p`: how many of the `marks` it has passed (0 before the first). */
 export function stageAtMarks(p: number, marks: readonly number[]): number {
   return marks.filter((mark) => p >= mark).length;
 }
 
-/** `text` as far as progress `p` has written it, between `from` and `to`: empty before, whole after. */
 export function typedBetween(text: string, p: number, from: number, to: number): string {
   return text.slice(0, Math.ceil(text.length * share(p, from, to)));
 }

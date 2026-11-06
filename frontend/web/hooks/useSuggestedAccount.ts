@@ -10,14 +10,8 @@ import { useRecentTransactions } from "@/hooks/useSearch";
 const RECENT_WINDOW = 30;
 
 /**
- * The account a new transaction should default to, in priority order:
- *   1. the active account (top-bar picker),
- *   2. the main account (Settings preference),
- *   3. the only account, if there is just one,
- *   4. the account used most across recent transactions (ties go to the most recent),
- *   5. the first account.
- * Every candidate is resolved against the live account list, so an archived
- * account is never suggested. `undefined` only while there are no accounts.
+ * Default account for a new transaction: active, else main, else the only one, else the most used
+ * recently (ties to the latest), else the first. Archived accounts are never suggested.
  */
 export function useSuggestedAccountId(): string | undefined {
   const { data: allAccounts = [] } = useAccounts();

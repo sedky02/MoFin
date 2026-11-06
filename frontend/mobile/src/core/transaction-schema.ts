@@ -27,15 +27,10 @@ export const transactionFormBase = z.object({
 
 export type TransactionFormValues = z.infer<typeof transactionFormBase>;
 
-/**
- * Build the transaction schema with type-aware account rules + cross-currency
- * TRANSFER blocking (decimal-money skill's validateAccountCurrency).
- */
 export function makeTransactionSchema(accounts: Account[]) {
   const byId = new Map(accounts.map((a) => [a.id, a]));
 
   return transactionFormBase.superRefine((val, ctx) => {
-    // Amount must parse to a positive decimal.
     if (!parseMoneyInput(val.amountRaw)) {
       ctx.addIssue({
         path: ["amountRaw"],
@@ -61,7 +56,6 @@ export function makeTransactionSchema(accounts: Account[]) {
         });
       }
     } else {
-      // TRANSFER — both required, must differ, must share currency.
       if (!val.fromAccountId) {
         ctx.addIssue({
           path: ["fromAccountId"],
@@ -97,7 +91,6 @@ export function makeTransactionSchema(accounts: Account[]) {
       }
     }
 
-    // The transaction currency must match the relevant account's currency.
     const acct =
       val.type === "INCOME"
         ? byId.get(val.toAccountId ?? "")
@@ -110,10 +103,8 @@ export function makeTransactionSchema(accounts: Account[]) {
       });
     }
 
-    // Split items — only meaningful for INCOME/EXPENSE, and only when there's
-    // actually more than one row (a single row is just the plain form above).
-    // The total amount is derived from these (see the page's sync effect), so
-    // there's no separate "must add up to the total" check needed here.
+    // Split items only matter for INCOME/EXPENSE with more than one row; the total is derived from
+    // them.
     if (val.items && val.items.length > 1) {
       if (val.type === "TRANSFER") {
         ctx.addIssue({

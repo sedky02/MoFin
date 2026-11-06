@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input';
 import { Text } from '@/components/ui/text';
 import { cn } from '@/lib/utils';
 
-/** What a ref to a text field holds (focus(), blur()). */
 export type TextFieldHandle = React.ComponentRef<typeof TextInput>;
 
 type Props<T extends FieldValues> = {
@@ -15,16 +14,12 @@ type Props<T extends FieldValues> = {
   label: string;
   /** Shown after the label, muted (e.g. "(optional)"). */
   labelHint?: string;
-  /** Shown under the field while it has no error. */
   description?: string;
-  /** A show/hide toggle; the value is masked by default. */
   password?: boolean;
-  /** Extra content under the input (the password strength meter). */
   children?: React.ReactNode;
   inputRef?: React.RefObject<TextFieldHandle | null>;
 } & Omit<TextInputProps, 'value' | 'onChangeText' | 'onBlur' | 'secureTextEntry'>;
 
-/** A labelled text field bound to react-hook-form, with its error message under it. */
 export function FormField<T extends FieldValues>({
   control,
   name,

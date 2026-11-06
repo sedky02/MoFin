@@ -18,7 +18,6 @@ import type {
   OwnedSharedAccount,
 } from "@/core/types";
 
-/** Who can reach an account decides every figure and list, so all of them start over. */
 function invalidateAccess(queryClient: QueryClient) {
   for (const queryKey of [
     sharingKeys.all,
@@ -50,7 +49,6 @@ export function useAccountInvitations(accountId: string | undefined, enabled: bo
   });
 }
 
-/** The user's accounts other people can reach, for the warnings before deleting their data. */
 export function useOwnedSharedAccounts(enabled = true) {
   return useQuery({
     queryKey: sharingKeys.owned(),
@@ -135,7 +133,6 @@ export function useTransferOwnership(accountId: string) {
   });
 }
 
-/** This person's own "hide amounts" eye; other people on the account keep theirs. */
 export function useSetHideAmount() {
   const queryClient = useQueryClient();
   return useMutation({

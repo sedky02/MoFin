@@ -30,7 +30,6 @@ function Composer({
   onChange: (v: string) => void;
   onSend: () => void;
   pending: boolean;
-  /** While the mic listens, the box shows what it hears and the mic becomes a stop button. */
   listening: boolean;
   onMic: () => void;
 }) {
@@ -78,10 +77,8 @@ function Composer({
 }
 
 /**
- * One chat: the saved messages, the question in flight (or the one that failed, with a retry) and
- * the question box above the keyboard. `id` is "new" for a chat not saved yet; the first answer
- * gives it an id, which then replaces "new" in the route. `q` asks a question straight away (a
- * tapped suggestion).
+ * `id` is "new" for an unsaved chat; the first answer gives it an id that replaces "new" in the
+ * route. `q` asks a question straight away (a tapped suggestion).
  */
 export function AskThreadScreen() {
   const params = useLocalSearchParams<{ id: string; q?: string }>();

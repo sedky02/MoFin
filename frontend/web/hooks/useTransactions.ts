@@ -190,9 +190,8 @@ export function useUpdateTransaction(id: string) {
 }
 
 /**
- * Restores a deleted transaction. A plain call rather than a mutation: Undo is
- * clicked in a toast, usually after the page that deleted it has gone, and a
- * mutation's per-call callbacks don't run once its component unmounts.
+ * Restores a deleted transaction. A plain call, not a mutation: Undo is clicked in a toast after
+ * the page has often unmounted, and a mutation's per-call callbacks don't run then.
  */
 async function undoDelete(queryClient: QueryClient, id: string): Promise<boolean> {
   try {

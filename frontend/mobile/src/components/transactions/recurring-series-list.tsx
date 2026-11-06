@@ -33,7 +33,6 @@ import { cn } from '@/lib/utils';
 export const SERIES_QUERY: SearchParams = { recurrence: 'series', sort: 'next-occurrence' };
 export const SERIES_PAGE_SIZE = 25;
 
-/** How many recurring series there are, for the Recurring toggle. Shares its request with the list's first page. */
 export function useRecurringSeriesCount(): number | undefined {
   return useSearchPage(SERIES_QUERY, 1, SERIES_PAGE_SIZE).data?.total;
 }

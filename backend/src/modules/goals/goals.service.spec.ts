@@ -116,7 +116,6 @@ describe('GoalsService', () => {
   });
 
   describe('computeProgressAmount', () => {
-    // BALANCE nets CREDIT/DEBIT via a DB groupBy instead of loading every row.
     function makeServiceWithGroupedRows(rows: unknown[], openingBalance = '0') {
       const groupBy = jest.fn((_args: unknown) => Promise.resolve(rows));
       const findFirst = jest.fn((_args: unknown) =>
@@ -160,16 +159,13 @@ describe('GoalsService', () => {
         new Date('2026-01-15'),
       );
       expect(result.toString()).toBe('70');
-      // userId included as defence in depth (audit PERF-XX).
       expect(groupBy).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({ userId: 'u1', accountId: 'a1' }),
         }),
       );
-      // Filtered by the transaction's occurredAt (when the money moved), not
-      // the ledger row's createdAt — must agree with AnalyticsService's
-      // monthly summary on which period a back-dated entry belongs to
-      // (audit DATA-XX).
+      // Filtered by occurredAt (when money moved), not createdAt, so a back-dated entry lands in
+      // the same period as in AnalyticsService.
       const call = groupBy.mock.calls[0][0] as {
         where: { createdAt?: unknown; transaction?: { occurredAt?: unknown } };
       };
@@ -253,7 +249,6 @@ describe('GoalsService', () => {
           where: expect.objectContaining({ userId: 'u1', accountId: 'a1' }),
         }),
       );
-      // Same occurredAt-vs-createdAt standardization as the BALANCE case above.
       const call = aggregate.mock.calls[0][0] as {
         where: {
           createdAt?: unknown;
@@ -269,12 +264,9 @@ describe('GoalsService', () => {
         gte: new Date('2026-01-01'),
         lte: new Date('2026-01-15'),
       });
-      // Matches the transaction's own `type` (like AnalyticsService does), not
-      // a category's type — category never gates whether an item counts, so
-      // uncategorized income/expense transactions are no longer excluded
-      // (audit DATA-XX).
+      // Matches the transaction's own `type`, not a category's, so uncategorized transactions still
+      // count.
       expect(call.where.transaction?.type).toBe('INCOME');
-      // Deleted transactions are not income/spending any more.
       expect(
         (call.where.transaction as { deletedAt?: unknown }).deletedAt,
       ).toBeNull();
@@ -640,10 +632,8 @@ describe('GoalsService', () => {
   });
 
   describe('resolvePeriodBounds', () => {
-    // UTC throughout (audit DATA-XX): a local-time constructor here would put
-    // a transaction near midnight on the last day of the month in a different
-    // period depending only on the server's TZ, silently disagreeing with
-    // AnalyticsService.getMonthlySummary (which is UTC) in production.
+    // UTC throughout: a local-time constructor would put a late transaction on the last day of the
+    // month in another period depending on the server's TZ.
     it('MONTH: resolves calendar-month bounds in UTC regardless of server TZ', () => {
       // 23:30 UTC on Jan 31st — in a server TZ ahead of UTC (e.g. UTC+1),
       // local-time construction would wrongly place this in February.

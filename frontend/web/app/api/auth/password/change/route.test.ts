@@ -23,7 +23,6 @@ function call(body: unknown = { currentPassword: "old-password", newPassword: "n
   );
 }
 
-/** The JSON body and bearer token of each call the route made to `url`. */
 function callsTo(url: string) {
   return fetchMock.mock.calls
     .filter(([input]) => String(input) === url)

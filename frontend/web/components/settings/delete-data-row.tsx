@@ -12,9 +12,8 @@ import { api } from "@/lib/api";
 import type { User } from "@/lib/types";
 
 /**
- * A row of the Data card: deletes everything recorded in MoFin and keeps the account, its
- * sign-ins and its connected AI apps. A red warning, since it can't be undone, but kept with
- * the data it deletes; the account's own card stays the louder of the two.
+ * Deletes everything recorded and keeps the account, sign-ins and connected AI apps. Red because it
+ * can't be undone, but kept with the data it deletes; the account's own card stays the louder one.
  */
 export function DeleteDataRow({ user, isLoading }: { user?: User; isLoading: boolean }) {
   const [open, setOpen] = React.useState(false);

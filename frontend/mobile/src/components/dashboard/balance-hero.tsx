@@ -38,9 +38,8 @@ const TABS: { value: HeroMetric; label: string }[] = [
 const isOverdrawn = (amount: string) => tryParse(amount)?.isNegative() ?? false;
 
 /**
- * The balance hero: the balance for the dashboard's account (or all accounts, one currency at a
- * time), a metric switch, a week pager, the change chip and the week's chart (a bar per day). With
- * nothing recorded the chart gives way to `emptyPanel`.
+ * Balance for the dashboard's account (or all, one currency at a time): metric switch, week pager,
+ * change chip and a bar per day; `emptyPanel` replaces the chart when empty.
  */
 export function BalanceHero({
   accountId,
@@ -142,9 +141,7 @@ function HeroCard({
   caption: string;
   overdrawn: boolean;
   accountId?: string;
-  /** The one account shown, if any: its amounts stay dots while the user keeps them hidden. */
   account?: Account;
-  /** All accounts: hidden accounts in this currency, whose figures the chart leaves out. */
   hiddenIds?: string[];
   currencies: { code: string; overdrawn: boolean }[];
   onCurrencyChange: (c: string) => void;
@@ -162,9 +159,8 @@ function HeroCard({
   // Two weeks: the one shown and the one before it, for the "vs the week before" chip.
   const from = addDaysIso(monday, -7);
   const series = useDailySeries(currency, from, 14, timeZone, accountId);
-  // All accounts with some hidden: their own series come out of every day. Until each one is in
-  // (and the main series is this same week, not the previous one kept while paging), nothing is
-  // drawn, so the hidden money never shows even for a moment.
+  // All accounts with some hidden: their own series come out of every day, and nothing is drawn
+  // until each is in (and the main series is the same week), so hidden money never flashes.
   const hidden = useDailySeriesFor(currency, from, 14, timeZone, accountId ? [] : hiddenIds);
   const hiddenIn =
     hidden.length === 0 ||

@@ -3,9 +3,8 @@ import { postAsSession } from "@/lib/session-post";
 import { clearAuthCookies } from "@/lib/auth-cookies";
 
 /**
- * Deletes the signed-in account and all of its data. Needs the typed word
- * (`confirm: "DELETE"`, which the backend checks again); on success the
- * account's sessions no longer exist, so this browser's cookies go too.
+ * Needs the typed word (the backend checks it again); the account's sessions are gone afterwards,
+ * so this browser's cookies go too.
  */
 export async function DELETE(req: Request) {
   const body = await req.json().catch(() => null);

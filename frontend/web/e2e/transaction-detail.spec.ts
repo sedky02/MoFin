@@ -1,15 +1,13 @@
 import { expect, test, type Page } from "@playwright/test";
 import { formatViolations, runAxe } from "./helpers/axe";
 
-// B-03: the detail page names every account (archived ones too), shows a
-// transfer's from → to, and keeps ledger-leg badges neutral.
-// Needs the UX fixture: `npm run e2e:seed`.
+// The detail page names every account (archived too), shows a transfer's from → to, and keeps
+// ledger-leg badges neutral. Needs `npm run e2e:seed`.
 
 const UUID_FRAGMENT = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-/i;
 
 type FixtureTx = { id: string; description: string };
 
-/** Finds a fixture transaction by exact description through the BFF, using the logged-in session. */
 async function findTransactionId(page: Page, description: string): Promise<string> {
   const res = await page.request.get("/api/backend/search/transactions", {
     params: { q: description, limit: 20, offset: 0 },
@@ -55,12 +53,10 @@ async function expectNoAxeViolations(page: Page, label: string) {
   expect(violations, `axe violations on ${label}\n${report}`).toEqual([]);
 }
 
-/** The "Account" line in the summary card (income and expense). */
 function accountLine(page: Page, label: "Account") {
   return page.locator("dl > div").filter({ has: page.locator("dt", { hasText: label }) }).locator("dd");
 }
 
-/** One end of a transfer in the summary card: the "From" or "To" tile. */
 function transferEnd(page: Page, label: "From" | "To") {
   return page.locator("main div.rounded-lg").filter({ has: page.getByText(label, { exact: true }) });
 }

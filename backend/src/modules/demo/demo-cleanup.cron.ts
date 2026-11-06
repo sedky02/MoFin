@@ -8,13 +8,8 @@ import { UsersService } from '../users/users.service';
 const BATCH_SIZE = 50;
 
 /**
- * Deletes temporary demo users once they expire, with everything they own,
- * through the same ordered UsersService.deleteUserData an account deletion uses.
- *
- * No advisory lock: deleting an expired demo is idempotent, so when replicas
- * run this together, the one that finds a user already gone just moves on.
- * Only rows that are demo users twice over (the flag and the reserved email
- * domain) are ever selected, so a real account can't be caught by mistake.
+ * Deletes expired demo users via UsersService.deleteUserData; idempotent, so no advisory lock. Only
+ * rows that are demo users twice over (flag and email domain) are selected.
  */
 @Injectable()
 export class DemoCleanupCron {
@@ -30,7 +25,6 @@ export class DemoCleanupCron {
     await this.deleteExpired(new Date());
   }
 
-  /** Returns how many demo users it deleted. */
   async deleteExpired(now: Date): Promise<number> {
     let deleted = 0;
     // Skipped for the rest of this run so one bad row can't loop forever.

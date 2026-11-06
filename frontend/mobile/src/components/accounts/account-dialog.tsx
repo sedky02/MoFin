@@ -23,7 +23,6 @@ import {
   type AccountDraft,
 } from './account-form-state';
 
-/** New account / Edit account. Currency is fixed once an account exists. */
 function AccountDialogBody({
   open,
   onOpenChange,
@@ -52,7 +51,6 @@ function AccountDialogBody({
   const [draft, setDraft] = React.useState<AccountDraft>(() => initialDraft(account, guessDeviceCurrency()));
   const [errors, setErrors] = React.useState<Partial<Record<keyof AccountDraft, string>>>({});
   const [pending, setPending] = React.useState(false);
-
 
   async function submit() {
     if (pending) return;

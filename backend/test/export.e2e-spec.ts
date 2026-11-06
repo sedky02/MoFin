@@ -1,12 +1,8 @@
 import { AccountAccessService } from '../src/modules/account-access/account-access.service';
 import { ownerAccess } from './support/owner-access';
 /**
- * GET /export through the real HTTP stack: the global throttler and web JWT
- * guards as AppModule registers them, the real controller, service and
- * per-user throttle, and signed web tokens. Prisma is an in-memory store
- * holding two users' data that applies the same `where` filters Prisma
- * would, so the test proves what reaches the file: the caller's live rows
- * only. No database is touched.
+ * GET /export through the real guards, controller and per-user throttle with signed web tokens;
+ * Prisma is an in-memory store holding two users' data, so no database.
  */
 import { INestApplication } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';

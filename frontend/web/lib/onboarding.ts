@@ -2,9 +2,8 @@
 // which of the getting-started steps they have already done. Pure, so it is tested without a browser.
 import type { AccountType } from "@/lib/types";
 
-// Where the device is says more about the money than the language it is set to (a browser in
-// en-US in Tunis holds dinars), so the time zone is asked first. Only zones that name one
-// currency are listed; the rest fall through to the locale.
+// The time zone is asked first: it says more about the money than the language (en-US in Tunis
+// holds dinars). Only single-currency zones are listed; others fall through to the locale.
 const TIME_ZONE_CURRENCY: Record<string, string> = {
   "Africa/Tunis": "TND", "Africa/Algiers": "DZD", "Africa/Casablanca": "MAD", "Africa/Cairo": "EGP",
   "Africa/Lagos": "NGN", "Africa/Accra": "GHS", "Africa/Nairobi": "KES", "Africa/Johannesburg": "ZAR",
@@ -69,9 +68,8 @@ function regionOf(tag: string): string | undefined {
 }
 
 /**
- * The currency a new account most likely holds: the one of the time zone the device is in,
- * else of the first language that names a region ("fr-TN"), else USD. Only a first guess:
- * the form shows it and says where it came from, because an account's currency is fixed.
+ * A new account's likely currency: from the time zone, else the first language naming a region
+ * ("fr-TN"), else USD. Only a guess, shown with its source since the currency is fixed.
  */
 export function guessCurrency(hints: DeviceHints = deviceHints()): string {
   const byZone = hints.timeZone ? TIME_ZONE_CURRENCY[hints.timeZone] : undefined;
@@ -101,10 +99,8 @@ export const SETUP_STEPS = ["account", "transaction"] as const;
 export type SetupStep = (typeof SETUP_STEPS)[number];
 
 /**
- * Where the setup flow is for this user, or null once it is over. The first account is
- * required, so without one the flow is always there; the first transaction can be skipped
- * (and stays skipped). Everything else follows from the data, so a step done any other way,
- * or on another device, is simply done.
+ * Where the setup flow is, or null once over. The first account is required, the first transaction
+ * skippable; steps done any other way or on another device count as done.
  */
 export function currentSetupStep(opts: {
   accounts: number;
@@ -120,9 +116,8 @@ export function currentSetupStep(opts: {
 export const NUDGE_WINDOW_DAYS = 14;
 
 /**
- * Whether to suggest connecting an AI assistant: only once the setup flow is over, only to
- * someone who signed up recently (an established user has chosen not to), never after it
- * was closed, and never for a demo, which can't connect one.
+ * Whether to suggest connecting an AI assistant: only after setup, only to recent sign-ups, never
+ * once closed, never for a demo (which can't connect one).
  */
 export function shouldNudgeAssistant(opts: {
   setupStep: SetupStep | null;

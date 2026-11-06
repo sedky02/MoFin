@@ -14,7 +14,6 @@ import { goalScopeLabel } from "@/lib/goal-scope";
 import { EmptyState, ErrorState } from "@/components/common/states";
 import { GoalTilesSkeleton } from "@/components/dashboard/dashboard-skeleton";
 
-/** Glanceable goals for the dashboard; editing, history and ending a goal live on /goals. */
 export function GoalsSummary({ accountId }: { accountId?: string } = {}) {
   const { data: goals, isLoading, isError, refetch } = useGoals();
   const { data: accounts } = useAccounts("all");

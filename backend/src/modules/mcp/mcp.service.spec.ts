@@ -18,7 +18,6 @@ describe('McpService.dispatch', () => {
     history: jest.fn(() => 'goal-history'),
   };
 
-  // Fills the account in; tested on its own in draft-completer.spec.ts.
   const completer = {
     complete: jest.fn((_userId: string, data: object) =>
       Promise.resolve({ ...data, fromAccountId: 'acc-default' }),
@@ -50,7 +49,6 @@ describe('McpService.dispatch', () => {
       service.dispatch('u1', 'create_draft_transaction', args),
     ).resolves.toBe('created');
     expect(completer.complete).toHaveBeenCalledWith('u1', {});
-    // Labelled as MCP even when the caller doesn't say which app it is.
     expect(drafts.create).toHaveBeenCalledWith('u1', completed, {
       source: 'MCP',
     });

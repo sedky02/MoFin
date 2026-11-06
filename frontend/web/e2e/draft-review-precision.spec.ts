@@ -1,8 +1,7 @@
 import { expect, test } from "@playwright/test";
 
-// B-83: reviewing a TND draft keeps the currency's decimals. A 12.345 draft opens
-// as 12.345, and approving it without edits records 12.345, not 12.34.
-// Needs the UX fixture (`npm run e2e:seed`): the TND account is "Dinar".
+// A 12.345 TND draft opens as 12.345 and approves as 12.345, not 12.34.
+// Needs `npm run e2e:seed` (the TND account is "Dinar").
 test.use({ locale: "en-US" });
 
 const RAW = "B-83 dinar coffee 12.345";

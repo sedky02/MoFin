@@ -2,7 +2,6 @@
 
 import * as React from "react";
 
-/** Whether a CSS media query currently matches. False on the server and where matchMedia doesn't exist. */
 export function useMediaQuery(query: string): boolean {
   const subscribe = React.useCallback(
     (onChange: () => void) => {

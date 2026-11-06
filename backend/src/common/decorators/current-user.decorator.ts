@@ -6,10 +6,8 @@ import {
 import { AuthenticatedUser } from '../types/authenticated-user';
 
 /**
- * Reads the user an auth guard put on the request. Fails closed: on a route
- * with no guard (or one that didn't authenticate) `request.user` is missing,
- * and handing `userId: undefined` to a service would make Prisma drop the
- * filter and run the query unscoped. A 401 is the only safe answer.
+ * Fails closed: without req.user, an undefined userId would make Prisma drop the filter and run the
+ * query unscoped. A 401 is the only safe answer.
  */
 export function currentUserFromContext(
   ctx: ExecutionContext,

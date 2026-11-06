@@ -24,11 +24,8 @@ import {
   UpdateGoalDto,
 } from './dto/goals.dto';
 
-// UTC throughout (matching AnalyticsService.getMonthlySummary) — a
-// local-server-time constructor here would put a transaction at 23:30 on the
-// 31st in a different month/year depending only on the server's TZ, silently
-// disagreeing with analytics in production (which typically runs UTC) while
-// looking fine in local dev (audit DATA-XX).
+// UTC throughout, like AnalyticsService: local-server time would put a 23:30 transaction on the
+// 31st in another month depending on the server's TZ.
 function startOfMonth(date: Date): Date {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
 }
@@ -44,7 +41,6 @@ function endOfYear(date: Date): Date {
   return new Date(Date.UTC(date.getUTCFullYear(), 11, 31, 23, 59, 59, 999));
 }
 
-/** Resolves the calendar-aligned [start, end] bounds of the period containing `anchor`. */
 export function resolvePeriodBounds(
   anchor: Date,
   unit: GoalRecurrenceUnit,
@@ -61,10 +57,8 @@ export function resolvePeriodBounds(
 export type GoalProgressSource = 'LIVE' | 'ENDED' | 'PERIOD_END';
 
 /**
- * Whether an instance's period is still open, i.e. not yet judged. Finalizing
- * (rollover, or restoring an ended goal) always stamps `computedAt` after
- * `periodEnd`, while a sticky ACHIEVED is stamped during the period, so an
- * ACHIEVED row with `computedAt <= periodEnd` is achieved but still open.
+ * Finalizing stamps `computedAt` after `periodEnd`, while a sticky ACHIEVED is stamped during the
+ * period, so ACHIEVED with `computedAt <= periodEnd` is achieved but still open.
  */
 export function isOpenInstance(
   instance: Pick<GoalInstance, 'status' | 'computedAt' | 'periodEnd'>,
@@ -75,7 +69,6 @@ export function isOpenInstance(
   );
 }
 
-/** Prisma filter matching `isOpenInstance`, optionally for one goal. */
 function openInstancesOf(
   goalId: string | undefined,
   periodEndField: Prisma.FieldRef<'GoalInstance', 'DateTime'>,
@@ -89,7 +82,6 @@ function openInstancesOf(
   };
 }
 
-/** 00:00 UTC of the day `now` falls on. */
 function startOfDay(now: Date): Date {
   return lowerBound(now.toISOString().slice(0, 10));
 }
@@ -126,9 +118,8 @@ export class GoalsService {
         dto.recurrenceUnit!,
       );
     } else {
-      // Stored inclusively like a recurring period's end (23:59:59.999), so a
-      // date-only end date counts its whole last day and the goal only
-      // finalizes once that day is over.
+      // Stored inclusively (23:59:59.999), so a date-only end counts its whole last day and the
+      // goal finalizes once that day is over.
       periodStart = lowerBound(dto.periodStart);
       periodEnd = inclusiveUpperBound(dto.periodEnd!);
     }
@@ -171,10 +162,8 @@ export class GoalsService {
       limit: query.limit,
       offset: query.offset,
     });
-    // Cast needed: the generic paginate() extension can't preserve an inline
-    // `include`'s literal shape through its own generic inference (a known
-    // Prisma limitation for $allModels extension methods) — the include
-    // itself is still applied at the DB level, this only restores the type.
+    // Cast: paginate() can't keep an inline include's type through its generics (a Prisma
+    // $allModels limitation); the include is still applied.
     const data = await Promise.all(
       page.data.map((goal) =>
         this.withLiveProgress(goal as Goal & { instances: GoalInstance[] }),
@@ -183,10 +172,8 @@ export class GoalsService {
     return { ...page, data };
   }
 
-  // Deliberately does NOT exclude archived goals — stopping a goal should not make its
-  // history/details inaccessible, only remove it from the default active list.
-  // A goal is reached through its account: anyone on the account sees it, and
-  // someone who isn't gets the same 404 as for a missing id.
+  // Doesn't exclude archived goals: stopping a goal must not hide its history. Reached through its
+  // account: anyone on it sees it; others get the 404 of a missing id.
   async assertAccess(
     userId: string,
     goalId: string,
@@ -211,9 +198,8 @@ export class GoalsService {
   }
 
   /**
-   * Finished periods show what was recorded when they ended and are never
-   * recomputed, so editing an old transaction can't rewrite a past result. The
-   * open period gets the same live progress as the goal card.
+   * Finished periods show what was recorded and are never recomputed, so editing an old transaction
+   * can't rewrite a past result.
    */
   async history(userId: string, goalId: string, query: GoalHistoryQueryDto) {
     const goal = await this.assertAccess(userId, goalId);
@@ -260,9 +246,8 @@ export class GoalsService {
             { periodEnd: { gte: new Date() } },
           ],
         };
-        // Raising the target of a goal already achieved this period means it
-        // hasn't reached the new one yet: drop the sticky ACHIEVED so it is
-        // judged against the new target. Lowering it keeps the achievement.
+        // Raising the target of an achieved goal drops the sticky ACHIEVED so it is judged against
+        // the new one; lowering keeps it.
         await tx.goalInstance.updateMany({
           where: {
             ...open,
@@ -281,11 +266,8 @@ export class GoalsService {
   }
 
   /**
-   * Ending a goal freezes it: the open period keeps the progress it had at this
-   * moment, and nothing recomputes, rolls over or finalizes it while it's ended
-   * (see `restore` for what happens to that period afterwards). A period that
-   * had already ended but wasn't finalized yet is finalized here, as the
-   * rollover would have.
+   * Ending freezes the open period's progress; nothing recomputes it while ended (see restore). A
+   * period already over but unfinalized is finalized here, as the rollover would.
    */
   async archive(userId: string, goalId: string) {
     const goal = await this.assertAccess(userId, goalId, 'goals');
@@ -328,10 +310,8 @@ export class GoalsService {
   }
 
   /**
-   * Reverses `archive` by starting a fresh period from today; the time the goal
-   * spent ended is never backfilled. The period that was open when it was ended
-   * closes on that day and is judged on the progress frozen then. A period that
-   * hadn't started by then, or starts today anyway, is reused as the fresh one.
+   * Starts a fresh period from today; time spent ended is never backfilled. The period open when it
+   * ended closes that day, judged on the progress frozen then.
    */
   async restore(userId: string, goalId: string) {
     const goal = await this.assertAccess(userId, goalId, 'goals');
@@ -409,10 +389,6 @@ export class GoalsService {
     });
   }
 
-  /**
-   * Live progress for the open period, so the card matches the history. An
-   * ended goal shows what was frozen when it was ended.
-   */
   private async withLiveProgress(goal: Goal & { instances: GoalInstance[] }) {
     const current = goal.instances[0];
     if (!current || goal.archivedAt || !isOpenInstance(current))
@@ -424,14 +400,8 @@ export class GoalsService {
   }
 
   /**
-   * Computes an open instance's progress and status as of `now`.
-   *
-   * Reach goals (BALANCE/INCOME) keep ACHIEVED for the rest of the period: the
-   * first time it's observed it's stored on the instance (status ACHIEVED,
-   * `computedAt` inside the period), so a later dip doesn't undo it and the
-   * rollover finalizes it as ACHIEVED. Expense caps stay live until the period
-   * ends: going over shows FAILED, but nothing is stored, so deleting an
-   * expense can bring the goal back under its cap.
+   * Reach goals (BALANCE/INCOME) keep ACHIEVED once observed (stored), so a later dip doesn't undo
+   * it. Expense caps stay live, so deleting an expense can bring a goal back under.
    */
   private async liveInstance(
     goal: Goal,
@@ -476,24 +446,8 @@ export class GoalsService {
     const boundary = now < periodEnd ? now : periodEnd;
 
     if (goal.type === GoalType.BALANCE) {
-      // Net CREDIT/DEBIT in the database (2-3 grouped rows) instead of pulling
-      // every TransactionItem the account has ever had into Node and summing
-      // there (audit PERF-XX). userId is included as defence in depth — this
-      // query is otherwise safe only because accountId was ownership-checked
-      // upstream.
-      //
-      // Filtered by the transaction's occurredAt (when the money moved), not
-      // the ledger row's createdAt (when it was entered) — AnalyticsService's
-      // monthly summary already keys off occurredAt, so a back-dated entry
-      // (catching up on a receipt from last month) must land in the same
-      // period on both surfaces instead of disagreeing (audit DATA-XX).
-      //
-      // The account's opening balance is the starting point: it's what the
-      // account held before its first entry, so it counts at any boundary.
-      //
-      // One after the other, not Promise.all: `db` may be a caller's
-      // transaction, which runs on a single connection that can't take two
-      // queries at once.
+      // Net CREDIT/DEBIT in the database. Filtered by occurredAt (when money moved), not createdAt,
+      // to match analytics for back-dated entries; the opening balance counts at any boundary.
       const rows = await db.transactionItem.groupBy({
         by: ['direction'],
         where: {
@@ -518,15 +472,8 @@ export class GoalsService {
       );
     }
 
-    // Matches transactions by their OWN type field, exactly like
-    // AnalyticsService.getMonthlySummary does (`if (transaction.type ===
-    // TransactionType.INCOME) ...`) — never by the transaction's or an item's
-    // *category* type. Category is purely a display/breakdown concern
-    // (Category.type is independent of TransactionType); gating inclusion on
-    // it excluded every uncategorized transaction from the goal entirely
-    // (audit DATA-XX), and ignored that a split item's own category has no
-    // bearing on whether the item counts as income/expense — the parent
-    // transaction's type already decides that for every one of its items.
+    // Matches by the transaction's own type, like analytics, never by category type: gating on
+    // category excluded every uncategorized transaction.
     const transactionType =
       goal.type === GoalType.INCOME
         ? TransactionType.INCOME
@@ -547,9 +494,8 @@ export class GoalsService {
   }
 
   /**
-   * BALANCE/INCOME are "reach" goals: achieved as soon as progress hits the target and stay
-   * achieved even if the balance/income later dips. EXPENSE is a "stay under" goal: it fails the
-   * moment spending exceeds the target, and is only achieved once the period ends without that.
+   * Reach goals are achieved once progress hits the target and stay so; EXPENSE fails the moment
+   * spending exceeds the target and is achieved only when the period ends without that.
    */
   evaluateStatus(
     type: GoalType,
@@ -570,9 +516,8 @@ export class GoalsService {
   }
 
   /**
-   * Daily rollover: finalizes instances whose period has ended and opens the next period for
-   * recurring goals. Runs at most one period per day, so a goal left uncomputed for a long outage
-   * catches up gradually rather than all at once.
+   * Finalizes ended instances and opens the next period for recurring goals, one period per day, so
+   * a long outage catches up gradually.
    */
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT, { timeZone: 'UTC' })
   async runRollover() {
@@ -589,9 +534,8 @@ export class GoalsService {
   async rolloverExpiredInstances() {
     const now = new Date();
 
-    // Ended goals are frozen and skipped. An instance achieved during its
-    // period is still open (see `isOpenInstance`) and is finalized here too,
-    // recording its end-of-period progress while staying ACHIEVED.
+    // Ended goals are frozen and skipped. An instance achieved during its period is still open (see
+    // isOpenInstance) and is finalized here, staying ACHIEVED.
     const expired = await this.prisma.goalInstance.findMany({
       where: {
         periodEnd: { lt: now },

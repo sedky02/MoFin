@@ -3,7 +3,6 @@ import { EXPORT_FILE_TYPES, type ExportFormat } from '@/components/settings/sett
 
 export type SaveOutcome = 'shared' | 'unavailable';
 
-/** Nothing is cached on web. */
 export function clearExportCache(): void {}
 
 export async function saveExport(filename: string, text: string, format: ExportFormat): Promise<SaveOutcome> {

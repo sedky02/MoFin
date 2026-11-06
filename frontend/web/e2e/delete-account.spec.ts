@@ -1,15 +1,8 @@
 import { expect, test } from "@playwright/test";
 import { formatViolations, runAxe } from "./helpers/axe";
 
-// B-23c: Settings → Delete account removes the account and its data, then
-// lands on /login with a notice. The profile copy no longer suggests the
-// email can be changed somewhere else. Typing DELETE is the whole
-// confirmation: there is no password to ask for (a Google-only account has
-// none).
-//
-// Deletes a throwaway user per project, never the shared fixture user.
-// Credential routes are rate limited per email + IP, so this registers once
-// and signs in once, plus one refused login after the deletion.
+// Settings → Delete account removes the account and lands on /login. Uses a throwaway user per
+// project; credential routes are rate limited, so it signs in once.
 
 test.describe("settings delete account", () => {
   test.use({ storageState: { cookies: [], origins: [] } });
@@ -25,7 +18,6 @@ test.describe("settings delete account", () => {
 
     await page.goto("/settings");
 
-    // The email copy states a fact instead of pointing at another place.
     await expect(page.getByText("Your sign-in email. Changing it isn't supported yet.")).toBeVisible();
     await expect(page.getByText(/can't be changed here/)).toHaveCount(0);
 
@@ -45,11 +37,9 @@ test.describe("settings delete account", () => {
     const confirm = form.getByLabel("Type DELETE to confirm");
     const submit = form.getByRole("button", { name: "Delete account" });
 
-    // No password or email to type: the word is the only field.
     await expect(form.getByLabel("Password", { exact: true })).toHaveCount(0);
     await expect(form.getByLabel("Your email")).toHaveCount(0);
 
-    // Nothing typed, or the wrong word: it says what it needs, and nothing is deleted.
     await submit.click();
     await expect(form.getByText("Type DELETE to confirm.")).toBeVisible();
     await confirm.fill("delete me");
@@ -63,7 +53,6 @@ test.describe("settings delete account", () => {
     await expect(page).toHaveURL(/\/login\?reason=account_deleted$/);
     await expect(page.getByText("Your account and its data were deleted.")).toBeVisible();
 
-    // The session and the account are gone.
     expect((await page.request.post("/api/auth/refresh")).status()).toBe(401);
     expect((await page.request.post("/api/auth/login", { data: { email, password } })).status()).toBe(401);
     await page.goto("/settings");

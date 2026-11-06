@@ -1,6 +1,5 @@
-// Mobile-only (not a copy). The web gets currency names from Intl.DisplayNames; Hermes may
-// not ship that data, so this table is the fallback. It was generated from Node/ICU English
-// names for every code in constants.ts (CURRENCIES). Keep the keys in step with that list.
+// Mobile-only (not a copy). Hermes may lack Intl.DisplayNames, so this table (generated from
+// Node/ICU English names for every code in constants.ts) is the fallback; keep keys in step.
 const EXTRA_NAMES: Record<string, string> = { BTC: "Bitcoin", ETH: "Ethereum" };
 
 const NAMES: Record<string, string> = {
@@ -175,7 +174,6 @@ const NAMES: Record<string, string> = {
 
 let displayNames: Intl.DisplayNames | undefined;
 
-/** "USD" -> "US Dollar". Prefers the runtime, then the table, then the bare code. */
 export function currencyName(code: string): string {
   if (EXTRA_NAMES[code]) return EXTRA_NAMES[code];
   try {

@@ -26,7 +26,6 @@ type Kind = "expense" | "income";
 // five rows, which is what the fixed-height content slot below is sized for.
 const MAX_SEGMENTS = 4;
 
-/** Calendar month `offset` months before (year, month). */
 function shiftMonth(year: number, month: number, offset: number) {
   const d = new Date(Date.UTC(year, month - 1 - offset, 1));
   return { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1 };
@@ -40,24 +39,17 @@ export function MonthlySummaryCard({
   onCurrencyChange,
   accountId,
 }: {
-  /** The current month; the card can step back from it. */
   year: number;
   month: number;
-  /** Currency shown for an all-accounts view (shared with the balance hero). */
   currency: string;
-  /**
-   * Currencies of the active accounts. The switch adds any other currency with activity in
-   * the viewed month, and is shown when that makes more than one.
-   */
+  /** Currencies of the active accounts; the switch adds any with activity in the viewed month. */
   currencies?: string[];
   onCurrencyChange?: (currency: string) => void;
-  /** The dashboard's active account (explicit pick, else main). `undefined` = all accounts. */
   accountId?: string;
 }) {
   const { data: accounts = [] } = useAccounts();
   const { accountId: mainAccountId } = useMainAccount();
   const [kind, setKind] = React.useState<Kind>("expense");
-  // Months back from the current one; 0 = this month (can't go into the future).
   const [offset, setOffset] = React.useState(0);
   const viewed = shiftMonth(year, month, offset);
 
@@ -82,7 +74,6 @@ export function MonthlySummaryCard({
   const arrow =
     "inline-flex size-7 items-center justify-center rounded-full text-foreground/70 transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-35 pointer-coarse:size-11";
 
-  // The month stepper is the card's primary control, so it carries the month as a title.
   const monthNav = (
     <div className="flex h-8 items-center gap-0.5">
       <button type="button" className={arrow} onClick={() => setOffset((o) => o + 1)} aria-label="Previous month">
@@ -131,7 +122,6 @@ export function MonthlySummaryCard({
       />
     ) : null;
 
-  // Row 1: what this is, and the Expenses/Income switch. Row 2: which month, and which account.
   const headerRow = (tabs?: React.ReactNode) => (
     <div>
       <div className="flex items-center justify-between gap-3">
@@ -187,10 +177,8 @@ export function MonthlySummaryCard({
   const expensesValue = tryParse(data?.expenses ?? "0")?.toNumber() ?? 0;
   const netValue = tryParse(net)?.toNumber() ?? 0;
   const savedPct = Math.round((tryParse(data?.savingsRate ?? "0")?.toNumber() ?? 0) * 100);
-  // Zero is not a result: only colour amounts that are.
   const tone = (value: number, nonZero: string) => (value === 0 ? "text-foreground" : nonZero);
   const isPastMonth = offset > 0;
-  // Another currency with data this month (all-accounts view only): point the user at it.
   const otherActive = !accountId && onCurrencyChange ? (data?.activeCurrencies ?? []).filter((c) => c !== currency) : [];
 
   // Every state (loading, error, empty, data) fills the same two slots with fixed minimum
@@ -213,7 +201,6 @@ export function MonthlySummaryCard({
   } else {
     strip = (
       <dl className="mt-4 flex h-37 flex-col justify-between rounded-xl bg-muted/35 px-4 py-3 dark:bg-muted">
-        {/* Net is the answer to "how did this month go", so it leads. */}
         <div className="min-w-0">
           <dt className="flex items-baseline gap-1.5 text-xs text-muted-foreground">
             Net

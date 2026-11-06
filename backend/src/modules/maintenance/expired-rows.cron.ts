@@ -14,12 +14,8 @@ const PASSWORD_RESET_RETENTION_MS = 90 * DAY_MS;
 const EMAILED_LINK_RETENTION_MS = 90 * DAY_MS;
 
 /**
- * Deletes rows nothing can use any more: expired sessions, codes and tokens,
- * and expired analytics cache entries. Each table's expiresAt is indexed for
- * exactly this.
- *
- * No advisory lock: every delete is idempotent, so replicas running this
- * together only find less to delete.
+ * Deletes rows nothing can use any more (expiresAt is indexed for this). No advisory lock: every
+ * delete is idempotent, so replicas only find less to delete.
  */
 @Injectable()
 export class ExpiredRowsCron {
@@ -32,7 +28,6 @@ export class ExpiredRowsCron {
     await this.deleteExpired(new Date());
   }
 
-  /** Returns how many rows it deleted, by table. */
   async deleteExpired(now: Date): Promise<Record<string, number>> {
     const credentialCutoff = new Date(now.getTime() - CREDENTIAL_GRACE_MS);
     const resetCutoff = new Date(now.getTime() - PASSWORD_RESET_RETENTION_MS);

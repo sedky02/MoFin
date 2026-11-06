@@ -212,7 +212,6 @@ describe('SearchService date range', () => {
     return { service, paginate };
   }
 
-  /** Whether a transaction at `iso` passes the occurredAt filter the service built. */
   function matches(filter: DateFilter, iso: string) {
     const at = new Date(iso).getTime();
     return (
@@ -355,7 +354,6 @@ describe('SearchService type, recurrence and sort', () => {
     expect(where.AND).toEqual([
       { OR: [{ isRecurring: true }, { parentTransactionId: { not: null } }] },
     ]);
-    // The category match keeps its own OR.
     expect(where.OR).toEqual([
       { categoryId: 'rent' },
       { items: { some: { categoryId: 'rent' } } },
@@ -400,7 +398,6 @@ describe('SearchService type, recurrence and sort', () => {
     );
     // Not the roots-and-occurrences match of `recurring`.
     expect(where).not.toHaveProperty('AND');
-    // Composes with the other filters.
     expect(where.items).toEqual({
       some: { accountId: { in: ['dinar'] } },
     });
@@ -481,7 +478,6 @@ describe('SearchService type, recurrence and sort', () => {
       'snack',
     ]);
     expect(result.total).toBe(5);
-    // The ranking query carries the same filters as the date-sorted one.
     expect(findMany.mock.calls[0][0].where).toEqual(
       expect.objectContaining({
         items: { some: { accountId: { in: ['a1'] } } },

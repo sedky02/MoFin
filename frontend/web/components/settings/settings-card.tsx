@@ -4,10 +4,8 @@ import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 /**
- * One section of the Settings page: a card with an icon, a level-2 heading and a
- * short description. The `id` is the anchor the section navigation links to; the
- * card can take focus (`tabIndex -1`) so jumping to it moves the keyboard too, and
- * `scroll-mt` keeps its heading clear of the sticky top bar and section row.
+ * `id` is the anchor the section navigation links to; the card takes focus (`tabIndex -1`) so
+ * jumping to it moves the keyboard too.
  */
 export function SettingsCard({
   id,
@@ -23,7 +21,6 @@ export function SettingsCard({
   title: string;
   description?: React.ReactNode;
   icon?: LucideIcon;
-  /** Sits beside the heading, e.g. a link to the page that adds something. */
   action?: React.ReactNode;
   tone?: "default" | "danger";
   className?: string;
@@ -63,7 +60,6 @@ export function SettingsCard({
   );
 }
 
-/** One action inside a settings card: what it does on the left, its button on the right. */
 export function SettingsRow({
   title,
   description,
@@ -75,7 +71,6 @@ export function SettingsRow({
   description?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
-  /** "danger": a red warning row, for something that can't be undone. */
   tone?: "default" | "danger";
 }) {
   const danger = tone === "danger";

@@ -22,14 +22,8 @@ export class CategoriesService {
   ) {}
 
   /**
-   * `isSystem` isn't a stored column — it's derived from `userId === null`
-   * (a global/shared category has no owner) and computed here so the
-   * frontend can tell global categories apart from the caller's own without
-   * ever seeing a raw `userId`. Previously this was never included in API
-   * responses at all, so the frontend's `isSystem` filtering always saw
-   * `undefined` and rendered every category (global ones included) with
-   * live edit/delete buttons that then 404'd against `update`/`remove`'s
-   * ownership check (audit DATA-XX).
+   * `isSystem` is derived from `userId === null`, so the frontend can tell global categories (not
+   * editable) from the caller's own without seeing a raw `userId`.
    */
   private toResponse<T extends { userId: string | null }>(
     category: T,
@@ -72,10 +66,7 @@ export class CategoriesService {
     }
   }
 
-  /**
-   * The categories of `userId`, or with `accountId` the ones that fit that
-   * account: its owner's, because a shared account's transactions all use one set.
-   */
+  /** With `accountId`, the owner's categories: a shared account's transactions all use one set. */
   async list(userId: string, query: ListCategoriesQueryDto) {
     const ownerId = query.accountId
       ? (await this.access.assertAccess(userId, query.accountId, 'view'))
@@ -103,7 +94,6 @@ export class CategoriesService {
     };
   }
 
-  /** Active categories of these people plus the global ones, for assistants choosing among several ledgers. */
   listForOwners(ownerIds: string[], limit: number) {
     return this.prisma.category.findMany({
       where: {
@@ -136,9 +126,8 @@ export class CategoriesService {
   }
 
   /**
-   * Archived categories pass: they stay on the transactions that already use
-   * them, so editing one of those transactions, or searching by the category,
-   * must keep working. Archiving only takes them out of the pickers.
+   * Archived categories pass: they stay on existing transactions, so editing or searching by them
+   * must keep working.
    */
   async assertAvailable(
     userId: string,
@@ -155,11 +144,8 @@ export class CategoriesService {
   }
 
   /**
-   * `assertAvailable` plus a type check for filing a transaction (or one of its
-   * split items) under the category. Ownership alone let an income be filed
-   * under an expense category whenever the client kept a stale categoryId
-   * after a type switch, which then skewed the per-category breakdowns.
-   * Transfers move money between the user's own accounts and take no category.
+   * Adds a type check: an income filed under an expense category (stale categoryId after a type
+   * switch) skewed breakdowns. Transfers take no category.
    */
   async assertAssignable(
     userId: string,
@@ -199,10 +185,8 @@ export class CategoriesService {
   }
 
   /**
-   * What still points at the category: live transactions that use it on the
-   * transaction itself or on one of its split lines (each counted once), and
-   * budgets. Deleted transactions don't count; they lose the category if it's
-   * deleted.
+   * Live transactions that use the category (on the transaction or a split line, each counted once)
+   * and budgets. Deleted transactions don't count.
    */
   async usage(userId: string, categoryId: string) {
     await this.assertOwned(userId, categoryId);

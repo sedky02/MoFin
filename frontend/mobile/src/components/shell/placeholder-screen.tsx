@@ -5,7 +5,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { EmptyState } from '@/components/common/states';
 
-/** A screen a later phase fills: an EmptyState inside a scrolling, safe-area-aware page. */
 export function PlaceholderScreen({
   icon,
   title,
@@ -16,7 +15,6 @@ export function PlaceholderScreen({
   icon?: LucideIcon;
   title: string;
   description: string;
-  /** True inside the tab bar, which already covers the bottom inset. */
   tabs?: boolean;
   children?: React.ReactNode;
 }) {

@@ -7,8 +7,7 @@ import {
 
 const ROLES: AccountRole[] = ['OWNER', 'EDITOR', 'VIEWER'];
 
-// Written out in full on purpose: this is the permission model as a table, so
-// changing a rule means changing a line here too.
+// Written out in full on purpose: changing a rule means changing a line here too.
 const EXPECTED: Record<AccountAction, Record<AccountRole, boolean>> = {
   view: { OWNER: true, EDITOR: true, VIEWER: true },
   transact: { OWNER: true, EDITOR: true, VIEWER: false },

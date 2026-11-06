@@ -5,11 +5,8 @@ import { ErrorState } from "@/components/common/states";
 import { reportError } from "@/lib/error-reporting";
 
 /**
- * Catch-all boundary for every authenticated route that doesn't define its
- * own error.tsx. Without this, an unexpected error anywhere under (app) (a
- * bad row, an unexpected API shape) blanked the whole page with no recovery
- * path but a manual reload (audit OBS-01/PERF-XX). More specific boundaries
- * (e.g. dashboard/error.tsx) still take precedence for their own routes.
+ * Catch-all for authenticated routes without their own error.tsx, so an unexpected error doesn't
+ * blank the page with only a manual reload (audit OBS-01/PERF-XX).
  */
 export default function AppError({ error, unstable_retry }: { error: Error & { digest?: string }; unstable_retry: () => void }) {
   React.useEffect(() => reportError(error, { boundary: "app" }), [error]);

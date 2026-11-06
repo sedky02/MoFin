@@ -1,9 +1,7 @@
 import { expect, test, type APIRequestContext } from "@playwright/test";
 
-// The dashboard's cards stack below the lg breakpoint (1024px). There the monthly summary
-// comes before Goals; from lg up Goals sits beside the balance, as it always did.
-// Needs a user with something recorded (an empty dashboard is only the balance card), so it
-// registers a throwaway one.
+// Below lg (1024px) the monthly summary comes before Goals; from lg up Goals sits beside the
+// balance. Registers a throwaway user, since it needs recorded data.
 test.use({ locale: "en-US", storageState: { cookies: [], origins: [] } });
 
 const API = process.env.BACKEND_URL ?? "http://localhost:3000/api/v1";
@@ -37,18 +35,15 @@ test("below lg the monthly summary comes before Goals; from lg Goals sits beside
   };
   const hero = async () => (await main.locator(".shadow-hero").first().boundingBox())!;
 
-  // Tablet and phone: one column, hero, summary, Goals, Recent.
   for (const [label, width] of [["phone", 390], ["tablet", 820]] as const) {
     await page.setViewportSize({ width, height: 1000 });
     const [h, summary, goals, recent] = [await hero(), await box("Monthly summary"), await box("Goals"), await box("Recent transactions")];
     expect(summary.y, `${label}: summary below the balance`).toBeGreaterThan(h.y + h.height - 1);
     expect(goals.y, `${label}: Goals below the summary`).toBeGreaterThan(summary.y + summary.height - 1);
     expect(recent.y, `${label}: Recent below Goals`).toBeGreaterThan(goals.y + goals.height - 1);
-    // A single column: every card is as wide as the balance.
     for (const b of [summary, goals, recent]) expect(Math.abs(b.x - h.x), `${label}: aligned`).toBeLessThan(2);
   }
 
-  // Desktop: Goals beside the balance, summary beside Recent, as before.
   await page.setViewportSize({ width: 1440, height: 1000 });
   const [h, summary, goals, recent] = [await hero(), await box("Monthly summary"), await box("Goals"), await box("Recent transactions")];
   expect(Math.abs(goals.y - h.y), "Goals on the balance's row").toBeLessThan(2);

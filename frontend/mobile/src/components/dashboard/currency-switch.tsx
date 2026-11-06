@@ -6,7 +6,6 @@ import { cn } from '@/lib/utils';
 export interface CurrencyOption {
   code: string;
   overdrawn?: boolean;
-  /** A currency other than the selected one that has data worth switching to. */
   activity?: boolean;
 }
 

@@ -2,17 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { ThrottlerGuard, ThrottlerRequest } from '@nestjs/throttler';
 import { sha256 } from '../utils/hash';
 
-/** Per-token limit on POST /auth/refresh. */
 export const REFRESH_THROTTLE = { limit: 5, ttl: 60_000 } as const;
 
 /**
- * Throttle key for /auth/refresh: a hash of the presented refresh token, or
- * the client IP when the body has none. Keying on IP alone made every tab,
- * and every user behind one NAT, share five refreshes a minute, and the BFF
- * turned the resulting 429 into a logout. A legitimate token is presented
- * once (the BFF dedupes concurrent refreshes), so a per-token bucket only
- * fills when the same token is replayed. The raw token is never part of the
- * key, and the throttler hashes the key again before storing it.
+ * Keyed by a hash of the refresh token (else the IP): per-IP made every tab and every user behind a
+ * NAT share five refreshes a minute, and the BFF turned the 429 into a logout.
  */
 export function refreshTokenTracker(req: Record<string, unknown>): string {
   const token = (req.body as { refreshToken?: unknown } | undefined)
@@ -23,10 +17,7 @@ export function refreshTokenTracker(req: Record<string, unknown>): string {
 }
 
 /**
- * Applies REFRESH_THROTTLE per refresh token. The route carries no @Throttle
- * of its own, so the global ThrottlerGuard still applies the app-wide per-IP
- * baseline on top as a backstop; the two use different trackers, so a
- * request isn't counted twice against one bucket.
+ * The route has no @Throttle, so the global per-IP baseline stays on top under a different tracker.
  */
 @Injectable()
 export class RefreshThrottlerGuard extends ThrottlerGuard {

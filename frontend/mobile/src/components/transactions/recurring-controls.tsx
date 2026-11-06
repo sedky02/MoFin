@@ -1,6 +1,5 @@
-// A recurring series' panel and actions: cadence and next date (or why it is paused), and Edit /
-// Pause / Resume / Cancel series. Shared by a root's detail screen and the Recurring list. The
-// same rules and wording as the web's recurring-panel.
+// Cadence and next date (or why it is paused) and Edit / Pause / Resume / Cancel series, shared by
+// a root's detail screen and the Recurring list; same rules and wording as the web.
 import * as React from 'react';
 import { ScrollView, useWindowDimensions, View } from 'react-native';
 
@@ -58,11 +57,6 @@ export function SeriesPausedNote({ label, className }: { label: string; classNam
   );
 }
 
-/**
- * Shown on the root transaction of a recurring series. Displays cadence and the next occurrence
- * (or why it is paused), and lets the user edit the template (future occurrences only), pause or
- * resume it, or cancel the series (stops future generation; nothing already generated is touched).
- */
 export function RecurringPanel({ tx }: { tx: Transaction }) {
   const next = seriesNextOccurrence(tx);
   const pausedLabel = seriesPausedLabel(tx);
@@ -85,10 +79,8 @@ export function RecurringPanel({ tx }: { tx: Transaction }) {
 }
 
 /**
- * "Edit series", "Pause series" (or "Resume series" once paused) and "Cancel series" for a series
- * root that is not cancelled. Cancelling stops the series and keeps every transaction, the root
- * included; deleting the root is separate. Resuming skips what fell due while paused, and the API
- * refuses (the toast says why) while the series still cannot post.
+ * Cancelling stops the series and keeps every transaction; deleting the root is separate. Resuming
+ * skips what fell due while paused; the API refuses while the series can't post.
  */
 export function RecurringSeriesActions({ tx, className }: { tx: Transaction; className?: string }) {
   const [editOpen, setEditOpen] = React.useState(false);

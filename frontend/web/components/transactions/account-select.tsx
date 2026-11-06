@@ -35,11 +35,8 @@ export function AccountSelect({
   const [open, setOpen] = React.useState(false);
   const triggerRef = React.useRef<HTMLButtonElement>(null);
 
-  // Radix mirrors a programmatically-set value into a hidden native <select> and
-  // fires a change event; that event can arrive empty (or stale) when the native
-  // option isn't registered yet, which would blank the account and mark it as
-  // hand-picked. Only trust a change while the user is actually interacting with
-  // the control (menu open, or the trigger focused for keyboard selection).
+  // Radix's hidden native <select> can fire an empty or stale change before its option registers,
+  // which would blank the account; trust changes only while the user interacts.
   function handleValueChange(id: string) {
     if (!id) return;
     if (!open && document.activeElement !== triggerRef.current) return;

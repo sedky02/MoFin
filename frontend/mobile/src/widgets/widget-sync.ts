@@ -26,24 +26,19 @@ import {
 import { MonthlySummaryWidget, WeeklySummaryWidget } from '@/widgets/summary-widgets';
 import { loadWidgetSettings } from '@/widgets/widget-settings';
 
-// Keeps the home screen widgets current. Widgets can't fetch: the app computes their props and
-// pushes them (updateSnapshot), when it starts or comes back to the foreground, after a change that
-// can move the numbers, when a widget is set up, and when a widget's ↻ opens the app. Data changed
-// elsewhere (a draft approved through MCP, the web app) shows at the next of these.
+// Widgets can't fetch, so the app pushes their props (updateSnapshot) on start, foreground, a
+// change that can move the numbers, widget setup and ↻. Other changes show at the next push.
 
 /** Why a sync was asked for. */
 export type SyncReason = 'start' | 'foreground' | 'change' | 'settings' | 'refresh';
 
-/** What every widget shows. */
 export type WidgetsProps = {
   WeeklySummary: SummaryWidgetProps;
   MonthlySummary: SummaryWidgetProps;
   Goals: GoalsWidgetProps;
 };
 
-/** Coming back to the app more often than this doesn't refetch. */
 export const FOREGROUND_MIN_MS = 60_000;
-/** Taps on ↻ closer together than this count as one. */
 export const REFRESH_DEBOUNCE_MS = 5_000;
 const LAST_KEY = 'mofin-widgets-shown';
 const LIST_LIMIT = 100;
@@ -54,7 +49,6 @@ const WIDGETS = {
   Goals: GoalsHomeWidget,
 };
 const SUMMARIES: SummaryWidgetName[] = ['WeeklySummary', 'MonthlySummary'];
-/** False where widgets don't ship (web, iOS, tests): every call is then a no-op. */
 const HAS_WIDGETS = Object.values(WIDGETS).some(Boolean);
 
 let inflight: Promise<void> | undefined;
@@ -100,7 +94,6 @@ async function lastShown(): Promise<WidgetsProps | undefined> {
   return shown;
 }
 
-/** Fetches what the widgets need (shared requests once) and works out each one's props. Throws when a request fails. */
 export async function computeWidgets(at: Date): Promise<WidgetsProps> {
   const settings = await loadWidgetSettings();
   const [user, accountPage, balances, goalPage] = await Promise.all([
@@ -228,7 +221,6 @@ export function installWidgetSync(): void {
   });
 }
 
-/** Test helper: forget timing and what was shown. */
 export function resetWidgetSyncForTests(): void {
   inflight = undefined;
   again = false;

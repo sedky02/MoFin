@@ -5,9 +5,8 @@ import { useUser } from "@/hooks/useUser";
 import { timeLeft } from "@/lib/demo";
 
 /**
- * Shown to temporary demo users: what this is, how long it lasts, and the way
- * to a real account. Signing up first signs the demo out, since /register is
- * closed to signed-in visitors.
+ * Shown to temporary demo users: what this is, how long it lasts and the way to a real account.
+ * Signing up signs the demo out first, since /register is closed to signed-in visitors.
  */
 export function DemoBanner() {
   const { data: user } = useUser();

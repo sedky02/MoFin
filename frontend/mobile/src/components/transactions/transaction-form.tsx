@@ -1,25 +1,6 @@
 /**
- * TransactionForm: records a new expense, income or transfer, or edits a saved one. The phone
- * version of frontend/web/components/transactions/transaction-form.tsx, with the same schema
- * (src/core/transaction-schema), messages, rounding and payload (transaction-form-model.ts).
- *
- * Props
- * - `mode`: 'create' (default) or 'edit'.
- * - `transactionId`: edit mode, the transaction to load (GET /transactions/:id).
- * - `transaction`: edit mode, an already loaded transaction (skips the fetch).
- * - `defaults`: create mode, values to start from (e.g. `{ type: 'INCOME' }` or a `fromAccountId`;
- *   an account given here counts as picked). Reset goes back to them.
- * - `onSaved(tx)`: after a successful save. Without it the form goes back (closes the modal, or
- *   returns to the transaction after an edit).
- * - `onCancel`: when given, the secondary button is "Cancel" and calls it. Otherwise an edit gets
- *   "Undo changes" (back to the saved values) and a new form has only Save.
- * - `compact`: for embedding in another screen (the dashboard setup step): no description line, no
- *   own scroll view or keyboard handling, and the buttons sit at the end of the form instead of a
- *   sticky bar. The host provides the scrolling.
- *
- * The form waits for the accounts, the user and `useActiveAccount().ready` before it mounts, so
- * the default account it shows is the stored pick, not the main-account fallback from before the
- * pick was read (src/core/COPIED_FROM.md).
+ * The phone version of the web's TransactionForm, with the same schema, messages, rounding and
+ * payload (see transaction-form-model.ts).
  */
 import { zodResolver } from '@hookform/resolvers/zod';
 import { router, type Href } from 'expo-router';
@@ -125,7 +106,6 @@ function EditTransactionLoader({ id, ...props }: TransactionFormProps & { id: st
   return <TransactionFormGate key={`${tx.id}:${tx.updatedAt}`} {...props} mode="edit" transaction={tx} />;
 }
 
-/** Waits for what the defaults depend on, and shows the archived / no-accounts states. */
 function TransactionFormGate(props: TransactionFormProps) {
   const { transaction, compact } = props;
   const { data: allAccounts, isLoading: accountsLoading } = useAccounts();

@@ -18,7 +18,6 @@ import { groupGoalsByStanding, STANDING_LABEL } from "@/lib/goal-standing";
 import type { Goal } from "@/lib/types";
 
 export default function GoalsPage() {
-  // Two views of the same page: the active goals, or the cancelled ones on their own as a history.
   const [view, setView] = React.useState<"active" | "cancelled">("active");
 
   const active = useGoals("active");
@@ -33,7 +32,6 @@ export default function GoalsPage() {
   const [toStop, setToStop] = React.useState<Goal | undefined>();
   const [historyGoal, setHistoryGoal] = React.useState<Goal | undefined>();
 
-  // Instant list removal on end (React 19 useOptimistic).
   const [optimisticActive, removeOptimistic] = React.useOptimistic(
     active.data ?? [],
     (state: Goal[], id: string) => state.filter((g) => g.id !== id),
@@ -69,7 +67,6 @@ export default function GoalsPage() {
         title="Goals"
         description="Balance, income and expense targets tracked against your ledger."
         action={
-          // The page's actions sit together: switch view on the left, the primary action last.
           <div className="flex flex-wrap items-center gap-2">
             {view === "active" ? (
               <Button variant="outline" onClick={() => setView("cancelled")} className="gap-2">

@@ -68,10 +68,8 @@ import type { Transaction } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 /**
- * Shown on the root transaction of a recurring series. Displays cadence and
- * the next occurrence (or why it's paused), and lets the user edit the
- * template (future occurrences only), pause or resume it, or cancel the series
- * (stops future generation; nothing already generated is touched).
+ * Shown on a series' root: cadence, next occurrence (or why paused), and edit (future occurrences
+ * only), pause/resume or cancel (generated transactions are untouched).
  */
 export function RecurringPanel({ tx }: { tx: Transaction }) {
   const next = seriesNextOccurrence(tx);
@@ -103,12 +101,8 @@ export function SeriesPausedNote({ label, className }: { label: string; classNam
 }
 
 /**
- * "Edit series", "Pause series" (or "Resume series" once paused) and "Cancel
- * series" for a series root that isn't cancelled, shared by the root's detail
- * page and the Recurring list. Cancelling stops the series and keeps every
- * transaction, the root included; deleting the root is separate. Resuming
- * skips what fell due while paused, and the API refuses (the toast says why)
- * while the series still can't post.
+ * Series actions shared by the detail page and the Recurring list. Cancelling keeps every
+ * transaction; resuming skips what fell due while paused and is refused while it can't post.
  */
 export function RecurringSeriesActions({ tx, className }: { tx: Transaction; className?: string }) {
   const [editOpen, setEditOpen] = React.useState(false);

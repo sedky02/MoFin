@@ -49,7 +49,6 @@ export type AccountDraftResult =
   | { ok: true; values: AccountFormValues; openingBalance: string }
   | { ok: false; errors: Partial<Record<keyof AccountFormValues, string>> };
 
-/** Validates with the web's schema and returns the opening balance rounded to the currency. */
 export function validateAccountDraft(draft: AccountDraft): AccountDraftResult {
   const { nameEdited: _edited, ...values } = draft;
   const parsed = accountFormSchema.safeParse(values);

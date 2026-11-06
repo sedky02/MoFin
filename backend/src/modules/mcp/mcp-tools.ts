@@ -2,12 +2,8 @@ import { ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
 import { McpToolName } from './dto/mcp.dto';
 
 /**
- * MCP tool annotations: hints that let a client (Claude, ChatGPT) tell tools
- * apart, for example to offer "always allow" on the ones that only read. They
- * are hints, not enforcement: what a tool can really do is fixed by the
- * services behind it and by the draft rule below.
- *
- * MoFin only holds the data of its users, so no tool reaches an open world.
+ * Annotations are hints for clients (e.g. "always allow" on read-only tools), not enforcement: what
+ * a tool can do is fixed by the services behind it.
  */
 const READ_ONLY: ToolAnnotations = {
   readOnlyHint: true,
@@ -15,9 +11,8 @@ const READ_ONLY: ToolAnnotations = {
 };
 
 /**
- * Creates a PENDING draft, never a real transaction, and never edits or
- * deletes anything that exists, so it is not destructive. Every call makes a
- * new draft, so it is not idempotent.
+ * A PENDING draft only: never a real transaction, never edits or deletes, so not destructive; each
+ * call makes a new draft, so not idempotent.
  */
 const CREATES_DRAFT: ToolAnnotations = {
   readOnlyHint: false,
@@ -26,10 +21,7 @@ const CREATES_DRAFT: ToolAnnotations = {
   openWorldHint: false,
 };
 
-/**
- * Single source of MCP tool metadata. `name` MUST match a key in `mcpToolSchemas`
- * (the Zod schema map) — that schema becomes the tool's MCP inputSchema.
- */
+/** `name` must match a key in `mcpToolSchemas`, whose schema becomes the tool's inputSchema. */
 export const MCP_TOOLS: ReadonlyArray<{
   name: McpToolName;
   title: string;

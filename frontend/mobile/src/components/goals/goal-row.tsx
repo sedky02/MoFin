@@ -17,9 +17,8 @@ const AMOUNT_COLOR: Partial<Record<string, string>> = {
 };
 
 /**
- * One goal in a group's panel: progress ring, name and details, amounts and an actions button. The
- * group heading names the standing, so the row carries none of its own. Pressing the row opens the
- * goal's actions (history, edit, cancel / restore).
+ * The group heading names the standing, so the row carries none of its own. Pressing the row opens
+ * the goal's actions (history, edit, cancel / restore).
  */
 export function GoalRow({
   goal,

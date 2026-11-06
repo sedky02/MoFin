@@ -1,11 +1,7 @@
 import { expect, test, type APIRequestContext } from "@playwright/test";
 
-// B-17: a date-only "To" covers its whole day. With From = To = today, search lists
-// today's transactions from 00:00 to 23:59, not only the ones at midnight.
-// Days are UTC until per-user timezones land (B-18), so "today" here is today's UTC
-// date. The test records its own expenses on the fixture's "Main checking" (USD):
-// three today, plus one either side of the day that must stay out, and deletes them
-// all at the end. Needs the UX fixture: `npm run e2e:seed`.
+// A date-only "To" covers its whole day (UTC for now): From = To = today lists 00:00-23:59 and
+// excludes neighbours. Records and deletes its own expenses; needs `npm run e2e:seed`.
 test.use({ locale: "en-US" });
 
 // The dev-only Next indicator and query devtools sit bottom-left, over the mobile bar.

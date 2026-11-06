@@ -48,7 +48,6 @@ export default function LoginScreen() {
   });
 
   const justRegistered = params.registered === '1';
-  // Why the last session ended; hidden once the user tries again.
   const expired = endReason === 'expired' && !submitted;
 
   return (

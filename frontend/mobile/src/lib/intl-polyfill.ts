@@ -1,10 +1,5 @@
-// Hermes on iOS has no Intl.NumberFormat.prototype.formatToParts (Android does), and the copied
-// money code (src/core/format.ts) relies on it. Install a small stand-in built from `format()` so
-// the copy can stay byte-identical to the web. It only needs to be right for what that code reads:
-// which part is the currency, which are the digits, and where the sign and spaces sit.
-//
-// Not covered: `notation: "compact"` (Hermes iOS ignores it). That needs a device check, see the
-// phase 2 notes in docs/mobile/PROGRESS.md.
+// Hermes on iOS lacks NumberFormat's formatToParts, which the shared src/core/format.ts needs. This
+// stand-in over `format()` covers what it reads (not `notation: "compact"`).
 
 type Part = { type: Intl.NumberFormatPartTypes; value: string };
 
@@ -32,7 +27,6 @@ export function partsFromFormatted(formatted: string, isCurrency: boolean): Part
   return [...tokenize(before, isCurrency), { type: "integer", value: match[0] }, ...tokenize(after, isCurrency)];
 }
 
-/** Adds `formatToParts` where the runtime lacks it. Returns true when it installed the stand-in. */
 export function installNumberFormatToParts(): boolean {
   const proto = Intl.NumberFormat.prototype as unknown as {
     formatToParts?: (value: number | bigint) => Part[];

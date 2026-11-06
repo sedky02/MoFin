@@ -1,8 +1,6 @@
 /**
- * Temporary "Try the demo" users get an address on this domain. `.invalid` is
- * reserved (RFC 2606) and never receives mail, and registration refuses it, so
- * a request can be recognised as a demo user's from the email in its access
- * token alone, without a database read.
+ * `.invalid` is reserved (RFC 2606) and never receives mail, and registration refuses it, so a demo
+ * user is recognised from the token's email alone, with no database read.
  */
 export const DEMO_EMAIL_DOMAIN = 'demo.mofin.invalid';
 

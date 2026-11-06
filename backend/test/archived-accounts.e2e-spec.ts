@@ -20,12 +20,8 @@ import { RecurringSeriesService } from '../src/modules/transactions/recurring-se
 import { TransactionsService } from '../src/modules/transactions/transactions.service';
 
 /**
- * Archived accounts are read-only, not invisible: their balance can still be
- * read, but nothing new can be posted to them. Real controllers and services
- * (AccountsService included, so the archived/active rule is the one the app
- * runs) behind the real `api/v1` prefix, with Prisma replaced by an in-memory
- * store that applies the same `archivedAt: null` filter Prisma would. No
- * database is touched.
+ * Archived accounts are read-only, not invisible: their balance can be read, nothing new can be
+ * posted. Real controllers and services over an in-memory Prisma.
  */
 
 const USER_ID = 'user-1';

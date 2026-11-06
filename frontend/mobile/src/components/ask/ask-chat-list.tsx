@@ -23,7 +23,6 @@ export const SUGGESTIONS = [
   { icon: Target, text: 'Am I on track with my goals?' },
 ];
 
-/** Today / Yesterday / Previous 7 days / Earlier, by when the chat was last active. */
 export function groupChats(chats: AiChatSummary[], now: Date): { label: string; chats: AiChatSummary[] }[] {
   const today = localIso(now);
   const yesterday = addDaysIso(today, -1);
@@ -37,7 +36,6 @@ export function groupChats(chats: AiChatSummary[], now: Date): { label: string; 
   return ['Today', 'Yesterday', 'Previous 7 days', 'Earlier'].filter((l) => groups.has(l)).map((label) => ({ label, chats: groups.get(label)! }));
 }
 
-/** Opens a chat, or a new one (optionally asking `question` straight away). */
 export function openChat(id: string | 'new', question?: string) {
   router.push(question ? { pathname: '/ask/[id]', params: { id, q: question } } : { pathname: '/ask/[id]', params: { id } });
 }
@@ -119,7 +117,6 @@ function ChatRow({ chat, last }: { chat: AiChatSummary; last: boolean }) {
   );
 }
 
-/** The Ask home: start a chat (or tap a suggestion), then the saved chats by date. */
 export function AskChatList() {
   const { data, isLoading, isError, refetch, hasNextPage, fetchNextPage, isFetchingNextPage } = useAiChats();
   const chats = data?.pages.flatMap((p) => p.data) ?? [];

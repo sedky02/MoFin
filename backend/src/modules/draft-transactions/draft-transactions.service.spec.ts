@@ -170,7 +170,6 @@ describe('DraftTransactionsService state machine', () => {
     await expect(service.approve('u1', 'd1')).rejects.toBeInstanceOf(
       BadRequestException,
     );
-    // Must not have gone on to create a transaction after losing the race.
     expect(transactionsService.create).not.toHaveBeenCalled();
   });
 

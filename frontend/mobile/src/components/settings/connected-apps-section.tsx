@@ -14,7 +14,6 @@ import { useConnectedApps, useDisconnectApp } from '@/hooks/useConnectedApps';
 import { Plug } from '@/lib/icons';
 import { cn } from '@/lib/utils';
 
-/** The AI apps the user approved, each with its state and a Disconnect button (the web's ConnectedAppsCard). */
 export function ConnectedAppsSection() {
   const apps = useConnectedApps();
   const disconnect = useDisconnectApp();

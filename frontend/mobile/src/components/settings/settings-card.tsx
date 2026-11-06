@@ -8,9 +8,8 @@ import { TriangleAlert } from '@/lib/icons';
 import { cn } from '@/lib/utils';
 
 /**
- * A Settings section (the web's SettingsCard): an icon tile and a short description, then the
- * section's content. "danger" turns it red. Each section is its own page whose stack header already
- * shows the section's name, so the card doesn't print it again (`title` stays for callers and tests).
+ * Icon tile, short description, then content; "danger" turns it red. The stack header already names
+ * the section, so `title` isn't printed (kept for callers and tests).
  */
 export function SettingsSectionCard({
   description,
@@ -55,7 +54,6 @@ export function SettingsSectionCard({
   );
 }
 
-/** One action inside a section: what it does, then its button (stacked: a phone has no room beside). */
 export function SettingsRow({
   title,
   description,
@@ -66,7 +64,6 @@ export function SettingsRow({
   title: string;
   description?: string;
   children: React.ReactNode;
-  /** "danger": a red warning row, for something that can't be undone. */
   tone?: 'default' | 'danger';
   className?: string;
 }) {

@@ -26,10 +26,8 @@ export function recurringEndDateToIso(date: string): string {
 }
 
 /**
- * The edit-series form as the series stands now. The amount keeps the
- * currency's decimals (12.345 TND stays 12.345), and the end date is read in
- * local time, matching how it was saved, so it doesn't show a day late west
- * of UTC.
+ * The edit-series form as the series stands. The amount keeps the currency's decimals (12.345 TND)
+ * and the end date is read in local time, so it isn't a day late west of UTC.
  */
 export function recurringFormValues(tx: Transaction): RecurringFormValues {
   return {
@@ -44,11 +42,8 @@ export function recurringFormValues(tx: Transaction): RecurringFormValues {
 }
 
 /**
- * PATCH body for the edit-series form: only the fields that differ from what
- * the dialog opened with. Re-sending untouched fields could still change the
- * series (a re-typed amount, an end date shifted by the time zone), and the
- * API keeps anything left out as it is. `amountRaw` must already be valid
- * when it changed.
+ * PATCH body with only fields changed since the dialog opened: re-sending untouched ones (re-typed
+ * amount, time-zone-shifted end date) could alter the series. `amountRaw` must be valid.
  */
 export function buildRecurringUpdate(
   type: Transaction["type"],

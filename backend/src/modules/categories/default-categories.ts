@@ -1,11 +1,8 @@
 import { CategoryType } from '@prisma/client';
 
 /**
- * The starter set every new user gets, so the transaction form has something
- * to pick from on day one. They are ordinary user-owned categories: the user
- * can rename, archive or delete them like any other. No icon: the web app
- * picks one from the name. Colours come from the web app's category palette. Only new
- * accounts (and a "delete all data" reset) get this set; existing categories are left alone.
+ * The starter set every new user (and a data reset) gets: ordinary user-owned categories, so they
+ * can be renamed, archived or deleted. No icon: the web app picks one from the name.
  */
 export const DEFAULT_CATEGORIES: ReadonlyArray<{
   name: string;

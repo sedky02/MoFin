@@ -1,6 +1,5 @@
-// The Settings screens' rules and copy, kept apart from the components so they can be tested as
-// plain functions. Mirrors frontend/web/app/(app)/settings/page.tsx, frontend/web/components/settings
-// and frontend/web/lib/settings-sections.ts; the copy is the web's unless a comment says otherwise.
+// Rules and copy apart from the components so they test as plain functions; mirrors the web's
+// settings, with the web's copy unless a comment says otherwise.
 import type { LucideIcon } from 'lucide-react-native';
 import { z } from 'zod';
 
@@ -22,7 +21,6 @@ export type SettingsSection = {
   tone?: 'danger';
 };
 
-/** The web's sections, in its page order, each a screen of its own here. */
 export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
   { id: 'profile', label: 'Profile', summary: 'Name and email', href: '/settings/profile', icon: UserIcon },
   {
@@ -52,9 +50,8 @@ export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
 ];
 
 /**
- * The Settings list for this user. A demo keeps every section, as on the web (each one says what
- * the demo can't do), but its Security and Delete account rows read as information, not actions.
- * The summaries are mobile-only list text; each screen shows the web's own copy.
+ * A demo keeps every section, as on the web, but its Security and Delete account rows read as
+ * information, not actions. The summaries are mobile-only list text.
  */
 export function settingsSections(user: User | undefined): SettingsSection[] {
   return SETTINGS_SECTIONS.map((s) => {
@@ -91,16 +88,13 @@ export function profileChanged(user: User | undefined, displayName: string): boo
   return (user?.displayName ?? '') !== displayName.trim();
 }
 
-/** The avatar letter: the name being typed, else the email, as on the web. */
 export function avatarLetter(displayName: string, user: User | undefined): string {
   return (displayName.trim() || user?.email || '?').charAt(0).toUpperCase();
 }
 
 // ─── Preferences ─────────────────────────────────────────────────────────────
 
-/** "auto" = no explicit currency (the most-used balance currency leads). */
 export const AUTO_CURRENCY = 'auto';
-/** "none" = no main account (the summary covers all accounts). */
 export const NO_MAIN_ACCOUNT = 'none';
 
 export type PreferenceValues = { defaultCurrency: string; mainAccountId: string };
@@ -138,7 +132,6 @@ export function preferencesBody(user: User | undefined, values: PreferenceValues
   };
 }
 
-/** The currencies to offer first in the picker: the ones the user's accounts hold, in order. */
 export function currenciesInUse(accounts: Account[] | undefined): string[] {
   return [...new Set((accounts ?? []).map((a) => a.currency))];
 }
@@ -168,7 +161,6 @@ export function canChangePassword(mode: SecurityMode): boolean {
   return mode === 'password';
 }
 
-/** Sign out everywhere is offered to every real account (the backend refuses it for a demo). */
 export function canSignOutEverywhere(mode: SecurityMode): boolean {
   return mode === 'password' || mode === 'google';
 }
@@ -203,7 +195,6 @@ export function changePasswordBody(
 
 // ─── Danger zone ─────────────────────────────────────────────────────────────
 
-/** A demo's data is sample data that goes when it ends: no Delete all data, no Delete account. */
 export function canDeleteData(user: User | undefined): boolean {
   return !!user && !user.isDemo;
 }
@@ -231,22 +222,18 @@ export const EXPORT_FORMATS: readonly { format: ExportFormat; label: string; tit
   },
 ];
 
-/** What the share sheet needs to know about each format (iOS reads the UTI, Android the MIME type). */
 export const EXPORT_FILE_TYPES: Record<ExportFormat, { mimeType: string; uti: string }> = {
   json: { mimeType: 'application/json', uti: 'public.json' },
   csv: { mimeType: 'text/csv', uti: 'public.comma-separated-values-text' },
 };
 
-/** The web's fallback name when the response doesn't name the file. */
 export function fallbackExportName(format: ExportFormat): string {
   return `mofin-export.${format}`;
 }
 
 /**
- * The filename a Content-Disposition header asks for, or `fallback` (same rules as the web's
- * lib/download.ts). Handles the quoted and bare `filename=` forms and RFC 5987 `filename*=UTF-8''…`,
- * which wins when both are present. Path separators are replaced so a header can't point outside
- * the folder the file is written to, and a name that is only dots falls back.
+ * Same rules as the web's lib/download.ts: quoted, bare and RFC 5987 `filename*=` (which wins);
+ * path separators are replaced so a header can't escape the export folder.
  */
 export function filenameFromDisposition(header: string | null | undefined, fallback: string): string {
   if (!header) return fallback;
@@ -268,7 +255,6 @@ export function filenameFromDisposition(header: string | null | undefined, fallb
   return safe;
 }
 
-/** The query for GET /export. */
 export function exportQuery(format: ExportFormat): { format: ExportFormat } {
   return { format };
 }

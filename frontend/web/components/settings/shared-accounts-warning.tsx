@@ -6,8 +6,8 @@ import { useOwnedSharedAccounts } from "@/hooks/useAccountSharing";
 import { memberName } from "@/lib/account-sharing";
 
 /**
- * Deleting what you own takes shared accounts away from the people on them. Says who, and offers
- * the way out: pass each account to one of them first, from its People screen.
+ * Says who loses access when you delete what you own, and the way out: pass each account on first,
+ * from its People screen.
  */
 export function SharedAccountsWarning({ enabled }: { enabled: boolean }) {
   const { data: accounts = [] } = useOwnedSharedAccounts(enabled);

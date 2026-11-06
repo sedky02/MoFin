@@ -6,9 +6,8 @@ import { useRouter } from "next/navigation";
 type StartViewTransition = (cb: () => void) => unknown;
 
 /**
- * Navigate with a View Transition crossfade when the browser supports it
- * (opt-in per navigation, as used by the sidebar nav). Falls back to a normal
- * push elsewhere. The root crossfade is defined in globals.css.
+ * Navigates with a View Transition crossfade when supported (opt-in per navigation, as in the
+ * sidebar), else a normal push. The root crossfade is in globals.css.
  */
 export function useViewTransitionRouter() {
   const router = useRouter();

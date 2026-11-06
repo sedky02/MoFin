@@ -21,10 +21,8 @@ export type DemoStartResult =
   | { status: 'signed-in' };
 
 /**
- * "Try the demo": every visitor gets their own temporary user, seeded with the
- * same sample data as the demo account and deleted by DemoCleanupCron once it
- * expires. Never a shared account, so one visitor can't change what another
- * sees. What a demo user may not do is enforced by DemoRestrictionsGuard.
+ * Every visitor gets their own temporary user with the sample data, deleted by DemoCleanupCron once
+ * it expires; never shared, so one visitor can't change what another sees.
  */
 @Injectable()
 export class DemoService {
@@ -100,9 +98,8 @@ export class DemoService {
   }
 
   /**
-   * A visitor still in an unexpired demo carries on with it (the token is
-   * rotated as on any refresh). A real account's session is reported, not
-   * touched. Anything else (expired, revoked, unknown) falls through to a new demo.
+   * A visitor in an unexpired demo carries on with it; a real account's session is reported, not
+   * touched; anything else falls through to a new demo.
    */
   private async reuse(refreshToken: string): Promise<DemoStartResult | null> {
     const user = await this.authService.liveSessionUser(refreshToken);

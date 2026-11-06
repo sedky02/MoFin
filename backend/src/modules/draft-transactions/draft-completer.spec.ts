@@ -24,7 +24,6 @@ const CATEGORIES = [FOOD, DRINKS, TRANSPORT, SUBS, RENT, SALARY, FREELANCE];
 const EXPENSE_IDS = new Set(['food', 'drinks', 'transport', 'subs', 'rent']);
 const INCOME_IDS = new Set(['salary', 'freelance']);
 
-/** A user's past transactions: what they bought, and where they filed it. */
 const HISTORY: History = [
   { description: 'Starbucks latte', categoryId: 'drinks' },
   { description: 'Starbucks', categoryId: 'drinks' },
@@ -163,7 +162,6 @@ describe('DraftCompleter.complete', () => {
       NOW,
     );
     expect(out.fromAccountId).toBe('savings');
-    // Nothing to pick, so no extra queries.
     expect(prisma.user.findUnique).not.toHaveBeenCalled();
   });
 
@@ -264,25 +262,17 @@ describe('DraftCompleter.complete', () => {
   });
 });
 
-/**
- * Description -> expected category, from the history above. `undefined` is
- * "no confident match": the draft is left without a category (MoFin has no
- * "Uncategorized" category to fall back to).
- */
 describe('categoryFromHistory', () => {
   const cases: Array<[string, string | undefined, string]> = [
-    // Exact past descriptions: one is enough.
     ['Netflix', 'subs', 'same description once'],
     ['starbucks', 'drinks', 'same words, other case'],
     ['Monoprix 45 TND', 'food', 'amounts and currency ignored'],
-    // Merchant or item shared with several past transactions.
     ['Starbucks cappuccino', 'drinks', 'merchant seen three times'],
     ['Uber to the airport', 'transport', 'merchant seen twice'],
     ['Groceries at Carrefour', 'food', 'words in another order'],
     ['grocery run', 'food', 'singular of groceries'],
     ['Team lunch', 'food', 'item seen twice'],
     ['Café', 'drinks', 'accents ignored: matches a past "Cafe"'],
-    // Ambiguous or unknown.
     ['Magasin general', undefined, 'same words filed two ways'],
     ['Taxi', 'transport', 'one exact match'],
     ['Taxis downtown', undefined, 'only one related transaction'],

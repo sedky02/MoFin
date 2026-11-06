@@ -11,10 +11,8 @@ import { haptics } from '@/lib/haptics';
 import { Moon, Settings, Sun } from '@/lib/icons';
 
 /**
- * The tab screens' top bar, the same on every tab. The tab bar already names the screen, so instead
- * of a title it carries the wordmark (the screen's heading for screen readers) and the two things
- * people reach for from anywhere: the light/dark switch and Settings. The dashboard's account choice
- * lives in the dashboard itself (`AccountChips`).
+ * The tab bar already names the screen, so this carries the wordmark (the heading for screen
+ * readers) plus light/dark and Settings. The dashboard's account choice lives in `AccountChips`.
  */
 export function AppHeader({ options, route }: BottomTabHeaderProps) {
   const insets = useSafeAreaInsets();

@@ -5,7 +5,6 @@ import { useChartColors } from '@/components/dashboard/use-chart-colors';
 import { Text } from '@/components/ui/text';
 import type { GoalTone } from '@/core/goal-standing';
 
-/** A small ring filling with a goal's progress, coloured by where the goal stands, percent inside. */
 export function GoalRing({
   ratio,
   percent,

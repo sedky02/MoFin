@@ -8,8 +8,6 @@ import {
     requestRefresh,
 } from "@/lib/auth-cookies";
 
-//export const dynamic = "force-dynamic";
-
 export async function POST(req: Request) {
   const cookieStore = await cookies(); // Next.js 16: cookies() is async
   const refreshToken = cookieStore.get(REFRESH_COOKIE)?.value;

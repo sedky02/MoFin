@@ -1,28 +1,16 @@
 import { Prisma } from '@prisma/client';
 import { PaginatedResult } from '../common/dto/pagination';
 
-// Exported (not just used locally) because PrismaService.paginated's
-// inferred public type references it — declaration emit (`nest build`)
-// requires every type reachable from a public class member to be nameable
-// from outside this module, unlike plain `tsc --noEmit`, which doesn't
-// surface this (TS4029).
+// Exported because PrismaService.paginated's inferred type references it, and declaration emit
+// (`nest build`) needs it nameable (TS4029).
 export interface PaginateInput {
   limit: number;
   offset: number;
 }
 
 /**
- * Adds `.paginate()` to every Prisma model, running `findMany` + `count`
- * in parallel against the same `where` and returning
- * `{ data, total, limit, offset }` instead of a bare array (audit DATA-XX).
- *
- * The two `as` casts below are Prisma's own documented limitation for
- * generic `$allModels` extension methods — the declaration can't
- * structurally know which model it's attached to, so `getExtensionContext`
- * can't statically expose `.findMany`/`.count`. Call sites are unaffected:
- * `prisma.paginated.transaction.paginate({...})` resolves concrete,
- * fully-typed `where`/`include`/`orderBy` args and a correctly-typed
- * `data` array, exactly like a normal `findMany` call.
+ * Adds `.paginate()` to every model: findMany + count in parallel, as { data, total, limit, offset
+ * }. The `as` casts are Prisma's limit for generic $allModels; call sites stay typed.
  */
 export const paginationExtension = Prisma.defineExtension({
   name: 'pagination',

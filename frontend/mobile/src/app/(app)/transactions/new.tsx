@@ -6,8 +6,8 @@ import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { Sparkles } from '@/lib/icons';
 
-// A sheet over the tabs ((app)/_layout.tsx), closed with the header's ✕. Saving closes it; the
-// toast offers Undo and View. "Describe it" hands over to AI drafts for people who'd rather type a sentence.
+// A sheet over the tabs closed with the header's ✕; saving closes it and the toast offers Undo and
+// View. "Describe it" hands over to AI drafts.
 export default function NewTransactionScreen() {
   return (
     <>

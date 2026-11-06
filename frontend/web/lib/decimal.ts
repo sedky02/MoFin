@@ -37,7 +37,6 @@ export function toDisplayString(d: Decimal): string {
   return d.toString();
 }
 
-// Safe parse: returns a Decimal or null without throwing.
 export function tryParse(raw: string): Decimal | null {
   try {
     const d = new Decimal(raw);

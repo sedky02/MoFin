@@ -15,7 +15,6 @@ import { DASHBOARD_RECENT_LIMIT } from "@/lib/dashboard-scope";
 import { groupByDay } from "@/lib/transaction-days";
 import type { Account, Transaction } from "@/lib/types";
 
-/** Which account(s) a transaction touched, for lists that span every account. */
 function accountLabelFor(tx: Transaction, accounts?: Account[]): string | undefined {
   const name = (id?: string) => accounts?.find((a) => a.id === id)?.name;
   if (tx.type === "TRANSFER") {
@@ -69,9 +68,8 @@ export function RecentTransactions({ accountId, className }: { accountId?: strin
           />
         </div>
       ) : (
-        // Scrolls inside the card so a long list never stretches the dashboard row; the bottom
-        // edge fades out instead of ending on a hard line. Capped on small screens, where the
-        // card isn't pinned to a sibling's height.
+        // Scrolls inside the card so a long list never stretches the dashboard row; the bottom edge
+        // fades out. Capped on small screens, where the card isn't pinned to a sibling's height.
         <div className="max-h-112 min-h-0 flex-1 overflow-y-auto overscroll-contain mask-[linear-gradient(to_bottom,black_calc(100%-2rem),transparent)] lg:max-h-none">
           {groups.map((group) => (
             <section key={group.key} aria-label={group.label}>

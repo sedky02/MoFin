@@ -49,7 +49,6 @@ export function AuthScreen({
   );
 }
 
-/** "OR" between the email form and the other ways in. */
 export function OrDivider() {
   return (
     <View className="my-5 flex-row items-center gap-3" aria-hidden>

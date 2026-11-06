@@ -1,6 +1,5 @@
-// "More filters": type, recurrence, sort, dates and amount range, in a bottom sheet (a phone has no
-// room for the web's inline panel, and the sheet keeps Done near the thumb). Changes apply to the
-// list straight away, like the web's panel.
+// "More filters" in a bottom sheet (a phone has no room for the web's inline panel, and the sheet
+// keeps Done near the thumb); changes apply to the list straight away.
 import * as React from 'react';
 import { View } from 'react-native';
 

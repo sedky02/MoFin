@@ -12,12 +12,7 @@ import { CreateUserInput, UpdateProfileDto } from './dto/users.dto';
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
 
-  /**
-   * Creates the user with the default categories in the same nested write, so
-   * both land or neither does. Only a brand-new user row gets them, which keeps
-   * this idempotent: a repeated registration never reaches here (or fails on
-   * the unique email before anything is written).
-   */
+  /** Default categories are created in the same write, so both land or neither does. */
   createUser(
     input: CreateUserInput,
     db: Prisma.TransactionClient = this.prisma,
@@ -75,14 +70,8 @@ export class UsersService {
   }
 
   /**
-   * Deletes the account and everything that belongs to it, for good. The
-   * caller has already confirmed (the controller needs the typed word); there
-   * is no password to check, since a Google-only account has none.
-   *
-   * See `clearOwnedData` for why every table is cleared by hand, in order.
-   * Access tokens already issued (web and MCP) are stateless and stay valid
-   * until their short TTL ends, but there is nothing left for them to read,
-   * and no refresh token survives to renew them.
+   * Deletes for good; the controller already required the typed word. See clearOwnedData for why
+   * every table is cleared by hand. Issued access tokens expire on their own.
    */
   async deleteAccount(userId: string): Promise<void> {
     await this.requireUser(userId);
@@ -90,12 +79,8 @@ export class UsersService {
   }
 
   /**
-   * Starts the account over: everything it recorded is deleted for good, and
-   * the account itself stays. Kept: the user row (email, name, sign-in
-   * methods, settings), web sessions, and the connected AI apps (OAuth
-   * grants and their tokens), so nobody is signed out and no app has to be
-   * connected again. Like a new account, it gets the starter categories back,
-   * and its main account (a setting that pointed at a deleted account) is unset.
+   * Keeps the user row, web sessions and connected AI apps (nobody is signed out, no app needs
+   * reconnecting); gives back the starter categories and unsets the main account.
    */
   async resetData(userId: string): Promise<void> {
     await this.requireUser(userId);
@@ -119,9 +104,8 @@ export class UsersService {
   }
 
   /**
-   * Clears every user-owned table, children before parents, then the user
-   * row, in one transaction. No proof of intent here: callers check it
-   * first. The demo seed uses this to reset its account.
+   * Children before parents, then the user, in one transaction. Callers check intent first; the
+   * demo seed uses this to reset its account.
    */
   async deleteUserData(userId: string): Promise<void> {
     await this.prisma.$transaction(async (tx) => {
@@ -141,21 +125,8 @@ export class UsersService {
   }
 
   /**
-   * Deletes what the user recorded: ledger, transactions, drafts, goals,
-   * budgets, accounts, categories, memberships, saved assistant chats and cached
-   * summaries; sign-ins and the profile are left to the caller.
-   *
-   * Accounts they own go for their members too, whose cached figures covered
-   * them. On accounts they are only a member of, their membership goes and the
-   * transactions stay: those rows are on the owner's ledger, not theirs.
-   *
-   * Every table is cleared explicitly, children before parents. The schema
-   * cascades most of these from User, but not all in a safe order: ledger
-   * items and recurring roots reference accounts with RESTRICT, which
-   * Postgres checks at once rather than at the end of the statement, so a
-   * single cascading `user.delete` can fail depending on which branch it
-   * walks first. Soft-deleted transactions go too (no `deletedAt` filter).
-   * Global categories (`userId: null`) never match `userId`, so they stay.
+   * Cleared by hand, children before parents: ledger items and recurring roots reference accounts
+   * with RESTRICT, so one cascading user.delete can fail. Member accounts keep their transactions.
    */
   private async clearOwnedData(tx: Prisma.TransactionClient, userId: string) {
     const mine = { userId };
@@ -194,10 +165,7 @@ export class UsersService {
   }
 }
 
-/**
- * Swaps the password hash for `hasPassword`, so the client can tell a
- * Google-only account (no password to change) without ever seeing the hash.
- */
+/** Lets the client tell a Google-only account without ever seeing the hash. */
 function withHasPassword<T extends { passwordHash: string | null }>(user: T) {
   const { passwordHash, ...profile } = user;
   return { ...profile, hasPassword: passwordHash !== null };

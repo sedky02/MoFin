@@ -9,7 +9,6 @@ import { deviceTimeZone } from "@/lib/week";
 
 const PAGE = 30;
 
-/** The user's saved chats, most recently active first. */
 export function useAiChats() {
   return useInfiniteQuery({
     queryKey: aiChatKeys.list(),
@@ -27,7 +26,6 @@ export function useAiChats() {
   });
 }
 
-/** One chat with every message. Disabled for a new, not-yet-saved chat. */
 export function useAiChatDetail(id: string | null) {
   return useQuery({
     queryKey: aiChatKeys.detail(id ?? "new"),
@@ -38,9 +36,8 @@ export function useAiChatDetail(id: string | null) {
 }
 
 /**
- * Asks a question: in `chatId`, or in a new chat when it is null. The server
- * saves the question and the answer together and returns both, so the chat's
- * cache is updated in place instead of refetched.
+ * The server saves question and answer together and returns both, so the chat cache is updated in
+ * place instead of refetched.
  */
 export function useSendChatMessage() {
   const queryClient = useQueryClient();
@@ -91,7 +88,6 @@ export function useDeleteChat() {
   });
 }
 
-/** What to tell the user when the assistant could not answer. */
 export function chatErrorMessage(err: unknown): string {
   if (err instanceof ApiClientError) {
     const code = err.body && "code" in err.body ? err.body.code : undefined;

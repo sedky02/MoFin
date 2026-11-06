@@ -17,11 +17,8 @@ const ROLE_LABEL: Record<AccountMemberRole, string> = {
 };
 
 /**
- * The Bar M mark from table cells. An image would be blocked by default in
- * Outlook and SVG is stripped by Gmail, so a brand mark that has to show every
- * time is drawn out of the one thing every client renders. Same 48-unit
- * drawing as `app/icon.svg`, at 40px; clients without border-radius get square
- * corners, which still reads as the mark.
+ * The Bar M mark from table cells: Outlook blocks images and Gmail strips SVG. Square corners where
+ * border-radius is unsupported.
  */
 function logo(): string {
   const bar = (height: number) =>
@@ -36,11 +33,7 @@ function logo(): string {
   </tr></table>`;
 }
 
-/**
- * What an invitation looks like in the inbox: who, which account, one button.
- * The account panel and button match the accept page, so the two read as one
- * step. Names are typed by users, so they are escaped; `link` is built by us.
- */
+/** Names are typed by users so they are escaped; `link` is built by us. */
 export function invitationEmail({
   inviter,
   accountName,

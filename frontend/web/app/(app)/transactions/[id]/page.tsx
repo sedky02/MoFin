@@ -7,9 +7,8 @@ import type { Transaction } from "@/lib/types";
 import { TransactionDetail } from "@/components/transactions/transaction-detail";
 import { Skeleton } from "@/components/ui/skeleton";
 
-// Static shell. Awaiting params + the server prefetch touch request data
-// (route params, cookies in serverGet), which under cacheComponents must live
-// inside a <Suspense> boundary rather than at the route top level.
+// Static shell: awaiting params and the server prefetch read request data, which under
+// cacheComponents must sit inside Suspense.
 export default function TransactionPage({
   params,
 }: {
@@ -30,7 +29,6 @@ async function TransactionContent({
   const { id } = await params;
   const queryClient = getQueryClient();
 
-  // Prefetch on the server so the client renders from a primed cache.
   const tx = await serverGet<Transaction>(`/transactions/${id}`);
   if (tx) queryClient.setQueryData(transactionKeys.detail(id), tx);
 

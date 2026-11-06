@@ -3,13 +3,11 @@
 import * as React from "react";
 
 interface CountUpOpts {
-  // Skip the animation (e.g. respects prefers-reduced-motion).
   enabled?: boolean;
 }
 
-// Natural frequency (rad/s) of the critically damped spring: ~95% of the way in 0.3s,
-// visually done in about a second. Critically damped means it never overshoots, so a
-// balance never shows a number larger than the real one.
+// Natural frequency of a critically damped spring (~95% in 0.3 s): it never overshoots, so a
+// balance never shows more than the real number.
 const OMEGA = 16;
 // Stop once the remaining gap is below a cent, or after this long, whichever comes first.
 const EPSILON = 0.005;
@@ -37,12 +35,8 @@ function createStore(initial: number) {
 }
 
 /**
- * Spring-eased count-up. Counts 0 → target on first mount, and afterwards glides from
- * the value currently on screen (carrying its velocity) to each new target — account or
- * currency switch, optimistic update — instead of restarting from 0. Returns the live value.
- *
- * Uses the closed-form solution of a critically damped spring rather than stepping a
- * simulation, so it is exact at any frame rate and lands precisely on the target.
+ * Counts 0 → target on first mount, then glides from the value on screen (keeping velocity) to each
+ * new target instead of restarting.
  */
 export function useCountUp(target: number, opts: CountUpOpts = {}): number {
   const { enabled = true } = opts;
@@ -52,12 +46,8 @@ export function useCountUp(target: number, opts: CountUpOpts = {}): number {
     window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
   const animate = enabled && !prefersReduced && Number.isFinite(target);
-  // The on-screen value and its velocity live in a small external store, so they
-  // survive re-targets (an interrupted animation continues from where it is rather
-  // than jumping back to 0) and animation frames update React through the store's
-  // subscription instead of setState-in-effect. A client that is going to animate
-  // starts the store at 0; the server snapshot below is always the real value, so
-  // server-rendered HTML (and no-JS / reduced-motion clients) never shows "$0.00".
+  // Value and velocity live in an external store so an interrupted animation continues from where
+  // it is, and frames update React through the store.
   const [store] = React.useState(() => createStore(animate ? 0 : target));
   const value = React.useSyncExternalStore(
     store.subscribe,

@@ -17,7 +17,6 @@ export function useConnectedApps(enabled = true) {
   });
 }
 
-/** Revokes the app's consent and refresh tokens server-side (not just in the client). */
 export function useDisconnectApp() {
   const queryClient = useQueryClient();
   return useMutation({

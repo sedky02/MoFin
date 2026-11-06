@@ -57,13 +57,9 @@ const modelResultSchema = z.object({
   drafts: z.array(modelDraftSchema).min(1).max(MAX_DRAFTS_PER_MESSAGE),
 });
 
-/** A draft as the model proposed it, shape-checked but not yet repaired. */
 export type ModelDraft = z.infer<typeof modelDraftSchema>;
 
-/**
- * One draft as the chat model asks for it with create_draft_transaction: the
- * same fields, with the date and confidence optional (today, and fairly sure).
- */
+/** Same fields as modelDraftSchema, with date and confidence optional (today, fairly sure). */
 export const chatDraftSchema = modelDraftSchema.extend({
   occurredAt: calendarDate.optional(),
   confidence: z.number().min(0).max(1).catch(0.8).default(0.8),
@@ -71,10 +67,8 @@ export const chatDraftSchema = modelDraftSchema.extend({
 export type ChatDraftArgs = z.infer<typeof chatDraftSchema>;
 
 /**
- * Asks the model to read one message into drafts. Returns the shape-checked
- * drafts, or null when the model fails to produce valid JSON twice. Provider
- * failures are thrown (AiUnavailableException / AiProviderRejectedException)
- * so the caller can fall back.
+ * Reads one message into drafts: shape-checked drafts, or null after two invalid JSON replies.
+ * Provider failures are thrown so the caller can fall back.
  */
 @Injectable()
 export class ModelDraftParser {

@@ -21,9 +21,8 @@ const GOALS = [
 ];
 
 /**
- * A miniature of the real dashboard: the balance counts up on the app's own
- * spring (MoneyAmount), the month bars grow left to right and the current month
- * is marked "Now", as it is in the app. Plays when `play` turns true.
+ * A miniature of the dashboard: the balance counts up on the app's own spring, bars grow, the
+ * current month is marked "Now". Plays when `play` turns true.
  */
 export function MockDashboard({ play, compact = false }: { play: boolean; compact?: boolean }) {
   return (

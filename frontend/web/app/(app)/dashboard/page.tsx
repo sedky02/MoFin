@@ -33,11 +33,8 @@ import type {
 } from "@/lib/types";
 import { DashboardGate, PrefetchSettled } from "@/components/dashboard/dashboard-gate";
 
-// Static shell: the gate (a client component) shows the dashboard from the browser's
-// cache straight away when arriving from another page. The server prefetch streams in
-// via <Suspense> (required under cacheComponents: runtime data access — cookies in
-// serverGet, new Date() — must live inside a Suspense boundary) and is only waited for
-// on a full page load, when that cache is empty.
+// Static shell: the gate shows the dashboard from the browser cache straight away; the server
+// prefetch streams in via Suspense (cacheComponents requires runtime data reads inside one).
 export default function DashboardPage() {
   return (
     <DashboardGate
@@ -50,12 +47,10 @@ export default function DashboardPage() {
   );
 }
 
-// Async Server Component performing the (dynamic) server-side prefetch.
 async function DashboardPrefetch() {
   try {
     return await prefetchDashboard();
   } catch (err) {
-    // Say which way the prefetch failed; anything else still reaches error.tsx.
     if (err instanceof ServerPrefetchError) return <PrefetchSettled outcome={err.kind} />;
     throw err;
   }
@@ -74,18 +69,16 @@ async function prefetchDashboard() {
   const year = now.getUTCFullYear();
   const month = now.getUTCMonth() + 1;
 
-  // The account the user last picked in the header lives in a cookie (mirrored from
-  // localStorage by useActiveAccount), so the server can prefetch for the account the
-  // client will actually render instead of priming keys nobody reads.
+  // The active account comes from a cookie (mirrored from localStorage) so the server primes the
+  // account the client will render.
   const cookieStore = await cookies();
   const rawStored = cookieStore.get(ACTIVE_ACCOUNT_COOKIE)?.value;
   const stored = rawStored ? decodeURIComponent(rawStored) : undefined;
 
   const queryClient = getQueryClient();
 
-  // First round: everything that doesn't depend on which account is active. The
-  // all-accounts balances also decide the primary currency, and hold the active account's
-  // balances, so those need no request of their own.
+  // First round: everything independent of the active account. All-accounts balances also decide
+  // the primary currency and hold the active account's balances.
   const [user, accountsPage, allBalances, goalsPage, allAccountsPage] = await Promise.all([
     serverGet<User>("/users/me", undefined, { throwOnUnauthorized: true }),
     serverGet<Paginated<Account>>("/accounts", { status: "active", limit: 100, offset: 0 }, { throwOnUnauthorized: true }),
@@ -98,12 +91,12 @@ async function prefetchDashboard() {
   const accountId = activeAccount?.id;
   const scopedBalances = accountId && allBalances ? scopeBalances(allBalances, accountId) : undefined;
 
-  // The client derives the same from this data once it is hydrated; the server needs it
-  // first to know which currency to ask the summary and the chart series in.
+  // The client derives the same once hydrated; the server needs it first to pick the currency for
+  // the summary and series.
   const initialPrimaryCurrency = pickPrimaryCurrency(allBalances, user, "", accounts);
 
-  // Mirror the client's currency resolution (DashboardBody / BalanceCards) so the summary
-  // and the chart series are requested with the same parameters the client will use.
+  // Mirrors the client's currency resolution (DashboardBody / BalanceCards) so the same query keys
+  // are primed.
   const currencies = orderCurrencies(accounts, initialPrimaryCurrency);
   const currency = resolveCurrency({
     account: activeAccount,
@@ -112,9 +105,8 @@ async function prefetchDashboard() {
   });
   const summaryCurrency = summaryApiCurrency(accountId, currency);
 
-  // Second round: what needs the active account and currency. Nothing to summarise
-  // without an account (and no currency to ask in).
-  // The hero's weekly chart is fetched on the client: it needs the viewer's time zone and today.
+  // Second round: what needs the active account and currency. The weekly chart is fetched on the
+  // client (it needs the viewer's time zone).
   const [recent, summary] = await Promise.all([
     serverGet<Paginated<Transaction>>("/search/transactions", {
       limit: DASHBOARD_RECENT_LIMIT,
@@ -124,10 +116,8 @@ async function prefetchDashboard() {
     !accounts.length ? null : serverGet<MonthlySummary>("/analytics/monthly-summary", { year, month, accountId, currency: summaryCurrency }),
   ]);
 
-  // Prime the cache only for successful fetches; the client refetches the rest.
-  // The hooks unwrap paginated envelopes to flat arrays before they reach components, so
-  // the primed cache must have that same shape (mirroring it avoids `.map is not a
-  // function` on hydrate).
+  // Prime only successful fetches (the client refetches the rest) in the flat shape the hooks
+  // produce, or hydration hits `.map is not a function`.
   if (user) queryClient.setQueryData(userKeys.me, user);
   if (accountsPage) queryClient.setQueryData(accountKeys.list("active"), accountsPage.data);
   if (allAccountsPage) queryClient.setQueryData(accountKeys.list("all"), allAccountsPage.data);

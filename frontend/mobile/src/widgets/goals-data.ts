@@ -6,20 +6,16 @@ import { updatedLabel, WIDGET_LINKS } from '@/widgets/summary-data';
 
 export const MAX_WIDGET_GOALS = 3;
 
-/** Adds or removes a goal from the picked ones, keeping the order they were picked in and at most three. */
 export function toggleGoal(picked: string[], id: string): string[] {
   if (picked.includes(id)) return picked.filter((g) => g !== id);
   return picked.length >= MAX_WIDGET_GOALS ? picked : [...picked, id];
 }
 
-/** How a goal's bar is coloured, from the app's own goal tones. */
 export type GoalRowTone = 'good' | 'behind' | 'over' | 'done';
 
 export type GoalRow = {
   name: string;
-  /** "45%" (an expense cap can pass 100%). */
   percent: string;
-  /** 0 to 1, for the bar. */
   progress: number;
   tone: GoalRowTone;
 };

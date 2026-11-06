@@ -6,9 +6,8 @@ export const updateProfileSchema = z.object({
 });
 export type UpdateProfileDto = z.infer<typeof updateProfileSchema>;
 
-// The two destructive routes (delete the account, delete its data) both need the
-// word typed out, so a bare request (a stray client, a replayed URL) deletes
-// nothing. No password: a Google-only account has none to ask for.
+// Both destructive routes need the word typed, so a stray or replayed request deletes nothing. No
+// password: a Google-only account has none.
 export const confirmDeleteSchema = z.object({ confirm: z.literal('DELETE') });
 export type ConfirmDeleteDto = z.infer<typeof confirmDeleteSchema>;
 
@@ -19,7 +18,6 @@ export interface CreateUserInput {
   googleId?: string;
   /** Set when the address is already proven, as with Google sign-in. */
   emailVerifiedAt?: Date;
-  /** Temporary "Try the demo" user (see DemoService). */
   isDemo?: boolean;
   expiresAt?: Date;
 }

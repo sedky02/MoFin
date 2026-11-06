@@ -71,12 +71,10 @@ export const CATEGORY_ICONS: {
 
 const BY_KEY = new Map(CATEGORY_ICONS.map((i) => [i.key, i]));
 
-/** The registered icon for a stored value, or undefined for an emoji, a blank, or anything unknown. */
 export function categoryIconFor(value: string | null | undefined) {
   return value ? BY_KEY.get(value) : undefined;
 }
 
-/** Icons that suit income categories; they lead the list when the category is an income. */
 const INCOME_KEYS = [
   "salary",
   "work",
@@ -86,7 +84,6 @@ const INCOME_KEYS = [
   "gift",
 ];
 
-/** The icons ordered for a category type, so the likeliest picks come first. */
 export function orderedCategoryIcons(type: "INCOME" | "EXPENSE") {
   if (type !== "INCOME") return CATEGORY_ICONS;
   const first = INCOME_KEYS.flatMap((key) => BY_KEY.get(key) ?? []);
@@ -96,10 +93,6 @@ export function orderedCategoryIcons(type: "INCOME" | "EXPENSE") {
   ];
 }
 
-/**
- * The icons to show while the list is collapsed: the first `count`, with the
- * selected icon swapped into the last slot if it would otherwise be hidden.
- */
 export function collapsedCategoryIcons<T extends { key: string }>(
   icons: T[],
   selected: string | undefined,

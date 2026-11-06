@@ -1,12 +1,11 @@
-// Client-side fetch wrapper. The browser ONLY ever talks to /api/backend/* (the BFF proxy).
-// Tokens live in httpOnly cookies and are attached server-side by the proxy.
+// The browser only talks to /api/backend/* (the BFF proxy); tokens live in httpOnly cookies
+// attached server-side.
 import type { ApiError, ApiError400 } from "@/lib/types";
 import { loginUrlWithNext } from "@/lib/safe-next";
 
 export class ApiClientError extends Error {
   status: number;
   body: ApiError | ApiError400 | undefined;
-  /** Present when status === 400 — field-level validation errors. */
   validation?: ApiError400["errors"];
 
   constructor(status: number, message: string, body?: ApiError | ApiError400) {
@@ -21,9 +20,8 @@ export class ApiClientError extends Error {
 }
 
 const BASE = "/api/backend";
-// The BFF's own session routes (password change, sign out everywhere, delete
-// account), which
-// read or clear the auth cookies server-side instead of being proxied.
+// The BFF's own session routes (password change, sign out everywhere, delete account) read or clear
+// the auth cookies server-side.
 const AUTH_BASE = "/api/auth";
 
 type RequestOpts = Omit<RequestInit, "body"> & {
@@ -66,9 +64,8 @@ async function request<T>(path: string, opts: RequestOpts = {}): Promise<T> {
   const data = text ? safeJson(text) : undefined;
 
   if (!res.ok) {
-    // The proxy only answers 401 once a token refresh was rejected (and it has
-    // cleared the cookies), so the session is over: go to login instead of
-    // leaving every card on the page showing an error.
+    // The proxy answers 401 only once a refresh was rejected (and cookies cleared), so the session
+    // is over: go to login instead of every card showing an error.
     if (res.status === 401 && typeof window !== "undefined") {
       redirectToLogin();
     }
@@ -86,7 +83,6 @@ async function request<T>(path: string, opts: RequestOpts = {}): Promise<T> {
 // session-expired redirect unloads them (see useFormStash).
 const beforeLoginRedirect = new Set<() => void>();
 
-/** Run `fn` just before the session-expired redirect. Returns the unsubscribe. */
 export function onBeforeLoginRedirect(fn: () => void): () => void {
   beforeLoginRedirect.add(fn);
   return () => {
@@ -130,7 +126,6 @@ export const api = {
   delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
 };
 
-/** Same error handling as `api`, against the BFF's /api/auth/* routes. */
 export const authApi = {
   post: <T>(path: string, body?: unknown) =>
     request<T>(path, { method: "POST", body, base: AUTH_BASE }),

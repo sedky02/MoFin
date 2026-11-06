@@ -54,7 +54,6 @@ export class AnalyticsController {
     );
   }
 
-  /** Income, expenses and closing balance per day (the app's weekly chart). */
   @Get('daily-series')
   @ApiZodQuery(dailySeriesQuerySchema)
   dailySeries(

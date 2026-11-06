@@ -21,9 +21,8 @@ export class DemoController {
   constructor(private readonly demoService: DemoService) {}
 
   /**
-   * Signs the visitor in to their own temporary demo user (creating it, or
-   * carrying on with the one they already have). 409 when they are signed in
-   * to a real account, 503 when the demo is off or full, 429 past the per-IP limit.
+   * Signs the visitor in to their own temporary demo user (creating or continuing one). 409 when
+   * signed in to a real account, 503 when the demo is off or full, 429 past the per-IP limit.
    */
   @Public()
   @UseGuards(DemoThrottlerGuard)

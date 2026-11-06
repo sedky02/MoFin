@@ -23,7 +23,6 @@ async function setup() {
   return { onOpenChange, overlay };
 }
 
-/** A press whose event carries a position, whatever this environment's PointerEvent keeps. */
 function pressOn(target: Element, clientX: number, clientY: number) {
   const event = new MouseEvent("pointerdown", { bubbles: true, cancelable: true, clientX, clientY });
   fireEvent(target, event);

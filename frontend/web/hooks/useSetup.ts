@@ -20,9 +20,8 @@ export type SetupState =
   | { status: "step"; step: SetupStep; accounts: Account[]; skip: () => void };
 
 /**
- * Where the dashboard's first-run setup is: the first account, then the first transaction,
- * which can be skipped. Counted from the data (the same lists the dashboard reads), so a step
- * done any other way is done, and a demo never sees it.
+ * Where the first-run setup is: first account, then first transaction (skippable). Counted from the
+ * data, so a step done any other way is done.
  */
 export function useSetup(): SetupState {
   const [skipped, skip] = useStoredFlag(SKIPPED_KEY);
@@ -43,8 +42,8 @@ export function useSetup(): SetupState {
 }
 
 /**
- * Whether to suggest connecting an AI assistant, once the setup flow is over, and a way to
- * close the suggestion for good. Only asks the server for the connected apps when it could show.
+ * Whether to suggest connecting an AI assistant once setup is over, with a way to close it for
+ * good; the server is asked for connected apps only when it could show.
  */
 export function useAssistantNudge(setupOver: boolean): { show: boolean; close: () => void } {
   const [closed, close] = useStoredFlag(NUDGE_CLOSED_KEY);

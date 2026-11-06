@@ -15,7 +15,6 @@ const interWeights = plugin(({ addUtilities }) => {
 
 const color = (name) => `hsl(var(--${name}))`;
 
-/** @type {import('tailwindcss').Config} */
 module.exports = {
   darkMode: 'class',
   content: ['./src/**/*.{ts,tsx}'],

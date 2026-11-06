@@ -1,6 +1,5 @@
-// The invitation link the app was opened with, kept in memory while the person signs in: the route
-// guard sends a signed-out user to the sign-in screen, and a URL param wouldn't survive that. A
-// token is only useful with a sign-in on the invited address, and it goes when the app closes.
+// The invitation link the app opened with, kept in memory while signing in (the guard's redirect
+// would lose a URL param). A token does nothing without the invited address's sign-in.
 let pending: string | undefined;
 
 export function rememberInvite(token: string): void {

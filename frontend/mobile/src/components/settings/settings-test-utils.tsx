@@ -64,9 +64,8 @@ export async function signedIn(): Promise<void> {
   installSessionEffects();
   const client = getQueryClient();
   client.clear();
-  // A sign-out clears the cache while the screen under test is still mounted; when the test then
-  // unmounts it, each dropped query would start a 5-minute garbage-collection timer that keeps Jest
-  // alive (mutations too). No timer with an infinite gcTime (the app's other defaults stay).
+  // A sign-out clears the cache while the screen is still mounted; each dropped query would then
+  // start a 5-minute gc timer that keeps Jest alive (mutations too), so: no timer, infinite gcTime.
   const defaults = client.getDefaultOptions();
   client.setDefaultOptions({
     ...defaults,

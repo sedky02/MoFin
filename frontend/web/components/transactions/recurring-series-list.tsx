@@ -29,12 +29,10 @@ import type { Account, Transaction } from "@/lib/types";
 const SERIES_QUERY: SearchParams = { recurrence: "series", sort: "next-occurrence" };
 const PAGE_SIZE = 25;
 
-/** How many recurring series there are, for the Recurring toggle. Shares its request with the list's first page. */
 export function useRecurringSeriesCount(): number | undefined {
   return useSearchPage(SERIES_QUERY, 1, PAGE_SIZE).data?.total;
 }
 
-/** The Recurring view of /transactions: every recurring series, with its schedule and actions. */
 export function RecurringSeriesList() {
   const [page, setPage] = React.useState(1);
   // Archived accounts too, so a series on one still names it.
@@ -115,7 +113,6 @@ function SeriesRow({ tx, accountsById }: { tx: Transaction; accountsById?: Reado
           >
             {tx.description}
           </Link>
-          {/* How often it repeats, the account, and when it posts next. */}
           <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
             <span className={active ? "font-medium text-foreground/80" : undefined}>
               {seriesIntervalLabel(tx)}

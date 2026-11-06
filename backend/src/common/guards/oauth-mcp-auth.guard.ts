@@ -9,17 +9,8 @@ import { JwtService } from '@nestjs/jwt';
 import { Request, Response } from 'express';
 
 /**
- * OAuth 2.1 authentication for MCP clients (what claude.ai sends; also the
- * only supported MCP auth path — the API-key escape hatch was removed since
- * it had no revocation path, see OBS-02/SEC-04).
- *
- * Validates a `Bearer <jwt>` access token signed with JWT_MCP_SECRET (a key
- * distinct from JWT_ACCESS_SECRET, so a first-party web token is never even a
- * candidate signature here) that MUST carry our issuer, the MCP resource
- * audience and the `mcp` scope — requiring aud+scope stops a plain web-session
- * token from being replayed against the MCP endpoint. On any failure it emits
- * an RFC 9728 compliant
- * `WWW-Authenticate` header, which is what makes claude.ai start the OAuth flow.
+ * Bearer JWT signed with JWT_MCP_SECRET (not the web key) with our issuer, MCP audience and scope.
+ * Failures send an RFC 9728 challenge, which starts claude.ai's OAuth flow.
  */
 @Injectable()
 export class OAuthMcpAuthGuard implements CanActivate {
@@ -72,11 +63,6 @@ export class OAuthMcpAuthGuard implements CanActivate {
     };
   }
 
-  /**
-   * Sets the RFC 9728 `WWW-Authenticate` challenge pointing at the
-   * protected-resource metadata, so a failed request is told how to start
-   * the OAuth flow.
-   */
   private writeChallenge(context: ExecutionContext): void {
     const issuer = this.config
       .getOrThrow<string>('OAUTH_ISSUER')

@@ -24,9 +24,8 @@ function Input({
         }),
         className
       )}
-      // The app's own muted colour, light or dark with the app's theme. Without it Android uses the
-      // system's hint colour, which follows the phone's theme: near-white in a light-mode app on a
-      // dark-mode phone, so the placeholder vanished.
+      // The app's own muted colour: without it Android uses the phone's hint colour, near-white in
+      // a light-mode app on a dark-mode phone, so the placeholder vanished.
       placeholderClassName={cn('text-muted-foreground', placeholderClassName)}
       {...props}
     />

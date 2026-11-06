@@ -1,8 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
-// B-20: the mobile bottom bar is Dashboard · Transactions · Add · Goals · More,
-// and More opens the same nav sheet as the topbar hamburger. Needs the UX
-// fixture (`npm run e2e:seed`) for the transaction detail check.
+// Mobile bottom bar (Dashboard, Transactions, Add, Goals, More); More opens the same sheet as the
+// topbar hamburger. Needs `npm run e2e:seed`.
 
 test.beforeEach(async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "mobile", "the bottom bar only exists below the lg breakpoint");

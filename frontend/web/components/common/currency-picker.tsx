@@ -9,7 +9,6 @@ import { cn } from "@/lib/utils";
 const EXTRA_NAMES: Record<string, string> = { BTC: "Bitcoin", ETH: "Ethereum" };
 
 let displayNames: Intl.DisplayNames | undefined;
-/** "USD" → "US Dollar". Falls back to the code where the runtime has no name. */
 function currencyName(code: string): string {
   if (EXTRA_NAMES[code]) return EXTRA_NAMES[code];
   try {
@@ -23,8 +22,8 @@ function currencyName(code: string): string {
 type Option = { code: string; name: string; group?: string };
 
 /**
- * A currency field with a search box. Matches the code or the name, so "euro" and "eur" both find EUR.
- * Currencies already in use come first while the search is empty.
+ * Matches the code or the name ("euro" and "eur" both find EUR); currencies in use come first while
+ * the search is empty.
  */
 export const CurrencyPicker = React.forwardRef<
   HTMLButtonElement,
@@ -61,7 +60,6 @@ export const CurrencyPicker = React.forwardRef<
     ];
   }, [query, pinned]);
 
-  // Start on the current value when opening, and back at the top whenever the search changes.
   React.useEffect(() => {
     if (!open) return;
     const i = options.findIndex((o) => o.code === value);
@@ -114,7 +112,6 @@ export const CurrencyPicker = React.forwardRef<
           aria-haspopup="listbox"
           aria-controls={listId}
           disabled={disabled}
-          // Same look as the other fields (Input), so it doesn't stand out in the form.
           className={cn(
             "flex h-8 w-full min-w-0 items-center justify-between gap-2 rounded-lg border border-input bg-transparent px-2.5 py-1 text-left text-base transition-colors outline-none pointer-coarse:h-11 md:text-sm",
             "focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring aria-expanded:border-ring",

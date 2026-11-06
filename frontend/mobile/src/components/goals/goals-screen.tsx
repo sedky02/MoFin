@@ -37,7 +37,6 @@ function Panel({ title, children }: { title: string; children: React.ReactNode }
   );
 }
 
-/** The row's actions: a short list in a dialog (a phone has no hover menu). */
 function ActionsDialog({
   goal,
   onClose,

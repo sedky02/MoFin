@@ -1,10 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
 import { formatViolations, runAxe } from "./helpers/axe";
 
-// B-31: every control has an accessible name. The filters on /transactions are named by the
-// shared Field label, and each split row in the transaction form names its category and note
-// ("Item n category" / "Item n note"). Needs the UX fixture (`npm run e2e:seed`): the split
-// "Supermarket and pharmacy receipt" is the transaction opened on the edit page.
+// Every control has an accessible name (filters, split row category and note). Needs `npm run
+// e2e:seed`.
 test.use({ locale: "en-US" });
 
 const FIXTURE_SPLIT = "Supermarket and pharmacy receipt";

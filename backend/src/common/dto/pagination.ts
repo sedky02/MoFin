@@ -1,9 +1,6 @@
 import { z } from 'zod';
 
-/**
- * Shared offset-pagination query fields. Coerced from query strings and bounded
- * so a caller cannot request an unbounded result set (audit B2).
- */
+/** Bounded so a caller can't request an unbounded result set. */
 export const paginationSchema = z.object({
   limit: z.coerce.number().int().positive().max(100).default(20),
   offset: z.coerce.number().int().nonnegative().default(0),
@@ -11,7 +8,6 @@ export const paginationSchema = z.object({
 
 export type Pagination = z.infer<typeof paginationSchema>;
 
-/** Shape returned by the `paginate()` Prisma client extension. */
 export interface PaginatedResult<T> {
   data: T[];
   total: number;

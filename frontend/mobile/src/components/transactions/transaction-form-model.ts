@@ -1,7 +1,5 @@
-// Pure helpers behind TransactionForm: the blank values, the derived accounts, the split total and
-// the submit mapping. They mirror frontend/web/components/transactions/transaction-form.tsx line for
-// line (only the date parsing differs, see localDateTimeToDate) and use the copied src/core helpers
-// for every amount, so the form component itself holds no money or date logic.
+// Pure helpers behind TransactionForm, mirroring the web form line for line except date parsing
+// (see localDateTimeToDate); the component holds no money or date logic.
 import { add } from '@/core/decimal';
 import { formatMoneyInput, normalizeMoneyTyping, parseMoneyInput } from '@/core/format';
 import type { TransactionFormValues } from '@/core/transaction-schema';
@@ -10,7 +8,6 @@ import type { CreateTransactionInput, UpdateTransactionInput } from '@/hooks/use
 
 export type TransactionItemValues = NonNullable<TransactionFormValues['items']>[number];
 
-/** The web's BLANK, plus an empty split list (the web passes `items: []` on reset). */
 export const BLANK: TransactionFormValues = {
   type: 'EXPENSE',
   description: '',
@@ -37,13 +34,8 @@ export const EMPTY_ITEM: TransactionItemValues = { amountRaw: '', categoryId: un
 const LOCAL_DATE_TIME = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2})(?::(\d{2}))?)?$/;
 
 /**
- * A `datetime-local` / `date` string ("2026-11-03T14:05", "2026-11-03", "2026-11-03T23:59:59") read
- * as the device's local time, or null when it isn't one.
- *
- * The web calls `new Date(value)`, which the spec reads as local time for these forms. Hermes'
- * handling of the offset-less form is not confirmed on a device yet (src/core/COPIED_FROM.md), so
- * the app builds the date from its parts instead: identical on a spec-following engine, and correct
- * on one that would read it as UTC.
+ * A `datetime-local` / `date` string as local time, or null. Built from its parts, since Hermes'
+ * offset-less date parsing is unconfirmed (src/core/COPIED_FROM.md).
  */
 export function localDateTimeToDate(value: string): Date | null {
   const m = LOCAL_DATE_TIME.exec(value);
@@ -54,22 +46,19 @@ export function localDateTimeToDate(value: string): Date | null {
   return date.getMonth() === Number(mo) - 1 && date.getDate() === Number(d) ? date : null;
 }
 
-/** `new Date(local).toISOString()` from the web, through localDateTimeToDate. */
 export function localDateTimeToIso(value: string): string {
   const date = localDateTimeToDate(value) ?? new Date(value);
   return date.toISOString();
 }
 
-/** A YYYY-MM-DD string for a Date, in local time (the web's `<input type="date">` value). */
 export function toDateInput(date: Date): string {
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
 /**
- * What MoneyInput does on blur (normalise, then the currency's decimals), for a submit that comes
- * while a field still has focus. On the web the click blurs the field first; a tap on a phone does
- * not, so the form applies the same tidy before validating.
+ * MoneyInput's blur tidy (normalise, then the currency's decimals) for a submit while a field still
+ * has focus: on the web the click blurs first, a phone tap doesn't.
  */
 export function tidyMoneyText(raw: string, currency?: string): string {
   const normalized = raw ? normalizeMoneyTyping(raw) : null;
@@ -86,9 +75,8 @@ export function splitItemsTotal(items: TransactionItemValues[] | undefined, curr
 }
 
 /**
- * The accounts the form shows and submits. Only a picked account is stored; otherwise the suggested
- * one (active, main, only, most used, first). A transfer's destination defaults to another account
- * in the same currency.
+ * Only a picked account is stored; otherwise the suggested one (active, main, only, most used,
+ * first). A transfer's destination defaults to another account in the same currency.
  */
 export function effectiveAccountIds({
   type,
@@ -117,12 +105,10 @@ export function effectiveAccountIds({
   return { fromId, toId };
 }
 
-/** The account whose currency the transaction takes: the receiving one for income, else the source. */
 export function sourceAccountId(type: TransactionType, ids: { fromId?: string; toId?: string }) {
   return type === 'INCOME' ? ids.toId : ids.fromId;
 }
 
-/** The fields create and update share, exactly as the web's `action()` builds them. */
 export function buildTransactionFields(v: TransactionFormValues, splitting: boolean): UpdateTransactionInput | null {
   const amount = parseMoneyInput(v.amountRaw);
   if (!amount) return null;

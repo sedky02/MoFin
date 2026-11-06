@@ -14,7 +14,6 @@ export interface CompleterAccount {
   name: string;
 }
 
-/** How often one account was used lately, and when last. */
 export interface AccountUsage {
   accountId: string;
   count: number;
@@ -27,7 +26,6 @@ export interface CompleterCategory {
   type: string;
 }
 
-/** The ids a draft carries, as an assistant proposed them. */
 export interface DraftIds {
   type: TransactionType;
   description: string;
@@ -37,13 +35,8 @@ export interface DraftIds {
 }
 
 /**
- * The account a draft uses when the user didn't name one, in this order:
- * 1. the account they saved as their main one (settings.mainAccountId);
- * 2. the one with the most transactions in the last 30 days, the most
- *    recently used winning a tie;
- * 3. the first by name.
- * Only the accounts passed in count: the ones the user can post to. An archived
- * saved account, or one they can only view, is skipped.
+ * Default account: the saved main one, then most transactions in the last 30 days (latest use
+ * breaks ties), then first by name. Only passed-in accounts count.
  */
 export function pickDefaultAccount(
   accounts: CompleterAccount[],
@@ -65,11 +58,7 @@ export function pickDefaultAccount(
   )[0]?.id;
 }
 
-/**
- * Transactions per account, from each transaction's ledger rows. A transfer
- * counts once for each side; an account appearing twice in one transaction
- * counts once.
- */
+/** A transfer counts once for each side; an account appearing twice in one transaction counts once. */
 export function accountUsage(
   transactions: Array<{
     occurredAt: Date;
@@ -95,7 +84,6 @@ export function accountUsage(
   return [...byAccount.values()];
 }
 
-/** Rejects account ids the user can't post to, naming the ones they can use. */
 export function assertKnownAccounts(
   draft: DraftIds,
   accounts: CompleterAccount[],
@@ -110,11 +98,7 @@ export function assertKnownAccounts(
   }
 }
 
-/**
- * Rejects a category id the user doesn't have, or one of the wrong type, and
- * lists the ones that fit this draft's type. Transfers have no category: one
- * sent with a transfer is dropped, not rejected.
- */
+/** Transfers have no category: one sent with a transfer is dropped, not rejected. */
 export function assertKnownCategory(
   draft: DraftIds,
   categories: CompleterCategory[],
@@ -145,7 +129,6 @@ const STOPWORDS = new Set(
   ).split(' '),
 );
 
-/** The meaningful words of a description: lower case, no accents, digits or short words. */
 export function descriptionWords(text: string): string[] {
   const words = text
     .normalize('NFD')
@@ -164,14 +147,8 @@ function sameWord(a: string, b: string): boolean {
 }
 
 /**
- * The category the user has used most for descriptions like this one, or
- * undefined when the history doesn't say so clearly:
- * - past transactions with the same words decide first: one is enough, if at
- *   least two thirds of them agree;
- * - otherwise past transactions sharing a word (a merchant, an item) vote,
- *   weighted by how many words they share: at least two must back the winner,
- *   and it needs two thirds of the weight.
- * Only `allowed` categories (active, of the draft's type) count.
+ * The category used most for similar descriptions, undefined when unclear: identical words decide
+ * first (two thirds agree), else shared words vote (two backers, two thirds).
  */
 export function categoryFromHistory(
   description: string,
@@ -216,16 +193,8 @@ export function categoryFromHistory(
 }
 
 /**
- * Fills in what an assistant's draft leaves out, the same way for the in-app
- * chat and for MCP. The assistant never decides the defaults itself.
- * - Account: a named one is kept (it must be an active account the user owns
- *   or edits, never one they only view); a missing one is picked here, among
- *   the same accounts.
- * - Category: it must be an existing, active category of the draft's type, from
- *   the account's owner, because a shared account uses its owner's categories.
- *   The one used most on that ledger for similar descriptions wins; otherwise
- *   the assistant's pick stays; with neither, the draft has no category.
- *   Categories are never created.
+ * Fills in what an assistant leaves out, for chat and MCP alike. Accounts must be ones the user can
+ * post to; categories come from the ledger owner's set and are never created.
  */
 @Injectable()
 export class DraftCompleter {

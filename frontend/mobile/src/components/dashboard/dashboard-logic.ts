@@ -17,7 +17,6 @@ export function shiftMonth(year: number, month: number, offset: number): YearMon
   return { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1 };
 }
 
-/** "October 2026" for a UTC month. */
 export function monthTitle(year: number, month: number, locale?: string): string {
   return new Date(Date.UTC(year, month - 1, 1)).toLocaleDateString(locale, {
     month: 'long',
@@ -33,9 +32,7 @@ export interface Segment {
   label: string;
   amount: string;
   value: number;
-  /** Index into the chart ramp, or -1 for "Other" (drawn in the muted colour). */
   colorIndex: number;
-  /** Rounded share of the total, in percent. */
   share: number;
 }
 
@@ -63,7 +60,6 @@ export interface Arc {
   offset: number;
 }
 
-/** Stroke-dash arcs for a donut of circumference `c`; a small gap separates neighbours. */
 export function donutArcs(values: number[], c: number): Arc[] {
   const total = values.reduce((s, v) => s + Math.max(v, 0), 0);
   if (total <= 0) return [];
@@ -78,7 +74,6 @@ export function donutArcs(values: number[], c: number): Arc[] {
   });
 }
 
-/** Text alternative for the donut. */
 export function donutDescription(kind: 'Spending' | 'Income', segments: Segment[]): string {
   const parts = segments.map((s) => `${s.label} ${s.share}%`).join(', ');
   return parts ? `${kind} by category: ${parts}` : `${kind} by category: nothing recorded`;

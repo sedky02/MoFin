@@ -3,8 +3,6 @@ import { NextResponse } from "next/server";
 import { BACKEND_TIMEOUT_MS, BACKEND_URL, REFRESH_COOKIE, clearAuthCookies } from "@/lib/auth-cookies";
 import { bffHeaders } from "@/lib/bff-headers";
 
-//export const dynamic = "force-dynamic";
-
 export async function POST(req: Request) {
   const cookieStore = await cookies();
   const refreshToken = cookieStore.get(REFRESH_COOKIE)?.value;
