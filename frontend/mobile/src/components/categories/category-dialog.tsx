@@ -1,5 +1,7 @@
 import * as React from 'react';
-import { Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
+import { Pressable, useWindowDimensions, View } from 'react-native';
+
+import { SheetScrollView } from '@/components/ui/sheet-parts';
 
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -92,7 +94,7 @@ function CategoryDialogBody({
           </View>
         </DialogHeader>
 
-        <ScrollView keyboardShouldPersistTaps="handled" style={{ flexShrink: 1 }} contentContainerClassName="gap-4 px-4 py-4">
+        <SheetScrollView contentContainerClassName="gap-4 px-4 py-4">
           <View className="gap-1.5">
             <Text className="text-sm font-medium">Name</Text>
             <Input
@@ -221,7 +223,7 @@ function CategoryDialogBody({
               </View>
             </View>
           </View>
-        </ScrollView>
+        </SheetScrollView>
 
         <View className="flex-row justify-end gap-2 border-t border-border px-4 py-3">
           <Button variant="ghost" className="min-h-11" onPress={() => onOpenChange(false)} accessibilityLabel="Cancel">

@@ -1,13 +1,13 @@
 import { usePhoneFrameOverlayStyle } from '@/components/shell/web-phone-frame';
 import { buttonTextVariants, buttonVariants } from '@/components/ui/button';
 import { NativeOnlyAnimatedView } from '@/components/ui/native-only-animated-view';
-import { SheetBottomInset, SheetHandle } from '@/components/ui/sheet-parts';
+import { SheetBottomInset, SheetHandle, useSheetKeyboard } from '@/components/ui/sheet-parts';
 import { TextClassContext } from '@/components/ui/text';
 import { cn } from '@/lib/utils';
 import * as AlertDialogPrimitive from '@rn-primitives/alert-dialog';
 import * as React from 'react';
-import { KeyboardAvoidingView, Platform, View, type ViewProps } from 'react-native';
-import { FadeIn, FadeOut, ReduceMotion, SlideInDown, SlideOutDown } from 'react-native-reanimated';
+import { Platform, View, type ViewProps } from 'react-native';
+import Reanimated, { FadeIn, FadeOut, ReduceMotion, SlideInDown, SlideOutDown } from 'react-native-reanimated';
 import { FullWindowOverlay as RNFullWindowOverlay } from 'react-native-screens';
 
 const AlertDialog = AlertDialogPrimitive.Root;
@@ -26,6 +26,7 @@ function AlertDialogOverlay({
     children?: React.ReactNode;
   }) {
   const frameStyle = usePhoneFrameOverlayStyle();
+  const { lift } = useSheetKeyboard();
   return (
     <FullWindowOverlay>
       <AlertDialogPrimitive.Overlay
@@ -44,14 +45,14 @@ function AlertDialogOverlay({
           entering={FadeIn.duration(200).reduceMotion(ReduceMotion.System)}
           exiting={FadeOut.duration(150).reduceMotion(ReduceMotion.System)}
           as="Pressable">
-          {/* The type-to-confirm dialog has a field; iOS needs the padding to keep it above the keyboard. */}
-          <KeyboardAvoidingView behavior="padding" enabled={Platform.OS === 'ios'} style={{ width: '100%' }}>
+          {/* The type-to-confirm dialog has a field: the sheet rides up on the keyboard (see useSheetKeyboard). */}
+          <Reanimated.View style={[{ width: '100%' }, lift]}>
             <NativeOnlyAnimatedView
               entering={SlideInDown.duration(260).reduceMotion(ReduceMotion.System)}
               exiting={SlideOutDown.duration(200).reduceMotion(ReduceMotion.System)}>
               {children}
             </NativeOnlyAnimatedView>
-          </KeyboardAvoidingView>
+          </Reanimated.View>
         </NativeOnlyAnimatedView>
       </AlertDialogPrimitive.Overlay>
     </FullWindowOverlay>

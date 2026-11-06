@@ -1,13 +1,13 @@
 import { usePhoneFrameOverlayStyle } from '@/components/shell/web-phone-frame';
 import { Icon } from '@/components/ui/icon';
 import { NativeOnlyAnimatedView } from '@/components/ui/native-only-animated-view';
-import { SheetBottomInset, SheetHandle, useSheetDrag, useSheetMaxHeight } from '@/components/ui/sheet-parts';
+import { SheetBottomInset, SheetHandle, useSheetDrag, useSheetKeyboard } from '@/components/ui/sheet-parts';
 import { X } from '@/lib/icons';
 import { cn } from '@/lib/utils';
 import * as DialogPrimitive from '@rn-primitives/dialog';
 import * as React from 'react';
-import { Animated, KeyboardAvoidingView, Platform, StyleSheet, Text, View, type GestureResponderEvent, type ViewProps } from 'react-native';
-import { FadeIn, FadeOut, ReduceMotion, SlideInDown, SlideOutDown } from 'react-native-reanimated';
+import { Animated, Platform, StyleSheet, Text, View, type GestureResponderEvent, type ViewProps } from 'react-native';
+import Reanimated, { FadeIn, FadeOut, ReduceMotion, SlideInDown, SlideOutDown } from 'react-native-reanimated';
 import { FullWindowOverlay as RNFullWindowOverlay } from 'react-native-screens';
 
 const Dialog = DialogPrimitive.Root;
@@ -33,6 +33,7 @@ function DialogOverlay({
 }) {
   const { onOpenChange } = DialogPrimitive.useRootContext();
   const frameStyle = usePhoneFrameOverlayStyle();
+  const { lift } = useSheetKeyboard();
 
   function onOverlayPress(event: GestureResponderEvent) {
     onPress?.(event);
@@ -63,10 +64,8 @@ function DialogOverlay({
           <NativeOnlyAnimatedView
             entering={(sheet ? SlideInDown.duration(260) : FadeIn.delay(50)).reduceMotion(ReduceMotion.System)}
             exiting={(sheet ? SlideOutDown.duration(200) : FadeOut.duration(150)).reduceMotion(ReduceMotion.System)}>
-            {/* iOS does not resize the window for the keyboard; padding lifts a dialog whose field is covered. */}
-            <KeyboardAvoidingView behavior="padding" enabled={Platform.OS === 'ios'} style={{ width: '100%' }}>
-              {children}
-            </KeyboardAvoidingView>
+            {/* Rides up on the keyboard and back down when it closes (see useSheetKeyboard). */}
+            <Reanimated.View style={[{ width: '100%' }, lift]}>{children}</Reanimated.View>
           </NativeOnlyAnimatedView>
         </NativeOnlyAnimatedView>
       </DialogPrimitive.Overlay>
@@ -93,11 +92,14 @@ function DialogContent({
   const { onOpenChange } = DialogPrimitive.useRootContext();
   const close = React.useCallback(() => onOpenChange(false), [onOpenChange]);
   const drag = useSheetDrag(sheet ? close : undefined);
-  const maxHeight = useSheetMaxHeight();
+  // The sheet never reaches under the status bar, whatever cap the caller asked for, and shrinks to
+  // the room above the keyboard: its body scrolls and the actions stay just above the keyboard.
+  const { cap } = useSheetKeyboard(Number(StyleSheet.flatten(style)?.maxHeight) || undefined);
   return (
     <DialogPortal hostName={portalHost}>
       <DialogOverlay sheet={sheet}>
         <Animated.View style={sheet ? { width: '100%', transform: [{ translateY: drag.translateY }] } : { width: '100%' }}>
+          <Reanimated.View style={[{ width: '100%' }, sheet ? cap : null]}>
           <DialogPrimitive.Content
             className={cn(
               'bg-background border-border z-50 mx-auto flex w-full max-w-[calc(100%-2rem)] flex-col gap-4 rounded-lg border p-6 shadow-lg shadow-black/5 sm:max-w-lg',
@@ -111,8 +113,7 @@ function DialogContent({
                 ),
               className
             )}
-            // The sheet never reaches under the status bar, whatever cap the caller asked for.
-            style={[style, sheet ? { maxHeight: Math.min(maxHeight, Number(StyleSheet.flatten(style)?.maxHeight) || Infinity) } : null]}
+            style={[style, sheet ? { maxHeight: undefined, flexShrink: 1 } : null]}
             {...props}>
             {sheet ? <SheetHandle handlers={drag.handlers} /> : null}
             <>{children}</>
@@ -132,6 +133,7 @@ function DialogContent({
               <Text className="sr-only">Close</Text>
             </DialogPrimitive.Close>
           </DialogPrimitive.Content>
+          </Reanimated.View>
         </Animated.View>
       </DialogOverlay>
     </DialogPortal>

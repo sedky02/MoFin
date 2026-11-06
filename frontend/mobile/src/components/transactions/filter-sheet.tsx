@@ -2,7 +2,9 @@
 // room for the web's inline panel, and the sheet keeps Done near the thumb). Changes apply to the
 // list straight away, like the web's panel.
 import * as React from 'react';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
+
+import { SheetScrollView } from '@/components/ui/sheet-parts';
 
 import { DateTimeField } from '@/components/transactions/datetime-field';
 import { PickerField } from '@/components/transactions/transaction-form-fields';
@@ -45,7 +47,7 @@ export function FilterSheet({
           <DialogTitle>More filters</DialogTitle>
           <DialogDescription>Narrow the list by type, dates, amount and more.</DialogDescription>
         </DialogHeader>
-        <ScrollView keyboardShouldPersistTaps="handled" style={{ flexShrink: 1 }} contentContainerClassName="gap-4 px-4 py-4">
+        <SheetScrollView contentContainerClassName="gap-4 px-4 py-4">
           <Field label="Type">
             <PickerField
               title="Type"
@@ -120,7 +122,7 @@ export function FilterSheet({
               </Field>
             </View>
           </View>
-        </ScrollView>
+        </SheetScrollView>
         <View className="flex-row gap-2 border-t border-border px-4 py-3">
           {hasActive ? (
             <Button variant="outline" className="min-h-12 flex-1" accessibilityLabel="Clear all filters" onPress={onClear}>

@@ -96,7 +96,8 @@ export function CurrencyPicker({ value, onChange, pinned = [], disabled, classNa
               keyExtractor={(o) => `${o.group}-${o.code}`}
               keyboardShouldPersistTaps="handled"
               className="px-2 pb-3"
-              style={{ flexGrow: 0, maxHeight: 288 }}
+              // Shrinks with the sheet while the keyboard is up, so the search field stays in view.
+              style={{ flexGrow: 0, flexShrink: 1, maxHeight: 288 }}
               accessibilityLabel="Currencies"
               renderItem={({ item: o, index }) => (
                 <View>

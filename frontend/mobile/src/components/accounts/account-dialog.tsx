@@ -1,5 +1,7 @@
 import * as React from 'react';
-import { ScrollView, useWindowDimensions, View } from 'react-native';
+import { useWindowDimensions, View } from 'react-native';
+
+import { SheetScrollView } from '@/components/ui/sheet-parts';
 
 import { AccountTypePicker, TYPE_ICON } from '@/components/common/account-type-picker';
 import { CurrencyPicker } from '@/components/common/currency-picker';
@@ -100,7 +102,7 @@ function AccountDialogBody({
           </View>
         </DialogHeader>
 
-        <ScrollView keyboardShouldPersistTaps="handled" style={{ flexShrink: 1 }} contentContainerClassName="gap-4 px-4 py-4">
+        <SheetScrollView contentContainerClassName="gap-4 px-4 py-4">
           <View className="gap-1.5">
             <Text className="text-sm font-medium">Name</Text>
             <Input
@@ -161,7 +163,7 @@ function AccountDialogBody({
               </Text>
             ) : null}
           </View>
-        </ScrollView>
+        </SheetScrollView>
 
         <View className="flex-row justify-end gap-2 border-t border-border px-4 py-3">
           <Button variant="ghost" className="min-h-11" onPress={() => onOpenChange(false)} accessibilityLabel="Cancel">

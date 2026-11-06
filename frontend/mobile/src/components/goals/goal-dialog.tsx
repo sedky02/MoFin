@@ -1,6 +1,8 @@
 import type { LucideIcon } from 'lucide-react-native';
 import * as React from 'react';
-import { Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
+import { Pressable, useWindowDimensions, View } from 'react-native';
+
+import { SheetScrollView } from '@/components/ui/sheet-parts';
 
 import { MoneyInput } from '@/components/common/money-input';
 import { DateTimeField } from '@/components/transactions/datetime-field';
@@ -104,7 +106,7 @@ function GoalDialogBody({
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollView keyboardShouldPersistTaps="handled" style={{ flexShrink: 1 }} contentContainerClassName="gap-4 px-4 py-4">
+        <SheetScrollView contentContainerClassName="gap-4 px-4 py-4">
           <View className="gap-1.5">
             <Text className="text-sm font-medium">Name</Text>
             <Input
@@ -252,7 +254,7 @@ function GoalDialogBody({
               )}
             </View>
           ) : null}
-        </ScrollView>
+        </SheetScrollView>
 
         <View className="flex-row justify-end gap-2 border-t border-border px-4 py-3">
           <Button variant="ghost" className="min-h-11" onPress={() => onOpenChange(false)} accessibilityLabel="Cancel">

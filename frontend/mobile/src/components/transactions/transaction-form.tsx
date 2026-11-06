@@ -32,8 +32,7 @@ import {
   View,
 } from 'react-native';
 import { Controller, useFieldArray, useForm, useFormState, useWatch } from 'react-hook-form';
-import Animated, { useAnimatedKeyboard, useAnimatedStyle } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated from 'react-native-reanimated';
 
 import { SubmitButton } from '@/components/auth/submit-button';
 import { CategoryDialog } from '@/components/categories/category-dialog';
@@ -64,6 +63,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
+import { SheetBottomInset, SheetScrollView, useSheetKeyboard } from '@/components/ui/sheet-parts';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
@@ -205,21 +205,6 @@ function FieldLabel({ children, nativeID }: { children: React.ReactNode; nativeI
   );
 }
 
-/**
- * Space to leave at the bottom for the on-screen keyboard, so the sticky Save bar sits right on top
- * of it. Reanimated reads the real keyboard height on both platforms; KeyboardAvoidingView didn't
- * lift the bar under Android's edge-to-edge layout. On the web the browser resizes the page itself.
- */
-function useKeyboardLift(bottomInset: number) {
-  const keyboard = useAnimatedKeyboard();
-  const frame = useAnimatedStyle(() => ({ paddingBottom: keyboard.height.value }));
-  // With the keyboard up there is no home indicator to clear, just a little breathing room.
-  const bar = useAnimatedStyle(() => ({
-    paddingBottom: keyboard.height.value > 0 ? 10 : Math.max(bottomInset, 12),
-  }));
-  return { frame, bar };
-}
-
 function TransactionFormBody({
   transaction,
   defaults,
@@ -228,7 +213,6 @@ function TransactionFormBody({
   compact,
   accounts: accountList,
 }: TransactionFormProps & { accounts: Account[] }) {
-  const insets = useSafeAreaInsets();
   const editing = !!transaction;
   const recurringRoot = !!transaction?.isRecurring && !transaction.parentTransactionId;
   const { data: categories } = useCategories();
@@ -414,7 +398,9 @@ function TransactionFormBody({
     }
   }
 
-  const lift = useKeyboardLift(insets.bottom);
+  // The shared sheet keyboard handling: the form is always taller than the room above the keyboard,
+  // so its fields scroll (the focused one kept in view) and the Save bar sits right on the keyboard.
+  const { lift } = useSheetKeyboard();
 
   const fields = (
     <View className="gap-5">
@@ -848,18 +834,15 @@ function TransactionFormBody({
 
   return (
     <View className="flex-1 bg-background">
-      <Animated.View style={[{ flex: 1 }, lift.frame]}>
-        <ScrollView
-          className="flex-1"
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="interactive"
-          contentContainerClassName="w-full max-w-lg self-center p-4 pb-8">
+      <Animated.View style={[{ flex: 1 }, lift]}>
+        <SheetScrollView className="flex-1" contentContainerClassName="w-full max-w-lg self-center p-4 pb-8">
           {fields}
-        </ScrollView>
+        </SheetScrollView>
         {/* Sticky actions: above the home indicator, or right on top of the keyboard while typing. */}
-        <Animated.View className="border-t border-border bg-background px-4 pt-3" style={lift.bar}>
+        <View className="border-t border-border bg-background px-4 py-3">
           <View className="w-full max-w-lg self-center">{buttons}</View>
-        </Animated.View>
+          <SheetBottomInset />
+        </View>
       </Animated.View>
       {dialogs}
     </View>
