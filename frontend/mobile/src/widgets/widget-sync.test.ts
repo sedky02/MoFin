@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { NOTES, SIGNED_OUT_SUMMARY_PROPS, type SummaryWidgetProps } from '@/widgets/summary-data';
-import { setWidgetSettings, DEFAULT_WIDGET_SETTINGS } from '@/widgets/widget-settings';
+import { NOTES } from '@/widgets/summary-data';
+import { DEFAULT_WIDGET_SETTINGS, setWidgetSettings } from '@/widgets/widget-settings';
 import {
   installWidgetSync,
   REFRESH_DEBOUNCE_MS,
@@ -9,9 +9,17 @@ import {
   resetWidgetSyncForTests,
 } from '@/widgets/widget-sync';
 
-// The Android widget, faked: tests only see what the app pushes to it.
-const mockUpdateSnapshot = jest.fn();
-jest.mock('@/widgets/summary-widget', () => ({ __esModule: true, default: { updateSnapshot: (p: unknown) => mockUpdateSnapshot(p) } }));
+// The three Android widgets, faked: tests only see what the app pushes to each.
+const mockPushed: Record<string, unknown[]> = { WeeklySummary: [], MonthlySummary: [], Goals: [] };
+// A function declaration: hoisted, so the mock factories below can use it before this line runs.
+function mockWidget(name: string) {
+  return { updateSnapshot: (p: unknown) => mockPushed[name]!.push(p) };
+}
+jest.mock('@/widgets/summary-widgets', () => ({
+  WeeklySummaryWidget: mockWidget('WeeklySummary'),
+  MonthlySummaryWidget: mockWidget('MonthlySummary'),
+}));
+jest.mock('@/widgets/goals-widget', () => ({ GoalsHomeWidget: mockWidget('Goals') }));
 
 const mockGet = jest.fn();
 jest.mock('@/api/client', () => ({ api: { get: (...a: unknown[]) => mockGet(...a) } }));
@@ -30,6 +38,18 @@ const ACCOUNTS = [
   { id: 'cash', name: 'Cash', type: 'CASH', currency: 'TND', createdAt: '', updatedAt: '' },
   { id: 'bank', name: 'Bank', type: 'BANK', currency: 'TND', createdAt: '', updatedAt: '' },
 ];
+const GOAL = {
+  id: 'g1',
+  accountId: 'bank',
+  name: 'Holiday',
+  type: 'BALANCE',
+  targetAmount: '1000',
+  isRecurring: false,
+  periodStart: '2026-01-01',
+  createdAt: '',
+  updatedAt: '',
+  currentInstance: null,
+};
 
 function serve(over: Record<string, unknown> = {}) {
   const responses: Record<string, unknown> = {
@@ -39,6 +59,7 @@ function serve(over: Record<string, unknown> = {}) {
       { key: 'cash:TND', balance: '20' },
       { key: 'bank:TND', balance: '80' },
     ],
+    '/goals': { data: [GOAL], total: 1, limit: 100, offset: 0 },
     '/analytics/monthly-summary': { income: '500', expenses: '120.5', categoryBreakdown: [] },
     '/analytics/daily-series': {
       currency: 'TND',
@@ -57,10 +78,13 @@ function serve(over: Record<string, unknown> = {}) {
   });
 }
 
-const lastPushed = (): SummaryWidgetProps => mockUpdateSnapshot.mock.calls.at(-1)![0];
+type Shown = { kind: string; title?: string; scope?: string; balance?: string; income?: string; note: string; message: string };
+const last = (name: string) => mockPushed[name]!.at(-1) as Shown;
+const meCalls = () => mockGet.mock.calls.filter(([p]) => p === '/users/me').length;
 
 beforeEach(async () => {
   jest.clearAllMocks();
+  for (const k of Object.keys(mockPushed)) mockPushed[k] = [];
   resetWidgetSyncForTests();
   mockStatus = 'signedIn';
   await AsyncStorage.clear();
@@ -69,72 +93,74 @@ beforeEach(async () => {
 });
 
 describe('requestWidgetSync', () => {
-  it("pushes this month's summary for all accounts, from the same endpoints the dashboard uses", async () => {
+  it('fills every widget from one round of shared requests', async () => {
     await requestWidgetSync('start');
-    expect(mockGet).toHaveBeenCalledWith('/analytics/monthly-summary', expect.objectContaining({ currency: 'TND', accountId: undefined }));
-    expect(lastPushed()).toMatchObject({ kind: 'data', title: 'This month', scope: 'All accounts · TND', note: '' });
-    expect(lastPushed().balance).toContain('100');
-    expect(lastPushed().expenses).toContain('120.5');
+    expect(meCalls()).toBe(1);
+    expect(last('WeeklySummary')).toMatchObject({ kind: 'data', title: 'This week', scope: 'All accounts' });
+    expect(last('MonthlySummary')).toMatchObject({ kind: 'data', title: 'This month', scope: 'All accounts' });
+    expect(last('MonthlySummary').balance).toContain('100');
+    // No goals chosen yet: the Goals widget asks for them.
+    expect(last('Goals')).toMatchObject({ kind: 'message' });
+    expect(last('Goals').message).toMatch(/choose/);
   });
 
-  it("sums this week's days for one account", async () => {
-    setWidgetSettings({ ...DEFAULT_WIDGET_SETTINGS, summary: { period: 'week', accountId: 'bank' } });
-    resetWidgetSyncForTests();
-    mockUpdateSnapshot.mockClear();
-    await requestWidgetSync('change');
+  it("uses each widget's own account, and the week's days for the weekly one", async () => {
+    setWidgetSettings({ ...DEFAULT_WIDGET_SETTINGS, WeeklySummary: { accountId: 'bank' }, Goals: { goalIds: ['g1'] } });
+    await requestWidgetSync('settings');
     expect(mockGet).toHaveBeenCalledWith('/analytics/daily-series', expect.objectContaining({ days: 7, accountId: 'bank' }));
-    expect(lastPushed()).toMatchObject({ title: 'This week', scope: 'Bank' });
-    expect(lastPushed().income).toContain('15');
+    expect(mockGet).toHaveBeenCalledWith('/analytics/monthly-summary', expect.objectContaining({ accountId: undefined }));
+    expect(last('WeeklySummary')).toMatchObject({ scope: 'Bank' });
+    expect(last('WeeklySummary').income).toContain('15');
+    expect(last('Goals')).toMatchObject({ kind: 'data' });
   });
 
-  it('masks amounts when the user hides them in widgets', async () => {
+  it('masks summary amounts when the user hides them in widgets', async () => {
     setWidgetSettings({ ...DEFAULT_WIDGET_SETTINGS, hideAmounts: true });
     await requestWidgetSync('settings');
-    expect(lastPushed().balance).toBe('•••• TND');
+    expect(last('WeeklySummary').balance).toBe('•••• TND');
+    expect(last('MonthlySummary').balance).toBe('•••• TND');
   });
 
   it("keeps the last numbers and says it couldn't update when a request fails", async () => {
     await requestWidgetSync('start');
-    const good = lastPushed();
+    const good = last('MonthlySummary');
     serve({ '/ledger/balance': new Error('offline') });
     await requestWidgetSync('change');
-    expect(lastPushed()).toEqual({ ...good, note: NOTES.failed });
+    expect(last('MonthlySummary')).toEqual({ ...good, note: NOTES.failed });
   });
 
   it('shows "Updating…" over the last numbers while a ↻ refresh runs', async () => {
     await requestWidgetSync('start');
-    mockUpdateSnapshot.mockClear();
+    const before = mockPushed.WeeklySummary!.length;
     await requestWidgetSync('refresh', Date.now());
-    expect(mockUpdateSnapshot.mock.calls[0][0].note).toBe(NOTES.updating);
-    expect(lastPushed().note).toBe('');
+    expect((mockPushed.WeeklySummary![before] as Shown).note).toBe(NOTES.updating);
+    expect(last('WeeklySummary').note).toBe('');
   });
 
   it('counts ↻ taps close together as one refresh', async () => {
     const now = Date.now();
     await Promise.all([requestWidgetSync('refresh', now), requestWidgetSync('refresh', now + 1000)]);
     await requestWidgetSync('refresh', now + 2000);
-    expect(mockGet.mock.calls.filter(([p]) => p === '/users/me')).toHaveLength(1);
+    expect(meCalls()).toBe(1);
     await requestWidgetSync('refresh', now + REFRESH_DEBOUNCE_MS + 1);
-    expect(mockGet.mock.calls.filter(([p]) => p === '/users/me')).toHaveLength(2);
+    expect(meCalls()).toBe(2);
   });
 
   it('runs once more when a change lands during a sync', async () => {
-    const first = requestWidgetSync('start');
-    const second = requestWidgetSync('change');
-    await Promise.all([first, second]);
-    expect(mockGet.mock.calls.filter(([p]) => p === '/users/me')).toHaveLength(2);
+    await Promise.all([requestWidgetSync('start'), requestWidgetSync('change')]);
+    expect(meCalls()).toBe(2);
   });
 
   it('skips a foreground return right after a sync', async () => {
     await requestWidgetSync('start');
     await requestWidgetSync('foreground');
-    expect(mockGet.mock.calls.filter(([p]) => p === '/users/me')).toHaveLength(1);
+    expect(meCalls()).toBe(1);
   });
 
-  it('shows the sign-in message when signed out', async () => {
+  it('shows the sign-in message on every widget when signed out', async () => {
     mockStatus = 'signedOut';
     await requestWidgetSync('start');
-    expect(lastPushed()).toBe(SIGNED_OUT_SUMMARY_PROPS);
+    for (const name of ['WeeklySummary', 'MonthlySummary', 'Goals']) expect(last(name).message).toMatch(/sign in/);
     expect(mockGet).not.toHaveBeenCalled();
   });
 });
@@ -142,18 +168,18 @@ describe('requestWidgetSync', () => {
 describe('installWidgetSync', () => {
   beforeAll(() => installWidgetSync());
 
-  it('clears the widget at once on sign-out', async () => {
+  it('clears every widget at once on sign-out', async () => {
     await requestWidgetSync('start');
     mockEndListeners.forEach((l) => l('signed_out'));
-    expect(lastPushed()).toBe(SIGNED_OUT_SUMMARY_PROPS);
-    expect(await AsyncStorage.getItem('mofin-widget-summary')).toBeNull();
+    for (const name of ['WeeklySummary', 'MonthlySummary', 'Goals']) expect(last(name).message).toMatch(/sign in/);
+    expect(await AsyncStorage.getItem('mofin-widgets-shown')).toBeNull();
   });
 
   it('keeps the numbers but asks to sign in when the session expired', async () => {
     await requestWidgetSync('start');
-    const good = lastPushed();
+    const good = last('WeeklySummary');
     mockEndListeners.forEach((l) => l('expired'));
     await new Promise((r) => setTimeout(r, 0));
-    expect(lastPushed()).toEqual({ ...good, note: NOTES.signIn });
+    expect(last('WeeklySummary')).toEqual({ ...good, note: NOTES.signIn });
   });
 });

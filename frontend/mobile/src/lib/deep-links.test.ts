@@ -24,6 +24,14 @@ describe('safeDeepLinkPath', () => {
     expect(safeDeepLinkPath('mofin://refresh/settings')).toBe('/');
   });
 
+  it("opens a new widget's setup screen, for MoFin's widgets only", () => {
+    expect(safeDeepLinkPath('mofin://widget-setup?widget=WeeklySummary')).toBe('/widget-setup?widget=WeeklySummary');
+    expect(safeDeepLinkPath('mofin://widget-setup?widget=Goals')).toBe('/widget-setup?widget=Goals');
+    for (const w of ['', 'Summary', 'goals', '../settings', 'Goals%2F..']) {
+      expect(safeDeepLinkPath(`mofin://widget-setup?widget=${w}`)).toBe('/');
+    }
+  });
+
   it('sends everything else home, including screens that act or edit', () => {
     for (const p of [
       '',

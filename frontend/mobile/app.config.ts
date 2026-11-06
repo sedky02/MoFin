@@ -50,17 +50,18 @@ const config: ExpoConfig = {
     // Adds the Android backup rules that keep the stored session out of cloud backups and device transfers.
     'expo-secure-store',
     // Home screen widgets, Android only for now. The app computes their data and pushes it
-    // (src/widgets/widget-sync.ts). Taps open deep links through patches/expo-widgets+*.patch.
-    // Changing this needs a new development build (npm run build:dev).
+    // (src/widgets/widget-sync.ts). Adding one opens MoFin to choose what it shows
+    // (plugins/with-widget-configure.js); taps open deep links. Both rely on
+    // patches/expo-widgets+*.patch. Changing this needs a new build (npm run build:dev).
     [
       'expo-widgets',
       {
         enableAndroid: true,
         widgets: [
           {
-            name: 'Summary',
-            displayName: 'MoFin summary',
-            description: 'Balance, income and expenses for this month or week.',
+            name: 'WeeklySummary',
+            displayName: 'This week',
+            description: "Balance, money in and money out this week, for one account or all of them.",
             ios: null,
             android: {
               minWidth: 180,
@@ -68,12 +69,45 @@ const config: ExpoConfig = {
               targetCellWidth: 3,
               targetCellHeight: 2,
               resizeMode: 'both',
-              initialLayout: './src/widgets/summary-widget.android.tsx',
+              initialLayout: './src/widgets/summary-widgets.android.tsx',
+              configureActivity: 'WidgetConfigureActivity',
+            },
+          },
+          {
+            name: 'MonthlySummary',
+            displayName: 'This month',
+            description: 'Balance, money in and money out this month, for one account or all of them.',
+            ios: null,
+            android: {
+              minWidth: 180,
+              minHeight: 110,
+              targetCellWidth: 3,
+              targetCellHeight: 2,
+              resizeMode: 'both',
+              initialLayout: './src/widgets/summary-widgets.android.tsx',
+              configureActivity: 'WidgetConfigureActivity',
+            },
+          },
+          {
+            name: 'Goals',
+            displayName: 'Goals',
+            description: 'Up to three goals you pick, with how far along each one is.',
+            ios: null,
+            android: {
+              minWidth: 180,
+              minHeight: 110,
+              targetCellWidth: 3,
+              targetCellHeight: 2,
+              resizeMode: 'both',
+              initialLayout: './src/widgets/goals-widget.android.tsx',
+              configureActivity: 'WidgetConfigureActivity',
             },
           },
         ],
       },
     ],
+    // The activity that opens MoFin's widget setup when a widget is added (see above).
+    './plugins/with-widget-configure',
     [
       'expo-splash-screen',
       {

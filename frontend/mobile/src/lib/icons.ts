@@ -34,7 +34,6 @@ export { default as CircleCheck } from 'lucide-react-native/icons/circle-check';
 export { default as Clapperboard } from 'lucide-react-native/icons/clapperboard';
 export { default as Coffee } from 'lucide-react-native/icons/coffee';
 export { default as Copy } from 'lucide-react-native/icons/copy';
-export { default as CornerDownRight } from 'lucide-react-native/icons/corner-down-right';
 export { default as Database } from 'lucide-react-native/icons/database';
 export { default as Download } from 'lucide-react-native/icons/download';
 export { default as Droplets } from 'lucide-react-native/icons/droplets';

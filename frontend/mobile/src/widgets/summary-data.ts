@@ -1,4 +1,4 @@
-// The Summary widget's numbers and words, worked out in the app: widgets can't fetch or compute
+// The home screen widgets' numbers and words, worked out in the app: widgets can't fetch or compute
 // anything themselves, so they get finished strings. Pure functions, tested in summary-data.test.ts.
 import { hiddenAccountIds, isAmountHidden, MASKED_AMOUNT, withoutHiddenBalances } from '@/core/account-privacy';
 import { totalsByCurrency } from '@/core/balances';
@@ -8,37 +8,51 @@ import { formatMoney, pickPrimaryCurrency } from '@/core/format';
 import type { Account, DailySeriesPoint, LedgerBalance, User } from '@/core/types';
 import { mondayOf } from '@/core/week';
 
+/** The widgets MoFin offers, by their names in app.config.ts. */
+export type SummaryWidgetName = 'WeeklySummary' | 'MonthlySummary';
+export type WidgetName = SummaryWidgetName | 'Goals';
+export const WIDGET_NAMES: readonly WidgetName[] = ['WeeklySummary', 'MonthlySummary', 'Goals'];
+
+export function isWidgetName(value: unknown): value is WidgetName {
+  return typeof value === 'string' && (WIDGET_NAMES as readonly string[]).includes(value);
+}
+
 export type WidgetPeriod = 'month' | 'week';
+export const PERIOD_OF: Record<SummaryWidgetName, WidgetPeriod> = { WeeklySummary: 'week', MonthlySummary: 'month' };
+
 /** "All accounts", as opposed to one account's id. */
 export const ALL_ACCOUNTS = 'all';
 
-/** What the user picked for the Summary widget in Settings → Widgets. */
-export type SummaryConfig = { period: WidgetPeriod; accountId: string };
-export const DEFAULT_SUMMARY_CONFIG: SummaryConfig = { period: 'month', accountId: ALL_ACCOUNTS };
+/** What a summary widget covers, chosen when it was added. */
+export type SummaryConfig = { accountId: string };
+export const DEFAULT_SUMMARY_CONFIG: SummaryConfig = { accountId: ALL_ACCOUNTS };
 
-/** Links the widget opens. They go through the allow-list in src/lib/deep-links.ts. */
+/** Links the widgets open. They go through the allow-list in src/lib/deep-links.ts. */
 export const WIDGET_LINKS = {
   dashboard: 'mofin://dashboard',
+  goals: 'mofin://goals',
   refreshDashboard: 'mofin://refresh?to=dashboard',
+  refreshGoals: 'mofin://refresh?to=goals',
+  setup: (widget: WidgetName) => `mofin://widget-setup?widget=${widget}`,
 } as const;
 
 /**
- * What the widget draws. Every value is display-ready: the widget only lays it out.
- * - `data`: the numbers, with when they were fetched and an optional note under them;
+ * What a summary widget draws. Every value is display-ready: the widget only lays it out.
+ * - `data`: the numbers, with when they were fetched and an optional note;
  * - `message`: no numbers to show (signed out, no accounts, nothing loaded yet).
  */
 export type SummaryWidgetProps = {
   kind: 'data' | 'message';
-  /** "This month" or "This week". */
+  /** "This week" or "This month". */
   title: string;
-  /** "All accounts · TND" or the account's name. */
+  /** "All accounts" or the account's name. */
   scope: string;
   balance: string;
   income: string;
   expenses: string;
   /** "Updated 6 Nov, 14:32". */
   updated: string;
-  /** "", "Updating…", "Couldn't update", "Sign in to update" or a configuration note. */
+  /** "", "Updating…", "Couldn't update", "Sign in to update" or a setup note. */
   note: string;
   /** What a `message` widget says. */
   message: string;
@@ -46,36 +60,36 @@ export type SummaryWidgetProps = {
   refreshUrl: string;
 };
 
-const EMPTY: SummaryWidgetProps = {
-  kind: 'message',
-  title: '',
-  scope: '',
-  balance: '',
-  income: '',
-  expenses: '',
-  updated: '',
-  note: '',
-  message: '',
-  openUrl: WIDGET_LINKS.dashboard,
-  refreshUrl: WIDGET_LINKS.refreshDashboard,
-};
-
-/** Before the app has pushed anything. */
-export const INITIAL_SUMMARY_PROPS: SummaryWidgetProps = { ...EMPTY, message: 'Open MoFin to load your summary.' };
-/** Signed out: nothing financial stays on the home screen. */
-export const SIGNED_OUT_SUMMARY_PROPS: SummaryWidgetProps = { ...EMPTY, message: 'Open MoFin to sign in.' };
-export const NO_ACCOUNTS_SUMMARY_PROPS: SummaryWidgetProps = { ...EMPTY, message: 'Add an account in MoFin to see your summary.' };
-
 export const NOTES = {
   updating: 'Updating…',
   failed: "Couldn't update",
   signIn: 'Sign in to update',
-  accountGone: 'Account removed. Pick another in Settings.',
+  accountGone: 'Account removed · showing all',
 } as const;
 
 export function periodTitle(period: WidgetPeriod): string {
   return period === 'week' ? 'This week' : 'This month';
 }
+
+function emptySummary(period: WidgetPeriod, message: string): SummaryWidgetProps {
+  return {
+    kind: 'message',
+    title: periodTitle(period),
+    scope: '',
+    balance: '',
+    income: '',
+    expenses: '',
+    updated: '',
+    note: '',
+    message,
+    openUrl: WIDGET_LINKS.dashboard,
+    refreshUrl: WIDGET_LINKS.refreshDashboard,
+  };
+}
+
+/** Signed out: nothing financial stays on the home screen. */
+export const signedOutSummary = (period: WidgetPeriod) => emptySummary(period, 'Open MoFin to sign in.');
+export const noAccountsSummary = (period: WidgetPeriod) => emptySummary(period, 'Add an account in MoFin to see it here.');
 
 /** What the summary covers for `period`, as of `today` (YYYY-MM-DD in the device's zone). Weeks start on Monday. */
 export function periodRange(
@@ -89,7 +103,7 @@ export function periodRange(
 }
 
 /**
- * The account the widget covers. An account that is gone or archived falls back to all accounts,
+ * The account a widget covers. An account that is gone or archived falls back to all accounts,
  * and says so, rather than showing numbers for something that no longer exists.
  */
 export function resolveScope(config: SummaryConfig, accounts: Account[]): { account?: Account; missing: boolean } {
@@ -153,7 +167,7 @@ export function updatedLabel(at: Date, locale?: string): string {
 }
 
 export function summaryProps(input: {
-  config: SummaryConfig;
+  period: WidgetPeriod;
   accounts: Account[];
   account: Account | undefined;
   missing: boolean;
@@ -166,15 +180,13 @@ export function summaryProps(input: {
   locale?: string;
 }): SummaryWidgetProps {
   const { account, currency, hidden } = input;
-  if (!input.accounts.length) return NO_ACCOUNTS_SUMMARY_PROPS;
+  if (!input.accounts.length) return noAccountsSummary(input.period);
   const money = (amount: string) => (hidden ? maskedAmount(currency) : formatMoney(amount, currency));
+  const hiddenLeftOut = !account && hiddenAccountIds(input.accounts, currency).length > 0;
   return {
-    ...EMPTY,
+    ...emptySummary(input.period, ''),
     kind: 'data',
-    title: periodTitle(input.config.period),
-    scope: account
-      ? account.name
-      : `All accounts · ${currency}${hiddenAccountIds(input.accounts, currency).length ? ' · excl. hidden' : ''}`,
+    scope: account ? account.name : hiddenLeftOut ? 'All accounts · excl. hidden' : 'All accounts',
     balance: money(input.balance),
     income: money(input.income),
     expenses: money(input.expenses),
@@ -184,6 +196,6 @@ export function summaryProps(input: {
 }
 
 /** The last numbers, with a note: kept on screen while updating, or after an update failed. */
-export function withNote(props: SummaryWidgetProps, note: string): SummaryWidgetProps {
+export function withNote<P extends { kind: 'data' | 'message'; note: string }>(props: P, note: string): P {
   return props.kind === 'data' ? { ...props, note } : props;
 }

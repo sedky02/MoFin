@@ -1,6 +1,6 @@
 import { Link } from 'expo-router';
 import * as React from 'react';
-import { Platform, Pressable, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import { settingsSections } from '@/components/settings/settings-logic';
 import { Icon } from '@/components/ui/icon';
@@ -16,8 +16,7 @@ import { cn } from '@/lib/utils';
  */
 export function SettingsMenu() {
   const { data: user } = useUser();
-  // Home screen widgets ship on Android only for now.
-  const sections = settingsSections(user, { widgets: Platform.OS === 'android' });
+  const sections = settingsSections(user);
   const main = sections.filter((s) => s.id !== 'delete-account');
   const last = sections.find((s) => s.id === 'delete-account');
 

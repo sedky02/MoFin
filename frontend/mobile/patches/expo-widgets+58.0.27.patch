@@ -58,3 +58,41 @@ index 3df9e4a..5407480 100644
  ) : ComposeProps
  
  @OptimizedComposeProps
+diff --git a/node_modules/expo-widgets/plugin/build/android/withAndroidWidgetFiles.js b/node_modules/expo-widgets/plugin/build/android/withAndroidWidgetFiles.js
+index 0fcc4a9..3bc53e4 100644
+--- a/node_modules/expo-widgets/plugin/build/android/withAndroidWidgetFiles.js
++++ b/node_modules/expo-widgets/plugin/build/android/withAndroidWidgetFiles.js
+@@ -121,7 +121,7 @@ const withAndroidWidgetFiles = (config, widgets)=>{
+                 if (_fs().existsSync(widgetInfoPath)) {
+                     _fs().rmSync(widgetInfoPath);
+                 }
+-                _fs().writeFileSync(_path().join(xmlDirectory, `${(0, _resourceNames.getWidgetInfoResourceName)(widget)}.xml`), createWidgetInfoXml(widget));
++                _fs().writeFileSync(_path().join(xmlDirectory, `${(0, _resourceNames.getWidgetInfoResourceName)(widget)}.xml`), createWidgetInfoXml(widget, androidPackage));
+             }
+             return config;
+         }
+@@ -144,8 +144,14 @@ import expo.modules.widgets.ExpoWidgetsAppWidgetProvider
+ class ${(0, _resourceNames.getProviderClassName)(widget)} : ExpoWidgetsAppWidgetProvider(${JSON.stringify(widget.name)})
+ `;
+ };
+-const createWidgetInfoXml = (widget)=>{
++const createWidgetInfoXml = (widget, androidPackage)=>{
+     const android = getAndroidWidgetConfig(widget);
++    // MoFin patch: `android.configureActivity` names an activity (in the app's package) that the
++    // launcher opens when the widget is added, and again from "reconfigure" on Android 12+.
++    const configureActivity = widget.android?.configureActivity;
++    const configure = typeof configureActivity === 'string' && /^[A-Za-z_][A-Za-z0-9_]*$/.test(configureActivity) ? `
++  android:configure="${androidPackage}.${configureActivity}"
++  android:widgetFeatures="reconfigurable"` : '';
+     return `<?xml version="1.0" encoding="utf-8"?>
+ <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+   android:minWidth="${android.minWidth}dp"
+@@ -156,7 +162,7 @@ const createWidgetInfoXml = (widget)=>{
+   android:initialLayout="@layout/expo_widgets_initial_layout"
+   android:description="@string/${(0, _resourceNames.getWidgetDescriptionResourceName)(widget)}"
+   android:resizeMode="${getWidgetResizeMode(widget)}"
+-  android:widgetCategory="home_screen" />
++  android:widgetCategory="home_screen"${configure} />
+ `;
+ };
+ const getWidgetResizeMode = (widget)=>{

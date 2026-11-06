@@ -1,7 +1,8 @@
 // Incoming `mofin://` links. They may only ever open a screen (the transaction detail, the add
 // form, or the screens home screen widgets open): never a settings or delete screen, and never
 // anything that writes on open. A widget's ↻ only reads (it refetches the widget data, then opens
-// its screen). Everything else
+// its screen). Adding a widget opens its setup screen, which only saves this phone's choice of
+// what that widget shows, and only when the user taps Done. Everything else
 // lands on the app's home route. The signed-out guard lives in the root layout (`Stack.Protected`):
 // a signed-out user is sent to the sign-in screen and the app opens normally after signing in.
 export const HOME_PATH = '/';
@@ -11,6 +12,9 @@ const TRANSACTION_ID = /^[A-Za-z0-9_-]{1,64}$/;
 /** Screens a widget opens, by the name its links use. */
 export const WIDGET_SCREENS = { dashboard: '/dashboard', goals: '/goals' } as const;
 export type WidgetScreen = keyof typeof WIDGET_SCREENS;
+
+/** The home screen widgets, by their names in app.config.ts (setup links name one). */
+const WIDGET_NAMES = ['WeeklySummary', 'MonthlySummary', 'Goals'];
 
 /** The screen a widget's ↻ returns to: one of WIDGET_SCREENS, else the dashboard. */
 export function widgetScreen(name: unknown): WidgetScreen {
@@ -40,6 +44,10 @@ export function safeDeepLinkPath(path: string): string {
   if (parts.length === 1 && parts[0] === 'refresh') {
     const to = new URLSearchParams(query).get('to');
     return `/widget-refresh?to=${widgetScreen(to)}`;
+  }
+  if (parts.length === 1 && parts[0] === 'widget-setup') {
+    const widget = new URLSearchParams(query).get('widget') ?? '';
+    return WIDGET_NAMES.includes(widget) ? `/widget-setup?widget=${widget}` : HOME_PATH;
   }
   if (parts[0] === 'transactions') {
     if (parts.length === 2 && parts[1] === 'new') return '/transactions/new';

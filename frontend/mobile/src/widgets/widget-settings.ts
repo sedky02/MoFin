@@ -1,40 +1,60 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as React from 'react';
 
-import { DEFAULT_SUMMARY_CONFIG, type SummaryConfig, type WidgetPeriod } from '@/widgets/summary-data';
+import { MAX_WIDGET_GOALS } from '@/widgets/goals-data';
+import { ALL_ACCOUNTS, DEFAULT_SUMMARY_CONFIG, type SummaryConfig } from '@/widgets/summary-data';
 
-// What each home screen widget shows, set in Settings → Widgets. Android widgets have no settings
-// of their own (and every copy of a widget gets the same data), so there is one choice per widget
-// type. Kept on this device: widgets live on this phone's home screen.
+// What each home screen widget shows, chosen when it is added (the app opens to the setup screen,
+// src/app/(app)/widget-setup.tsx). Android widgets get one set of data per widget type, so the
+// choice applies to every copy of that widget. Kept on this device: widgets live on its home screen.
 export type WidgetSettings = {
-  summary: SummaryConfig;
+  WeeklySummary: SummaryConfig;
+  MonthlySummary: SummaryConfig;
+  Goals: { goalIds: string[] };
   /** Show dots instead of amounts in every widget. */
   hideAmounts: boolean;
 };
 
 const KEY = 'mofin-widget-settings';
-export const DEFAULT_WIDGET_SETTINGS: WidgetSettings = { summary: DEFAULT_SUMMARY_CONFIG, hideAmounts: false };
+export const DEFAULT_WIDGET_SETTINGS: WidgetSettings = {
+  WeeklySummary: DEFAULT_SUMMARY_CONFIG,
+  MonthlySummary: DEFAULT_SUMMARY_CONFIG,
+  Goals: { goalIds: [] },
+  hideAmounts: false,
+};
 
-let value: WidgetSettings = DEFAULT_WIDGET_SETTINGS;
-let loading: Promise<WidgetSettings> | undefined;
-const listeners = new Set<() => void>();
-/** Only edits made in Settings → Widgets, not the first load from storage. */
-const changeListeners = new Set<() => void>();
+function accountIdOf(value: unknown, fallback: string): string {
+  const id = (value as { accountId?: unknown } | undefined)?.accountId;
+  return typeof id === 'string' && id ? id : fallback;
+}
 
-/** Reads what was stored, keeping defaults for anything missing or malformed. */
+/**
+ * Reads what was stored, keeping defaults for anything missing or malformed. A choice saved by the
+ * first version (one Summary widget) carries over to both summaries.
+ */
 export function parseWidgetSettings(raw: string | null): WidgetSettings {
   try {
-    const stored = raw ? (JSON.parse(raw) as Partial<WidgetSettings>) : {};
-    const period: WidgetPeriod = stored.summary?.period === 'week' ? 'week' : 'month';
-    const accountId =
-      typeof stored.summary?.accountId === 'string' && stored.summary.accountId
-        ? stored.summary.accountId
-        : DEFAULT_SUMMARY_CONFIG.accountId;
-    return { summary: { period, accountId }, hideAmounts: stored.hideAmounts === true };
+    const stored = raw ? (JSON.parse(raw) as Record<string, unknown>) : {};
+    const legacy = accountIdOf(stored.summary, ALL_ACCOUNTS);
+    const goalIds = (stored.Goals as { goalIds?: unknown } | undefined)?.goalIds;
+    return {
+      WeeklySummary: { accountId: accountIdOf(stored.WeeklySummary, legacy) },
+      MonthlySummary: { accountId: accountIdOf(stored.MonthlySummary, legacy) },
+      Goals: {
+        goalIds: Array.isArray(goalIds)
+          ? goalIds.filter((id): id is string => typeof id === 'string').slice(0, MAX_WIDGET_GOALS)
+          : [],
+      },
+      hideAmounts: stored.hideAmounts === true,
+    };
   } catch {
     return DEFAULT_WIDGET_SETTINGS;
   }
 }
+
+let value: WidgetSettings = DEFAULT_WIDGET_SETTINGS;
+let loading: Promise<WidgetSettings> | undefined;
+const listeners = new Set<() => void>();
 
 /** The stored settings, loaded once. */
 export function loadWidgetSettings(): Promise<WidgetSettings> {
@@ -56,16 +76,7 @@ export function setWidgetSettings(next: WidgetSettings): void {
   value = next;
   loading = Promise.resolve(next);
   listeners.forEach((l) => l());
-  changeListeners.forEach((l) => l());
   AsyncStorage.setItem(KEY, JSON.stringify(next)).catch(() => {});
-}
-
-/** Runs when the user changes a widget setting, so the widgets can be redrawn with it. */
-export function onWidgetSettingsChange(listener: () => void): () => void {
-  changeListeners.add(listener);
-  return () => {
-    changeListeners.delete(listener);
-  };
 }
 
 export function subscribeWidgetSettings(listener: () => void): () => void {

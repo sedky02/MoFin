@@ -3,7 +3,7 @@ import {
   ALL_ACCOUNTS,
   amountsHidden,
   maskedAmount,
-  NO_ACCOUNTS_SUMMARY_PROPS,
+  noAccountsSummary,
   NOTES,
   periodRange,
   resolveScope,
@@ -56,12 +56,12 @@ describe('periodRange', () => {
 
 describe('resolveScope', () => {
   it('covers all accounts, or the chosen one', () => {
-    expect(resolveScope({ period: 'month', accountId: ALL_ACCOUNTS }, ACCOUNTS)).toEqual({ missing: false });
-    expect(resolveScope({ period: 'month', accountId: 'bank' }, ACCOUNTS)).toEqual({ account: BANK, missing: false });
+    expect(resolveScope({ accountId: ALL_ACCOUNTS }, ACCOUNTS)).toEqual({ missing: false });
+    expect(resolveScope({ accountId: 'bank' }, ACCOUNTS)).toEqual({ account: BANK, missing: false });
   });
 
   it('falls back to all accounts, and says so, when the chosen account is gone or archived', () => {
-    expect(resolveScope({ period: 'week', accountId: 'deleted' }, ACCOUNTS)).toEqual({ missing: true });
+    expect(resolveScope({ accountId: 'deleted' }, ACCOUNTS)).toEqual({ missing: true });
   });
 });
 
@@ -119,7 +119,7 @@ describe('updatedLabel', () => {
 
 describe('summaryProps', () => {
   const base = {
-    config: { period: 'month' as const, accountId: ALL_ACCOUNTS },
+    period: 'month' as const,
     accounts: ACCOUNTS,
     account: undefined,
     missing: false,
@@ -134,22 +134,22 @@ describe('summaryProps', () => {
 
   it('formats the numbers for the scope and period', () => {
     const props = summaryProps(base);
-    expect(props).toMatchObject({ kind: 'data', title: 'This month', scope: 'All accounts · TND', note: '' });
+    expect(props).toMatchObject({ kind: 'data', title: 'This month', scope: 'All accounts', note: '' });
     expect(props.balance).toContain('1,120.750');
     expect(props.expenses).toContain('830.125');
     expect(props.openUrl).toBe('mofin://dashboard');
     expect(props.refreshUrl).toBe('mofin://refresh?to=dashboard');
   });
 
-  it("names a single account and the week", () => {
-    const props = summaryProps({ ...base, config: { period: 'week', accountId: 'bank' }, account: BANK });
+  it('names a single account and the week, and opens the dashboard', () => {
+    const props = summaryProps({ ...base, period: 'week', account: BANK });
     expect(props).toMatchObject({ title: 'This week', scope: 'Bank' });
   });
 
   it('says when hidden accounts are left out of all accounts', () => {
     const accounts = [CASH, account('bank', 'TND', { metadata: { hideAmount: true } }), EURO];
-    expect(summaryProps({ ...base, accounts }).scope).toBe('All accounts · TND · excl. hidden');
-    expect(summaryProps({ ...base, accounts, currency: 'EUR' }).scope).toBe('All accounts · EUR');
+    expect(summaryProps({ ...base, accounts }).scope).toBe('All accounts · excl. hidden');
+    expect(summaryProps({ ...base, accounts, currency: 'EUR' }).scope).toBe('All accounts');
   });
 
   it('masks every amount when hidden', () => {
@@ -162,12 +162,13 @@ describe('summaryProps', () => {
   });
 
   it('asks for an account when there are none', () => {
-    expect(summaryProps({ ...base, accounts: [] })).toBe(NO_ACCOUNTS_SUMMARY_PROPS);
+    expect(summaryProps({ ...base, accounts: [] })).toEqual(noAccountsSummary('month'));
   });
 
   it('keeps the numbers and their time when a note is added', () => {
     const props = summaryProps(base);
     expect(withNote(props, NOTES.failed)).toEqual({ ...props, note: NOTES.failed });
-    expect(withNote(NO_ACCOUNTS_SUMMARY_PROPS, NOTES.failed)).toBe(NO_ACCOUNTS_SUMMARY_PROPS);
+    const empty = noAccountsSummary('week');
+    expect(withNote(empty, NOTES.failed)).toBe(empty);
   });
 });
