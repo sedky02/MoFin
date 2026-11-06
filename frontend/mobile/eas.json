@@ -33,6 +33,22 @@
       "android": {
         "buildType": "apk"
       }
+    },
+    "production-arm64": {
+      "extends": "production",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://mo-fin-backend.vercel.app/api/v1",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "889358560279-bfr08h3cltjdicufltrbnr3fuc4oa5un.apps.googleusercontent.com",
+        "ORG_GRADLE_PROJECT_reactNativeArchitectures": "arm64-v8a"
+      }
+    },
+    "production-legacy": {
+      "extends": "production",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://mo-fin-backend.vercel.app/api/v1",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "889358560279-bfr08h3cltjdicufltrbnr3fuc4oa5un.apps.googleusercontent.com",
+        "ORG_GRADLE_PROJECT_reactNativeArchitectures": "armeabi-v7a"
+      }
     }
   }
 }
