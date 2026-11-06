@@ -9,6 +9,10 @@ export const ROLE_LABEL: Record<AccountRole, string> = {
   VIEWER: "Viewer",
 };
 
+/** What the roles mean, for a tooltip: it doesn't need a place on the screen. */
+export const ROLE_HINT =
+  "Editors add and change transactions and goals. Viewers can only look. Everyone sees the full history.";
+
 type WithRole = Pick<Account, "role">;
 
 /** May add and change transactions and goals on it. */

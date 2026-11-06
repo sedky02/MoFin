@@ -51,6 +51,7 @@ export { default as HeartPulse } from 'lucide-react-native/icons/heart-pulse';
 export { default as History } from 'lucide-react-native/icons/rotate-ccw-clock';
 export { default as House } from 'lucide-react-native/icons/house';
 export { default as Inbox } from 'lucide-react-native/icons/inbox';
+export { default as Info } from 'lucide-react-native/icons/info';
 export { default as Keyboard } from 'lucide-react-native/icons/keyboard';
 export { default as Landmark } from 'lucide-react-native/icons/landmark';
 export { default as Laptop } from 'lucide-react-native/icons/laptop';

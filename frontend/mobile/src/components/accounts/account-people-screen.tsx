@@ -6,13 +6,14 @@ import { ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ConfirmDialog } from '@/components/common/confirm-dialog';
+import { HelpHint } from '@/components/common/help-hint';
 import { ErrorState, SkeletonCard } from '@/components/common/states';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Text } from '@/components/ui/text';
-import { canManage, memberName, ROLE_LABEL } from '@/core/account-sharing';
+import { canManage, memberName, ROLE_HINT, ROLE_LABEL } from '@/core/account-sharing';
 import type { AccountMember, AccountMemberRole } from '@/core/types';
 import { useAccounts } from '@/hooks/useAccounts';
 import {
@@ -86,7 +87,6 @@ function InviteForm({ accountId }: { accountId: string }) {
         onSubmitEditing={submit}
       />
       <RolePicker value={role} onChange={setRole} label="Role for the invited person" />
-      <Text className="text-xs text-muted-foreground">They&apos;ll see the full history.</Text>
       <Button className="min-h-11 gap-2" disabled={invite.isPending || !email.trim()} onPress={submit}>
         <Icon as={Send} size={16} className="text-primary-foreground" aria-hidden />
         <Text>Invite</Text>
@@ -141,6 +141,9 @@ export function AccountPeopleScreen({ accountId }: { accountId: string }) {
       contentContainerClassName="mx-auto w-full max-w-3xl gap-6 p-4"
       contentContainerStyle={{ paddingBottom: 16 + insets.bottom }}>
       {title}
+      <View className="-mb-4 flex-row items-center justify-end">
+        <HelpHint label="What the roles mean">{ROLE_HINT}</HelpHint>
+      </View>
       <Card className="gap-0 border-0 px-4 py-1">
         {(members.data ?? []).map((member) => (
           <View key={member.userId} className="gap-2 border-b border-border py-3 last:border-b-0">

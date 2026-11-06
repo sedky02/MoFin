@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
+import { HelpHint } from "@/components/common/help-hint";
 import {
   useAccountInvitations,
   useAccountMembers,
@@ -30,7 +31,7 @@ import {
   useRevokeInvitation,
   useTransferOwnership,
 } from "@/hooks/useAccountSharing";
-import { canManage, memberName, ROLE_LABEL } from "@/lib/account-sharing";
+import { canManage, memberName, ROLE_HINT, ROLE_LABEL } from "@/lib/account-sharing";
 import type { Account, AccountMember, AccountMemberRole } from "@/lib/types";
 
 function RoleSelect({
@@ -90,7 +91,6 @@ function InviteForm({ accountId }: { accountId: string }) {
           Invite
         </Button>
       </div>
-      <p className="text-xs text-muted-foreground">They&apos;ll see the full history.</p>
     </form>
   );
 }
@@ -123,9 +123,19 @@ export function AccountMembersDialog({
   return (
     <>
       <Dialog open={!!account} onOpenChange={(open) => !open && onClose()}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent
+          className="sm:max-w-lg"
+          // Focus the dialog, not its first control: on the info icon that would open the tooltip.
+          onOpenAutoFocus={(event) => {
+            event.preventDefault();
+            (event.currentTarget as HTMLElement).focus();
+          }}
+        >
           <DialogHeader>
-            <DialogTitle className="text-base">{account?.name}</DialogTitle>
+            <DialogTitle className="flex items-center gap-1.5 text-base">
+              <span className="truncate">{account?.name}</span>
+              <HelpHint label="What the roles mean">{ROLE_HINT}</HelpHint>
+            </DialogTitle>
             <DialogDescription className="sr-only">People on this account</DialogDescription>
           </DialogHeader>
 
