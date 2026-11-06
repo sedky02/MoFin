@@ -29,9 +29,7 @@ import { AccountTypePicker } from "@/components/accounts/account-type-picker";
 import { SubmitButton } from "@/components/common/submit-button";
 import { CurrencyPicker } from "@/components/common/currency-picker";
 import { MoneyInput } from "@/components/common/money-input";
-import { Switch } from "@/components/ui/switch";
 import { accountFormSchema, openingBalanceValue, type AccountFormValues } from "@/lib/account-form";
-import { isAmountHidden, withHideAmount } from "@/lib/account-privacy";
 import { formatMoneyInput } from "@/lib/format";
 import { guessCurrency } from "@/lib/onboarding";
 import { tryParse } from "@/lib/decimal";
@@ -86,15 +84,6 @@ export function AccountDialog({
   const currency = useWatch({ control: form.control, name: "currency" });
   const type = useWatch({ control: form.control, name: "type" });
   const nameRef = React.useRef<HTMLInputElement | null>(null);
-  // Not part of the shared form schema (the first-run form has no such choice): kept beside it,
-  // and reset (during render, not in an effect) whenever the dialog opens for an account.
-  const [hide, setHide] = React.useState({ open, account, value: isAmountHidden(account) });
-  if (hide.open !== open || hide.account !== account) {
-    setHide({ open, account, value: isAmountHidden(account) });
-  }
-  const hideAmount = hide.value;
-  const setHideAmount = (value: boolean) => setHide((h) => ({ ...h, value }));
-  const hideId = React.useId();
   const TypeIcon = TYPE_ICON[type];
 
   // Reset whenever we open with a (possibly different) account.
@@ -122,9 +111,6 @@ export function AccountDialog({
           name: values.name,
           type: values.type,
           openingBalance,
-          ...(hideAmount !== isAmountHidden(account)
-            ? { metadata: withHideAmount(account.metadata, hideAmount) }
-            : {}),
         });
       } else {
         await createMut.mutateAsync({
@@ -133,7 +119,6 @@ export function AccountDialog({
           currency: values.currency,
           // Left out when blank: the account starts at 0.
           ...(values.openingBalance.trim() ? { openingBalance } : {}),
-          ...(hideAmount ? { metadata: withHideAmount(undefined, true) } : {}),
         });
       }
       onOpenChange(false);
@@ -264,23 +249,6 @@ export function AccountDialog({
                   </FormItem>
                 )}
               />
-
-              <div className="flex items-start justify-between gap-3">
-                <div className="grid gap-1">
-                  <label htmlFor={hideId} className="text-sm font-medium">
-                    Hide balance
-                  </label>
-                  <p id={`${hideId}-hint`} className="text-sm text-muted-foreground">
-                    Shows •••• instead of this account&apos;s amounts. Tap the eye to see them.
-                  </p>
-                </div>
-                <Switch
-                  id={hideId}
-                  aria-describedby={`${hideId}-hint`}
-                  checked={hideAmount}
-                  onCheckedChange={setHideAmount}
-                />
-              </div>
             </div>
 
             <DialogFooter className="m-0 flex-row justify-end gap-2 border-t px-4 py-3 sm:gap-2 sm:px-6 sm:py-4">

@@ -8,22 +8,26 @@ import { Card } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
+import { isAmountHidden } from '@/core/account-privacy';
 import { tryParse } from '@/core/decimal';
 import type { Account } from '@/core/types';
 import { useLedgerBalance } from '@/hooks/useLedger';
-import { AlertTriangle, Archive, ArchiveRestore, Pencil } from '@/lib/icons';
+import { AlertTriangle, Archive, ArchiveRestore, Eye, EyeOff, Pencil } from '@/lib/icons';
 import { cn } from '@/lib/utils';
 
 /** One account as its own card: type tile, name and currency, balance, and its actions. */
 export function AccountRow({
   account,
   onEdit,
+  onToggleHidden,
   onArchive,
   onRestore,
   busy = false,
 }: {
   account: Account;
   onEdit?: (account: Account) => void;
+  /** Hides or shows this account's balance everywhere (saved on the account). */
+  onToggleHidden?: (account: Account) => void;
   onArchive?: (account: Account) => void;
   onRestore?: (account: Account) => void;
   busy?: boolean;
@@ -33,6 +37,7 @@ export function AccountRow({
   const { data, isLoading, isError, refetch } = useLedgerBalance({ accountId: account.id });
   const balance = data?.find((b) => b.key === account.currency)?.balance ?? data?.[0]?.balance ?? '0';
   const isZero = tryParse(balance)?.isZero() ?? false;
+  const hidden = isAmountHidden(account);
 
   return (
     <Card aria-busy={busy || undefined} className={cn('gap-3 border-0 p-4', busy && 'opacity-60')}>
@@ -58,6 +63,18 @@ export function AccountRow({
           </Button>
         ) : (
           <View className="-mr-2 flex-row items-center">
+            {onToggleHidden ? (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-11"
+                disabled={busy}
+                onPress={() => onToggleHidden(account)}
+                accessibilityLabel={hidden ? `Show the balance of ${account.name}` : `Hide the balance of ${account.name}`}
+                accessibilityState={{ selected: hidden, disabled: busy }}>
+                <Icon as={hidden ? Eye : EyeOff} size={16} className="text-muted-foreground" />
+              </Button>
+            ) : null}
             {onEdit ? (
               <Button
                 variant="ghost"
@@ -97,7 +114,8 @@ export function AccountRow({
           </Button>
         </View>
       ) : (
-        <HideableAmount account={account} currency={account.currency} className="text-2xl font-semibold leading-8">
+        // The eye beside Edit saves the choice; no second, temporary one here.
+        <HideableAmount account={account} currency={account.currency} toggle={false} className="text-2xl font-semibold leading-8">
           <MoneyAmount
             amount={balance}
             currency={account.currency}

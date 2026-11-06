@@ -16,10 +16,13 @@ export function HideableAmount({
   account,
   currency,
   className,
+  toggle = true,
   children,
 }: {
   account: Pick<Account, "id" | "name" | "metadata"> | undefined;
   currency: string;
+  /** The eye button that reveals the amount until reload. Off where the saved choice has its own button. */
+  toggle?: boolean;
   /** For the dots: the same type size as the amount they stand for. */
   className?: string;
   children: React.ReactNode;
@@ -29,24 +32,26 @@ export function HideableAmount({
   const name = account.name;
   return (
     <span className="inline-flex items-center gap-1">
-      {revealed ? (
+      {revealed && toggle ? (
         children
       ) : (
         <span className={cn("tabular", className)} aria-label={`${name} balance hidden`}>
           {MASKED_AMOUNT} {currency}
         </span>
       )}
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        className="size-8 shrink-0 text-muted-foreground"
-        onClick={() => setRevealed(!revealed)}
-        aria-label={revealed ? `Hide the balance of ${name}` : `Show the balance of ${name}`}
-        aria-pressed={revealed}
-      >
-        {revealed ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-      </Button>
+      {toggle && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="size-8 shrink-0 text-muted-foreground"
+          onClick={() => setRevealed(!revealed)}
+          aria-label={revealed ? `Hide the balance of ${name}` : `Show the balance of ${name}`}
+          aria-pressed={revealed}
+        >
+          {revealed ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+        </Button>
+      )}
     </span>
   );
 }

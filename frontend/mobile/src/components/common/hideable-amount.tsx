@@ -18,10 +18,13 @@ export function HideableAmount({
   account,
   currency,
   className,
+  toggle = true,
   children,
 }: {
   account: Pick<Account, 'id' | 'name' | 'metadata'> | undefined;
   currency: string;
+  /** The eye button that reveals the amount until restart. Off where the saved choice has its own button. */
+  toggle?: boolean;
   /** For the dots: the same type size as the amount they stand for. */
   className?: string;
   children: React.ReactNode;
@@ -30,22 +33,24 @@ export function HideableAmount({
   if (!account || !isAmountHidden(account)) return <>{children}</>;
   return (
     <View className="flex-row items-center gap-1">
-      {revealed ? (
+      {revealed && toggle ? (
         children
       ) : (
         <Text className={cn('tabular-nums', className)} accessibilityLabel={`${account.name} balance hidden`}>
           {MASKED_AMOUNT} {currency}
         </Text>
       )}
-      <Pressable
-        role="button"
-        accessibilityLabel={revealed ? `Hide the balance of ${account.name}` : `Show the balance of ${account.name}`}
-        accessibilityState={{ selected: revealed }}
-        onPress={() => setRevealed(!revealed)}
-        hitSlop={4}
-        className="size-11 items-center justify-center rounded-full active:bg-accent">
-        <Icon as={revealed ? EyeOff : Eye} size={18} className="text-muted-foreground" />
-      </Pressable>
+      {toggle ? (
+        <Pressable
+          role="button"
+          accessibilityLabel={revealed ? `Hide the balance of ${account.name}` : `Show the balance of ${account.name}`}
+          accessibilityState={{ selected: revealed }}
+          onPress={() => setRevealed(!revealed)}
+          hitSlop={4}
+          className="size-11 items-center justify-center rounded-full active:bg-accent">
+          <Icon as={revealed ? EyeOff : Eye} size={18} className="text-muted-foreground" />
+        </Pressable>
+      ) : null}
     </View>
   );
 }

@@ -6,11 +6,14 @@ import {
   ArchiveRestore,
   Bitcoin,
   Banknote,
+  Eye,
+  EyeOff,
   Landmark,
   PiggyBank,
   Pencil,
   type LucideIcon,
 } from "lucide-react";
+import { isAmountHidden } from "@/lib/account-privacy";
 import type { Account, AccountType } from "@/lib/types";
 import { useLedgerBalance } from "@/hooks/useLedger";
 import { HideableAmount } from "@/components/common/hideable-amount";
@@ -32,12 +35,15 @@ export const TYPE_ICON: Record<AccountType, LucideIcon> = {
 export function AccountRow({
   account,
   onEdit,
+  onToggleHidden,
   onArchive,
   onRestore,
   busy = false,
 }: {
   account: Account;
   onEdit?: (account: Account) => void;
+  /** Hides or shows this account's balance everywhere (saved on the account). */
+  onToggleHidden?: (account: Account) => void;
   onArchive?: (account: Account) => void;
   onRestore?: (account: Account) => void;
   busy?: boolean;
@@ -60,6 +66,7 @@ export function AccountRow({
     "transition-opacity sm:opacity-0 sm:group-hover/row:opacity-100 sm:group-focus-within/row:opacity-100 pointer-coarse:opacity-100";
 
   const isZero = tryParse(balance)?.isZero() ?? false;
+  const hidden = isAmountHidden(account);
 
   return (
     <li aria-busy={busy || undefined} className="min-w-0">
@@ -96,6 +103,20 @@ export function AccountRow({
             </Button>
           ) : (
             <div className={cn("-mr-1 flex shrink-0 items-center", reveal)}>
+              {onToggleHidden && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-8 text-muted-foreground"
+                  disabled={busy}
+                  onClick={() => onToggleHidden(account)}
+                  aria-label={hidden ? `Show the balance of ${account.name}` : `Hide the balance of ${account.name}`}
+                  aria-pressed={hidden}
+                  title={hidden ? "Show balance" : "Hide balance"}
+                >
+                  {hidden ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
+                </Button>
+              )}
               {onEdit && (
                 <Button
                   variant="ghost"
@@ -146,6 +167,8 @@ export function AccountRow({
           <HideableAmount
             account={account}
             currency={account.currency}
+            // The eye beside Edit saves the choice; no second, temporary one here.
+            toggle={false}
             className="block text-2xl font-semibold leading-8"
           >
             <MoneyAmount

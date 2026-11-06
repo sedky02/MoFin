@@ -9,8 +9,9 @@ import { EmptyState, ErrorState, SkeletonCard } from '@/components/common/states
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
+import { isAmountHidden, withHideAmount } from '@/core/account-privacy';
 import type { Account, AccountType } from '@/core/types';
-import { useAccounts, useArchiveAccount, useRestoreAccount } from '@/hooks/useAccounts';
+import { useAccounts, useArchiveAccount, useRestoreAccount, useUpdateAccount } from '@/hooks/useAccounts';
 import { Archive, ArrowLeft, Plus, Wallet } from '@/lib/icons';
 
 const GROUPS: { type: AccountType; title: string }[] = [
@@ -22,6 +23,7 @@ const GROUPS: { type: AccountType; title: string }[] = [
 
 type RowActions = {
   onEdit?: (a: Account) => void;
+  onToggleHidden?: (a: Account) => void;
   onArchive?: (a: Account) => void;
   onRestore?: (a: Account) => void;
   busyId?: string;
@@ -61,6 +63,10 @@ export default function AccountsScreen() {
   const active = useAccounts('active');
   const archived = useAccounts('archived');
   const archive = useArchiveAccount();
+  const update = useUpdateAccount();
+  // The eye beside Edit: hides or shows this account's balance everywhere, saved on the account.
+  const toggleHidden = (a: Account) =>
+    update.mutate({ id: a.id, metadata: withHideAmount(a.metadata, !isAmountHidden(a)) });
   const restore = useRestoreAccount();
   const archivedCount = archived.data?.length ?? 0;
 
@@ -137,7 +143,9 @@ export default function AccountsScreen() {
                 title={g.title}
                 items={accounts.filter((a) => a.type === g.type)}
                 onEdit={openEdit}
+                onToggleHidden={toggleHidden}
                 onArchive={setToArchive}
+                busyId={update.isPending ? update.variables?.id : undefined}
               />
             ))}
           </View>

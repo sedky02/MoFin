@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Archive, ArrowLeft, Plus, Wallet } from "lucide-react";
-import { useAccounts, useArchiveAccount, useRestoreAccount } from "@/hooks/useAccounts";
+import { useAccounts, useArchiveAccount, useRestoreAccount, useUpdateAccount } from "@/hooks/useAccounts";
 import { AccountRow } from "@/components/accounts/account-card";
 import { AccountDialog } from "@/components/accounts/account-dialog";
 import { PageHeader } from "@/components/common/page-header";
@@ -11,6 +11,7 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState, ErrorState } from "@/components/common/states";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
+import { isAmountHidden, withHideAmount } from "@/lib/account-privacy";
 import type { Account, AccountType } from "@/lib/types";
 
 const GROUPS: { type: AccountType; title: string }[] = [
@@ -31,6 +32,7 @@ function Group({
   hint?: string;
   items: Account[];
   onEdit?: (a: Account) => void;
+  onToggleHidden?: (a: Account) => void;
   onArchive?: (a: Account) => void;
   onRestore?: (a: Account) => void;
   busyId?: string;
@@ -79,6 +81,10 @@ export default function AccountsPage() {
   const active = useAccounts("active");
   const archived = useAccounts("archived");
   const archive = useArchiveAccount();
+  const update = useUpdateAccount();
+  // The eye beside Edit: hides or shows this account's balance everywhere, saved on the account.
+  const toggleHidden = (a: Account) =>
+    update.mutate({ id: a.id, metadata: withHideAmount(a.metadata, !isAmountHidden(a)) });
   const restore = useRestoreAccount();
   const archivedCount = archived.data?.length ?? 0;
 
@@ -165,7 +171,9 @@ export default function AccountsPage() {
                 title={g.title}
                 items={optimisticAccounts.filter((a) => a.type === g.type)}
                 onEdit={openEdit}
+                onToggleHidden={toggleHidden}
                 onArchive={setToArchive}
+                busyId={update.isPending ? update.variables?.id : undefined}
               />
             ))}
           </div>
