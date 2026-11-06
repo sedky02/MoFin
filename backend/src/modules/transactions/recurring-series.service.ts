@@ -13,7 +13,7 @@ import {
   TransactionType,
 } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
-import { AccountsService } from '../accounts/accounts.service';
+import { AccountAccessService } from '../account-access/account-access.service';
 import { CategoriesService } from '../categories/categories.service';
 import { UpdateRecurringTransactionCommand } from './dto/transactions.dto';
 import {
@@ -27,12 +27,16 @@ import { TransactionsService } from './transactions.service';
 /** What a series posts each time: enough of its root to tell whether it still can. */
 export type SeriesTemplate = Pick<
   Transaction,
+  | 'userId'
   | 'type'
   | 'currency'
   | 'categoryId'
   | 'recurringFromAccountId'
   | 'recurringToAccountId'
 >;
+
+const DIFFERENT_OWNER_PROBLEM =
+  'A series can only post to accounts with the same owner';
 
 /** Why a series can't post to this account, in words for the user, or null when it can. */
 function accountProblem(
@@ -58,11 +62,21 @@ export class RecurringSeriesService {
     private readonly prisma: PrismaService,
     private readonly transactionsService: TransactionsService,
     private readonly categoriesService: CategoriesService,
-    private readonly accountsService: AccountsService,
+    private readonly access: AccountAccessService,
   ) {}
 
+  /**
+   * The root, for a change to its series: `transact` on every account it
+   * touches. Read straight from the table, because the series' own template and
+   * ledger owner are what the change works on, whatever the caller may see.
+   */
   private async getRecurringRoot(userId: string, id: string) {
-    const transaction = await this.transactionsService.getById(userId, id);
+    await this.access.assertTransactionAccess(userId, id, 'transact');
+    const transaction = await this.prisma.transaction.findFirst({
+      where: { id, deletedAt: null },
+      include: TRANSACTION_INCLUDE,
+    });
+    if (!transaction) throw new NotFoundException('Transaction not found');
     if (!transaction.isRecurring || transaction.parentTransactionId) {
       throw new BadRequestException(
         'Transaction is not the root of a recurring series',
@@ -120,10 +134,15 @@ export class RecurringSeriesService {
       ['toAccountId', toAccountId],
     ] as const) {
       if (!accountId) continue;
-      const problem = accountProblem(
-        await this.accountsService.assertOwned(userId, accountId),
-        root.currency,
+      const { account } = await this.access.assertAccess(
+        userId,
+        accountId,
+        'transact',
       );
+      const problem =
+        account.userId === root.userId
+          ? accountProblem(account, root.currency)
+          : DIFFERENT_OWNER_PROBLEM;
       if (problem) errors.push({ path, message: problem });
     }
     if (
@@ -143,7 +162,7 @@ export class RecurringSeriesService {
     }
     if (command.categoryId)
       await this.categoriesService.assertAssignable(
-        userId,
+        root.userId,
         root.type,
         command.categoryId,
       );
@@ -183,7 +202,8 @@ export class RecurringSeriesService {
     // resumes it) without the stale reason.
     const recurringError =
       root.recurringStatus === RecurringStatus.PAUSED && root.recurringError
-        ? await this.findSeriesProblem(userId, {
+        ? await this.findSeriesProblem({
+            userId: root.userId,
             type: root.type,
             currency: root.currency,
             categoryId:
@@ -198,6 +218,7 @@ export class RecurringSeriesService {
     return this.prisma.transaction.update({
       where: { id: root.id },
       data: {
+        updatedById: userId,
         description: command.description,
         categoryId:
           command.categoryId === null
@@ -240,7 +261,6 @@ export class RecurringSeriesService {
     const claimed = await this.prisma.transaction.updateMany({
       where: {
         id: root.id,
-        userId,
         deletedAt: null,
         recurringStatus: RecurringStatus.ACTIVE,
       },
@@ -269,14 +289,13 @@ export class RecurringSeriesService {
         'Only a paused recurring series can be resumed',
       );
     }
-    const problem = await this.findSeriesProblem(userId, root);
+    const problem = await this.findSeriesProblem(root);
     if (problem) {
       // Kept on the series too, so the panel says why it's still paused (a
       // manual pause has no reason until the user tries to resume it).
       await this.prisma.transaction.updateMany({
         where: {
           id: root.id,
-          userId,
           deletedAt: null,
           recurringStatus: RecurringStatus.PAUSED,
         },
@@ -306,7 +325,6 @@ export class RecurringSeriesService {
     const claimed = await this.prisma.transaction.updateMany({
       where: {
         id: root.id,
-        userId,
         deletedAt: null,
         recurringStatus: RecurringStatus.PAUSED,
       },
@@ -336,10 +354,7 @@ export class RecurringSeriesService {
    * while one remains. Each occurrence still goes through create()'s own
    * validation on top of this.
    */
-  async findSeriesProblem(
-    userId: string,
-    series: SeriesTemplate,
-  ): Promise<string | null> {
+  async findSeriesProblem(series: SeriesTemplate): Promise<string | null> {
     const {
       type,
       recurringFromAccountId: fromId,
@@ -359,10 +374,11 @@ export class RecurringSeriesService {
     ];
     for (const accountId of accountIds) {
       if (!accountId) continue;
-      const account = await this.accountsService
-        .assertOwned(userId, accountId)
-        .catch(() => null);
+      const account = await this.prisma.account.findUnique({
+        where: { id: accountId },
+      });
       if (!account) return 'An account of this series no longer exists';
+      if (account.userId !== series.userId) return DIFFERENT_OWNER_PROBLEM;
       const problem = accountProblem(account, series.currency);
       if (problem) return problem;
     }
@@ -370,7 +386,7 @@ export class RecurringSeriesService {
     if (series.categoryId) {
       try {
         await this.categoriesService.assertAssignable(
-          userId,
+          series.userId,
           type,
           series.categoryId,
         );
@@ -391,7 +407,6 @@ export class RecurringSeriesService {
     await this.prisma.transaction.updateMany({
       where: {
         id: root.id,
-        userId,
         deletedAt: null,
         recurringStatus: { not: RecurringStatus.CANCELLED },
       },

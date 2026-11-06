@@ -1,6 +1,6 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { AccountsService } from '../accounts/accounts.service';
+import { AccountAccessService } from '../account-access/account-access.service';
 import { LedgerService } from './ledger.service';
 
 type TestAccount = {
@@ -24,14 +24,12 @@ describe('LedgerService', () => {
       async ({
         where,
       }: {
-        where: { id: string; userId: string; archivedAt?: null };
+        where: { id: string; archivedAt?: null; OR: { userId?: string }[] };
       }) => {
-        const found = Object.values(accounts).find(
-          (a) => a.id === where.id && where.userId === 'u1',
-        );
-        if (!found) return null;
+        const found = Object.values(accounts).find((a) => a.id === where.id);
+        if (!found || where.OR[0].userId !== 'u1') return null;
         if ('archivedAt' in where && found.archivedAt) return null;
-        return found;
+        return { ...found, userId: 'u1', members: [] };
       },
     );
     // Mirrors the opening-balance query's where-clause: non-zero, optional id/currency.
@@ -39,24 +37,25 @@ describe('LedgerService', () => {
       async ({
         where,
       }: {
-        where: { userId: string; id?: string; currency?: string };
+        where: { id?: { in: string[] }; currency?: string };
       }) =>
-        Object.values(accounts)
-          .filter(
-            (a) =>
-              where.userId === 'u1' &&
-              !new Prisma.Decimal(a.openingBalance ?? 0).isZero(),
-          )
-          .filter(
-            (a) =>
-              (where.id ? a.id === where.id : true) &&
-              (where.currency ? a.currency === where.currency : true),
-          )
-          .map((a) => ({
-            id: a.id,
-            currency: a.currency,
-            openingBalance: new Prisma.Decimal(a.openingBalance!),
-          })),
+        // Without `id` this is the helper listing what the caller can reach.
+        where.id
+          ? Object.values(accounts)
+              .filter(
+                (a) => !new Prisma.Decimal(a.openingBalance ?? 0).isZero(),
+              )
+              .filter(
+                (a) =>
+                  where.id!.in.includes(a.id) &&
+                  (where.currency ? a.currency === where.currency : true),
+              )
+              .map((a) => ({
+                id: a.id,
+                currency: a.currency,
+                openingBalance: new Prisma.Decimal(a.openingBalance!),
+              }))
+          : Object.values(accounts).map((a) => ({ id: a.id })),
     );
     const prisma = {
       account: { findFirst, findMany },
@@ -64,14 +63,14 @@ describe('LedgerService', () => {
     };
     return new LedgerService(
       prisma as never,
-      new AccountsService(prisma as never),
+      new AccountAccessService(prisma as never),
     );
   }
 
   describe('buildEntriesForCommand', () => {
     it('creates a single CREDIT for INCOME', async () => {
       const service = makeService({ to: account('USD') });
-      const entries = await service.buildEntriesForCommand('u1', {
+      const { entries } = await service.buildEntriesForCommand('u1', {
         type: 'INCOME',
         amount: '100',
         currency: 'USD',
@@ -88,7 +87,7 @@ describe('LedgerService', () => {
 
     it('creates a single DEBIT for EXPENSE', async () => {
       const service = makeService({ from: account('USD') });
-      const entries = await service.buildEntriesForCommand('u1', {
+      const { entries } = await service.buildEntriesForCommand('u1', {
         type: 'EXPENSE',
         amount: '20',
         currency: 'USD',
@@ -104,7 +103,7 @@ describe('LedgerService', () => {
         from: account('USD'),
         to: { id: 'acc-USD2', currency: 'USD' },
       });
-      const entries = await service.buildEntriesForCommand('u1', {
+      const { entries } = await service.buildEntriesForCommand('u1', {
         type: 'TRANSFER',
         amount: '50',
         currency: 'USD',
@@ -117,7 +116,7 @@ describe('LedgerService', () => {
 
     it('creates one DEBIT per split item for EXPENSE, each carrying its own categoryId', async () => {
       const service = makeService({ from: account('USD') });
-      const entries = await service.buildEntriesForCommand('u1', {
+      const { entries } = await service.buildEntriesForCommand('u1', {
         type: 'EXPENSE',
         amount: '50',
         currency: 'USD',
@@ -147,7 +146,7 @@ describe('LedgerService', () => {
 
     it('creates one CREDIT per split item for INCOME', async () => {
       const service = makeService({ to: account('USD') });
-      const entries = await service.buildEntriesForCommand('u1', {
+      const { entries } = await service.buildEntriesForCommand('u1', {
         type: 'INCOME',
         amount: '100',
         currency: 'USD',
@@ -238,20 +237,25 @@ describe('LedgerService', () => {
       const groupBy = jest.fn(async () => []);
       const prisma = {
         account: {
-          findFirst: jest.fn(async () => ({ id: 'a', currency: 'USD' })),
+          findFirst: jest.fn(async () => ({
+            id: 'a',
+            userId: 'u1',
+            currency: 'USD',
+            members: [],
+          })),
           findMany: jest.fn(async () => []),
         },
         transactionItem: { groupBy },
       };
       const service = new LedgerService(
         prisma as never,
-        new AccountsService(prisma as never),
+        new AccountAccessService(prisma as never),
       );
       await service.getBalance('u1', { accountId: 'a' });
       expect(groupBy).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            userId: 'u1',
+            accountId: { in: ['a'] },
             transaction: { deletedAt: null },
           }),
         }),

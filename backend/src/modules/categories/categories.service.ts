@@ -6,6 +6,8 @@ import {
 } from '@nestjs/common';
 import { Prisma, TransactionType } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
+import { accountScope } from '../account-access/account-access';
+import { AccountAccessService } from '../account-access/account-access.service';
 import {
   CreateCategoryDto,
   ListCategoriesQueryDto,
@@ -14,7 +16,10 @@ import {
 
 @Injectable()
 export class CategoriesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly access: AccountAccessService,
+  ) {}
 
   /**
    * `isSystem` isn't a stored column — it's derived from `userId === null`
@@ -67,7 +72,15 @@ export class CategoriesService {
     }
   }
 
+  /**
+   * The categories of `userId`, or with `accountId` the ones that fit that
+   * account: its owner's, because a shared account's transactions all use one set.
+   */
   async list(userId: string, query: ListCategoriesQueryDto) {
+    const ownerId = query.accountId
+      ? (await this.access.assertAccess(userId, query.accountId, 'view'))
+          .account.userId
+      : userId;
     const archivedFilter =
       query.status === 'active'
         ? { archivedAt: null }
@@ -76,7 +89,7 @@ export class CategoriesService {
           : {};
     const page = await this.prisma.paginated.category.paginate({
       where: {
-        OR: [{ userId }, { userId: null }],
+        OR: [{ userId: ownerId }, { userId: null }],
         ...archivedFilter,
         ...(query.type ? { type: query.type } : {}),
       },
@@ -88,6 +101,38 @@ export class CategoriesService {
       ...page,
       data: page.data.map((category) => this.toResponse(category)),
     };
+  }
+
+  /** Active categories of these people plus the global ones, for assistants choosing among several ledgers. */
+  listForOwners(ownerIds: string[], limit: number) {
+    return this.prisma.category.findMany({
+      where: {
+        OR: [{ userId: { in: ownerIds } }, { userId: null }],
+        archivedAt: null,
+      },
+      orderBy: [{ type: 'asc' }, { name: 'asc' }],
+      take: limit,
+    });
+  }
+
+  /**
+   * For filtering what `userId` can read: their own, a global one, or one that
+   * belongs to the owner of an account they can reach.
+   */
+  async assertReadable(userId: string, categoryId: string) {
+    const category = await this.prisma.category.findFirst({
+      where: {
+        id: categoryId,
+        OR: [
+          { userId },
+          { userId: null },
+          { user: { accounts: { some: accountScope(userId, 'view') } } },
+        ],
+      },
+    });
+    if (!category)
+      throw new NotFoundException(`Category ${categoryId} not found`);
+    return category;
   }
 
   /**

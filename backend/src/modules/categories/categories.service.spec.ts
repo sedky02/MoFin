@@ -1,3 +1,4 @@
+import { fakeAccess } from '../../../test/support/fake-account-access';
 import {
   BadRequestException,
   ConflictException,
@@ -30,7 +31,7 @@ describe('CategoriesService.isSystem', () => {
       paginated: { category: { paginate } },
     };
     return {
-      service: new CategoriesService(prisma as never),
+      service: new CategoriesService(prisma as never, fakeAccess() as never),
       prisma,
       paginate,
     };
@@ -110,7 +111,10 @@ describe('CategoriesService.isSystem', () => {
 describe('CategoriesService.assertAssignable', () => {
   function makeService(found: unknown) {
     const findFirst = jest.fn(async () => found);
-    const service = new CategoriesService({ category: { findFirst } } as never);
+    const service = new CategoriesService(
+      { category: { findFirst } } as never,
+      fakeAccess() as never,
+    );
     return { service, findFirst };
   }
 
@@ -224,7 +228,10 @@ describe('CategoriesService archiving', () => {
         },
       },
     };
-    return { service: new CategoriesService(prisma as never), prisma };
+    return {
+      service: new CategoriesService(prisma as never, fakeAccess() as never),
+      prisma,
+    };
   }
 
   it('archive() succeeds on a category used by transactions, and only stamps archivedAt', async () => {
@@ -379,7 +386,7 @@ describe('CategoriesService.create name clash', () => {
         findFirst: jest.fn(async () => archived),
       },
     };
-    return new CategoriesService(prisma as never);
+    return new CategoriesService(prisma as never, fakeAccess() as never);
   }
 
   it('says the name belongs to an archived category', async () => {

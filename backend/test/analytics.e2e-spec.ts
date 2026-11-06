@@ -1,3 +1,5 @@
+import { AccountAccessService } from '../src/modules/account-access/account-access.service';
+import { ownerAccess } from './support/owner-access';
 import {
   CanActivate,
   ExecutionContext,
@@ -69,17 +71,19 @@ const prismaStub = {
     findUnique: async () => null,
     upsert: async () => undefined,
   },
+  account: {
+    aggregate: async () => ({ _sum: { openingBalance: null } }),
+  },
   transaction: {
     findMany: async ({
       where,
     }: {
-      where: { userId: string; items?: { some: { accountId: string } } };
+      where: { items: { some: { accountId: { in: string[] } } } };
     }) =>
-      transactions.filter(
-        (t) =>
-          t.userId === where.userId &&
-          (!where.items ||
-            t.items.some((i) => i.accountId === where.items?.some.accountId)),
+      transactions.filter((t) =>
+        t.items.some((i) =>
+          where.items.some.accountId.in.includes(i.accountId),
+        ),
       ),
   },
 };
@@ -105,6 +109,13 @@ describe('Analytics API (e2e)', () => {
       providers: [
         AnalyticsService,
         { provide: PrismaService, useValue: prismaStub },
+        {
+          provide: AccountAccessService,
+          useValue: ownerAccess([
+            { id: TND, userId: USER_ID },
+            { id: EUR_ARCHIVED, userId: USER_ID },
+          ]),
+        },
       ],
     })
       .overrideGuard(JwtAuthGuard)

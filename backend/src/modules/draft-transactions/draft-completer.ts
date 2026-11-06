@@ -1,6 +1,8 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { TransactionType } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
+import { accountScope } from '../account-access/account-access';
+import { DIFFERENT_OWNERS_MESSAGE } from '../ledger/ledger.service';
 
 /** How far back "the account used most" looks. */
 export const ACCOUNT_USAGE_DAYS = 30;
@@ -40,7 +42,8 @@ export interface DraftIds {
  * 2. the one with the most transactions in the last 30 days, the most
  *    recently used winning a tie;
  * 3. the first by name.
- * Only active accounts count: an archived saved account is skipped.
+ * Only the accounts passed in count: the ones the user can post to. An archived
+ * saved account, or one they can only view, is skipped.
  */
 export function pickDefaultAccount(
   accounts: CompleterAccount[],
@@ -92,7 +95,7 @@ export function accountUsage(
   return [...byAccount.values()];
 }
 
-/** Rejects account ids the user doesn't have (or has archived), naming the ones they can use. */
+/** Rejects account ids the user can't post to, naming the ones they can use. */
 export function assertKnownAccounts(
   draft: DraftIds,
   accounts: CompleterAccount[],
@@ -215,10 +218,12 @@ export function categoryFromHistory(
 /**
  * Fills in what an assistant's draft leaves out, the same way for the in-app
  * chat and for MCP. The assistant never decides the defaults itself.
- * - Account: a named one is kept (it must be one of the user's active
- *   accounts); a missing one is picked here.
- * - Category: it must be an existing, active category of the draft's type.
- *   The one the user has used most for similar descriptions wins; otherwise
+ * - Account: a named one is kept (it must be an active account the user owns
+ *   or edits, never one they only view); a missing one is picked here, among
+ *   the same accounts.
+ * - Category: it must be an existing, active category of the draft's type, from
+ *   the account's owner, because a shared account uses its owner's categories.
+ *   The one used most on that ledger for similar descriptions wins; otherwise
  *   the assistant's pick stays; with neither, the draft has no category.
  *   Categories are never created.
  */
@@ -231,30 +236,50 @@ export class DraftCompleter {
     draft: T,
     now: Date = new Date(),
   ): Promise<T & DraftIds> {
-    const [accounts, categories] = await Promise.all([
-      this.prisma.account.findMany({
-        where: { userId, archivedAt: null },
-        select: { id: true, name: true },
-      }),
-      this.prisma.category.findMany({
-        where: { OR: [{ userId }, { userId: null }], archivedAt: null },
-        select: { id: true, name: true, type: true },
-      }),
-    ]);
+    const accounts = await this.prisma.account.findMany({
+      where: { ...accountScope(userId, 'transact'), archivedAt: null },
+      select: { id: true, name: true, userId: true },
+    });
     assertKnownAccounts(draft, accounts);
-    assertKnownCategory(draft, categories);
+    const ownerOf = (id?: string) =>
+      accounts.find((account) => account.id === id)?.userId;
 
     let { fromAccountId, toAccountId } = draft;
     if (draft.type === TransactionType.EXPENSE) toAccountId = undefined;
     if (draft.type === TransactionType.INCOME) fromAccountId = undefined;
+    if (
+      fromAccountId &&
+      toAccountId &&
+      ownerOf(fromAccountId) !== ownerOf(toAccountId)
+    ) {
+      throw new BadRequestException(DIFFERENT_OWNERS_MESSAGE);
+    }
     const needsFrom = draft.type !== TransactionType.INCOME && !fromAccountId;
     const needsTo = draft.type === TransactionType.INCOME && !toAccountId;
     if (needsFrom || needsTo) {
-      const fallback = await this.defaultAccountId(userId, accounts, now);
+      // A transfer's source has to share an owner with where the money went.
+      const candidates = toAccountId
+        ? accounts.filter((a) => a.userId === ownerOf(toAccountId))
+        : accounts;
+      const fallback = await this.defaultAccountId(userId, candidates, now);
       // A transfer's missing side is the source: the user said where the money went.
       if (needsFrom && fallback !== toAccountId) fromAccountId = fallback;
       if (needsTo) toAccountId = fallback;
     }
+
+    // Whose categories apply: the ledger the transaction will go on.
+    const ledgerUserId =
+      ownerOf(
+        draft.type === TransactionType.INCOME ? toAccountId : fromAccountId,
+      ) ?? userId;
+    const categories = await this.prisma.category.findMany({
+      where: {
+        OR: [{ userId: ledgerUserId }, { userId: null }],
+        archivedAt: null,
+      },
+      select: { id: true, name: true, type: true },
+    });
+    assertKnownCategory(draft, categories);
 
     let categoryId: string | undefined;
     if (draft.type !== TransactionType.TRANSFER) {
@@ -263,7 +288,7 @@ export class DraftCompleter {
       );
       const history = await this.prisma.transaction.findMany({
         where: {
-          userId,
+          userId: ledgerUserId,
           deletedAt: null,
           type: draft.type,
           categoryId: { in: [...allowed] },
@@ -296,7 +321,12 @@ export class DraftCompleter {
 
     const since = new Date(now.getTime() - ACCOUNT_USAGE_DAYS * 86_400_000);
     const recent = await this.prisma.transaction.findMany({
-      where: { userId, deletedAt: null, occurredAt: { gte: since, lte: now } },
+      // What this user entered: on a shared ledger, others' habits aren't theirs.
+      where: {
+        createdById: userId,
+        deletedAt: null,
+        occurredAt: { gte: since, lte: now },
+      },
       select: { occurredAt: true, items: { select: { accountId: true } } },
     });
     return pickDefaultAccount(accounts, savedId, accountUsage(recent));

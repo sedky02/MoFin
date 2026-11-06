@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { AccountsModule } from '../accounts/accounts.module';
+import { AccountAccessModule } from '../account-access/account-access.module';
 import { CategoriesModule } from '../categories/categories.module';
 import { LedgerModule } from '../ledger/ledger.module';
 import { RecurringSeriesService } from './recurring-series.service';
@@ -8,7 +8,7 @@ import { TransactionsController } from './transactions.controller';
 import { TransactionsService } from './transactions.service';
 
 @Module({
-  imports: [AccountsModule, CategoriesModule, LedgerModule],
+  imports: [AccountAccessModule, CategoriesModule, LedgerModule],
   controllers: [TransactionsController],
   providers: [
     TransactionsService,

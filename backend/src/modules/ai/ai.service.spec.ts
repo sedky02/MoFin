@@ -38,7 +38,7 @@ interface SavedDraft {
 function setup(
   chat: jest.Mock,
   enabled = true,
-  accountList: Array<typeof ACCOUNT> = [ACCOUNT, SAVINGS],
+  accountList: Array<typeof ACCOUNT & { userId?: string }> = [ACCOUNT, SAVINGS],
 ) {
   const drafts = {
     createMany: jest.fn((_userId: string, dtos: SavedDraft[]) =>
@@ -51,7 +51,7 @@ function setup(
     ),
   };
   const categories = {
-    list: jest.fn(() => Promise.resolve({ data: [FOOD, SALARY], total: 2 })),
+    listForOwners: jest.fn(() => Promise.resolve([FOOD, SALARY])),
   };
   const llm = { enabled, chat };
   const service = new AiService(

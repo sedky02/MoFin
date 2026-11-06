@@ -51,6 +51,8 @@ export interface CreateTransactionCommand {
   categoryId?: string;
   items?: TransactionItemInputDto[];
   draftId?: string;
+  /** Who entered it, when that isn't the caller: the cron posts a series for its author. */
+  createdById?: string | null;
   isRecurring?: boolean;
   recurringInterval?: RecurringInterval;
   recurringEndDate?: Date;
@@ -72,6 +74,7 @@ export type UpdateTransactionDto = z.infer<typeof updateTransactionSchema>;
 export type UpdateTransactionCommand = Omit<
   CreateTransactionCommand,
   | 'draftId'
+  | 'createdById'
   | 'isRecurring'
   | 'recurringInterval'
   | 'recurringEndDate'

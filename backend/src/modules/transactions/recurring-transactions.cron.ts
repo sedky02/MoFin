@@ -72,10 +72,7 @@ export class RecurringTransactionsCron {
           continue;
         }
 
-        const problem = await this.seriesService.findSeriesProblem(
-          root.userId,
-          root,
-        );
+        const problem = await this.seriesService.findSeriesProblem(root);
         if (problem) {
           await this.pause(root.id, problem);
           continue;
@@ -98,6 +95,7 @@ export class RecurringTransactionsCron {
               toAccountId: root.recurringToAccountId ?? undefined,
               categoryId: root.categoryId ?? undefined,
               parentTransactionId: root.id,
+              createdById: root.createdById,
             },
             db,
           );

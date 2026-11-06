@@ -1,3 +1,5 @@
+import { accountScope } from '../account-access/account-access';
+import { fakeAccess } from '../../../test/support/fake-account-access';
 import { NotFoundException } from '@nestjs/common';
 import { ThrottlerRequest } from '@nestjs/throttler';
 import { Prisma } from '@prisma/client';
@@ -33,6 +35,7 @@ function makeService(
           openingBalance: D('250.5'),
           archivedAt: null,
           createdAt: NOW,
+          members: [],
         },
       ]),
     },
@@ -40,7 +43,10 @@ function makeService(
     transaction: { findMany: jest.fn(async () => rows.transactions ?? []) },
     goal: { findMany: jest.fn(async () => rows.goals ?? []) },
   };
-  return { service: new ExportService(prisma as never), prisma };
+  return {
+    service: new ExportService(prisma as never, fakeAccess() as never),
+    prisma,
+  };
 }
 
 function transaction(overrides: Record<string, unknown> = {}) {
@@ -197,6 +203,7 @@ describe('ExportService', () => {
         name: 'Wallet',
         type: 'CASH',
         currency: 'TND',
+        role: 'OWNER',
         openingBalance: '250.5',
         archivedAt: null,
         createdAt: NOW.toISOString(),
@@ -304,18 +311,27 @@ describe('ExportService', () => {
       expect.objectContaining({ where: { id: 'user-1' } }),
     );
     expect(prisma.account.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { userId: 'user-1' } }),
+      expect.objectContaining({ where: accountScope('user-1', 'view') }),
     );
     expect(prisma.category.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { OR: [{ userId: 'user-1' }, { userId: null }] },
+        where: {
+          OR: [
+            { userId: 'user-1' },
+            { userId: null },
+            { user: { accounts: { some: accountScope('user-1', 'view') } } },
+          ],
+        },
       }),
     );
+    const onMyAccounts = { accountId: { in: ['a1'] } };
     expect(prisma.transaction.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { userId: 'user-1', deletedAt: null } }),
+      expect.objectContaining({
+        where: { deletedAt: null, items: { some: onMyAccounts } },
+      }),
     );
     expect(prisma.goal.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { userId: 'user-1' } }),
+      expect.objectContaining({ where: onMyAccounts }),
     );
   });
 

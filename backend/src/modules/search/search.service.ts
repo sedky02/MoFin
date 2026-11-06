@@ -2,10 +2,18 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { lowerBound, upperBoundFilter } from '../../common/utils/date-bounds';
 import { PrismaService } from '../../database/prisma.service';
-import { AccountsService } from '../accounts/accounts.service';
+import { AccountAccessService } from '../account-access/account-access.service';
 import { CategoriesService } from '../categories/categories.service';
 import { TRANSACTION_INCLUDE } from '../transactions/transaction-include';
+import {
+  accountIdsOf,
+  presentTransaction,
+} from '../transactions/transaction-view';
 import { SearchTransactionsDto } from './dto/search.dto';
+
+type LoadedTransaction = Prisma.TransactionGetPayload<{
+  include: typeof TRANSACTION_INCLUDE;
+}>;
 
 type SearchSort = NonNullable<SearchTransactionsDto['sort']>;
 
@@ -56,22 +64,25 @@ export function transactionTotal(
 export class SearchService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly accountsService: AccountsService,
+    private readonly access: AccountAccessService,
     private readonly categoriesService: CategoriesService,
   ) {}
 
   async searchTransactions(userId: string, query: SearchTransactionsDto) {
     if (query.accountId)
-      await this.accountsService.assertOwned(userId, query.accountId);
+      await this.access.assertAccess(userId, query.accountId, 'view');
     if (query.categoryId)
-      await this.categoriesService.assertAvailable(userId, query.categoryId);
+      await this.categoriesService.assertReadable(userId, query.categoryId);
+    const accountIds = query.accountId
+      ? [query.accountId]
+      : await this.access.accessibleAccountIds(userId, 'view');
 
     // The amount bounds apply to a transaction's total, like the amount sort,
     // so a 100 split into 60 + 40 matches "at least 80".
     const idsInAmountRange =
       query.minAmount || query.maxAmount
         ? await this.idsWithTotalBetween(
-            userId,
+            accountIds,
             query.minAmount,
             query.maxAmount,
           )
@@ -79,8 +90,8 @@ export class SearchService {
 
     const args = {
       where: {
-        userId,
         deletedAt: null,
+        items: { some: { accountId: { in: accountIds } } },
         ...(idsInAmountRange ? { id: { in: idsInAmountRange } } : {}),
         description: { contains: query.q, mode: 'insensitive' },
         // A split files its categories on its lines, an unsplit transaction on itself; match either.
@@ -101,9 +112,6 @@ export class SearchService {
                 ...(query.to ? upperBoundFilter(query.to) : {}),
               },
             }
-          : {}),
-        ...(query.accountId
-          ? { items: { some: { accountId: query.accountId } } }
           : {}),
         ...(query.type ? { type: query.type } : {}),
         // Under AND so it composes with the category OR above.
@@ -138,22 +146,35 @@ export class SearchService {
 
     if (query.sort === 'amount-desc' || query.sort === 'amount-asc') {
       return this.searchByAmount(
+        userId,
         args.where,
         query.sort,
         query.limit,
         query.offset,
       );
     }
-    return this.prisma.paginated.transaction.paginate(args);
+    const page = await this.prisma.paginated.transaction.paginate(args);
+    return {
+      ...page,
+      data: await this.present(userId, page.data),
+    };
+  }
+
+  /** Hides what the caller can't reach: a transfer's leg on someone's private account. */
+  private async present(userId: string, rows: LoadedTransaction[]) {
+    const roles = await this.access.rolesOn(userId, [
+      ...new Set(rows.flatMap(accountIdsOf)),
+    ]);
+    return rows.map((row) => presentTransaction(row, roles));
   }
 
   /**
-   * Ids of the user's live transactions whose total (see transactionTotal) lies
+   * Ids of the live transactions on these accounts whose total (see transactionTotal) lies
    * within the bounds. Prisma can't filter on a sum of related rows, so the
    * totals are computed in the database.
    */
   private async idsWithTotalBetween(
-    userId: string,
+    accountIds: string[],
     min: string | undefined,
     max: string | undefined,
   ): Promise<string[]> {
@@ -169,7 +190,7 @@ export class SearchService {
       SELECT ti."transactionId" AS id
       FROM "TransactionItem" ti
       JOIN "Transaction" t ON t.id = ti."transactionId"
-      WHERE t."userId" = ${userId} AND t."deletedAt" IS NULL
+      WHERE ti."accountId" = ANY(${accountIds}::text[]) AND t."deletedAt" IS NULL
       GROUP BY ti."transactionId"
       HAVING ${Prisma.join(bounds, ' AND ')}
     `);
@@ -184,6 +205,7 @@ export class SearchService {
    * step if it ever isn't.
    */
   private async searchByAmount(
+    userId: string,
     where: Prisma.TransactionWhereInput,
     sort: Extract<SearchSort, 'amount-desc' | 'amount-asc'>,
     limit: number,
@@ -214,7 +236,10 @@ export class SearchService {
       include: TRANSACTION_INCLUDE,
     });
     const byId = new Map(rows.map((row) => [row.id, row]));
-    const data = pageIds.flatMap((id) => byId.get(id) ?? []);
+    const data = await this.present(
+      userId,
+      pageIds.flatMap((id) => byId.get(id) ?? []),
+    );
     return { data, total: ranked.length, limit, offset };
   }
 }

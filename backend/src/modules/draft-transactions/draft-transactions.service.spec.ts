@@ -1,3 +1,4 @@
+import { fakeAccess } from '../../../test/support/fake-account-access';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { DraftStatus, Prisma, TransactionType } from '@prisma/client';
 import { DraftTransactionsService } from './draft-transactions.service';
@@ -76,6 +77,7 @@ describe('DraftTransactionsService state machine', () => {
       prisma as never,
       transactionsService as never,
       events as never,
+      fakeAccess() as never,
     );
     return { service, prisma, transactionsService, db, paginate, events };
   }

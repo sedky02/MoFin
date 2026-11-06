@@ -16,6 +16,8 @@ import {
   TransactionCreatedEvent,
 } from '../../common/events/domain-events';
 import { PrismaService } from '../../database/prisma.service';
+import { accountScope } from '../account-access/account-access';
+import { AccountAccessService } from '../account-access/account-access.service';
 import { CategoriesService } from '../categories/categories.service';
 import { LedgerService } from '../ledger/ledger.service';
 import {
@@ -24,6 +26,11 @@ import {
 } from './dto/transactions.dto';
 import { computeNextOccurrence, isPastEndDate } from './recurrence';
 import { TRANSACTION_INCLUDE } from './transaction-include';
+import {
+  accountIdsOf,
+  isOneSidedTransfer,
+  presentTransaction,
+} from './transaction-view';
 
 type Db = Prisma.TransactionClient;
 
@@ -34,6 +41,7 @@ export class TransactionsService {
     private readonly ledgerService: LedgerService,
     private readonly categoriesService: CategoriesService,
     private readonly events: EventEmitter2,
+    private readonly access: AccountAccessService,
   ) {}
 
   /**
@@ -44,31 +52,19 @@ export class TransactionsService {
    * responsible for emitting TransactionCreated once its own transaction
    * commits, since emitting beforehand could let listeners react to a row a
    * later step in that same transaction rolls back.
+   *
+   * `userId` is who is posting. The rows go on the ledger of the account's
+   * owner, and `createdById` records who entered them (the series' author, for
+   * the cron, which posts as the owner).
    */
   async create(userId: string, command: CreateTransactionCommand, db?: Db) {
     this.validateCommand(command);
     // The checks read through the caller's transaction too, so a caller that
     // created the account or category earlier in that transaction can see it.
     const reader = db ?? this.prisma;
-    await this.categoriesService.assertAssignable(
-      userId,
-      command.type,
-      command.categoryId,
-      reader,
-    );
-    for (const item of command.items ?? []) {
-      await this.categoriesService.assertAssignable(
-        userId,
-        command.type,
-        item.categoryId,
-        reader,
-      );
-    }
-    const ledgerEntries = await this.ledgerService.buildEntriesForCommand(
-      userId,
-      command,
-      reader,
-    );
+    const { ledgerUserId, entries } =
+      await this.ledgerService.buildEntriesForCommand(userId, command, reader);
+    await this.assertCategories(ledgerUserId, command, reader);
 
     const firstNextOccurrenceAt = command.isRecurring
       ? computeNextOccurrence(
@@ -86,7 +82,9 @@ export class TransactionsService {
     const run = async (db: Db) => {
       const created = await db.transaction.create({
         data: {
-          userId,
+          userId: ledgerUserId,
+          createdById:
+            command.createdById === undefined ? userId : command.createdById,
           draftId: command.draftId,
           type: command.type,
           description: command.description,
@@ -113,9 +111,9 @@ export class TransactionsService {
 
       await this.ledgerService.createEntries(
         db,
-        userId,
+        ledgerUserId,
         created.id,
-        ledgerEntries,
+        entries,
       );
       return db.transaction.findUniqueOrThrow({
         where: { id: created.id },
@@ -138,22 +136,54 @@ export class TransactionsService {
    * transaction has committed.
    */
   announceCreated(
-    transaction: Pick<Transaction, 'id' | 'userId' | 'occurredAt'>,
+    transaction: Pick<Transaction, 'id' | 'userId' | 'occurredAt'> & {
+      items: { accountId: string }[];
+    },
   ) {
     this.events.emit(DomainEvents.TransactionCreated, {
       transactionId: transaction.id,
       userId: transaction.userId,
       occurredAt: transaction.occurredAt,
+      accountIds: [...new Set(transaction.items.map((i) => i.accountId))],
     } satisfies TransactionCreatedEvent);
+  }
+
+  /** The category rules, on the ledger the transaction goes on: a shared account uses its owner's categories. */
+  private async assertCategories(
+    ledgerUserId: string,
+    command: CreateTransactionCommand | UpdateTransactionCommand,
+    db: Db,
+  ) {
+    await this.categoriesService.assertAssignable(
+      ledgerUserId,
+      command.type,
+      command.categoryId,
+      db,
+    );
+    for (const item of command.items ?? []) {
+      await this.categoriesService.assertAssignable(
+        ledgerUserId,
+        command.type,
+        item.categoryId,
+        db,
+      );
+    }
   }
 
   async getById(userId: string, id: string) {
     const transaction = await this.prisma.transaction.findFirst({
-      where: { id, userId, deletedAt: null },
+      where: {
+        id,
+        deletedAt: null,
+        items: { some: { account: accountScope(userId, 'view') } },
+      },
       include: TRANSACTION_INCLUDE,
     });
     if (!transaction) throw new NotFoundException('Transaction not found');
-    return transaction;
+    return presentTransaction(
+      transaction,
+      await this.access.rolesOn(userId, accountIdsOf(transaction)),
+    );
   }
 
   /**
@@ -165,7 +195,7 @@ export class TransactionsService {
    * series template generates future occurrences from them.
    */
   async update(userId: string, id: string, command: UpdateTransactionCommand) {
-    const existing = await this.findLive(userId, id);
+    const existing = await this.findChangeable(userId, id);
     if (existing.isRecurring && !existing.parentTransactionId) {
       if (command.type !== existing.type) {
         throw new BadRequestException(
@@ -190,29 +220,21 @@ export class TransactionsService {
     const updated = await this.prisma.$transaction(async (db) => {
       // Checked inside the write's own transaction, as create() does, so the
       // gap between the check and the write is one transaction, not a request.
-      await this.categoriesService.assertAssignable(
-        userId,
-        command.type,
-        command.categoryId,
-        db,
-      );
-      for (const item of command.items ?? []) {
-        await this.categoriesService.assertAssignable(
-          userId,
-          command.type,
-          item.categoryId,
-          db,
+      const { ledgerUserId, entries } =
+        await this.ledgerService.buildEntriesForCommand(userId, command, db);
+      await this.assertCategories(ledgerUserId, command, db);
+      // A series keeps posting to its own ledger, so its root can't leave it.
+      if (ledgerUserId !== existing.userId && existing.isRecurring) {
+        throw new BadRequestException(
+          "A recurring transaction can't move to an account with a different owner",
         );
       }
-      const ledgerEntries = await this.ledgerService.buildEntriesForCommand(
-        userId,
-        command,
-        db,
-      );
       // Conditional on deletedAt so a delete racing this edit wins cleanly instead of being undone.
       const claimed = await db.transaction.updateMany({
-        where: { id, userId, deletedAt: null },
+        where: { id, deletedAt: null },
         data: {
+          userId: ledgerUserId,
+          updatedById: userId,
           type: command.type,
           description: command.description,
           currency: command.currency,
@@ -222,10 +244,8 @@ export class TransactionsService {
       });
       if (claimed.count === 0)
         throw new NotFoundException('Transaction not found');
-      await db.transactionItem.deleteMany({
-        where: { transactionId: id, userId },
-      });
-      await this.ledgerService.createEntries(db, userId, id, ledgerEntries);
+      await db.transactionItem.deleteMany({ where: { transactionId: id } });
+      await this.ledgerService.createEntries(db, ledgerUserId, id, entries);
       return db.transaction.findUniqueOrThrow({
         where: { id },
         include: TRANSACTION_INCLUDE,
@@ -233,8 +253,20 @@ export class TransactionsService {
     });
 
     // Cached summaries are per month: the month it left and the month it moved to both changed.
-    this.emitChanged(userId, id, existing.occurredAt, updated.occurredAt);
-    return updated;
+    const accountIds = [
+      ...new Set([...accountIdsOf(existing), ...accountIdsOf(updated)]),
+    ];
+    this.emitChanged(
+      updated.userId,
+      id,
+      accountIds,
+      existing.occurredAt,
+      updated.occurredAt,
+    );
+    return presentTransaction(
+      updated,
+      await this.access.rolesOn(userId, accountIdsOf(updated)),
+    );
   }
 
   /**
@@ -244,33 +276,67 @@ export class TransactionsService {
    * occurrences it already generated are separate records and stay.
    */
   async remove(userId: string, id: string) {
-    const existing = await this.findLive(userId, id);
+    const existing = await this.findChangeable(userId, id);
     const claimed = await this.prisma.transaction.updateMany({
-      where: { id, userId, deletedAt: null },
-      data: { deletedAt: new Date() },
+      where: { id, deletedAt: null },
+      data: { deletedAt: new Date(), updatedById: userId },
     });
     if (claimed.count === 0)
       throw new NotFoundException('Transaction not found');
-    this.emitChanged(userId, id, existing.occurredAt);
+    this.emitChanged(
+      existing.userId,
+      id,
+      accountIdsOf(existing),
+      existing.occurredAt,
+    );
   }
 
   /** Undoes a delete. A restored recurring root picks its series up again. */
   async restore(userId: string, id: string) {
+    await this.assertChangeable(userId, id);
     const claimed = await this.prisma.transaction.updateMany({
-      where: { id, userId, deletedAt: { not: null } },
-      data: { deletedAt: null },
+      where: { id, deletedAt: { not: null } },
+      data: { deletedAt: null, updatedById: userId },
     });
     if (claimed.count === 0)
       throw new NotFoundException('Deleted transaction not found');
     const restored = await this.getById(userId, id);
-    this.emitChanged(userId, id, restored.occurredAt);
+    const { userId: ledgerUserId, occurredAt } =
+      await this.prisma.transaction.findUniqueOrThrow({ where: { id } });
+    this.emitChanged(
+      ledgerUserId,
+      id,
+      restored.items.map((item) => item.accountId),
+      occurredAt,
+    );
     return restored;
   }
 
-  /** A transaction of this user that isn't deleted, or 404 (another user's id looks the same as a missing one). */
-  private async findLive(userId: string, id: string) {
+  /**
+   * The caller may change it: `transact` on every account it touches. Someone
+   * who can't reach it gets the same 404 as for a missing id. A one-sided
+   * transfer is a record of money that moved, with its other half on another
+   * ledger, so it stays as it is.
+   */
+  private async assertChangeable(userId: string, id: string) {
+    await this.access.assertTransactionAccess(userId, id, 'transact');
+    const { type, _count } = await this.prisma.transaction.findUniqueOrThrow({
+      where: { id },
+      select: { type: true, _count: { select: { items: true } } },
+    });
+    if (isOneSidedTransfer({ type, items: Array(_count.items) })) {
+      throw new BadRequestException(
+        "This is one side of a transfer from before the account changed owner, so it can't be changed.",
+      );
+    }
+  }
+
+  /** assertChangeable, for a transaction that isn't deleted. */
+  private async findChangeable(userId: string, id: string) {
+    await this.assertChangeable(userId, id);
     const transaction = await this.prisma.transaction.findFirst({
-      where: { id, userId, deletedAt: null },
+      where: { id, deletedAt: null },
+      include: { items: { select: { accountId: true } } },
     });
     if (!transaction) throw new NotFoundException('Transaction not found');
     return transaction;
@@ -279,6 +345,7 @@ export class TransactionsService {
   private emitChanged(
     userId: string,
     transactionId: string,
+    accountIds: string[],
     ...months: Date[]
   ) {
     const seen = new Set<string>();
@@ -290,6 +357,7 @@ export class TransactionsService {
         transactionId,
         userId,
         occurredAt,
+        accountIds,
       } satisfies TransactionChangedEvent);
     }
   }

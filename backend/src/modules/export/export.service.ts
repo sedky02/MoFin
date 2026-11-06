@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { LedgerDirection, Prisma } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
+import { accountScope } from '../account-access/account-access';
+import { AccountAccessService } from '../account-access/account-access.service';
 import { ExportFormat } from './dto/export.dto';
 import { csvText, toCsv } from './export.csv';
 
@@ -42,17 +44,20 @@ export interface ExportFile {
 type ExportRows = Awaited<ReturnType<ExportService['load']>>;
 
 /**
- * Builds a download of everything a user owns: accounts (archived ones too),
- * categories (their own plus the shared defaults they can use), transactions
- * that aren't deleted, and goals. Read-only, and every query is filtered on
- * the caller's id.
+ * Builds a download of everything a user can read: accounts (archived and
+ * shared ones too), the categories those use, transactions that aren't deleted,
+ * and goals. Read-only, and every query is filtered to the accounts the caller
+ * can reach, so a transfer's leg on someone's private account stays out.
  *
  * Rows are mapped field by field rather than spread, so internal columns
  * (userId, draft links, soft-delete markers) never reach the file.
  */
 @Injectable()
 export class ExportService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly access: AccountAccessService,
+  ) {}
 
   async export(
     userId: string,
@@ -82,21 +87,32 @@ export class ExportService {
     });
     if (!user) throw new NotFoundException('User not found');
 
+    const accountIds = await this.access.accessibleAccountIds(userId, 'view');
+    const onMyAccounts = { accountId: { in: accountIds } };
+
     const [accounts, categories, transactions, goals] = await Promise.all([
       this.prisma.account.findMany({
-        where: { userId },
+        where: accountScope(userId, 'view'),
         orderBy: { createdAt: 'asc' },
+        include: { members: { where: { userId }, select: { role: true } } },
       }),
       this.prisma.category.findMany({
-        where: { OR: [{ userId }, { userId: null }] },
+        where: {
+          OR: [
+            { userId },
+            { userId: null },
+            { user: { accounts: { some: accountScope(userId, 'view') } } },
+          ],
+        },
         orderBy: [{ type: 'asc' }, { name: 'asc' }],
       }),
       this.prisma.transaction.findMany({
-        where: { userId, deletedAt: null },
+        where: { deletedAt: null, items: { some: onMyAccounts } },
         orderBy: [{ occurredAt: 'asc' }, { createdAt: 'asc' }],
         include: {
           category: { select: { name: true } },
           items: {
+            where: onMyAccounts,
             orderBy: { createdAt: 'asc' },
             include: {
               account: { select: { name: true } },
@@ -106,7 +122,7 @@ export class ExportService {
         },
       }),
       this.prisma.goal.findMany({
-        where: { userId },
+        where: onMyAccounts,
         orderBy: { createdAt: 'asc' },
         include: { instances: { orderBy: { periodStart: 'asc' } } },
       }),
@@ -119,6 +135,9 @@ export class ExportService {
     { user, accounts, categories, transactions, goals }: ExportRows,
     now: Date,
   ) {
+    const reachable = new Set(accounts.map((a) => a.id));
+    const known = (id: string | null) =>
+      id !== null && reachable.has(id) ? id : null;
     return {
       exportedAt: now.toISOString(),
       user: { email: user.email, displayName: user.displayName },
@@ -127,6 +146,7 @@ export class ExportService {
         name: a.name,
         type: a.type,
         currency: a.currency,
+        role: a.members[0]?.role ?? 'OWNER',
         openingBalance: money(a.openingBalance),
         archivedAt: iso(a.archivedAt),
         createdAt: iso(a.createdAt),
@@ -164,8 +184,8 @@ export class ExportService {
         recurringEndDate: iso(t.recurringEndDate),
         nextOccurrenceAt: iso(t.nextOccurrenceAt),
         recurringAmount: nullableMoney(t.recurringAmount),
-        recurringFromAccountId: t.recurringFromAccountId,
-        recurringToAccountId: t.recurringToAccountId,
+        recurringFromAccountId: known(t.recurringFromAccountId),
+        recurringToAccountId: known(t.recurringToAccountId),
         parentTransactionId: t.parentTransactionId,
         createdAt: iso(t.createdAt),
       })),

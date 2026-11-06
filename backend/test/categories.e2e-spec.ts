@@ -1,3 +1,5 @@
+import { AccountAccessService } from '../src/modules/account-access/account-access.service';
+import { ownerAccess } from './support/owner-access';
 /**
  * Default categories on registration, and archiving a category that is in
  * use, through the real controllers, services and HTTP stack. Prisma is
@@ -186,6 +188,7 @@ describe('Categories (e2e)', () => {
         UsersService,
         CategoriesService,
         { provide: PrismaService, useValue: prismaStub },
+        { provide: AccountAccessService, useValue: ownerAccess([]) },
         { provide: JwtService, useValue: {} },
         { provide: ConfigService, useValue: { get: () => undefined } },
         { provide: PasswordResetService, useValue: {} },

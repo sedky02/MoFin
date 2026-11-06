@@ -1,3 +1,4 @@
+import { accountScope } from '../account-access/account-access';
 import { BadRequestException } from '@nestjs/common';
 import { TransactionType } from '@prisma/client';
 import {
@@ -180,7 +181,9 @@ describe('DraftCompleter.complete', () => {
     const { completer, prisma } = setup();
     await completer.complete('u1', expense, NOW);
     expect(prisma.account.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { userId: 'u1', archivedAt: null } }),
+      expect.objectContaining({
+        where: { ...accountScope('u1', 'transact'), archivedAt: null },
+      }),
     );
   });
 
@@ -213,7 +216,7 @@ describe('DraftCompleter.complete', () => {
     expect(prisma.transaction.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {
-          userId: 'u1',
+          createdById: 'u1',
           deletedAt: null,
           occurredAt: { gte: day(30), lte: NOW },
         },

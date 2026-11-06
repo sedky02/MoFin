@@ -1,3 +1,4 @@
+import { fakeAccess } from '../../../test/support/fake-account-access';
 import {
   Goal,
   GoalInstance,
@@ -162,7 +163,10 @@ function makeFakeDb() {
 
   const goal = {
     findFirst: async ({ where, include }: { where: Row; include?: Row }) => {
-      const found = goals.find((g) => matches(g as unknown as Row, where));
+      // Access goes through the account, which these rules don't exercise.
+      const { account: _account, ...own } = where;
+      void _account;
+      const found = goals.find((g) => matches(g as unknown as Row, own));
       if (!found) return null;
       return include?.instances ? withLatestInstance(found) : { ...found };
     },
@@ -305,7 +309,7 @@ function makeFakeDb() {
     return row;
   }
 
-  const service = new GoalsService(prisma as never, {} as never);
+  const service = new GoalsService(prisma as never, fakeAccess() as never);
   const instancesOf = (goalId: string) =>
     instances.filter((i) => i.goalId === goalId).sort(byStartDesc);
   return { service, addGoal, addTransaction, instancesOf };

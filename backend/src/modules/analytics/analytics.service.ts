@@ -8,6 +8,7 @@ import {
   TransactionCreatedEvent,
 } from '../../common/events/domain-events';
 import { PrismaService } from '../../database/prisma.service';
+import { AccountAccessService } from '../account-access/account-access.service';
 
 type MonthlySeries = {
   currency: string;
@@ -41,7 +42,24 @@ function addDays(date: string, n: number): string {
 
 @Injectable()
 export class AnalyticsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly access: AccountAccessService,
+  ) {}
+
+  /**
+   * The accounts a figure covers: the one asked for, checked, or every account
+   * the caller can reach. Always before any cache read, because a cached entry
+   * can outlive the access it was computed with.
+   */
+  private async accountsInScope(
+    userId: string,
+    accountId?: string,
+  ): Promise<string[]> {
+    if (!accountId) return this.access.accessibleAccountIds(userId, 'view');
+    await this.access.assertAccess(userId, accountId, 'view');
+    return [accountId];
+  }
 
   async getMonthlySummary(
     userId: string,
@@ -59,6 +77,7 @@ export class AnalyticsService {
         'currency is required when accountId is not given',
       );
     }
+    const accountIds = await this.accountsInScope(userId, accountId);
     const cacheKey = this.monthlySummaryCacheKey(
       year,
       month,
@@ -73,15 +92,12 @@ export class AnalyticsService {
 
     const start = new Date(Date.UTC(year, month - 1, 1));
     const end = new Date(Date.UTC(year, month, 1));
-    // Scoping by userId already prevents cross-user leakage even if accountId belongs to
-    // someone else's account: no transaction of ours will ever carry their account's items.
     const transactions = await this.prisma.transaction.findMany({
       where: {
-        userId,
         deletedAt: null,
         occurredAt: { gte: start, lt: end },
         // Currency is applied per item below, not here: the other currencies' activity is still reported.
-        ...(accountId ? { items: { some: { accountId } } } : {}),
+        items: { some: { accountId: { in: accountIds } } },
       },
       include: { items: { include: { category: true } }, category: true },
     });
@@ -124,10 +140,9 @@ export class AnalyticsService {
     ) => {
       const unsplit = transaction.items.length <= 1;
       const category = item.category ?? (unsplit ? transaction.category : null);
-      const key =
-        item.categoryId ??
-        (unsplit ? transaction.categoryId : null) ??
-        'uncategorized';
+      // By name, not id: across a shared account and a member's own, "Groceries"
+      // can be two categories from two people, and it reads as one line.
+      const key = category?.name.toLowerCase() ?? 'uncategorized';
       addToCategory(
         target,
         key,
@@ -138,10 +153,8 @@ export class AnalyticsService {
     };
 
     for (const transaction of transactions) {
-      // INCOME/EXPENSE are single-sided, so filtering items down to `accountId` only matters
-      // when it's set — otherwise it's every (single) item on the transaction either way.
-      const accountItems = transaction.items.filter(
-        (item) => !accountId || item.accountId === accountId,
+      const accountItems = transaction.items.filter((item) =>
+        accountIds.includes(item.accountId),
       );
       if (
         transaction.type === TransactionType.INCOME ||
@@ -217,9 +230,16 @@ export class AnalyticsService {
     currency: string,
     accountId?: string,
   ): Promise<MonthlySeries> {
+    const accountIds = await this.accountsInScope(userId, accountId);
     const [series, opening] = await Promise.all([
-      this.getLedgerMonthlySeries(userId, months, currency, accountId),
-      this.openingBalanceTotal(userId, currency, accountId),
+      this.getLedgerMonthlySeries(
+        userId,
+        months,
+        currency,
+        accountIds,
+        accountId,
+      ),
+      this.openingBalanceTotal(currency, accountIds),
     ]);
     if (opening.isZero()) return series;
     return {
@@ -246,6 +266,7 @@ export class AnalyticsService {
     accountId?: string,
     timeZone = 'UTC',
   ): Promise<DailySeries> {
+    const accountIds = await this.accountsInScope(userId, accountId);
     const end = addDays(from, days);
     // occurredAt is a UTC timestamp without zone: read it as UTC, then as the caller's local time.
     const localDay = Prisma.sql`((t."occurredAt" AT TIME ZONE 'UTC') AT TIME ZONE ${timeZone})::date`;
@@ -264,15 +285,14 @@ export class AnalyticsService {
           SUM(CASE WHEN t.type = 'EXPENSE' THEN ti.amount ELSE 0 END) AS expenses
         FROM "TransactionItem" ti
         JOIN "Transaction" t ON t.id = ti."transactionId"
-        WHERE ti."userId" = ${userId}
+        WHERE ti."accountId" = ANY(${accountIds}::text[])
           AND ti.currency = ${currency}
           AND t."deletedAt" IS NULL
           AND ${localDay} < ${end}::date
-          ${accountId ? Prisma.sql`AND ti."accountId" = ${accountId}` : Prisma.empty}
         GROUP BY 1
         ORDER BY 1
       `),
-      this.openingBalanceTotal(userId, currency, accountId),
+      this.openingBalanceTotal(currency, accountIds),
     ]);
 
     const byDay = new Map(rows.map((r) => [r.day, r]));
@@ -301,12 +321,11 @@ export class AnalyticsService {
    * series, so editing an account's opening balance shows up straight away.
    */
   private async openingBalanceTotal(
-    userId: string,
     currency: string,
-    accountId?: string,
+    accountIds: string[],
   ): Promise<Prisma.Decimal> {
     const { _sum } = await this.prisma.account.aggregate({
-      where: { userId, currency, ...(accountId ? { id: accountId } : {}) },
+      where: { id: { in: accountIds }, currency },
       _sum: { openingBalance: true },
     });
     return _sum.openingBalance ?? new Prisma.Decimal(0);
@@ -323,6 +342,7 @@ export class AnalyticsService {
     userId: string,
     months: number,
     currency: string,
+    accountIds: string[],
     accountId?: string,
   ): Promise<MonthlySeries> {
     const now = new Date();
@@ -354,11 +374,10 @@ export class AnalyticsService {
         SUM(CASE WHEN t.type = 'EXPENSE' THEN ti.amount ELSE 0 END) AS expenses
       FROM "TransactionItem" ti
       JOIN "Transaction" t ON t.id = ti."transactionId"
-      WHERE ti."userId" = ${userId}
+      WHERE ti."accountId" = ANY(${accountIds}::text[])
         AND ti.currency = ${currency}
         AND t."deletedAt" IS NULL
         AND t."occurredAt" < ${end}
-        ${accountId ? Prisma.sql`AND ti."accountId" = ${accountId}` : Prisma.empty}
       GROUP BY 1
       ORDER BY 1
     `);
@@ -434,7 +453,13 @@ export class AnalyticsService {
     // avoids "month 1" wrongly matching "month 10/11/12".
     await this.prisma.analyticsCache.deleteMany({
       where: {
-        userId: event.userId,
+        // Everyone on the accounts it touched, not just who changed it.
+        userId: {
+          in: [
+            event.userId,
+            ...(await this.access.usersWithAccess(event.accountIds)),
+          ],
+        },
         OR: [
           { cacheKey: base },
           { cacheKey: { startsWith: `${base}:` } },

@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Account, AccountMemberRole, Prisma } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
+import { AccountAction, accountScope } from '../account-access/account-access';
+import { AccountAccessService } from '../account-access/account-access.service';
 import {
   CreateAccountDto,
   ListAccountsQueryDto,
@@ -12,13 +14,43 @@ import {
 // transaction; every route omits it and keeps using this.prisma.
 type Db = Prisma.TransactionClient;
 
+type AccountWithAccess = Account & {
+  members: { role: AccountMemberRole; hideAmount: boolean }[];
+  user: { displayName: string | null };
+  _count: { members: number };
+};
+
+/**
+ * An account as `userId` sees it. `metadata` holds the owner's own choices, so
+ * a member gets only theirs, in the same place clients already read it from.
+ */
+function accountView(row: AccountWithAccess, userId: string) {
+  const { members, user, _count, ...account } = row;
+  const isOwner = account.userId === userId;
+  return {
+    ...account,
+    metadata: isOwner
+      ? account.metadata
+      : members[0].hideAmount
+        ? { hideAmount: true }
+        : {},
+    role: isOwner ? 'OWNER' : members[0].role,
+    isShared: _count.members > 0,
+    memberCount: _count.members + 1,
+    ownerName: user.displayName,
+  };
+}
+
 function toDecimal(amount: string | undefined): Prisma.Decimal | undefined {
   return amount === undefined ? undefined : new Prisma.Decimal(amount);
 }
 
 @Injectable()
 export class AccountsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly access: AccountAccessService,
+  ) {}
 
   create(userId: string, dto: CreateAccountDto, db: Db = this.prisma) {
     return db.account.create({
@@ -31,48 +63,49 @@ export class AccountsService {
     });
   }
 
-  list(userId: string, query: ListAccountsQueryDto) {
+  /**
+   * The accounts `userId` can reach, their own and shared with them, each with
+   * their role. `action` narrows it, as the draft flows do to the accounts they
+   * may write to.
+   */
+  async list(
+    userId: string,
+    query: ListAccountsQueryDto,
+    action: AccountAction = 'view',
+  ) {
     const archivedFilter =
       query.status === 'active'
         ? { archivedAt: null }
         : query.status === 'archived'
           ? { archivedAt: { not: null } }
           : {};
-    return this.prisma.paginated.account.paginate({
-      where: { userId, ...archivedFilter },
+    const page = await this.prisma.paginated.account.paginate({
+      where: { ...accountScope(userId, action), ...archivedFilter },
       orderBy: { createdAt: 'desc' },
+      include: {
+        members: {
+          where: { userId },
+          select: { role: true, hideAmount: true },
+        },
+        user: { select: { displayName: true } },
+        _count: { select: { members: true } },
+      },
       limit: query.limit,
       offset: query.offset,
     });
-  }
-
-  /**
-   * Ownership check for reads (balance, search, history). Archived accounts
-   * pass: their ledger entries are kept and their balance is still real money.
-   */
-  async assertOwned(userId: string, accountId: string, db: Db = this.prisma) {
-    const account = await db.account.findFirst({
-      where: { id: accountId, userId },
-    });
-    if (!account) throw new NotFoundException(`Account ${accountId} not found`);
-    return account;
-  }
-
-  /**
-   * Ownership check for writes (new transactions, goals, edits, archiving).
-   * An archived account is read-only until it is restored, so it 404s here
-   * the same way an account the user doesn't own does.
-   */
-  async assertActive(userId: string, accountId: string, db: Db = this.prisma) {
-    const account = await db.account.findFirst({
-      where: { id: accountId, userId, archivedAt: null },
-    });
-    if (!account) throw new NotFoundException(`Account ${accountId} not found`);
-    return account;
+    return {
+      ...page,
+      // Cast for the same reason as GoalsService.list: paginate() loses the include's type.
+      data: (page.data as AccountWithAccess[]).map((account) =>
+        accountView(account, userId),
+      ),
+    };
   }
 
   async update(userId: string, accountId: string, dto: UpdateAccountDto) {
-    await this.assertActive(userId, accountId);
+    await this.access.assertAccess(userId, accountId, 'manage', {
+      activeOnly: true,
+    });
     return this.prisma.account.update({
       where: { id: accountId },
       data: {
@@ -83,8 +116,11 @@ export class AccountsService {
     });
   }
 
+  /** Read-only for everyone on it until restored; the owner alone can do either. */
   async archive(userId: string, accountId: string) {
-    await this.assertActive(userId, accountId);
+    await this.access.assertAccess(userId, accountId, 'manage', {
+      activeOnly: true,
+    });
     return this.prisma.account.update({
       where: { id: accountId },
       data: { archivedAt: new Date() },
@@ -92,10 +128,12 @@ export class AccountsService {
   }
 
   async restore(userId: string, accountId: string) {
-    const account = await this.prisma.account.findFirst({
-      where: { id: accountId, userId, archivedAt: { not: null } },
-    });
-    if (!account)
+    const { account } = await this.access.assertAccess(
+      userId,
+      accountId,
+      'manage',
+    );
+    if (!account.archivedAt)
       throw new NotFoundException(`Archived account ${accountId} not found`);
     return this.prisma.account.update({
       where: { id: accountId },

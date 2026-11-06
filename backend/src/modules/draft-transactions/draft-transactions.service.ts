@@ -16,6 +16,7 @@ import {
   DraftCreatedEvent,
 } from '../../common/events/domain-events';
 import { PrismaService } from '../../database/prisma.service';
+import { AccountAccessService } from '../account-access/account-access.service';
 import { TransactionsService } from '../transactions/transactions.service';
 import {
   CreateDraftTransactionDto,
@@ -40,7 +41,22 @@ export class DraftTransactionsService {
     private readonly prisma: PrismaService,
     private readonly transactionsService: TransactionsService,
     private readonly events: EventEmitter2,
+    private readonly access: AccountAccessService,
   ) {}
+
+  /**
+   * A draft may only aim at accounts the user can post to, whichever way it
+   * came in. Approval checks again, because a role can change while it waits.
+   */
+  private async assertTargets(userId: string, dto: CreateDraftTransactionDto) {
+    const { fromAccountId, toAccountId } = dto.parsedData;
+    for (const accountId of new Set([fromAccountId, toAccountId])) {
+      if (!accountId) continue;
+      await this.access.assertAccess(userId, accountId, 'transact', {
+        activeOnly: true,
+      });
+    }
+  }
 
   /**
    * Several drafts from one message, all or none: a failure halfway must not
@@ -52,6 +68,7 @@ export class DraftTransactionsService {
     dtos: CreateDraftTransactionDto[],
     origin: DraftOrigin = COMPOSER_ORIGIN,
   ) {
+    for (const dto of dtos) await this.assertTargets(userId, dto);
     const drafts = await this.prisma.$transaction(
       dtos.map((dto) =>
         this.prisma.draftTransaction.create({
@@ -80,6 +97,7 @@ export class DraftTransactionsService {
     dto: CreateDraftTransactionDto,
     origin: DraftOrigin = COMPOSER_ORIGIN,
   ) {
+    await this.assertTargets(userId, dto);
     const draft = await this.prisma.draftTransaction.create({
       data: {
         userId,

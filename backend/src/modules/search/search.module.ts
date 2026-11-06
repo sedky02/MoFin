@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
-import { AccountsModule } from '../accounts/accounts.module';
+import { AccountAccessModule } from '../account-access/account-access.module';
 import { CategoriesModule } from '../categories/categories.module';
 import { SearchController } from './search.controller';
 import { SearchService } from './search.service';
 
 @Module({
-  imports: [AccountsModule, CategoriesModule],
+  imports: [AccountAccessModule, CategoriesModule],
   controllers: [SearchController],
   providers: [SearchService],
   exports: [SearchService],

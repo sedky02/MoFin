@@ -1,3 +1,4 @@
+import { fakeAccess } from '../../../test/support/fake-account-access';
 import { BadRequestException } from '@nestjs/common';
 import { Prisma, TransactionType } from '@prisma/client';
 import { AnalyticsService } from './analytics.service';
@@ -11,7 +12,16 @@ describe('AnalyticsService.getMonthlySummary', () => {
       },
       transaction: { findMany: jest.fn(async () => transactions) },
     };
-    return { service: new AnalyticsService(prisma as never), prisma };
+    const reachable = (transactions as { items: { accountId: string }[] }[])
+      .flatMap((transaction) => transaction.items)
+      .map((item) => item.accountId);
+    return {
+      service: new AnalyticsService(
+        prisma as never,
+        fakeAccess(reachable) as never,
+      ),
+      prisma,
+    };
   }
 
   it('leaves deleted transactions out of the month', async () => {
@@ -19,7 +29,10 @@ describe('AnalyticsService.getMonthlySummary', () => {
     await service.getMonthlySummary('u1', 2026, 7, false, undefined, 'USD');
     expect(prisma.transaction.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({ userId: 'u1', deletedAt: null }),
+        where: expect.objectContaining({
+          deletedAt: null,
+          items: { some: { accountId: { in: [] } } },
+        }),
       }),
     );
   });
@@ -116,7 +129,7 @@ describe('AnalyticsService.getMonthlySummary', () => {
     expect(prisma.transaction.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
-          items: { some: { accountId: 'acc-a' } },
+          items: { some: { accountId: { in: ['acc-a'] } } },
         }),
       }),
     );
@@ -160,7 +173,11 @@ describe('AnalyticsService.getMonthlySummary', () => {
     // other currency's activity is still reported.
     expect(prisma.transaction.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.not.objectContaining({ items: expect.anything() }),
+        where: expect.objectContaining({
+          items: {
+            some: { accountId: { in: ['acc-usd', 'acc-tnd', 'acc-tnd'] } },
+          },
+        }),
       }),
     );
     expect(
@@ -528,7 +545,10 @@ describe('AnalyticsService.getMonthlySeries', () => {
         ),
       },
     };
-    return { service: new AnalyticsService(prisma as never), prisma };
+    return {
+      service: new AnalyticsService(prisma as never, fakeAccess() as never),
+      prisma,
+    };
   }
 
   beforeEach(() => {
@@ -584,7 +604,7 @@ describe('AnalyticsService.getMonthlySeries', () => {
     expect(result.points.map((p) => p.balance)).toEqual(['1250.5', '1250.5']);
     expect(prisma.account.aggregate).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { userId: 'u1', currency: 'TND', id: 'acc-t' },
+        where: { currency: 'TND', id: { in: ['acc-t'] } },
       }),
     );
   });
@@ -631,11 +651,10 @@ describe('AnalyticsService.getMonthlySeries', () => {
         aggregate: jest.fn(async () => ({ _sum: { openingBalance: null } })),
       },
     };
-    await new AnalyticsService(prisma as never).getMonthlySeries(
-      'u1',
-      6,
-      'USD',
-    );
+    await new AnalyticsService(
+      prisma as never,
+      fakeAccess() as never,
+    ).getMonthlySeries('u1', 6, 'USD');
     const sql = queryRaw.mock.calls[0][0].sql;
     // One WHERE filter covers all three sums.
     expect(sql).toContain('t."deletedAt" IS NULL');
@@ -646,17 +665,21 @@ describe('AnalyticsService.getMonthlySeries', () => {
 describe('AnalyticsService cache invalidation', () => {
   it('clears the month on an edit, delete or restore, not just on create', async () => {
     const deleteMany = jest.fn(async () => ({ count: 1 }));
-    const service = new AnalyticsService({
-      analyticsCache: { deleteMany },
-    } as never);
+    const service = new AnalyticsService(
+      {
+        analyticsCache: { deleteMany },
+      } as never,
+      fakeAccess() as never,
+    );
     await service.invalidateOnTransaction({
       transactionId: 't1',
       userId: 'u1',
       occurredAt: new Date('2026-03-10T00:00:00Z'),
+      accountIds: [],
     });
     expect(deleteMany).toHaveBeenCalledWith({
       where: expect.objectContaining({
-        userId: 'u1',
+        userId: { in: ['u1'] },
         OR: expect.arrayContaining([{ cacheKey: 'monthly-summary:v3:2026:3' }]),
       }),
     });
@@ -689,7 +712,11 @@ describe('AnalyticsService.getDailySeries', () => {
         ),
       },
     };
-    return { service: new AnalyticsService(prisma as never), prisma, queryRaw };
+    return {
+      service: new AnalyticsService(prisma as never, fakeAccess() as never),
+      prisma,
+      queryRaw,
+    };
   }
 
   it('returns one point per day, carrying the balance (opening balances and earlier days included) across empty days', async () => {
@@ -752,17 +779,11 @@ describe('AnalyticsService.getDailySeries', () => {
     expect(sql.sql).toContain('"deletedAt" IS NULL');
     expect(sql.sql).toContain('ti."accountId" =');
     expect(sql.values).toEqual(
-      expect.arrayContaining([
-        'u1',
-        'TND',
-        'acc-1',
-        'Africa/Tunis',
-        '2026-11-09',
-      ]),
+      expect.arrayContaining([['acc-1'], 'TND', 'Africa/Tunis', '2026-11-09']),
     );
     expect(prisma.account.aggregate).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { userId: 'u1', currency: 'TND', id: 'acc-1' },
+        where: { currency: 'TND', id: { in: ['acc-1'] } },
       }),
     );
   });

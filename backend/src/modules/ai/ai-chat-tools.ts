@@ -109,7 +109,7 @@ export function buildChatTools(): LlmTool[] {
     {
       name: LIST_CATEGORIES_TOOL,
       description:
-        "The user's categories (id, name, type), to turn a category name into the categoryId other tools filter on.",
+        "The user's categories (id, name, type), to turn a category name into the categoryId other tools filter on. Pass accountId for the ones that fit that account: a shared account uses its owner's.",
       parameters: schemaOf(listCategoriesQuerySchema),
     },
     ...CHART_TOOL_NAMES.map((name) => ({

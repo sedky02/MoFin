@@ -6,7 +6,7 @@ import { CategoriesService } from '../categories/categories.service';
 import { DraftTransactionsService } from '../draft-transactions/draft-transactions.service';
 import { ParseTransactionIntentDto } from './dto/ai.dto';
 import { DraftContext, ProposedDraft } from './drafts/draft-context';
-import { repairDraft } from './drafts/draft-repairer';
+import { categoryFitsAccount, repairDraft } from './drafts/draft-repairer';
 import { ModelDraftParser } from './drafts/model-draft-parser';
 import { parseWithRegex } from './drafts/regex-draft-parser';
 import { isAiProviderFailure } from './llm/ai-unavailable.exception';
@@ -50,10 +50,22 @@ export class AiService {
     );
   }
 
+  /** The local parser matches by name, so it may pick another person's "Groceries". */
+  private withFittingCategory(
+    draft: ProposedDraft,
+    ctx: DraftContext,
+  ): ProposedDraft {
+    const { categoryId, fromAccountId, toAccountId } = draft.data;
+    if (!categoryId) return draft;
+    return categoryFitsAccount(categoryId, fromAccountId ?? toAccountId, ctx)
+      ? draft
+      : { ...draft, data: { ...draft.data, categoryId: undefined } };
+  }
+
   private async propose(ctx: DraftContext): Promise<ProposedDraft[]> {
     if (!this.modelParser.enabled) {
       this.logger.warn('AI_API_KEY is not set, using the local parser');
-      return [parseWithRegex(ctx)];
+      return [this.withFittingCategory(parseWithRegex(ctx), ctx)];
     }
     try {
       const drafts = await this.modelParser.parse(ctx);
@@ -68,7 +80,7 @@ export class AiService {
         `Model unavailable (${error.message}), using the local parser`,
       );
     }
-    return [parseWithRegex(ctx)];
+    return [this.withFittingCategory(parseWithRegex(ctx), ctx)];
   }
 
   /**
@@ -87,18 +99,20 @@ export class AiService {
     userId: string,
     dto: ParseTransactionIntentDto,
   ): Promise<DraftContext> {
-    const [accounts, categories] = await Promise.all([
-      this.accountsService.list(userId, {
-        status: 'active',
-        limit: CONTEXT_LIST_LIMIT,
-        offset: 0,
-      }),
-      this.categoriesService.list(userId, {
-        status: 'active',
-        limit: CONTEXT_LIST_LIMIT,
-        offset: 0,
-      }),
-    ]);
+    // Only accounts the user can post to: a draft for one they view would fail.
+    const accounts = await this.accountsService.list(
+      userId,
+      { status: 'active', limit: CONTEXT_LIST_LIMIT, offset: 0 },
+      'transact',
+    );
+    // Theirs, and those of the owners of the shared accounts they can post to.
+    const ownerIds = [
+      ...new Set([userId, ...accounts.data.map((a) => a.userId)]),
+    ];
+    const categories = await this.categoriesService.listForOwners(
+      ownerIds,
+      CONTEXT_LIST_LIMIT,
+    );
     // Past the limit the model can't see some ids, and repairDraft drops any
     // it guesses. Rare enough to only log for now.
     if (accounts.total > accounts.data.length) {
@@ -106,9 +120,9 @@ export class AiService {
         `Drafting with ${accounts.data.length} of ${accounts.total} accounts in context`,
       );
     }
-    if (categories.total > categories.data.length) {
+    if (categories.length === CONTEXT_LIST_LIMIT) {
       this.logger.warn(
-        `Drafting with ${categories.data.length} of ${categories.total} categories in context`,
+        `Drafting with the first ${CONTEXT_LIST_LIMIT} categories in context`,
       );
     }
     const now = new Date();
@@ -116,7 +130,7 @@ export class AiService {
     return {
       input: dto.input,
       accounts: accounts.data,
-      categories: categories.data,
+      categories,
       defaultAccountId: dto.defaultAccountId,
       defaultCurrency: dto.defaultCurrency,
       timeZone,

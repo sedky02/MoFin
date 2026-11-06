@@ -1,10 +1,19 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { LedgerDirection, Prisma } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
-import { AccountsService } from '../accounts/accounts.service';
+import { AccountAccessService } from '../account-access/account-access.service';
 import { GetBalanceQueryDto, LedgerEntryInput } from './dto/ledger.dto';
 
 type Db = Prisma.TransactionClient;
+
+export const DIFFERENT_OWNERS_MESSAGE =
+  "A transfer can't cross accounts with different owners. Record an expense on one and income on the other.";
+
+/** What a command posts, and whose ledger it goes on: the account owner's, not always the caller's. */
+export interface LedgerPlan {
+  ledgerUserId: string;
+  entries: LedgerEntryInput[];
+}
 
 /**
  * Sign convention (MoFin-specific — note it is NOT textbook double-entry):
@@ -19,7 +28,7 @@ type Db = Prisma.TransactionClient;
 export class LedgerService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly accountsService: AccountsService,
+    private readonly access: AccountAccessService,
   ) {}
 
   async buildEntriesForCommand(
@@ -34,19 +43,29 @@ export class LedgerService {
       items?: { amount: string; categoryId?: string; memo?: string }[];
     },
     db: Db = this.prisma,
-  ): Promise<LedgerEntryInput[]> {
-    // assertActive returns the account, so we validate ownership and currency in one pass.
+  ): Promise<LedgerPlan> {
     // Archived accounts are read-only: nothing new can be posted to them.
-    const fromAccount = command.fromAccountId
-      ? await this.accountsService.assertActive(
-          userId,
-          command.fromAccountId,
-          db,
-        )
-      : null;
-    const toAccount = command.toAccountId
-      ? await this.accountsService.assertActive(userId, command.toAccountId, db)
-      : null;
+    const target = async (accountId?: string) =>
+      accountId
+        ? (
+            await this.access.assertAccess(userId, accountId, 'transact', {
+              db,
+              activeOnly: true,
+            })
+          ).account
+        : null;
+    const fromAccount = await target(command.fromAccountId);
+    const toAccount = await target(command.toAccountId);
+
+    // One transaction sits on one ledger, so both sides need the same owner.
+    if (
+      command.type === 'TRANSFER' &&
+      fromAccount &&
+      toAccount &&
+      fromAccount.userId !== toAccount.userId
+    ) {
+      throw new BadRequestException(DIFFERENT_OWNERS_MESSAGE);
+    }
 
     // Currency consistency (audit A3): every leg must be in the account's own
     // currency, and a transfer cannot silently cross currencies.
@@ -61,6 +80,22 @@ export class LedgerService {
       );
     }
 
+    const ledgerOwner = command.type === 'INCOME' ? toAccount : fromAccount;
+    return {
+      ledgerUserId: ledgerOwner!.userId,
+      entries: this.entriesFor(command),
+    };
+  }
+
+  private entriesFor(command: {
+    type: 'INCOME' | 'EXPENSE' | 'TRANSFER';
+    amount: string;
+    currency: string;
+    fromAccountId?: string;
+    toAccountId?: string;
+    description: string;
+    items?: { amount: string; categoryId?: string; memo?: string }[];
+  }): LedgerEntryInput[] {
     if (command.type === 'INCOME') {
       return (
         command.items?.length ? command.items : [{ amount: command.amount }]
@@ -127,13 +162,15 @@ export class LedgerService {
 
   async getBalance(userId: string, query: GetBalanceQueryDto) {
     if (query.accountId)
-      await this.accountsService.assertOwned(userId, query.accountId);
+      await this.access.assertAccess(userId, query.accountId, 'view');
+    const accountIds = query.accountId
+      ? [query.accountId]
+      : await this.access.accessibleAccountIds(userId, 'view');
 
     const where = {
-      userId,
+      accountId: { in: accountIds },
       // A deleted transaction's lines stay in the table (for restore) but are no longer money.
       transaction: { deletedAt: null },
-      ...(query.accountId ? { accountId: query.accountId } : {}),
       ...(query.currency ? { currency: query.currency } : {}),
     };
 
@@ -150,9 +187,8 @@ export class LedgerService {
     // currency), so an account with one and no entries yet still shows it.
     const openings = await this.prisma.account.findMany({
       where: {
-        userId,
+        id: { in: accountIds },
         openingBalance: { not: 0 },
-        ...(query.accountId ? { id: query.accountId } : {}),
         ...(query.currency ? { currency: query.currency } : {}),
       },
       select: { id: true, currency: true, openingBalance: true },

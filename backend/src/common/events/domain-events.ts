@@ -23,8 +23,11 @@ export interface DraftApprovedEvent {
 
 export interface TransactionCreatedEvent {
   transactionId: string;
+  /** Whose ledger it is on. */
   userId: string;
   occurredAt: Date;
+  /** The accounts it touches: everyone who can reach one has stale figures. */
+  accountIds: string[];
 }
 
 /** The people whose set of reachable accounts just changed. */
@@ -35,6 +38,9 @@ export interface AccountAccessChangedEvent {
 /** Emitted once per month a change touched: an edit that moves the date emits for both months. */
 export interface TransactionChangedEvent {
   transactionId: string;
+  /** Whose ledger it is on. */
   userId: string;
   occurredAt: Date;
+  /** The accounts it touched, before and after. */
+  accountIds: string[];
 }

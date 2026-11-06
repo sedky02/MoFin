@@ -1,3 +1,5 @@
+import { accountScope } from '../account-access/account-access';
+import { fakeAccess } from '../../../test/support/fake-account-access';
 import {
   GoalRecurrenceUnit,
   GoalStatus,
@@ -122,7 +124,7 @@ describe('GoalsService', () => {
       );
       const prisma = { transactionItem: { groupBy }, account: { findFirst } };
       return {
-        service: new GoalsService(prisma as never, {} as never),
+        service: new GoalsService(prisma as never, fakeAccess() as never),
         groupBy,
         findFirst,
       };
@@ -139,7 +141,7 @@ describe('GoalsService', () => {
       );
       const prisma = { transactionItem: { aggregate }, account: { findFirst } };
       return {
-        service: new GoalsService(prisma as never, {} as never),
+        service: new GoalsService(prisma as never, fakeAccess() as never),
         aggregate,
         findFirst,
       };
@@ -317,7 +319,10 @@ describe('GoalsService', () => {
       const create = jest.fn(async (args: unknown) => args);
       const prisma = { goal: { create } };
       const accountsService = {
-        assertActive: jest.fn(async () => ({ id: 'a1' })),
+        assertAccess: jest.fn(async () => ({
+          account: { id: 'a1', userId: 'u1' },
+          role: 'OWNER',
+        })),
       };
       const service = new GoalsService(
         prisma as never,
@@ -390,7 +395,7 @@ describe('GoalsService', () => {
         transactionItem: { aggregate },
       };
       return {
-        service: new GoalsService(prisma as never, {} as never),
+        service: new GoalsService(prisma as never, fakeAccess() as never),
         update,
       };
     }
@@ -452,7 +457,7 @@ describe('GoalsService', () => {
           })),
         },
       };
-      const service = new GoalsService(prisma as never, {} as never);
+      const service = new GoalsService(prisma as never, fakeAccess() as never);
 
       jest.useFakeTimers({ now: new Date('2026-10-24T23:59:00.000Z') });
       expect((await service.findOne('u1', 'g1')).currentInstance?.status).toBe(
@@ -506,7 +511,7 @@ describe('GoalsService', () => {
       }));
       const prisma = { paginated: { goal: { paginate } } };
       return {
-        service: new GoalsService(prisma as never, {} as never),
+        service: new GoalsService(prisma as never, fakeAccess() as never),
         paginate,
       };
     }
@@ -515,7 +520,9 @@ describe('GoalsService', () => {
       const { service, paginate } = makeServiceWithPrisma();
       await service.list('u1', { status: 'active', limit: 20, offset: 0 });
       expect(paginate).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { userId: 'u1', archivedAt: null } }),
+        expect.objectContaining({
+          where: { account: accountScope('u1', 'view'), archivedAt: null },
+        }),
       );
     });
 
@@ -524,7 +531,10 @@ describe('GoalsService', () => {
       await service.list('u1', { status: 'archived', limit: 20, offset: 0 });
       expect(paginate).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { userId: 'u1', archivedAt: { not: null } },
+          where: {
+            account: accountScope('u1', 'view'),
+            archivedAt: { not: null },
+          },
         }),
       );
     });
@@ -533,22 +543,24 @@ describe('GoalsService', () => {
       const { service, paginate } = makeServiceWithPrisma();
       await service.list('u1', { status: 'all', limit: 20, offset: 0 });
       expect(paginate).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { userId: 'u1' } }),
+        expect.objectContaining({
+          where: { account: accountScope('u1', 'view') },
+        }),
       );
     });
   });
 
-  describe('assertOwned', () => {
+  describe('assertAccess', () => {
     it('finds an archived goal — stopping a goal must not hide its history', async () => {
       const goal = { id: 'g1', userId: 'u1', archivedAt: new Date() };
       const prisma = { goal: { findFirst: jest.fn(async () => goal) } };
-      const service = new GoalsService(prisma as never, {} as never);
+      const service = new GoalsService(prisma as never, fakeAccess() as never);
 
-      const result = await service.assertOwned('u1', 'g1');
+      const result = await service.assertAccess('u1', 'g1');
 
       expect(result).toBe(goal);
       expect(prisma.goal.findFirst).toHaveBeenCalledWith({
-        where: { id: 'g1', userId: 'u1' },
+        where: { id: 'g1', account: accountScope('u1', 'view') },
       });
     });
   });
@@ -572,12 +584,12 @@ describe('GoalsService', () => {
         },
         $transaction: async (fn: (tx: unknown) => unknown) => fn(prisma),
       };
-      const service = new GoalsService(prisma as never, {} as never);
+      const service = new GoalsService(prisma as never, fakeAccess() as never);
 
       await service.restore('u1', 'g1');
 
       expect(prisma.goal.findFirst).toHaveBeenCalledWith({
-        where: { id: 'g1', userId: 'u1', archivedAt: { not: null } },
+        where: { id: 'g1', account: accountScope('u1', 'view') },
       });
       expect(prisma.goal.update).toHaveBeenCalledWith({
         where: { id: 'g1' },
@@ -589,7 +601,7 @@ describe('GoalsService', () => {
       const prisma = {
         goal: { findFirst: jest.fn(async () => null), update: jest.fn() },
       };
-      const service = new GoalsService(prisma as never, {} as never);
+      const service = new GoalsService(prisma as never, fakeAccess() as never);
 
       await expect(service.restore('u1', 'g1')).rejects.toThrow('not found');
       expect(prisma.goal.update).not.toHaveBeenCalled();
@@ -605,12 +617,12 @@ describe('GoalsService', () => {
         goal: { findFirst: jest.fn(async () => goal) },
         paginated: { goalInstance: { paginate } },
       };
-      const service = new GoalsService(prisma as never, {} as never);
+      const service = new GoalsService(prisma as never, fakeAccess() as never);
 
       const result = await service.history('u1', 'g1', { limit: 1, offset: 0 });
 
       expect(prisma.goal.findFirst).toHaveBeenCalledWith({
-        where: { id: 'g1', userId: 'u1' },
+        where: { id: 'g1', account: accountScope('u1', 'view') },
       });
       expect(result).toEqual({
         ...page,
@@ -670,7 +682,7 @@ describe('GoalsService.runRollover lock', () => {
       ...db,
       $transaction: jest.fn(async (fn: (tx: unknown) => unknown) => fn(db)),
     };
-    const service = new GoalsService(prisma as never, {} as never);
+    const service = new GoalsService(prisma as never, fakeAccess() as never);
     const rollover = jest
       .spyOn(service, 'rolloverExpiredInstances')
       .mockResolvedValue(undefined);

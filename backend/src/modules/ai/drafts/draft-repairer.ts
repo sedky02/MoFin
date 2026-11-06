@@ -11,6 +11,23 @@ export const MISSING_ACCOUNT_CONFIDENCE = 0.4;
 export const FIXED_ACCOUNT_CONFIDENCE = 0.5;
 
 /**
+ * A shared account uses its owner's categories, so a category only fits an
+ * account when it is global or that owner's. With no account yet, nothing rules
+ * it out.
+ */
+export function categoryFitsAccount(
+  categoryId: string | undefined,
+  accountId: string | undefined,
+  ctx: Pick<DraftContext, 'accounts' | 'categories'>,
+): boolean {
+  const category = ctx.categories.find((c) => c.id === categoryId);
+  const owner = ctx.accounts.find((a) => a.id === accountId)?.userId;
+  return (
+    !!category && (!owner || !category.userId || category.userId === owner)
+  );
+}
+
+/**
  * The model can invent ids, leave out the account or pick a category of the
  * wrong kind. Keep only ids that belong to the user (and categories of the
  * right type), fall back to the default account, and lower the confidence for
@@ -54,7 +71,8 @@ export function repairDraft(
     (c) =>
       c.id === draft.categoryId &&
       draft.type !== TransactionType.TRANSFER &&
-      c.type === draft.type,
+      c.type === draft.type &&
+      categoryFitsAccount(c.id, fromAccountId ?? toAccountId, ctx),
   );
 
   // "Today" keeps the actual time; any other day is stored at local noon so it

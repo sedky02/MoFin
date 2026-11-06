@@ -15,7 +15,8 @@ import {
 } from '../../common/utils/date-bounds';
 import { withAdvisoryLock } from '../../common/utils/advisory-lock';
 import { PrismaService } from '../../database/prisma.service';
-import { AccountsService } from '../accounts/accounts.service';
+import { AccountAction, accountScope } from '../account-access/account-access';
+import { AccountAccessService } from '../account-access/account-access.service';
 import {
   CreateGoalDto,
   GoalHistoryQueryDto,
@@ -102,7 +103,7 @@ export class GoalsService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly accountsService: AccountsService,
+    private readonly access: AccountAccessService,
   ) {}
 
   async create(
@@ -110,10 +111,11 @@ export class GoalsService {
     dto: CreateGoalDto,
     db: Prisma.TransactionClient = this.prisma,
   ) {
-    const account = await this.accountsService.assertActive(
+    const { account } = await this.access.assertAccess(
       userId,
       dto.accountId,
-      db,
+      'goals',
+      { db, activeOnly: true },
     );
 
     let periodStart: Date;
@@ -133,7 +135,8 @@ export class GoalsService {
 
     return db.goal.create({
       data: {
-        userId,
+        // Goals sit with the account: its owner's, whoever on it created them.
+        userId: account.userId,
         accountId: account.id,
         name: dto.name,
         type: dto.type,
@@ -162,7 +165,7 @@ export class GoalsService {
           ? { archivedAt: { not: null } }
           : {};
     const page = await this.prisma.paginated.goal.paginate({
-      where: { userId, ...archivedFilter },
+      where: { account: accountScope(userId, 'view'), ...archivedFilter },
       orderBy: { createdAt: 'desc' },
       include: { instances: { orderBy: { periodStart: 'desc' }, take: 1 } },
       limit: query.limit,
@@ -182,16 +185,24 @@ export class GoalsService {
 
   // Deliberately does NOT exclude archived goals — stopping a goal should not make its
   // history/details inaccessible, only remove it from the default active list.
-  async assertOwned(userId: string, goalId: string) {
+  // A goal is reached through its account: anyone on the account sees it, and
+  // someone who isn't gets the same 404 as for a missing id.
+  async assertAccess(
+    userId: string,
+    goalId: string,
+    action: AccountAction = 'view',
+  ) {
     const goal = await this.prisma.goal.findFirst({
-      where: { id: goalId, userId },
+      where: { id: goalId, account: accountScope(userId, 'view') },
     });
     if (!goal) throw new NotFoundException(`Goal ${goalId} not found`);
+    if (action !== 'view')
+      await this.access.assertAccess(userId, goal.accountId, action);
     return goal;
   }
 
   async findOne(userId: string, goalId: string) {
-    await this.assertOwned(userId, goalId);
+    await this.assertAccess(userId, goalId);
     const goal = await this.prisma.goal.findFirstOrThrow({
       where: { id: goalId },
       include: { instances: { orderBy: { periodStart: 'desc' }, take: 1 } },
@@ -205,7 +216,7 @@ export class GoalsService {
    * open period gets the same live progress as the goal card.
    */
   async history(userId: string, goalId: string, query: GoalHistoryQueryDto) {
-    const goal = await this.assertOwned(userId, goalId);
+    const goal = await this.assertAccess(userId, goalId);
     const page = await this.prisma.paginated.goalInstance.paginate({
       where: { goalId },
       orderBy: { periodStart: 'desc' },
@@ -230,7 +241,7 @@ export class GoalsService {
   }
 
   async update(userId: string, goalId: string, dto: UpdateGoalDto) {
-    const goal = await this.assertOwned(userId, goalId);
+    const goal = await this.assertAccess(userId, goalId, 'goals');
     const targetAmount =
       dto.targetAmount !== undefined
         ? new Prisma.Decimal(dto.targetAmount)
@@ -277,7 +288,7 @@ export class GoalsService {
    * rollover would have.
    */
   async archive(userId: string, goalId: string) {
-    const goal = await this.assertOwned(userId, goalId);
+    const goal = await this.assertAccess(userId, goalId, 'goals');
     const now = new Date();
 
     return this.prisma.$transaction(async (tx) => {
@@ -323,11 +334,10 @@ export class GoalsService {
    * hadn't started by then, or starts today anyway, is reused as the fresh one.
    */
   async restore(userId: string, goalId: string) {
-    const goal = await this.prisma.goal.findFirst({
-      where: { id: goalId, userId, archivedAt: { not: null } },
-    });
-    if (!goal) throw new NotFoundException(`Archived goal ${goalId} not found`);
-    const endedAt = goal.archivedAt!;
+    const goal = await this.assertAccess(userId, goalId, 'goals');
+    if (!goal.archivedAt)
+      throw new NotFoundException(`Archived goal ${goalId} not found`);
+    const endedAt = goal.archivedAt;
     const now = new Date();
     const today = startOfDay(now);
 

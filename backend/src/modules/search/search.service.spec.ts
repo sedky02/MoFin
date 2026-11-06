@@ -1,4 +1,6 @@
+import { fakeAccess } from '../../../test/support/fake-account-access';
 import { Prisma } from '@prisma/client';
+import { TRANSACTION_INCLUDE } from '../transactions/transaction-include';
 import { SearchService, transactionTotal } from './search.service';
 
 describe('SearchService.searchTransactions', () => {
@@ -12,13 +14,16 @@ describe('SearchService.searchTransactions', () => {
     const prisma = { paginated: { transaction: { paginate } } };
     const service = new SearchService(
       prisma as never,
-      {} as never,
+      fakeAccess() as never,
       {} as never,
     );
     await service.searchTransactions('u1', { limit: 20, offset: 0 });
     expect(paginate).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({ userId: 'u1', deletedAt: null }),
+        where: expect.objectContaining({
+          deletedAt: null,
+          items: { some: { accountId: { in: ['a1'] } } },
+        }),
       }),
     );
   });
@@ -26,8 +31,8 @@ describe('SearchService.searchTransactions', () => {
   function makeService(paginateResult: unknown) {
     const paginate = jest.fn(async () => paginateResult);
     const prisma = { paginated: { transaction: { paginate } } };
-    const accountsService = { assertOwned: jest.fn(async () => ({})) };
-    const categoriesService = { assertAvailable: jest.fn(async () => ({})) };
+    const accountsService = fakeAccess();
+    const categoriesService = { assertReadable: jest.fn(async () => ({})) };
     const service = new SearchService(
       prisma as never,
       accountsService as never,
@@ -38,7 +43,12 @@ describe('SearchService.searchTransactions', () => {
 
   it('returns the paginated shape — total reflects the full match count, not just this page', async () => {
     const page = {
-      data: Array.from({ length: 10 }, (_, i) => ({ id: `tx${i}` })),
+      data: Array.from({ length: 10 }, (_, i) => ({
+        id: `tx${i}`,
+        items: [],
+        recurringFromAccountId: null,
+        recurringToAccountId: null,
+      })),
       total: 25,
       limit: 10,
       offset: 0,
@@ -50,12 +60,14 @@ describe('SearchService.searchTransactions', () => {
       offset: 0,
     });
 
-    expect(result).toBe(page);
+    expect(result).toMatchObject(page);
     expect(result.data).toHaveLength(10);
     expect(result.total).toBe(25);
     expect(paginate).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({ userId: 'u1' }),
+        where: expect.objectContaining({
+          items: { some: { accountId: { in: ['a1'] } } },
+        }),
         limit: 10,
         offset: 0,
       }),
@@ -70,8 +82,8 @@ describe('SearchService.searchTransactions', () => {
       offset: 0,
     }));
     const prisma = { paginated: { transaction: { paginate } } };
-    const accountsService = { assertOwned: jest.fn(async () => ({})) };
-    const categoriesService = { assertAvailable: jest.fn(async () => ({})) };
+    const accountsService = fakeAccess();
+    const categoriesService = { assertReadable: jest.fn(async () => ({})) };
     const service = new SearchService(
       prisma as never,
       accountsService as never,
@@ -85,8 +97,12 @@ describe('SearchService.searchTransactions', () => {
       categoryId: 'c1',
     });
 
-    expect(accountsService.assertOwned).toHaveBeenCalledWith('u1', 'a1');
-    expect(categoriesService.assertAvailable).toHaveBeenCalledWith('u1', 'c1');
+    expect(accountsService.assertAccess).toHaveBeenCalledWith(
+      'u1',
+      'a1',
+      'view',
+    );
+    expect(categoriesService.assertReadable).toHaveBeenCalledWith('u1', 'c1');
   });
 
   it('includes each ledger leg with its account so results can name accounts', async () => {
@@ -101,10 +117,7 @@ describe('SearchService.searchTransactions', () => {
 
     expect(paginate).toHaveBeenCalledWith(
       expect.objectContaining({
-        include: {
-          items: { include: { category: true, account: true } },
-          category: true,
-        },
+        include: TRANSACTION_INCLUDE,
       }),
     );
   });
@@ -121,8 +134,8 @@ describe('SearchService category filter', () => {
       }),
     );
     const prisma = { paginated: { transaction: { paginate } } };
-    const accountsService = { assertOwned: jest.fn(async () => ({})) };
-    const categoriesService = { assertAvailable: jest.fn(async () => ({})) };
+    const accountsService = fakeAccess();
+    const categoriesService = { assertReadable: jest.fn(async () => ({})) };
     const service = new SearchService(
       prisma as never,
       accountsService as never,
@@ -164,9 +177,7 @@ describe('SearchService category filter', () => {
       { categoryId: 'dining' },
       { items: { some: { categoryId: 'dining' } } },
     ]);
-    expect(where.items).toEqual({
-      some: expect.objectContaining({ accountId: 'a1' }),
-    });
+    expect(where.items).toEqual({ some: { accountId: { in: ['a1'] } } });
   });
 
   it('adds no category condition when no category is asked for', async () => {
@@ -195,7 +206,7 @@ describe('SearchService date range', () => {
     const prisma = { paginated: { transaction: { paginate } } };
     const service = new SearchService(
       prisma as never,
-      {} as never,
+      fakeAccess() as never,
       {} as never,
     );
     return { service, paginate };
@@ -281,16 +292,19 @@ describe('SearchService type, recurrence and sort', () => {
       if (args.select) return matches;
       const ids = (args.where.id as { in: string[] }).in;
       // Out of order on purpose: the page must come back in ranked order.
-      return [...ids].reverse().map((id) => ({ id }));
+      return [...ids].reverse().map((id) => ({
+        id,
+        items: [],
+        recurringFromAccountId: null,
+        recurringToAccountId: null,
+      }));
     });
     const prisma = {
       paginated: { transaction: { paginate } },
       transaction: { findMany },
     };
-    const accountsService = {
-      assertOwned: jest.fn(async (): Promise<unknown> => ({})),
-    };
-    const categoriesService = { assertAvailable: jest.fn(async () => ({})) };
+    const accountsService = fakeAccess();
+    const categoriesService = { assertReadable: jest.fn(async () => ({})) };
     const service = new SearchService(
       prisma as never,
       accountsService as never,
@@ -300,6 +314,7 @@ describe('SearchService type, recurrence and sort', () => {
   }
 
   const leg = (direction: 'DEBIT' | 'CREDIT', amount: string) => ({
+    accountId: 'a1',
     direction,
     amount: new Prisma.Decimal(amount),
   });
@@ -312,6 +327,8 @@ describe('SearchService type, recurrence and sort', () => {
     occurredAt: new Date(occurredAt),
     createdAt: new Date(occurredAt),
     items,
+    recurringFromAccountId: null,
+    recurringToAccountId: null,
   });
 
   it('filters by transaction type', async () => {
@@ -375,7 +392,7 @@ describe('SearchService type, recurrence and sort', () => {
     const { where } = paginate.mock.calls[0][0];
     expect(where).toEqual(
       expect.objectContaining({
-        userId: 'u1',
+        items: { some: { accountId: { in: ['dinar'] } } },
         isRecurring: true,
         parentTransactionId: null,
         deletedAt: null,
@@ -385,7 +402,7 @@ describe('SearchService type, recurrence and sort', () => {
     expect(where).not.toHaveProperty('AND');
     // Composes with the other filters.
     expect(where.items).toEqual({
-      some: expect.objectContaining({ accountId: 'dinar' }),
+      some: { accountId: { in: ['dinar'] } },
     });
   });
 
@@ -467,7 +484,7 @@ describe('SearchService type, recurrence and sort', () => {
     // The ranking query carries the same filters as the date-sorted one.
     expect(findMany.mock.calls[0][0].where).toEqual(
       expect.objectContaining({
-        userId: 'u1',
+        items: { some: { accountId: { in: ['a1'] } } },
         deletedAt: null,
         isRecurring: false,
       }),
@@ -497,7 +514,7 @@ describe('SearchService type, recurrence and sort', () => {
 
   it('accepts an archived account in the account filter (read check, not the write check)', async () => {
     const { service, paginate, accountsService } = makeService();
-    accountsService.assertOwned.mockResolvedValue({
+    accountsService.assertAccess.mockResolvedValue({
       id: 'old-savings',
       archivedAt: new Date(),
     });
@@ -508,12 +525,13 @@ describe('SearchService type, recurrence and sort', () => {
       accountId: 'old-savings',
     });
 
-    expect(accountsService.assertOwned).toHaveBeenCalledWith(
+    expect(accountsService.assertAccess).toHaveBeenCalledWith(
       'u1',
       'old-savings',
+      'view',
     );
     expect(paginate.mock.calls[0][0].where.items).toEqual({
-      some: expect.objectContaining({ accountId: 'old-savings' }),
+      some: { accountId: { in: ['old-savings'] } },
     });
   });
 });
@@ -533,7 +551,7 @@ describe('SearchService amount range', () => {
     };
     const service = new SearchService(
       prisma as never,
-      { assertOwned: jest.fn(async () => ({})) } as never,
+      fakeAccess() as never,
       {} as never,
     );
     return { service, paginate, queryRaw };
@@ -575,7 +593,7 @@ describe('SearchService amount range', () => {
     const where = (
       paginate.mock.calls[0] as unknown as [{ where: Record<string, unknown> }]
     )[0].where;
-    expect(where.items).toEqual({ some: { accountId: 'a1' } });
+    expect(where.items).toEqual({ some: { accountId: { in: ['a1'] } } });
   });
 
   it('matches nothing when no transaction total is in range', async () => {

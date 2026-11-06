@@ -1,3 +1,5 @@
+import { AccountAccessService } from '../src/modules/account-access/account-access.service';
+import { ownerAccess } from './support/owner-access';
 /**
  * GET /export through the real HTTP stack: the global throttler and web JWT
  * guards as AppModule registers them, the real controller, service and
@@ -246,6 +248,12 @@ const goals: Row[] = [
 function matches(row: Row, where: Row = {}): boolean {
   return Object.entries(where).every(([key, value]) => {
     if (key === 'OR') return (value as Row[]).some((w) => matches(row, w));
+    if (key === 'items')
+      return (row.items as Row[]).some((item) =>
+        matches(item, (value as { some: Row }).some),
+      );
+    if (value !== null && typeof value === 'object' && 'in' in value)
+      return (value.in as unknown[]).includes(row[key]);
     if (value === null) return row[key] === null || row[key] === undefined;
     return row[key] === value;
   });
@@ -262,7 +270,9 @@ const prismaStub = {
         users.find((u) => u.id === where.id) ?? null,
     ),
   },
-  account: { findMany: findMany(accounts) },
+  account: {
+    findMany: findMany(accounts.map((a) => ({ ...a, members: [] }))),
+  },
   category: { findMany: findMany(categories) },
   transaction: { findMany: findMany(transactions) },
   goal: { findMany: findMany(goals) },
@@ -283,6 +293,10 @@ describe('GET /export (e2e)', () => {
         JwtStrategy,
         ExportService,
         { provide: PrismaService, useValue: prismaStub },
+        {
+          provide: AccountAccessService,
+          useValue: ownerAccess(accounts as { id: string; userId: string }[]),
+        },
       ],
     }).compile();
     app = moduleRef.createNestApplication();

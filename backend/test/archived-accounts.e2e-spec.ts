@@ -1,3 +1,5 @@
+import { AccountAccessService } from '../src/modules/account-access/account-access.service';
+import { ownerAccess } from './support/owner-access';
 import {
   CanActivate,
   ExecutionContext,
@@ -71,8 +73,10 @@ const db = {
       created.push(row);
       return row;
     },
-    findUniqueOrThrow: async ({ where }: { where: { id: string } }) =>
-      created.find((t) => (t as { id: string }).id === where.id),
+    findUniqueOrThrow: async ({ where }: { where: { id: string } }) => ({
+      ...(created.find((t) => (t as { id: string }).id === where.id) as object),
+      items: [],
+    }),
   },
   transactionItem: {
     createMany: async () => ({ count: 1 }),
@@ -84,25 +88,10 @@ const prismaStub = {
   account: {
     // Only accounts with a non-zero opening balance are read; the fixtures have none.
     findMany: async () => [],
-    findFirst: async ({
-      where,
-    }: {
-      where: { id: string; userId: string; archivedAt?: null };
-    }) => {
-      const found = accounts.find(
-        (a) => a.id === where.id && a.userId === where.userId,
-      );
-      if (!found || ('archivedAt' in where && found.archivedAt)) return null;
-      return found;
-    },
   },
   transactionItem: {
     ...db.transactionItem,
-    groupBy: async ({
-      where,
-    }: {
-      where: { userId: string; accountId?: string };
-    }) => {
+    groupBy: async ({ where }: { where: { accountId: { in: string[] } } }) => {
       const sums = new Map<
         string,
         {
@@ -113,7 +102,7 @@ const prismaStub = {
         }
       >();
       for (const item of ledger) {
-        if (where.accountId && item.accountId !== where.accountId) continue;
+        if (!where.accountId.in.includes(item.accountId)) continue;
         const key = `${item.accountId}:${item.currency}:${item.direction}`;
         const row = sums.get(key) ?? {
           accountId: item.accountId,
@@ -157,6 +146,7 @@ describe('Archived accounts (e2e)', () => {
         TransactionsService,
         RecurringSeriesService,
         { provide: PrismaService, useValue: prismaStub },
+        { provide: AccountAccessService, useValue: ownerAccess(accounts) },
         {
           provide: CategoriesService,
           useValue: {

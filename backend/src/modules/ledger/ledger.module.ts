@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
-import { AccountsModule } from '../accounts/accounts.module';
+import { AccountAccessModule } from '../account-access/account-access.module';
 import { LedgerController } from './ledger.controller';
 import { LedgerService } from './ledger.service';
 
 @Module({
-  imports: [AccountsModule],
+  imports: [AccountAccessModule],
   controllers: [LedgerController],
   providers: [LedgerService],
   exports: [LedgerService],

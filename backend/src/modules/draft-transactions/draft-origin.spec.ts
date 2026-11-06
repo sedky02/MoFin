@@ -1,3 +1,4 @@
+import { fakeAccess } from '../../../test/support/fake-account-access';
 import { DraftSource, TransactionType } from '@prisma/client';
 import { DraftTransactionsService } from './draft-transactions.service';
 
@@ -30,6 +31,7 @@ function setup() {
     prisma as never,
     {} as never,
     events as never,
+    fakeAccess() as never,
   );
   return { service, prisma, create, events };
 }

@@ -1,3 +1,4 @@
+import { fakeAccess } from '../../test/support/fake-account-access';
 import { NotFoundException } from '@nestjs/common';
 import {
   LedgerDirection,
@@ -66,14 +67,12 @@ function makeWriter(plan: DemoPlan) {
     ),
   };
 
-  const findAccount = async (_userId: string, id: string) => {
-    const account = accounts.find((candidate) => candidate.id === id);
-    if (!account) throw new NotFoundException();
-    return account;
-  };
-  const accountsService = {
-    assertActive: findAccount,
-    assertOwned: findAccount,
+  const access = {
+    assertAccess: async (userId: string, id: string) => {
+      const account = accounts.find((candidate) => candidate.id === id);
+      if (!account) throw new NotFoundException();
+      return { account: { ...account, userId }, role: 'OWNER' };
+    },
   };
   // The create path's category checks read through whichever client it is
   // given (the caller's transaction or the service's own), so both fakes need it.
@@ -81,11 +80,11 @@ function makeWriter(plan: DemoPlan) {
     findFirst: async ({ where }: { where: { id: string } }) =>
       categories.find((c) => c.id === where.id) ?? null,
   };
-  const categoriesService = new CategoriesService({ category } as never);
-  const ledgerService = new LedgerService(
-    {} as never,
-    accountsService as never,
+  const categoriesService = new CategoriesService(
+    { category } as never,
+    fakeAccess() as never,
   );
+  const ledgerService = new LedgerService({} as never, access as never);
 
   const rows = new Map<string, Record<string, unknown>>();
   const items: (WrittenItem & { transactionId: string })[] = [];
@@ -97,8 +96,10 @@ function makeWriter(plan: DemoPlan) {
         rows.set(row.id, row);
         return row;
       },
-      findUniqueOrThrow: async ({ where }: { where: { id: string } }) =>
-        rows.get(where.id),
+      findUniqueOrThrow: async ({ where }: { where: { id: string } }) => ({
+        ...rows.get(where.id),
+        items: items.filter((item) => item.transactionId === where.id),
+      }),
     },
     transactionItem: {
       createMany: async ({
@@ -119,6 +120,7 @@ function makeWriter(plan: DemoPlan) {
     ledgerService,
     categoriesService,
     { emit: jest.fn() } as never,
+    fakeAccess() as never,
   );
 
   return {

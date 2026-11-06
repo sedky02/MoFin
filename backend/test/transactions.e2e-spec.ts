@@ -1,3 +1,5 @@
+import { AccountAccessService } from '../src/modules/account-access/account-access.service';
+import { ownerAccess } from './support/owner-access';
 import {
   CanActivate,
   ExecutionContext,
@@ -8,7 +10,6 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test } from '@nestjs/testing';
 import { JwtAuthGuard } from '../src/common/guards/jwt-auth.guard';
 import { PrismaService } from '../src/database/prisma.service';
-import { AccountsService } from '../src/modules/accounts/accounts.service';
 import { CategoriesService } from '../src/modules/categories/categories.service';
 import { LedgerService } from '../src/modules/ledger/ledger.service';
 import { SearchController } from '../src/modules/search/search.controller';
@@ -155,31 +156,37 @@ const prismaStub = {
       where,
       include,
     }: {
-      where: { id: string; userId: string; deletedAt?: null };
+      where: {
+        id: string;
+        deletedAt?: null;
+        items?: { some: { account: { OR: { userId?: string }[] } } };
+      };
       include?: Include;
     }) => {
+      const reader = where.items?.some.account.OR[0].userId;
       const tx = transactions.find(
         (t) =>
           t.id === where.id &&
-          t.userId === where.userId &&
+          (!where.items || t.userId === reader) &&
           !('deletedAt' in where && t.deletedAt),
       );
       return tx ? project(tx, include) : null;
+    },
+    findUniqueOrThrow: async ({ where }: { where: { id: string } }) => {
+      const tx = transactions.find((t) => t.id === where.id)!;
+      return { ...tx, _count: { items: tx.items.length } };
     },
     // Soft delete and restore: `deletedAt: null` matches live rows, `{ not: null }` deleted ones.
     updateMany: async ({
       where,
       data,
     }: {
-      where: { id: string; userId: string; deletedAt: null | { not: null } };
+      where: { id: string; deletedAt: null | { not: null } };
       data: { deletedAt: Date | null };
     }) => {
       const wantDeleted = where.deletedAt !== null;
       const rows = transactions.filter(
-        (t) =>
-          t.id === where.id &&
-          t.userId === where.userId &&
-          !!t.deletedAt === wantDeleted,
+        (t) => t.id === where.id && !!t.deletedAt === wantDeleted,
       );
       for (const row of rows) row.deletedAt = data.deletedAt;
       return { count: rows.length };
@@ -193,14 +200,19 @@ const prismaStub = {
         limit,
         offset,
       }: {
-        where: { userId: string; deletedAt?: null };
+        where: {
+          deletedAt?: null;
+          items: { some: { accountId: { in: string[] } } };
+        };
         include?: Include;
         limit: number;
         offset: number;
       }) => {
         const rows = transactions.filter(
           (t) =>
-            t.userId === where.userId && !('deletedAt' in where && t.deletedAt),
+            t.items.some((item) =>
+              where.items.some.accountId.in.includes(item.accountId),
+            ) && !('deletedAt' in where && t.deletedAt),
         );
         return {
           data: rows
@@ -240,12 +252,15 @@ describe('Transactions API (e2e)', () => {
         { provide: PrismaService, useValue: prismaStub },
         { provide: LedgerService, useValue: {} },
         {
-          provide: AccountsService,
-          useValue: { assertOwned: async () => ({}) },
+          provide: AccountAccessService,
+          useValue: ownerAccess(
+            Object.values(accounts),
+            (id) => transactions.find((t) => t.id === id)?.userId,
+          ),
         },
         {
           provide: CategoriesService,
-          useValue: { assertAvailable: async () => ({}) },
+          useValue: { assertReadable: async () => ({}) },
         },
         { provide: EventEmitter2, useValue: { emit: () => true } },
       ],

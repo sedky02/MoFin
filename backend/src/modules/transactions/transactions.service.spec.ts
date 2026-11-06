@@ -1,3 +1,6 @@
+import { accountScope } from '../account-access/account-access';
+import { TRANSACTION_INCLUDE } from './transaction-include';
+import { fakeAccess } from '../../../test/support/fake-account-access';
 import { BadRequestException } from '@nestjs/common';
 import {
   RecurringInterval,
@@ -25,6 +28,7 @@ describe('TransactionsService.validateCommand', () => {
     {} as never,
     {} as never,
     {} as never,
+    fakeAccess() as never,
   );
 
   const base: CreateTransactionCommand = {
@@ -162,12 +166,18 @@ describe('TransactionsService category type', () => {
         ),
       },
     };
-    const ledgerService = { buildEntriesForCommand: jest.fn(async () => []) };
+    const ledgerService = {
+      buildEntriesForCommand: jest.fn(async () => ({
+        ledgerUserId: 'u1',
+        entries: [],
+      })),
+    };
     const service = new TransactionsService(
       prisma as never,
       ledgerService as never,
-      new CategoriesService(prisma as never),
+      new CategoriesService(prisma as never, fakeAccess() as never),
       {} as never,
+      fakeAccess() as never,
     );
     return { service, ledgerService };
   }
@@ -182,17 +192,16 @@ describe('TransactionsService category type', () => {
   };
 
   it('rejects INCOME filed under an EXPENSE category with a 400', async () => {
-    const { service, ledgerService } = makeService();
+    const { service } = makeService();
     const result = service.create('u1', { ...income, categoryId: 'groceries' });
     await expect(result).rejects.toBeInstanceOf(BadRequestException);
     await expect(result).rejects.toThrow(
       '"Groceries" is an expense category and cannot be used on an income transaction',
     );
-    expect(ledgerService.buildEntriesForCommand).not.toHaveBeenCalled();
   });
 
   it('rejects an INCOME split whose item keeps an EXPENSE category', async () => {
-    const { service, ledgerService } = makeService();
+    const { service } = makeService();
     await expect(
       service.create('u1', {
         ...income,
@@ -202,11 +211,10 @@ describe('TransactionsService category type', () => {
         ],
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
-    expect(ledgerService.buildEntriesForCommand).not.toHaveBeenCalled();
   });
 
   it('rejects a TRANSFER with any category', async () => {
-    const { service, ledgerService } = makeService();
+    const { service } = makeService();
     const result = service.create('u1', {
       ...income,
       type: TransactionType.TRANSFER,
@@ -216,7 +224,6 @@ describe('TransactionsService category type', () => {
     });
     await expect(result).rejects.toBeInstanceOf(BadRequestException);
     await expect(result).rejects.toThrow('Transfers cannot have a category');
-    expect(ledgerService.buildEntriesForCommand).not.toHaveBeenCalled();
   });
 
   it('lets INCOME through with an INCOME category', async () => {
@@ -258,9 +265,10 @@ describe('TransactionsService category type', () => {
         {} as never,
         {} as never,
         {} as never,
+        fakeAccess() as never,
       ),
-      new CategoriesService(prisma as never),
-      { assertOwned: jest.fn(async () => ({})) } as never,
+      new CategoriesService(prisma as never, fakeAccess() as never),
+      fakeAccess() as never,
     );
     await expect(
       service.updateRecurring('u1', 'r1', { categoryId: 'groceries' }),
@@ -370,7 +378,10 @@ describe('TransactionsService recurring end date', () => {
       $transaction: jest.fn(async (fn: (t: typeof db) => unknown) => fn(db)),
     };
     const ledger = {
-      buildEntriesForCommand: jest.fn(async () => []),
+      buildEntriesForCommand: jest.fn(async () => ({
+        ledgerUserId: 'u1',
+        entries: [],
+      })),
       createEntries: jest.fn(async () => undefined),
     };
     const categories = { assertAssignable: jest.fn(async () => undefined) };
@@ -379,6 +390,7 @@ describe('TransactionsService recurring end date', () => {
       ledger as never,
       categories as never,
       { emit: jest.fn() } as never,
+      fakeAccess() as never,
     );
     const written = () =>
       (
@@ -443,10 +455,15 @@ describe('TransactionsService recurring end date', () => {
       transaction: { findFirst: jest.fn(async () => found), update },
     };
     const accounts = {
-      assertOwned: jest.fn(async () => ({
-        name: 'Checking',
-        currency: 'USD',
-        archivedAt: null,
+      ...fakeAccess(),
+      assertAccess: jest.fn(async () => ({
+        account: {
+          userId: 'u1',
+          name: 'Checking',
+          currency: 'USD',
+          archivedAt: null,
+        },
+        role: 'OWNER',
       })),
     };
     const service = new RecurringSeriesService(
@@ -456,6 +473,7 @@ describe('TransactionsService recurring end date', () => {
         {} as never,
         {} as never,
         {} as never,
+        fakeAccess() as never,
       ),
 
       {} as never,
@@ -546,6 +564,9 @@ describe('TransactionsService edit, delete and restore', () => {
     isRecurring: false,
     parentTransactionId: null,
     deletedAt: null,
+    items: [{ accountId: 'a1' }],
+    recurringFromAccountId: null,
+    recurringToAccountId: null,
   };
   const edit: UpdateTransactionCommand = {
     type: TransactionType.EXPENSE,
@@ -587,12 +608,19 @@ describe('TransactionsService edit, delete and restore', () => {
         findFirst: jest.fn(async () =>
           'found' in overrides ? overrides.found : existing,
         ),
+        findUniqueOrThrow: jest.fn(async () => ({
+          ...existing,
+          _count: { items: 1 },
+        })),
         updateMany: jest.fn(async () => ({ count: overrides.claimed ?? 1 })),
       },
       $transaction: jest.fn(async (fn: (t: typeof db) => unknown) => fn(db)),
     };
     const ledger = {
-      buildEntriesForCommand: jest.fn(async () => entries),
+      buildEntriesForCommand: jest.fn(async () => ({
+        ledgerUserId: 'u1',
+        entries,
+      })),
       createEntries: jest.fn(async () => undefined),
     };
     const categories = { assertAssignable: jest.fn(async () => undefined) };
@@ -602,6 +630,7 @@ describe('TransactionsService edit, delete and restore', () => {
       ledger as never,
       categories as never,
       events as never,
+      fakeAccess() as never,
     );
     const changedMonths = () =>
       events.emit.mock.calls
@@ -619,8 +648,10 @@ describe('TransactionsService edit, delete and restore', () => {
 
       expect(prisma.$transaction).toHaveBeenCalledTimes(1);
       expect(db.transaction.updateMany).toHaveBeenCalledWith({
-        where: { id: 't1', userId: 'u1', deletedAt: null },
+        where: { id: 't1', deletedAt: null },
         data: {
+          userId: 'u1',
+          updatedById: 'u1',
           type: TransactionType.EXPENSE,
           description: 'Groceries (fixed)',
           currency: 'USD',
@@ -630,7 +661,7 @@ describe('TransactionsService edit, delete and restore', () => {
         },
       });
       expect(db.transactionItem.deleteMany).toHaveBeenCalledWith({
-        where: { transactionId: 't1', userId: 'u1' },
+        where: { transactionId: 't1' },
       });
       expect(ledger.createEntries).toHaveBeenCalledWith(
         db,
@@ -690,7 +721,8 @@ describe('TransactionsService edit, delete and restore', () => {
         'not found',
       );
       expect(missing.prisma.transaction.findFirst).toHaveBeenCalledWith({
-        where: { id: 'nope', userId: 'u1', deletedAt: null },
+        where: { id: 'nope', deletedAt: null },
+        include: { items: { select: { accountId: true } } },
       });
 
       const raced = setup({ claimed: 0 });
@@ -742,8 +774,8 @@ describe('TransactionsService edit, delete and restore', () => {
       const { service, prisma, changedMonths } = setup();
       await service.remove('u1', 't1');
       expect(prisma.transaction.updateMany).toHaveBeenCalledWith({
-        where: { id: 't1', userId: 'u1', deletedAt: null },
-        data: { deletedAt: expect.any(Date) },
+        where: { id: 't1', deletedAt: null },
+        data: { deletedAt: expect.any(Date), updatedById: 'u1' },
       });
       expect(changedMonths()).toEqual(['2026-03']);
     });
@@ -768,8 +800,8 @@ describe('TransactionsService edit, delete and restore', () => {
       const { service, prisma, changedMonths } = setup();
       const restored = await service.restore('u1', 't1');
       expect(prisma.transaction.updateMany).toHaveBeenCalledWith({
-        where: { id: 't1', userId: 'u1', deletedAt: { not: null } },
-        data: { deletedAt: null },
+        where: { id: 't1', deletedAt: { not: null } },
+        data: { deletedAt: null, updatedById: 'u1' },
       });
       expect(restored).toMatchObject({ id: 't1' });
       expect(changedMonths()).toEqual(['2026-03']);
@@ -792,20 +824,27 @@ describe('TransactionsService.getById', () => {
       {} as never,
       {} as never,
       {} as never,
+      fakeAccess() as never,
     );
     return { service, prisma };
   }
 
-  it('loads each ledger leg with its account and category, scoped to the owner', async () => {
-    const { service, prisma } = setup({ id: 't1', items: [] });
+  it('loads each ledger leg with its account and category, scoped to the accounts the caller can reach', async () => {
+    const { service, prisma } = setup({
+      id: 't1',
+      items: [],
+      recurringFromAccountId: null,
+      recurringToAccountId: null,
+    });
     await service.getById('u1', 't1');
 
     expect(prisma.transaction.findFirst).toHaveBeenCalledWith({
-      where: { id: 't1', userId: 'u1', deletedAt: null },
-      include: {
-        items: { include: { category: true, account: true } },
-        category: true,
+      where: {
+        id: 't1',
+        deletedAt: null,
+        items: { some: { account: accountScope('u1', 'view') } },
       },
+      include: TRANSACTION_INCLUDE,
     });
   });
 

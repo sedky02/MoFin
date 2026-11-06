@@ -1,3 +1,4 @@
+import { fakeAccess } from '../../../test/support/fake-account-access';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import {
   RecurringInterval,
@@ -10,30 +11,46 @@ import { TransactionsService } from './transactions.service';
 describe('RecurringSeriesService', () => {
   const accounts: Record<
     string,
-    { id: string; name: string; currency: string; archivedAt: Date | null }
+    {
+      id: string;
+      name: string;
+      currency: string;
+      archivedAt: Date | null;
+      userId: string;
+    }
   > = {
     checking: {
       id: 'checking',
       name: 'Main checking',
       currency: 'USD',
       archivedAt: null,
+      userId: 'u1',
     },
     savings: {
       id: 'savings',
       name: 'Savings',
       currency: 'USD',
       archivedAt: new Date('2026-10-01T00:00:00Z'),
+      userId: 'u1',
     },
-    dinar: { id: 'dinar', name: 'Dinar', currency: 'TND', archivedAt: null },
+    dinar: {
+      id: 'dinar',
+      name: 'Dinar',
+      currency: 'TND',
+      archivedAt: null,
+      userId: 'u1',
+    },
     emergency: {
       id: 'emergency',
       name: 'Emergency fund',
       currency: 'USD',
       archivedAt: null,
+      userId: 'u1',
     },
   };
 
   const root = {
+    items: [] as { accountId: string }[],
     id: 'r1',
     userId: 'u1',
     type: TransactionType.EXPENSE as TransactionType,
@@ -70,12 +87,19 @@ describe('RecurringSeriesService', () => {
         update: jest.fn(async () => ({})),
         updateMany: jest.fn(async () => ({ count: claimed })),
       },
+      account: {
+        findUnique: jest.fn(
+          async ({ where }: { where: { id: string } }) =>
+            accounts[where.id] ?? null,
+        ),
+      },
     };
-    const accountsService = {
-      assertOwned: jest.fn(async (_userId: string, id: string) => {
+    const access = {
+      ...fakeAccess(),
+      assertAccess: jest.fn(async (_userId: string, id: string) => {
         if (!accounts[id])
           throw new NotFoundException(`Account ${id} not found`);
-        return accounts[id];
+        return { account: accounts[id], role: 'OWNER' };
       }),
     };
     const categories = { assertAssignable: jest.fn(async () => undefined) };
@@ -86,11 +110,12 @@ describe('RecurringSeriesService', () => {
         {} as never,
         {} as never,
         {} as never,
+        fakeAccess() as never,
       ),
 
       categories as never,
 
-      accountsService as never,
+      access as never,
     );
     return { service, prisma, categories };
   }
@@ -186,7 +211,6 @@ describe('RecurringSeriesService', () => {
       expect(prisma.transaction.updateMany).toHaveBeenCalledWith({
         where: {
           id: 'r1',
-          userId: 'u1',
           deletedAt: null,
           recurringStatus: RecurringStatus.ACTIVE,
         },
@@ -195,7 +219,7 @@ describe('RecurringSeriesService', () => {
       // getById re-reads with the full scalar set, recurringError and lastFailedAt included.
       expect(prisma.transaction.findFirst).toHaveBeenLastCalledWith(
         expect.objectContaining({
-          where: { id: 'r1', userId: 'u1', deletedAt: null },
+          where: expect.objectContaining({ id: 'r1', deletedAt: null }),
         }),
       );
     });
@@ -216,7 +240,6 @@ describe('RecurringSeriesService', () => {
       expect(prisma.transaction.updateMany).toHaveBeenCalledWith({
         where: {
           id: 'r1',
-          userId: 'u1',
           deletedAt: null,
           recurringStatus: { not: RecurringStatus.CANCELLED },
         },
@@ -242,7 +265,6 @@ describe('RecurringSeriesService', () => {
       expect(prisma.transaction.updateMany).toHaveBeenCalledWith({
         where: {
           id: 'r1',
-          userId: 'u1',
           deletedAt: null,
           recurringStatus: RecurringStatus.PAUSED,
         },
@@ -259,7 +281,6 @@ describe('RecurringSeriesService', () => {
       expect(prisma.transaction.updateMany).toHaveBeenCalledWith({
         where: {
           id: 'r1',
-          userId: 'u1',
           deletedAt: null,
           recurringStatus: RecurringStatus.PAUSED,
         },
@@ -310,6 +331,7 @@ describe('RecurringSeriesService', () => {
 
   describe('findSeriesProblem', () => {
     const template = {
+      userId: 'u1',
       type: TransactionType.EXPENSE,
       currency: 'USD',
       categoryId: null,
@@ -319,15 +341,13 @@ describe('RecurringSeriesService', () => {
 
     it('is null for a series that can post', async () => {
       const { service } = setup();
-      await expect(
-        service.findSeriesProblem('u1', template),
-      ).resolves.toBeNull();
+      await expect(service.findSeriesProblem(template)).resolves.toBeNull();
     });
 
     it('names an archived account', async () => {
       const { service } = setup();
       await expect(
-        service.findSeriesProblem('u1', {
+        service.findSeriesProblem({
           ...template,
           recurringFromAccountId: 'savings',
         }),
@@ -337,7 +357,7 @@ describe('RecurringSeriesService', () => {
     it('names an account in another currency', async () => {
       const { service } = setup();
       await expect(
-        service.findSeriesProblem('u1', {
+        service.findSeriesProblem({
           ...template,
           recurringFromAccountId: 'dinar',
         }),
@@ -347,14 +367,14 @@ describe('RecurringSeriesService', () => {
     it('catches a transfer from and to the same account, and a missing account', async () => {
       const { service } = setup();
       await expect(
-        service.findSeriesProblem('u1', {
+        service.findSeriesProblem({
           ...template,
           type: TransactionType.TRANSFER,
           recurringToAccountId: 'checking',
         }),
       ).resolves.toBe('The series transfers from and to the same account');
       await expect(
-        service.findSeriesProblem('u1', {
+        service.findSeriesProblem({
           ...template,
           recurringFromAccountId: 'gone',
         }),
@@ -367,7 +387,7 @@ describe('RecurringSeriesService', () => {
         new NotFoundException('Category c1 not found'),
       );
       await expect(
-        service.findSeriesProblem('u1', { ...template, categoryId: 'c1' }),
+        service.findSeriesProblem({ ...template, categoryId: 'c1' }),
       ).resolves.toBe('The category of this series no longer exists');
     });
   });
