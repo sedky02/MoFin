@@ -1,6 +1,6 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiClientError } from "@/api/client";
-import { aiChatKeys } from "@/core/query-keys";
+import { aiChatKeys, draftKeys } from "@/core/query-keys";
 import type { AiChatDetail, AiChatSummary, AiChatTurn, Paginated } from "@/core/types";
 import { deviceTimeZone } from "@/core/week";
 import { toast } from "@/lib/toast";
@@ -63,6 +63,8 @@ export function useSendChatMessage() {
         messages: [...(old?.messages ?? []), ...turn.messages],
       }));
       queryClient.invalidateQueries({ queryKey: aiChatKeys.list() });
+      // New drafts from this answer: the inbox and its pending badge catch up straight away.
+      if (turn.messages.some((m) => m.drafts?.length)) queryClient.invalidateQueries({ queryKey: draftKeys.all });
     },
   });
 }

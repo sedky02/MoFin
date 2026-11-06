@@ -8,6 +8,7 @@ import { accountKeys, aiChatKeys, analyticsKeys, categoryKeys, draftKeys, goalKe
 import { useArchiveAccount, useCreateAccount, useUpdateAccount } from '@/hooks/useAccounts';
 import { useArchiveCategory, useCreateCategory } from '@/hooks/useCategories';
 import { useApproveDraft, useRejectDraft } from '@/hooks/useDrafts';
+import { useSendChatMessage } from '@/hooks/useAiChat';
 import { useCreateTransaction, useDeleteTransaction, useUpdateTransaction, UNDO_DELETE_MS } from '@/hooks/useTransactions';
 import { getToasts, resetToasts } from '@/lib/toast';
 
@@ -188,5 +189,20 @@ describe('draft decisions refresh the inbox and the chat', () => {
     const { result } = await renderHook(() => useRejectDraft(), { wrapper });
     await act(async () => result.current.mutate({ id: 'd1' }));
     await waitFor(() => expectRoots(invalidated(), DRAFT_VIEWS));
+  });
+});
+
+describe('an Ask answer that creates a draft', () => {
+  it('refreshes the inbox and its pending badge', async () => {
+    const { wrapper, invalidated } = setup();
+    const message = (role: string, drafts: unknown[]) => ({ id: role, role, content: 'x', usedTools: [], charts: [], drafts, createdAt: '' });
+    (api.post as jest.Mock).mockResolvedValue({
+      chat: { id: 'c1', title: 't', createdAt: '', updatedAt: '' },
+      messages: [message('user', []), message('assistant', [{ id: 'd1', status: 'PENDING' }])],
+    });
+    const { result } = await renderHook(() => useSendChatMessage(), { wrapper });
+    await act(async () => result.current.mutate({ chatId: null, content: 'coffee 4.5', inputMode: 'voice' }));
+    await waitFor(() => expectRoots(invalidated(), [draftKeys.all, aiChatKeys.list()]));
+    expect(api.post).toHaveBeenCalledWith('/ai/chats', expect.objectContaining({ content: 'coffee 4.5', inputMode: 'voice' }), expect.anything());
   });
 });

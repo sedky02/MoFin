@@ -13,6 +13,11 @@ let detail: { data?: AiChatDetail; isLoading: boolean; isError: boolean; error?:
   isError: false,
 };
 
+// Answers can carry draft cards, which use the draft hooks.
+vi.mock("@/hooks/useDrafts", () => ({
+  useApproveDraft: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useRejectDraft: () => ({ mutate: vi.fn(), isPending: false }),
+}));
 vi.mock("@/hooks/useAiChat", async () => {
   const actual = await vi.importActual<typeof import("@/hooks/useAiChat")>("@/hooks/useAiChat");
   return {

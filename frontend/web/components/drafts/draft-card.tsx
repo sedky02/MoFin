@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { MoneyAmount } from "@/components/common/money-amount";
 import { TypeBadge, ConfidencePill, StatusBadge } from "@/components/common/badges";
 import { DraftReviewForm } from "./draft-review-form";
+import { draftSourceLabel } from "./draft-source";
 import { useAccounts } from "@/hooks/useAccounts";
 import { tryParse } from "@/lib/decimal";
 import { formatDate } from "@/lib/format";
@@ -20,10 +21,16 @@ export function DraftCard({
   rejecting,
   onApprove,
   onReject,
+  variant = "inbox",
 }: {
   draft: DraftTransaction;
   approving?: boolean;
   rejecting?: boolean;
+  /**
+   * `chat`: under an Ask answer, where the question is right above, so the quoted input and the
+   * source are left out. The actions and the review form are the same as in the inbox.
+   */
+  variant?: "inbox" | "chat";
   onApprove?: (id: string, edits: Partial<ParsedTransactionData>) => void | Promise<void>;
   onReject?: (id: string, reason?: string) => void;
 }) {
@@ -66,10 +73,17 @@ export function DraftCard({
       <div className="p-4">
         {/* Raw input quote */}
         <div className="flex items-start gap-2.5">
-          <Quote className="mt-0.5 size-4 shrink-0 text-muted-foreground/50" />
-          <p className="flex-1 text-sm italic text-muted-foreground">
-            “{draft.rawInput}”
-          </p>
+          {variant === "chat" ? (
+            <p className="flex-1 text-xs font-medium text-muted-foreground">Draft transaction</p>
+          ) : (
+            <>
+              <Quote className="mt-0.5 size-4 shrink-0 text-muted-foreground/50" />
+              <div className="flex-1 space-y-1">
+                <p className="text-sm italic text-muted-foreground">“{draft.rawInput}”</p>
+                <p className="text-xs text-muted-foreground">From {draftSourceLabel(draft)}</p>
+              </div>
+            </>
+          )}
           {isPending ? (
             <ConfidencePill score={draft.confidenceScore} />
           ) : (

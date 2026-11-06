@@ -2,7 +2,10 @@
 
 import * as React from "react";
 import { Activity } from "react";
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SearchView, type SearchInitial } from "@/components/search/search-view";
 import { PageHeader } from "@/components/common/page-header";
@@ -52,13 +55,22 @@ export function TransactionsViews({
         className="mb-3"
         // A small toggle beside the title, not a bar across the page.
         action={
-          <TabsList className="group-data-horizontal/tabs:h-10">
-            <TabsTrigger value="all" className="px-5">All</TabsTrigger>
-            <TabsTrigger value="recurring" className="gap-2 px-5">
-              Recurring
-              {!!seriesCount && <span className="tabular text-xs text-muted-foreground">{seriesCount}</span>}
-            </TabsTrigger>
-          </TabsList>
+          <div className="flex flex-wrap items-center gap-2">
+            <TabsList className="group-data-horizontal/tabs:h-10">
+              <TabsTrigger value="all" className="px-5">All</TabsTrigger>
+              <TabsTrigger value="recurring" className="gap-2 px-5">
+                Recurring
+                {!!seriesCount && <span className="tabular text-xs text-muted-foreground">{seriesCount}</span>}
+              </TabsTrigger>
+            </TabsList>
+            {/* The page's own way in to recording one; web has no floating button. */}
+            <Button asChild className="h-10 gap-1.5">
+              <Link href="/transactions/new">
+                <Plus className="size-4" aria-hidden />
+                Add transaction
+              </Link>
+            </Button>
+          </div>
         }
       />
 

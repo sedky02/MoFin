@@ -4,6 +4,7 @@ import * as React from "react";
 import { AlertCircle, Check, Copy, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { AskChart } from "@/components/ask/ask-chart";
+import { ChatDraftCards } from "@/components/ask/chat-draft-cards";
 import { LogoMark } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -110,7 +111,8 @@ export function UserMessage({ content, createdAt }: { content: string; createdAt
 }
 
 export function AssistantMessage({ message }: { message: AiChatMessage }) {
-  const tools = message.usedTools.filter((t) => !t.startsWith("chart_"));
+  // Charts and drafts show themselves below; this line is for what was read.
+  const tools = message.usedTools.filter((t) => !t.startsWith("chart_") && t !== "create_draft_transaction");
   return (
     <li className="flex gap-3">
       <AssistantAvatar />
@@ -126,6 +128,7 @@ export function AssistantMessage({ message }: { message: AiChatMessage }) {
             ))}
           </div>
         )}
+        <ChatDraftCards drafts={message.drafts ?? []} />
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] text-muted-foreground">
           <span>{time(message.createdAt)}</span>
           {tools.length > 0 && (
