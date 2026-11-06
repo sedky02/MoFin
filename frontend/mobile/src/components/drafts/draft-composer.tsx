@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 
 import { accountOptions, PickerField } from '@/components/transactions/transaction-form-fields';
 import { Button } from '@/components/ui/button';
@@ -9,9 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useAccounts } from '@/hooks/useAccounts';
 import { useActiveAccount } from '@/hooks/useActiveAccount';
 import { useCreateDraftIntent } from '@/hooks/useDrafts';
-import { CornerDownRight, Sparkles } from '@/lib/icons';
-
-import { EXAMPLES } from './draft-model';
+import { Sparkles } from '@/lib/icons';
 
 /** One text box: the sentence, an optional default account and the "Draft it" button. */
 /** `autoFocus`: open with the keyboard up (arriving from the add sheet's "Describe it"). */
@@ -65,24 +63,6 @@ export function DraftComposer({ autoFocus = false }: { autoFocus?: boolean } = {
           <Icon as={Sparkles} size={16} className="text-primary-foreground" />
           <Text>{createIntent.isPending ? 'Parsing…' : 'Draft it'}</Text>
         </Button>
-      </View>
-
-      {/* Tapping an example fills the box, so the first try is one tap away. */}
-      <Text className="mb-2 mt-4 px-1 text-sm font-semibold text-muted-foreground">Try one</Text>
-      <View accessibilityLabel="Examples" className="flex-row flex-wrap gap-2">
-        {EXAMPLES.map((text) => (
-          <Pressable
-            key={text}
-            role="button"
-            accessibilityLabel={`Use example: ${text}`}
-            onPress={() => setInput(text)}
-            className="min-h-10 max-w-full flex-row items-center gap-2 rounded-full border border-border bg-card px-3.5 py-2 active:bg-accent">
-            <Icon as={CornerDownRight} size={14} aria-hidden className="text-muted-foreground" />
-            <Text numberOfLines={1} className="shrink text-sm">
-              {text}
-            </Text>
-          </Pressable>
-        ))}
       </View>
     </View>
   );

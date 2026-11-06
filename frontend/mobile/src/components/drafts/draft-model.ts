@@ -8,13 +8,6 @@ import { parseMoneyInput, toDatetimeLocal } from '@/core/format';
 import { makeTransactionSchema, type TransactionFormValues } from '@/core/transaction-schema';
 import type { Account, DraftTransaction, ParsedTransactionData } from '@/core/types';
 
-/** Example sentences for the composer: plain what a tap puts in the box. */
-export const EXAMPLES = [
-  'Spent 42.50 on groceries at the market yesterday',
-  'Got paid 3200 salary into my bank account',
-  'Moved 500 from checking to savings',
-];
-
 /**
  * Quick approve skips the review form, so it is only allowed when everything the ledger entry needs
  * is present and the AI was reasonably sure.

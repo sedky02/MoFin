@@ -1,7 +1,11 @@
 import { cn } from '@/lib/utils';
 import { Platform, TextInput } from 'react-native';
 
-function Input({ className, ...props }: React.ComponentProps<typeof TextInput> & React.RefAttributes<TextInput>) {
+function Input({
+  className,
+  placeholderClassName,
+  ...props
+}: React.ComponentProps<typeof TextInput> & React.RefAttributes<TextInput>) {
   return (
     <TextInput
       className={cn(
@@ -17,10 +21,13 @@ function Input({ className, ...props }: React.ComponentProps<typeof TextInput> &
             'focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]',
             'aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive'
           ),
-          native: 'placeholder:text-muted-foreground/50',
         }),
         className
       )}
+      // The app's own muted colour, light or dark with the app's theme. Without it Android uses the
+      // system's hint colour, which follows the phone's theme: near-white in a light-mode app on a
+      // dark-mode phone, so the placeholder vanished.
+      placeholderClassName={cn('text-muted-foreground', placeholderClassName)}
       {...props}
     />
   );
