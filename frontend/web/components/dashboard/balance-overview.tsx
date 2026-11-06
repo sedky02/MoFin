@@ -3,7 +3,10 @@
 import * as React from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useDailySeries } from "@/hooks/useAnalytics";
+import { HideableAmount } from "@/components/common/hideable-amount";
 import { MoneyAmount } from "@/components/common/money-amount";
+import { useRevealedAmount } from "@/hooks/use-revealed-amount";
+import { isAmountHidden } from "@/lib/account-privacy";
 import { CurrencySwitch } from "@/components/dashboard/currency-switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -23,7 +26,7 @@ import {
   weekTitle,
 } from "@/lib/week";
 import { cn } from "@/lib/utils";
-import type { DailySeriesPoint } from "@/lib/types";
+import type { Account, DailySeriesPoint } from "@/lib/types";
 
 type Metric = "expenses" | "income" | "balance";
 const TABS: { value: Metric; label: string }[] = [
@@ -50,6 +53,7 @@ export function BalanceOverview({
   caption,
   overdrawn,
   accountId,
+  account,
   currencies = [],
   onCurrencyChange,
   emptyAction,
@@ -60,6 +64,8 @@ export function BalanceOverview({
   caption: string;
   overdrawn: boolean;
   accountId?: string;
+  /** The one account shown, if any: its amounts stay dots while the user keeps them hidden. */
+  account?: Account;
   /** Every currency the user holds; a switch is shown when there is more than one. */
   currencies?: { code: string; overdrawn: boolean }[];
   onCurrencyChange?: (currency: string) => void;
@@ -72,6 +78,9 @@ export function BalanceOverview({
   emptyPanel?: React.ReactNode;
 }) {
   const [metric, setMetric] = React.useState<Metric>("balance");
+  // A hidden account shows dots, and no chart or change, until the user reveals it.
+  const [revealed] = useRevealedAmount(account?.id);
+  const masked = isAmountHidden(account) && !revealed;
   // Client-only: the viewer's today and time zone (the server can't know them).
   const [today] = React.useState(() => localIso(new Date()));
   const [timeZone] = React.useState(deviceTimeZone);
@@ -110,7 +119,7 @@ export function BalanceOverview({
           )}
         </div>
         {/* The shared Tabs control: one tab stop, arrow keys move between metrics. */}
-        {!emptyPanel && (
+        {!emptyPanel && !masked && (
           <Tabs value={metric} onValueChange={(v) => setMetric(v as Metric)}>
             <TabsList aria-label="Chart metric">
               {TABS.map((t) => (
@@ -123,23 +132,31 @@ export function BalanceOverview({
         )}
       </div>
 
-      {!ready && (metric !== "balance" || !atCurrent) ? (
-        <Skeleton className="mt-6 h-12 w-64 rounded-xl sm:h-[4.5rem]" />
-      ) : (
-        <MoneyAmount
-          key={`${metric}-${monday}`}
-          amount={headline.amount}
+      <div className="mt-6">
+        <HideableAmount
+          account={account}
           currency={currency}
-          animate
-          className="mt-6 block text-5xl font-light leading-none tracking-[-0.035em] text-foreground sm:text-7xl"
-        />
-      )}
+          className="block text-5xl font-light leading-none tracking-[-0.035em] text-foreground sm:text-7xl"
+        >
+          {!ready && (metric !== "balance" || !atCurrent) ? (
+            <Skeleton className="h-12 w-64 rounded-xl sm:h-[4.5rem]" />
+          ) : (
+            <MoneyAmount
+              key={`${metric}-${monday}`}
+              amount={headline.amount}
+              currency={currency}
+              animate
+              className="block text-5xl font-light leading-none tracking-[-0.035em] text-foreground sm:text-7xl"
+            />
+          )}
+        </HideableAmount>
+      </div>
       <p className="mt-4 text-sm text-muted-foreground">
         {headline.caption}
         {metric === "balance" && overdrawn && <span className="font-medium text-destructive"> · Overdrawn</span>}
       </p>
       {emptyAction && !emptyPanel && <div className="mt-5">{emptyAction}</div>}
-      {headline.chip && (
+      {headline.chip && !masked && (
         <span
           className={cn(
             "mt-3 inline-flex w-fit items-center gap-1 rounded-full px-3 py-1 text-xs font-medium",
@@ -154,6 +171,10 @@ export function BalanceOverview({
 
       {emptyPanel ? (
         <div className="mt-8 border-t border-border pt-6">{emptyPanel}</div>
+      ) : masked ? (
+        <p className="mt-8 border-t border-border pt-6 text-sm text-muted-foreground">
+          This account&apos;s amounts are hidden. Use the eye button to show them.
+        </p>
       ) : (
         <>
           {/* The chart's own toolbar, set off from the headline: which week on the left, the pager on the right. */}

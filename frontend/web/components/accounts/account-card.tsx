@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import type { Account, AccountType } from "@/lib/types";
 import { useLedgerBalance } from "@/hooks/useLedger";
+import { HideableAmount } from "@/components/common/hideable-amount";
 import { MoneyAmount } from "@/components/common/money-amount";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -142,13 +143,19 @@ export function AccountRow({
             </Button>
           </div>
         ) : (
-          <MoneyAmount
-            amount={balance}
+          <HideableAmount
+            account={account}
             currency={account.currency}
-            // Zero is neither good nor bad: plain text, not green.
-            colorBySign={!isZero}
             className="block text-2xl font-semibold leading-8"
-          />
+          >
+            <MoneyAmount
+              amount={balance}
+              currency={account.currency}
+              // Zero is neither good nor bad: plain text, not green.
+              colorBySign={!isZero}
+              className="block text-2xl font-semibold leading-8"
+            />
+          </HideableAmount>
         )}
       </Card>
     </li>

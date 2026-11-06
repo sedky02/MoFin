@@ -41,6 +41,7 @@ export { default as Droplets } from 'lucide-react-native/icons/droplets';
 export { default as Dumbbell } from 'lucide-react-native/icons/dumbbell';
 export { default as Ellipsis } from 'lucide-react-native/icons/ellipsis';
 export { default as ExternalLink } from 'lucide-react-native/icons/external-link';
+export { default as Eye } from 'lucide-react-native/icons/eye';
 export { default as EyeOff } from 'lucide-react-native/icons/eye-off';
 export { default as FlaskConical } from 'lucide-react-native/icons/flask-conical';
 export { default as Gamepad2 } from 'lucide-react-native/icons/gamepad-2';

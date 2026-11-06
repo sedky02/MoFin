@@ -2,7 +2,10 @@ import * as React from 'react';
 import { View } from 'react-native';
 import { router } from 'expo-router';
 
+import { HideableAmount } from '@/components/common/hideable-amount';
 import { MoneyAmount } from '@/components/common/money-amount';
+import { isAmountHidden } from '@/core/account-privacy';
+import { useRevealedAmount } from '@/hooks/use-revealed-amount';
 import { SwipeStepper } from '@/components/common/swipe';
 import { EmptyState, ErrorState } from '@/components/common/states';
 import { BalanceHeroSkeleton } from '@/components/dashboard/dashboard-skeleton';
@@ -17,6 +20,7 @@ import { countArchivedHolding, totalsByCurrency, zeroTotals } from '@/core/balan
 import { tryParse } from '@/core/decimal';
 import { pickPrimaryCurrency } from '@/core/format';
 import type { HeroMetric } from '@/core/hero-headline';
+import type { Account } from '@/core/types';
 import { addDaysIso, deviceTimeZone, localIso, mondayOf, weekHeadline, weekRange, weekTitle } from '@/core/week';
 import { ChevronLeft, ChevronRight, Wallet } from '@/lib/icons';
 import { cn } from '@/lib/utils';
@@ -94,6 +98,7 @@ export function BalanceHero({
       caption={archivedCount > 0 ? `Current balance · incl. ${archivedCount} archived` : 'Current balance'}
       overdrawn={isOverdrawn(hero.amount)}
       accountId={accountId}
+      account={accountId ? activeAccounts?.find((a) => a.id === accountId) : undefined}
       currencies={totals.map((t) => ({ code: t.currency, overdrawn: isOverdrawn(t.amount) }))}
       onCurrencyChange={onCurrencyChange}
       emptyAction={
@@ -114,6 +119,7 @@ function HeroCard({
   caption,
   overdrawn,
   accountId,
+  account,
   currencies,
   onCurrencyChange,
   emptyAction,
@@ -124,12 +130,17 @@ function HeroCard({
   caption: string;
   overdrawn: boolean;
   accountId?: string;
+  /** The one account shown, if any: its amounts stay dots while the user keeps them hidden. */
+  account?: Account;
   currencies: { code: string; overdrawn: boolean }[];
   onCurrencyChange: (c: string) => void;
   emptyAction?: React.ReactNode;
   emptyPanel?: React.ReactNode;
 }) {
   const [metric, setMetric] = React.useState<HeroMetric>('balance');
+  // A hidden account shows dots, and no chart or change, until the user reveals it.
+  const [revealed] = useRevealedAmount(account?.id);
+  const masked = isAmountHidden(account) && !revealed;
   const [today] = React.useState(() => localIso(new Date()));
   const [timeZone] = React.useState(deviceTimeZone);
   const thisMonday = mondayOf(today);
@@ -151,7 +162,7 @@ function HeroCard({
         ) : (
           <Text className="text-xs font-semibold uppercase tracking-wider text-primary-text">{currency} balance</Text>
         )}
-        {!emptyPanel ? (
+        {!emptyPanel && !masked ? (
           <Tabs value={metric} onValueChange={(v) => setMetric(v as HeroMetric)}>
             <TabsList accessibilityLabel="Chart metric" className="h-12 w-full">
               {TABS.map((t) => (
@@ -188,21 +199,28 @@ function HeroCard({
         onNext={() => setMonday((m) => addDaysIso(m, 7))}
         canPrev={!emptyPanel}
         canNext={!emptyPanel && !atCurrent}>
-      {!ready && (metric !== 'balance' || !atCurrent) ? (
-        <Skeleton className="mt-6 h-12 w-56 rounded-xl" />
-      ) : (
-        <MoneyAmount
-          amount={headline.amount}
+      <View className="mt-6">
+        <HideableAmount
+          account={account}
           currency={currency}
-          className="mt-6 text-5xl font-light leading-tight tracking-tight text-foreground"
-        />
-      )}
+          className="text-5xl font-light leading-tight tracking-tight text-foreground">
+          {!ready && (metric !== 'balance' || !atCurrent) ? (
+            <Skeleton className="h-12 w-56 rounded-xl" />
+          ) : (
+            <MoneyAmount
+              amount={headline.amount}
+              currency={currency}
+              className="text-5xl font-light leading-tight tracking-tight text-foreground"
+            />
+          )}
+        </HideableAmount>
+      </View>
       <Text className="mt-2 text-sm text-muted-foreground">
         {headline.caption}
         {metric === 'balance' && overdrawn ? <Text className="text-sm font-medium text-destructive"> · Overdrawn</Text> : null}
       </Text>
       {emptyAction && !emptyPanel ? <View className="mt-5 items-start">{emptyAction}</View> : null}
-      {headline.chip ? (
+      {headline.chip && !masked ? (
         <View
           accessibilityLabel={`${headline.chip.prefix ? `${headline.chip.prefix} ` : ''}${headline.chip.delta} ${headline.chip.suffix}`}
           className={cn(
@@ -228,6 +246,10 @@ function HeroCard({
 
       {emptyPanel ? (
         <View className="mt-6 border-t border-border pt-5">{emptyPanel}</View>
+      ) : masked ? (
+        <Text className="mt-6 border-t border-border pt-5 text-sm text-muted-foreground">
+          This account&apos;s amounts are hidden. Use the eye button to show them.
+        </Text>
       ) : isError ? (
         <View className="mt-6">
           <ErrorState description="Couldn't load this week." onRetry={() => refetch()} />

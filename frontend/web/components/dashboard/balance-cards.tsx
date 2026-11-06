@@ -97,6 +97,7 @@ export function BalanceCards({
         caption={accountId ? (accountName ?? "This account") : allAccountsCaption(hero.currency, archivedCount)}
         overdrawn={isOverdrawn(hero.amount)}
         accountId={accountId}
+        account={accountId ? activeAccounts?.find((a) => a.id === accountId) : undefined}
         currencies={totals.map((t) => ({ code: t.currency, overdrawn: isOverdrawn(t.amount) }))}
         onCurrencyChange={setPicked}
         emptyAction={

@@ -10,7 +10,9 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
 import { Text } from '@/components/ui/text';
+import { isAmountHidden, withHideAmount } from '@/core/account-privacy';
 import type { Account } from '@/core/types';
 import { useAccounts, useCreateAccount, useUpdateAccount } from '@/hooks/useAccounts';
 import { guessDeviceCurrency } from '@/lib/device-hints';
@@ -52,6 +54,8 @@ function AccountDialogBody({
   const [draft, setDraft] = React.useState<AccountDraft>(() => initialDraft(account, guessDeviceCurrency()));
   const [errors, setErrors] = React.useState<Partial<Record<keyof AccountDraft, string>>>({});
   const [pending, setPending] = React.useState(false);
+  // Stored in the account's metadata, beside the form's own fields (the web does the same).
+  const [hideAmount, setHideAmount] = React.useState(() => isAmountHidden(account));
 
 
   async function submit() {
@@ -66,7 +70,13 @@ function AccountDialogBody({
     setPending(true);
     try {
       if (account) {
-        await updateMut.mutateAsync({ id: account.id, name: values.name, type: values.type, openingBalance });
+        await updateMut.mutateAsync({
+          id: account.id,
+          name: values.name,
+          type: values.type,
+          openingBalance,
+          ...(hideAmount !== isAmountHidden(account) ? { metadata: withHideAmount(account.metadata, hideAmount) } : {}),
+        });
       } else {
         const created = await createMut.mutateAsync({
           name: values.name,
@@ -74,6 +84,7 @@ function AccountDialogBody({
           currency: values.currency,
           // Left out when blank: the account starts at 0.
           ...(values.openingBalance.trim() ? { openingBalance } : {}),
+          ...(hideAmount ? { metadata: withHideAmount(undefined, true) } : {}),
         });
         onCreated?.(created);
       }
@@ -162,6 +173,23 @@ function AccountDialogBody({
                 {errors.openingBalance}
               </Text>
             ) : null}
+          </View>
+
+          <View className="flex-row items-center gap-3">
+            <View className="min-w-0 flex-1">
+              <Text nativeID="hide-account-balance" className="text-sm font-medium">
+                Hide balance
+              </Text>
+              <Text className="text-xs text-muted-foreground">
+                Shows •••• instead of this account&apos;s amounts, in the app and in widgets. Tap the eye to see them.
+              </Text>
+            </View>
+            <Switch
+              aria-labelledby="hide-account-balance"
+              accessibilityLabel="Hide balance"
+              checked={hideAmount}
+              onCheckedChange={setHideAmount}
+            />
           </View>
         </SheetScrollView>
 
