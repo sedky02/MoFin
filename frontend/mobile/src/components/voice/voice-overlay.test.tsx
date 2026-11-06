@@ -1,3 +1,4 @@
+import { PortalHost } from '@rn-primitives/portal';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 
 import { VoiceOverlay } from '@/components/voice/voice-overlay';
@@ -50,7 +51,7 @@ function turn(question: string, answer: string): AiChatTurn {
 }
 
 async function openOverlay() {
-  await render(<VoiceOverlay />);
+  await render(<><VoiceOverlay /><PortalHost /></>);
   await act(async () => voiceOverlay.open());
   await act(async () => speech.emit('start'));
 }
@@ -64,7 +65,7 @@ afterEach(() => act(() => voiceOverlay.close()));
 
 describe('VoiceOverlay', () => {
   it('stays closed until opened, then starts listening straight away', async () => {
-    await render(<VoiceOverlay />);
+    await render(<><VoiceOverlay /><PortalHost /></>);
     expect(screen.queryByText('Ask MoFin')).toBeNull();
     await act(async () => voiceOverlay.open());
     expect(screen.getByText('Ask MoFin')).toBeTruthy();
@@ -132,7 +133,7 @@ describe('VoiceOverlay', () => {
 
   it('explains a refused permission and offers Settings', async () => {
     speech.module.requestPermissionsAsync.mockResolvedValue({ granted: false });
-    await render(<VoiceOverlay />);
+    await render(<><VoiceOverlay /><PortalHost /></>);
     await act(async () => voiceOverlay.open());
     expect(await screen.findByText(/needs microphone and speech access/)).toBeTruthy();
     expect(screen.getByLabelText('Open Settings')).toBeTruthy();

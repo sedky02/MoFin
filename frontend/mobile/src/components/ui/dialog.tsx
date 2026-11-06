@@ -1,7 +1,7 @@
 import { usePhoneFrameOverlayStyle } from '@/components/shell/web-phone-frame';
 import { Icon } from '@/components/ui/icon';
 import { NativeOnlyAnimatedView } from '@/components/ui/native-only-animated-view';
-import { SheetBottomInset, SheetHandle, useSheetDrag, useSheetKeyboard } from '@/components/ui/sheet-parts';
+import { BACKDROP_IN_MS, SHEET_OUT_MS, SheetBottomInset, SheetHandle, useSheetDrag, useSheetKeyboard } from '@/components/ui/sheet-parts';
 import { X } from '@/lib/icons';
 import { cn } from '@/lib/utils';
 import * as DialogPrimitive from '@rn-primitives/dialog';
@@ -57,13 +57,15 @@ function DialogOverlay({
         style={frameStyle}
         onPress={Platform.select({ web: onOverlayPress, native: onPress })}
         asChild={Platform.OS !== 'web'}>
+        {/* The backdrop is there at once (a quick fade) and never slides with the sheet; on close it
+            fades out over the same 200 ms the sheet takes to slide down, so they leave together. */}
         <NativeOnlyAnimatedView
-          entering={FadeIn.duration(200).reduceMotion(ReduceMotion.System)}
-          exiting={FadeOut.duration(150).reduceMotion(ReduceMotion.System)}
+          entering={FadeIn.duration(BACKDROP_IN_MS).reduceMotion(ReduceMotion.System)}
+          exiting={FadeOut.duration(SHEET_OUT_MS).reduceMotion(ReduceMotion.System)}
           as="Pressable">
           <NativeOnlyAnimatedView
             entering={(sheet ? SlideInDown.duration(260) : FadeIn.delay(50)).reduceMotion(ReduceMotion.System)}
-            exiting={(sheet ? SlideOutDown.duration(200) : FadeOut.duration(150)).reduceMotion(ReduceMotion.System)}>
+            exiting={(sheet ? SlideOutDown.duration(SHEET_OUT_MS) : FadeOut.duration(150)).reduceMotion(ReduceMotion.System)}>
             {/* Rides up on the keyboard and back down when it closes (see useSheetKeyboard). */}
             <Reanimated.View style={[{ width: '100%' }, lift]}>{children}</Reanimated.View>
           </NativeOnlyAnimatedView>

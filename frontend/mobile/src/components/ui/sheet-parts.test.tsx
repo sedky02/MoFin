@@ -24,3 +24,11 @@ describe('sheet keyboard handling', () => {
     expect(revealOffset(100, 44, 0, 300)).toBeNull();
   });
 });
+
+describe('sheet backdrop timing', () => {
+  it('shows the backdrop almost at once, and lets it leave with the sheet', () => {
+    const { BACKDROP_IN_MS, SHEET_OUT_MS } = jest.requireActual('@/components/ui/sheet-parts');
+    expect(BACKDROP_IN_MS).toBeLessThanOrEqual(150);
+    expect(SHEET_OUT_MS).toBe(200);
+  });
+});

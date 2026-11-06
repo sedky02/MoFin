@@ -1,17 +1,18 @@
 import { router } from 'expo-router';
 import * as React from 'react';
-import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, TextInput, useWindowDimensions, View } from 'react-native';
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AssistantMessage, FailedMessage, ThinkingMessage, UserMessage } from '@/components/ask/ask-message';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Icon } from '@/components/ui/icon';
+import { SheetScrollView } from '@/components/ui/sheet-parts';
 import { Text } from '@/components/ui/text';
 import { chatErrorMessage, useAiChatDetail, useSendChatMessage } from '@/hooks/useAiChat';
 import { openSpeechSettings, useSpeechRecognition } from '@/hooks/use-speech-recognition';
 import { haptics } from '@/lib/haptics';
-import { ArrowUp, Keyboard, Mic, Square, X } from '@/lib/icons';
+import { ArrowUp, Keyboard, Mic, Square } from '@/lib/icons';
 import { cn } from '@/lib/utils';
 import { useVoiceOverlayOpen, voiceOverlay } from '@/lib/voice-overlay';
 
@@ -47,13 +48,21 @@ function ListeningRings({ active }: { active: boolean }) {
  */
 export function VoiceOverlay() {
   const open = useVoiceOverlayOpen();
-  if (!open) return null;
-  // Mounted only while open: closing unmounts it, which stops the microphone.
-  return <VoiceSheet />;
+  const { height } = useWindowDimensions();
+  // The app's shared bottom sheet: the backdrop is there at once and stays put while the sheet slides
+  // up; on close the sheet slides down and the backdrop goes with it. It also brings the keyboard
+  // handling, the grab handle and the ✕. The content mounts only while open, so closing stops the mic.
+  return (
+    <Dialog open={open} onOpenChange={(next) => !next && voiceOverlay.close()}>
+      <DialogContent className="gap-0 bg-card p-0" style={{ maxHeight: Math.round(height * 0.85) }}>
+        <DialogTitle className="sr-only">Ask MoFin by voice</DialogTitle>
+        {open ? <VoiceSheet /> : null}
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 function VoiceSheet() {
-  const insets = useSafeAreaInsets();
   const [chatId, setChatId] = React.useState<string | null>(null);
   const detail = useAiChatDetail(chatId);
   const send = useSendChatMessage();
@@ -118,15 +127,8 @@ function VoiceSheet() {
   const hearing = speech.finalText || speech.interimText;
 
   return (
-    <Modal visible transparent animationType="slide" onRequestClose={close} statusBarTranslucent>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1 justify-end">
-        {/* The screen behind stays visible, dimmed; tapping it closes the overlay. */}
-        <Pressable accessibilityLabel="Close voice" onPress={close} className="absolute inset-0 bg-black/50" />
-        <View
-          accessibilityViewIsModal
-          className="max-h-[85%] rounded-t-3xl border-t border-border bg-card"
-          style={{ paddingBottom: Math.max(insets.bottom, 12) }}>
-          <View className="flex-row items-center justify-between px-5 pb-2 pt-4">
+    <>
+          <View className="flex-row items-center justify-between pb-2 pl-5 pr-14">
             <Text role="heading" aria-level={2} className="text-base font-semibold">
               Ask MoFin
             </Text>
@@ -136,21 +138,13 @@ function VoiceSheet() {
                   <Text className="text-primary-text">Open in chat</Text>
                 </Button>
               ) : null}
-              <Pressable
-                role="button"
-                accessibilityLabel="Close"
-                onPress={close}
-                className="size-11 items-center justify-center rounded-full active:bg-accent">
-                <Icon as={X} size={20} className="text-muted-foreground" />
-              </Pressable>
             </View>
           </View>
 
-          <ScrollView
+          <SheetScrollView
             ref={scrollRef}
             className="px-5"
             contentContainerClassName="gap-5 pb-4"
-            keyboardShouldPersistTaps="handled"
             onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}>
             {messages.map((m) =>
               m.role === 'user' ? <UserMessage key={m.id} content={m.content} /> : <AssistantMessage key={m.id} message={m} />,
@@ -180,7 +174,7 @@ function VoiceSheet() {
                 ) : null}
               </View>
             ) : null}
-          </ScrollView>
+          </SheetScrollView>
 
           {typing ? (
             <View className="mx-4 flex-row items-end gap-2 rounded-3xl border border-border bg-background py-1.5 pl-4 pr-1.5">
@@ -241,8 +235,6 @@ function VoiceSheet() {
               <View className="size-12" />
             </View>
           )}
-        </View>
-      </KeyboardAvoidingView>
-    </Modal>
+    </>
   );
 }

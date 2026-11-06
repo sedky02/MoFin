@@ -16,6 +16,11 @@ import {
 import Reanimated, { useAnimatedKeyboard, useAnimatedStyle } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+/** The sheet backdrop's fade in: short enough to read as "there at once". */
+export const BACKDROP_IN_MS = 120;
+/** The sheet's slide down on close; the backdrop fades out over the same time, so they leave together. */
+export const SHEET_OUT_MS = 200;
+
 /** How far (px) or how fast a downward drag on the handle has to go to close the sheet. */
 const CLOSE_DISTANCE = 90;
 const CLOSE_VELOCITY = 0.9;
@@ -131,8 +136,24 @@ type Measurable = {
  * pinned), and keeps the focused field in view: when the keyboard opens or the body shrinks, it
  * scrolls just enough to show the field. The field is never left behind the keyboard.
  */
-export function SheetScrollView({ onScroll, onLayout, style, children, ...props }: ScrollViewProps) {
+export function SheetScrollView({
+  ref: outerRef,
+  onScroll,
+  onLayout,
+  style,
+  children,
+  ...props
+}: ScrollViewProps & { ref?: React.Ref<React.ComponentRef<typeof ScrollView>> }) {
   const ref = React.useRef<React.ComponentRef<typeof ScrollView>>(null);
+  // Both this view and the caller (scrolling to the newest message, say) hold the scroll view.
+  const setRef = React.useCallback(
+    (node: React.ComponentRef<typeof ScrollView> | null) => {
+      ref.current = node;
+      if (typeof outerRef === 'function') outerRef(node);
+      else if (outerRef) outerRef.current = node;
+    },
+    [outerRef],
+  );
   const offset = React.useRef(0);
   const viewport = React.useRef(0);
 
@@ -160,7 +181,7 @@ export function SheetScrollView({ onScroll, onLayout, style, children, ...props 
 
   return (
     <ScrollView
-      ref={ref}
+      ref={setRef}
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="interactive"
       style={[{ flexShrink: 1 }, style]}

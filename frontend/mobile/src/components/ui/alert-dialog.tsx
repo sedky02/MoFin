@@ -1,7 +1,7 @@
 import { usePhoneFrameOverlayStyle } from '@/components/shell/web-phone-frame';
 import { buttonTextVariants, buttonVariants } from '@/components/ui/button';
 import { NativeOnlyAnimatedView } from '@/components/ui/native-only-animated-view';
-import { SheetBottomInset, SheetHandle, useSheetKeyboard } from '@/components/ui/sheet-parts';
+import { BACKDROP_IN_MS, SHEET_OUT_MS, SheetBottomInset, SheetHandle, useSheetKeyboard } from '@/components/ui/sheet-parts';
 import { TextClassContext } from '@/components/ui/text';
 import { cn } from '@/lib/utils';
 import * as AlertDialogPrimitive from '@rn-primitives/alert-dialog';
@@ -41,15 +41,17 @@ function AlertDialogOverlay({
         {...props}
         style={frameStyle}
         asChild={Platform.OS !== 'web'}>
+        {/* The backdrop is there at once (a quick fade) and never slides with the sheet; on close it
+            fades out over the same 200 ms the sheet takes to slide down, so they leave together. */}
         <NativeOnlyAnimatedView
-          entering={FadeIn.duration(200).reduceMotion(ReduceMotion.System)}
-          exiting={FadeOut.duration(150).reduceMotion(ReduceMotion.System)}
+          entering={FadeIn.duration(BACKDROP_IN_MS).reduceMotion(ReduceMotion.System)}
+          exiting={FadeOut.duration(SHEET_OUT_MS).reduceMotion(ReduceMotion.System)}
           as="Pressable">
           {/* The type-to-confirm dialog has a field: the sheet rides up on the keyboard (see useSheetKeyboard). */}
           <Reanimated.View style={[{ width: '100%' }, lift]}>
             <NativeOnlyAnimatedView
               entering={SlideInDown.duration(260).reduceMotion(ReduceMotion.System)}
-              exiting={SlideOutDown.duration(200).reduceMotion(ReduceMotion.System)}>
+              exiting={SlideOutDown.duration(SHEET_OUT_MS).reduceMotion(ReduceMotion.System)}>
               {children}
             </NativeOnlyAnimatedView>
           </Reanimated.View>
