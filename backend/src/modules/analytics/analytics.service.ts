@@ -2,6 +2,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { Prisma, TransactionType } from '@prisma/client';
 import {
+  AccountAccessChangedEvent,
   DomainEvents,
   TransactionChangedEvent,
   TransactionCreatedEvent,
@@ -409,6 +410,14 @@ export class AnalyticsService {
   ): string {
     // Every variant starts with `<base>:` (except the bare base), which invalidation relies on.
     return `monthly-summary:v3:${year}:${month}${accountId ? `:${accountId}` : ''}${currency ? `:cur:${currency}` : ''}`;
+  }
+
+  /** Their "all accounts" figures covered a different set of accounts. */
+  @OnEvent(DomainEvents.AccountAccessChanged)
+  async invalidateOnAccessChange(event: AccountAccessChangedEvent) {
+    await this.prisma.analyticsCache.deleteMany({
+      where: { userId: { in: event.userIds } },
+    });
   }
 
   @OnEvent(DomainEvents.TransactionCreated)

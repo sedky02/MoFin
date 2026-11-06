@@ -118,6 +118,10 @@ export function inMemoryPrisma() {
       const row = tables[table].find((r) => matches(table, r, where));
       return row ? { ...row } : null;
     },
+    findMany: async ({ where }: { where: Record<string, unknown> }) =>
+      tables[table]
+        .filter((r) => matches(table, r, where))
+        .map((r) => ({ ...r })),
     create: async ({ data }: { data: Record<string, unknown> }) => {
       const row: Row = { id: `${table}-${++nextId}`, ...data };
       tables[table].push(row);

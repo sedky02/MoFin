@@ -131,7 +131,8 @@ export class PasswordResetService {
 
       await tx.user.update({
         where: { id: stored.userId },
-        data: { passwordHash },
+        // The link only reaches whoever reads this inbox, so it proves the address too.
+        data: { passwordHash, emailVerifiedAt: now },
       });
       await tx.refreshToken.updateMany({
         where: { userId: stored.userId, revokedAt: null },

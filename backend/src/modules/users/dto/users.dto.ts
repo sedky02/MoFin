@@ -17,6 +17,8 @@ export interface CreateUserInput {
   passwordHash?: string;
   displayName?: string;
   googleId?: string;
+  /** Set when the address is already proven, as with Google sign-in. */
+  emailVerifiedAt?: Date;
   /** Temporary "Try the demo" user (see DemoService). */
   isDemo?: boolean;
   expiresAt?: Date;

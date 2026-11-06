@@ -44,6 +44,7 @@ describe('UsersService profile', () => {
 describe('UsersService.deleteAccount and resetData', () => {
   // The user-owned tables a data reset clears, in the order the service must clear them.
   const DATA_TABLES = [
+    'accountMember',
     'transactionItem',
     'transaction',
     'draftTransaction',
@@ -53,6 +54,7 @@ describe('UsersService.deleteAccount and resetData', () => {
     'account',
     'category',
     'analyticsCache',
+    'aiChat',
   ] as const;
   // Sign-ins: cleared with the account, kept by a reset.
   const SIGN_IN_TABLES = [
@@ -86,6 +88,9 @@ describe('UsersService.deleteAccount and resetData', () => {
       if (table !== 'category')
         tx[table] = { deleteMany: record(table, 'deleteMany') };
     }
+    (tx.accountMember as Record<string, unknown>).findMany = jest.fn(
+      async () => [],
+    );
     const prisma = {
       user: { findUnique: jest.fn(async () => user && { id: 'u1' }) },
       $transaction: jest.fn(async (run: (client: unknown) => unknown) =>

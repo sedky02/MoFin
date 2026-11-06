@@ -52,6 +52,10 @@ export class LogMailSender extends MailSender {
     super();
   }
 
+  get delivers(): boolean {
+    return this.includeBody;
+  }
+
   send(message: MailMessage): Promise<void> {
     if (this.includeBody) {
       this.logger.log(

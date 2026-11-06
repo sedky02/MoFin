@@ -15,6 +15,7 @@ import { DemoBlocked } from '../../common/decorators/demo.decorator';
 import {
   AuthThrottlerGuard,
   ChangePasswordThrottlerGuard,
+  EmailVerificationThrottlerGuard,
   FORGOT_PASSWORD_IP_THROTTLE,
   ForgotPasswordThrottlerGuard,
   GoogleIdTokenThrottlerGuard,
@@ -25,6 +26,7 @@ import { ApiZodBody } from '../../common/swagger/api-zod';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import { AuthenticatedUser } from '../../common/types/authenticated-user';
 import { AuthService } from './auth.service';
+import { EmailVerificationService } from './email-verification.service';
 import {
   FORGOT_PASSWORD_MESSAGE,
   PasswordResetService,
@@ -40,6 +42,7 @@ import {
   RefreshTokenDto,
   RegisterDto,
   ResetPasswordDto,
+  VerifyEmailDto,
   changePasswordSchema,
   forgotPasswordSchema,
   googleIdTokenSchema,
@@ -49,6 +52,7 @@ import {
   refreshTokenSchema,
   registerSchema,
   resetPasswordSchema,
+  verifyEmailSchema,
 } from './dto/auth.dto';
 
 @ApiTags('auth')
@@ -57,6 +61,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly passwordResetService: PasswordResetService,
+    private readonly emailVerificationService: EmailVerificationService,
     private readonly googleIdTokenVerifier: GoogleIdTokenVerifier,
   ) {}
 
@@ -124,6 +129,28 @@ export class AuthController {
     @Body(new ZodValidationPipe(resetPasswordSchema)) dto: ResetPasswordDto,
   ) {
     return this.passwordResetService.resetPassword(dto.token, dto.password);
+  }
+
+  /** Emails the caller a link proving their address. Limited per user: it sends mail. */
+  @UseGuards(EmailVerificationThrottlerGuard)
+  @ApiBearerAuth('jwt')
+  @DemoBlocked()
+  @Post('email/verification')
+  @HttpCode(HttpStatus.ACCEPTED)
+  sendEmailVerification(@CurrentUser() user: AuthenticatedUser) {
+    return this.emailVerificationService.sendLink(user.id);
+  }
+
+  // Limited per presented token (see authTracker), not per IP.
+  @Public()
+  @UseGuards(AuthThrottlerGuard)
+  @Post('email/verify')
+  @HttpCode(HttpStatus.OK)
+  @ApiZodBody(verifyEmailSchema)
+  verifyEmail(
+    @Body(new ZodValidationPipe(verifyEmailSchema)) dto: VerifyEmailDto,
+  ) {
+    return this.emailVerificationService.verify(dto.token);
   }
 
   // Limited per user (see ChangePasswordThrottlerGuard) so a signed-in

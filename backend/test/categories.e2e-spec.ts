@@ -22,6 +22,7 @@ import { PrismaService } from '../src/database/prisma.service';
 import { AuthController } from '../src/modules/auth/auth.controller';
 import { AuthService } from '../src/modules/auth/auth.service';
 import { GoogleIdTokenVerifier } from '../src/modules/auth/id-token-verifier.service';
+import { EmailVerificationService } from '../src/modules/auth/email-verification.service';
 import { PasswordResetService } from '../src/modules/auth/password-reset.service';
 import { CategoriesController } from '../src/modules/categories/categories.controller';
 import { CategoriesService } from '../src/modules/categories/categories.service';
@@ -188,6 +189,7 @@ describe('Categories (e2e)', () => {
         { provide: JwtService, useValue: {} },
         { provide: ConfigService, useValue: { get: () => undefined } },
         { provide: PasswordResetService, useValue: {} },
+        { provide: EmailVerificationService, useValue: {} },
         { provide: GoogleIdTokenVerifier, useValue: {} },
       ],
     })
@@ -273,9 +275,7 @@ describe('Categories (e2e)', () => {
     beforeAll(async () => {
       await register('archiver@example.com').expect(201);
       userId = users.find((u) => u.email === 'archiver@example.com')!.id;
-      food = categories.find(
-        (c) => c.userId === userId && c.name === 'Food',
-      )!;
+      food = categories.find((c) => c.userId === userId && c.name === 'Food')!;
       transactions.push(
         {
           id: 'tx-1',
@@ -329,9 +329,7 @@ describe('Categories (e2e)', () => {
       const all = await as(userId)
         .get('/categories?limit=100&status=all')
         .expect(200);
-      expect(all.body.data.map((c: CategoryRow) => c.id)).toContain(
-        food.id,
-      );
+      expect(all.body.data.map((c: CategoryRow) => c.id)).toContain(food.id);
 
       const onlyArchived = await as(userId)
         .get('/categories?status=archived')
@@ -353,12 +351,8 @@ describe('Categories (e2e)', () => {
     it("can't be archived or restored by another user", async () => {
       await register('other@example.com').expect(201);
       const otherId = users.find((u) => u.email === 'other@example.com')!.id;
-      await as(otherId)
-        .patch(`/categories/${food.id}/restore`)
-        .expect(404);
-      await as(otherId)
-        .patch(`/categories/${food.id}/archive`)
-        .expect(404);
+      await as(otherId).patch(`/categories/${food.id}/restore`).expect(404);
+      await as(otherId).patch(`/categories/${food.id}/archive`).expect(404);
       await as(otherId).get(`/categories/${food.id}/usage`).expect(404);
     });
 
@@ -369,9 +363,7 @@ describe('Categories (e2e)', () => {
       expect(restored.body.archivedAt).toBeNull();
 
       const active = await as(userId).get('/categories?limit=100').expect(200);
-      expect(active.body.data.map((c: CategoryRow) => c.id)).toContain(
-        food.id,
-      );
+      expect(active.body.data.map((c: CategoryRow) => c.id)).toContain(food.id);
     });
 
     it('404s a restore of a category that is not archived', async () => {

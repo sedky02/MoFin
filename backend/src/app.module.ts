@@ -11,6 +11,7 @@ import { LoggerModule } from './common/logger/logger.module';
 import { validateEnv } from './config/env.validation';
 import { HealthModule } from './health/health.module';
 import { AccountAccessModule } from './modules/account-access/account-access.module';
+import { AccountSharingModule } from './modules/account-sharing/account-sharing.module';
 import { AccountsModule } from './modules/accounts/accounts.module';
 import { AiModule } from './modules/ai/ai.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
@@ -49,6 +50,7 @@ import { UsersModule } from './modules/users/users.module';
     AuthModule,
     UsersModule,
     AccountAccessModule,
+    AccountSharingModule,
     AccountsModule,
     CategoriesModule,
     TransactionsModule,

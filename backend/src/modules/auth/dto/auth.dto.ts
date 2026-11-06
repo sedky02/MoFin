@@ -50,6 +50,11 @@ export const resetPasswordSchema = z.object({
 });
 export type ResetPasswordDto = z.infer<typeof resetPasswordSchema>;
 
+export const verifyEmailSchema = z.object({
+  token: z.string().min(1).max(256),
+});
+export type VerifyEmailDto = z.infer<typeof verifyEmailSchema>;
+
 // `refreshToken` is the caller's own session token, which the web BFF reads
 // from its cookie and forwards so that session survives the change. Without
 // it every session of the account is signed out, the caller's included.

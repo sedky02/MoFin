@@ -561,6 +561,7 @@ describe('AuthService.signInWithGoogle (shared by the code flow and the mobile I
     email: string;
     googleId: string | null;
     passwordHash: string | null;
+    emailVerifiedAt?: Date | null;
     displayName?: string;
   };
   const config = {
@@ -577,7 +578,17 @@ describe('AuthService.signInWithGoogle (shared by the code flow and the mobile I
   function makeService(seed: User[] = []) {
     const users = [...seed];
     const sessions: { userId: string; familyId: string }[] = [];
-    const prisma = {
+    const revoked = {
+      refreshToken: { updateMany: jest.fn(async () => ({ count: 1 })) },
+      oAuthRefreshToken: { updateMany: jest.fn(async () => ({ count: 1 })) },
+      authSession: { deleteMany: jest.fn(async () => ({ count: 1 })) },
+    };
+    const prisma: Record<string, unknown> & {
+      user: { findUnique: jest.Mock; update: jest.Mock };
+    } = {
+      $transaction: jest.fn(async (run: (tx: unknown) => unknown) =>
+        run({ ...revoked, user: prisma.user }),
+      ),
       user: {
         findUnique: jest.fn(
           async ({ where }: { where: Partial<User> }) =>
@@ -621,7 +632,7 @@ describe('AuthService.signInWithGoogle (shared by the code flow and the mobile I
       jwtService as never,
       config as never,
     );
-    return { service, users, sessions, prisma };
+    return { service, users, sessions, prisma, revoked };
   }
 
   const identity = {
@@ -640,6 +651,7 @@ describe('AuthService.signInWithGoogle (shared by the code flow and the mobile I
         id: 'u1',
         email: 'jane@example.com',
         googleId: 'google-sub-1',
+        emailVerifiedAt: expect.any(Date),
         displayName: 'Jane',
         passwordHash: null,
       },
@@ -653,13 +665,15 @@ describe('AuthService.signInWithGoogle (shared by the code flow and the mobile I
     ]);
   });
 
-  it('links the Google id to an existing account with the same email', async () => {
-    const { service, users } = makeService([
+  it('links the Google id to a verified account with the same email, keeping its password', async () => {
+    const verifiedAt = new Date('2026-01-01');
+    const { service, users, revoked } = makeService([
       {
         id: 'existing',
         email: 'jane@example.com',
         googleId: null,
         passwordHash: 'hash',
+        emailVerifiedAt: verifiedAt,
       },
     ]);
 
@@ -670,7 +684,37 @@ describe('AuthService.signInWithGoogle (shared by the code flow and the mobile I
       id: 'existing',
       googleId: 'google-sub-1',
       passwordHash: 'hash',
+      emailVerifiedAt: verifiedAt,
     });
+    expect(tokens.accessToken).toBe('jwt-existing');
+    expect(revoked.refreshToken.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('takes the password and sessions off an unverified account Google links to', async () => {
+    const { service, users, revoked } = makeService([
+      {
+        id: 'existing',
+        email: 'jane@example.com',
+        googleId: null,
+        passwordHash: 'set-by-whoever-registered-it',
+        emailVerifiedAt: null,
+      },
+    ]);
+
+    const tokens = await service.signInWithGoogle(identity);
+
+    expect(users[0]).toMatchObject({
+      googleId: 'google-sub-1',
+      passwordHash: null,
+      emailVerifiedAt: expect.any(Date),
+    });
+    expect(revoked.refreshToken.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { userId: 'existing', revokedAt: null },
+      }),
+    );
+    expect(revoked.oAuthRefreshToken.updateMany).toHaveBeenCalled();
+    expect(revoked.authSession.deleteMany).toHaveBeenCalled();
     expect(tokens.accessToken).toBe('jwt-existing');
   });
 

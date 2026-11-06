@@ -12,4 +12,12 @@ export interface MailMessage {
  */
 export abstract class MailSender {
   abstract send(message: MailMessage): Promise<void>;
+
+  /**
+   * Whether a message reaches anyone. False only where it would be dropped, so
+   * a feature that depends on the email can say so instead of pretending.
+   */
+  get delivers(): boolean {
+    return true;
+  }
 }

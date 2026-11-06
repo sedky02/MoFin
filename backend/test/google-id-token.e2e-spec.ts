@@ -46,6 +46,7 @@ import {
   GoogleIdTokenVerifier,
   INVALID_ID_TOKEN_MESSAGE,
 } from '../src/modules/auth/id-token-verifier.service';
+import { EmailVerificationService } from '../src/modules/auth/email-verification.service';
 import { PasswordResetService } from '../src/modules/auth/password-reset.service';
 import { JwtStrategy } from '../src/modules/auth/strategies/jwt.strategy';
 import { UsersService } from '../src/modules/users/users.service';
@@ -113,6 +114,7 @@ describe('POST /auth/google/id-token (e2e)', () => {
         { provide: JwtService, useValue: new JwtService() },
         { provide: PrismaService, useValue: db },
         { provide: PasswordResetService, useValue: {} },
+        { provide: EmailVerificationService, useValue: {} },
         { provide: GOOGLE_ID_TOKEN_KEYS, useValue: google.jwks },
         GoogleIdTokenVerifier,
         JwtStrategy,
@@ -199,6 +201,7 @@ describe('POST /auth/google/id-token (e2e)', () => {
       email: 'jane@example.com',
       passwordHash: 'hash',
       googleId: null,
+      emailVerifiedAt: new Date(),
     });
 
     await signIn(await idToken()).expect(201);
@@ -436,7 +439,9 @@ describeWithDb('POST /auth/google/id-token against PostgreSQL (e2e)', () => {
     const users = await usersWith(email);
     expect(users).toHaveLength(1);
     expect(users[0].googleId).toBe(`linked-${runId}`);
-    expect(users[0].passwordHash).not.toBeNull();
+    // Registering proved nothing, so the password that came before Google goes.
+    expect(users[0].passwordHash).toBeNull();
+    expect(users[0].emailVerifiedAt).not.toBeNull();
     await post('/auth/refresh', {
       refreshToken: res.body.refreshToken,
     }).expect(201);

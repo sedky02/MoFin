@@ -388,7 +388,7 @@ export class AuthService {
    * verified: by the code flow (`loginWithGoogle`) or by the mobile ID token
    * route (GoogleIdTokenVerifier). Links by googleId, else by an existing
    * account with the same email (Google vouched for it), else creates a
-   * passwordless user.
+   * passwordless user. Either way the address counts as verified.
    */
   async signInWithGoogle(identity: GoogleIdentity) {
     const { googleId, displayName } = identity;
@@ -398,14 +398,52 @@ export class AuthService {
     if (!user) {
       const byEmail = await this.prisma.user.findUnique({ where: { email } });
       user = byEmail
-        ? await this.prisma.user.update({
-            where: { id: byEmail.id },
-            data: { googleId },
-          })
-        : await this.usersService.createUser({ email, googleId, displayName });
+        ? await this.linkGoogle(byEmail, googleId)
+        : await this.usersService.createUser({
+            email,
+            googleId,
+            displayName,
+            emailVerifiedAt: new Date(),
+          });
     }
 
     return this.startSession(user);
+  }
+
+  /**
+   * Attaches Google to an existing account. Registering never proved the
+   * address, so an unverified account may have been opened by someone other
+   * than its real owner, waiting for them to sign in. Its password and sessions
+   * go, or that person would keep access to the account the real owner now
+   * uses; a genuine owner can set a new password by reset.
+   */
+  private linkGoogle(
+    user: { id: string; emailVerifiedAt: Date | null },
+    googleId: string,
+  ) {
+    if (user.emailVerifiedAt) {
+      return this.prisma.user.update({
+        where: { id: user.id },
+        data: { googleId },
+      });
+    }
+    const now = new Date();
+    const live = { userId: user.id, revokedAt: null };
+    return this.prisma.$transaction(async (tx) => {
+      await tx.refreshToken.updateMany({
+        where: live,
+        data: { revokedAt: now },
+      });
+      await tx.oAuthRefreshToken.updateMany({
+        where: live,
+        data: { revokedAt: now },
+      });
+      await tx.authSession.deleteMany({ where: { userId: user.id } });
+      return tx.user.update({
+        where: { id: user.id },
+        data: { googleId, emailVerifiedAt: now, passwordHash: null },
+      });
+    });
   }
 
   /** A new session (fresh token family) for a user created without a password. */

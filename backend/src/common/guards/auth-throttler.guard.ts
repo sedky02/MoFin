@@ -108,6 +108,42 @@ export class ChangePasswordThrottlerGuard extends AuthThrottlerGuard {
   }
 }
 
+/** Per-user limit on POST /auth/email/verification: it sends mail. */
+export const EMAIL_VERIFICATION_THROTTLE = {
+  limit: 5,
+  ttl: 15 * 60_000,
+} as const;
+
+/** EMAIL_VERIFICATION_THROTTLE per userTracker key. */
+@Injectable()
+export class EmailVerificationThrottlerGuard extends ChangePasswordThrottlerGuard {
+  protected throttle(): { limit: number; ttl: number } {
+    return EMAIL_VERIFICATION_THROTTLE;
+  }
+}
+
+/** Per-user limit on creating invitations: each one mails an address the sender picks. */
+export const INVITATION_THROTTLE = { limit: 10, ttl: 60 * 60_000 } as const;
+
+/** INVITATION_THROTTLE per userTracker key. */
+@Injectable()
+export class InvitationThrottlerGuard extends ChangePasswordThrottlerGuard {
+  protected throttle(): { limit: number; ttl: number } {
+    return INVITATION_THROTTLE;
+  }
+}
+
+/** Limit per presented invitation token on its preview, accept and decline routes. */
+export const INVITATION_TOKEN_THROTTLE = { limit: 20, ttl: 60_000 } as const;
+
+/** INVITATION_TOKEN_THROTTLE per authTracker key: the bucket follows the token. */
+@Injectable()
+export class InvitationTokenThrottlerGuard extends AuthThrottlerGuard {
+  protected throttle(): { limit: number; ttl: number } {
+    return INVITATION_TOKEN_THROTTLE;
+  }
+}
+
 /**
  * Per-IP limit on POST /auth/google/id-token (native Google sign-in from the
  * mobile app).

@@ -15,6 +15,8 @@ describe('ExpiredRowsCron', () => {
       refreshToken: table(5),
       oAuthRefreshToken: table(1),
       passwordResetToken: table(6),
+      emailVerificationToken: table(7),
+      accountInvitation: table(8),
       $transaction: jest.fn(async (ops: { count: number }[]) => ops),
     };
     return { prisma, cron: new ExpiredRowsCron(prisma as never) };
@@ -36,6 +38,8 @@ describe('ExpiredRowsCron', () => {
       refreshToken: 5,
       oAuthRefreshToken: 1,
       passwordResetToken: 6,
+      emailVerificationToken: 7,
+      accountInvitation: 8,
     });
   });
 
@@ -56,9 +60,13 @@ describe('ExpiredRowsCron', () => {
     ]) {
       expect(cutoffOf(table).getTime()).toBe(now.getTime() - 7 * DAY);
     }
-    expect(cutoffOf(prisma.passwordResetToken).getTime()).toBe(
-      now.getTime() - 90 * DAY,
-    );
+    for (const table of [
+      prisma.passwordResetToken,
+      prisma.emailVerificationToken,
+      prisma.accountInvitation,
+    ]) {
+      expect(cutoffOf(table).getTime()).toBe(now.getTime() - 90 * DAY);
+    }
   });
 
   it('runs every delete in one transaction', async () => {

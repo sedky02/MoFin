@@ -26,6 +26,7 @@ import { WEB_AUDIENCE } from '../src/modules/auth/auth.constants';
 import { AuthController } from '../src/modules/auth/auth.controller';
 import { AuthService } from '../src/modules/auth/auth.service';
 import { GoogleIdTokenVerifier } from '../src/modules/auth/id-token-verifier.service';
+import { EmailVerificationService } from '../src/modules/auth/email-verification.service';
 import { PasswordResetService } from '../src/modules/auth/password-reset.service';
 import { JwtStrategy } from '../src/modules/auth/strategies/jwt.strategy';
 import { UsersController } from '../src/modules/users/users.controller';
@@ -259,6 +260,7 @@ describe('deleting an account and its data (e2e)', () => {
         { provide: JwtService, useValue: jwt },
         { provide: PrismaService, useValue: db },
         { provide: PasswordResetService, useValue: {} },
+        { provide: EmailVerificationService, useValue: {} },
         { provide: GoogleIdTokenVerifier, useValue: {} },
         JwtStrategy,
         UsersService,
@@ -424,9 +426,6 @@ describe('deleting an account and its data (e2e)', () => {
       'oAuthRefreshToken',
       'authorizationCode',
       'oAuthGrant',
-      // Saved assistant chats aren't cleared by a reset today.
-      'aiChat',
-      'aiChatMessage',
     ];
 
     it("deletes everything recorded, soft-deleted rows included, keeps the profile, sign-ins and connected apps, and touches nobody else's", async () => {

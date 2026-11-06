@@ -10,6 +10,9 @@ const CREDENTIAL_GRACE_MS = 7 * DAY_MS;
 /** Password reset rows are kept for audit (see PasswordResetToken), so they outlive their expiry longer. */
 const PASSWORD_RESET_RETENTION_MS = 90 * DAY_MS;
 
+/** Same for verification links and invitations: kept a while, then nothing needs them. */
+const EMAILED_LINK_RETENTION_MS = 90 * DAY_MS;
+
 /**
  * Deletes rows nothing can use any more: expired sessions, codes and tokens,
  * and expired analytics cache entries. Each table's expiresAt is indexed for
@@ -33,27 +36,42 @@ export class ExpiredRowsCron {
   async deleteExpired(now: Date): Promise<Record<string, number>> {
     const credentialCutoff = new Date(now.getTime() - CREDENTIAL_GRACE_MS);
     const resetCutoff = new Date(now.getTime() - PASSWORD_RESET_RETENTION_MS);
+    const linkCutoff = new Date(now.getTime() - EMAILED_LINK_RETENTION_MS);
     const expiredBefore = (cutoff: Date) => ({ expiresAt: { lt: cutoff } });
 
-    const [caches, sessions, codes, refresh, oauthRefresh, resets] =
-      await this.prisma.$transaction([
-        this.prisma.analyticsCache.deleteMany({ where: expiredBefore(now) }),
-        this.prisma.authSession.deleteMany({
-          where: expiredBefore(credentialCutoff),
-        }),
-        this.prisma.authorizationCode.deleteMany({
-          where: expiredBefore(credentialCutoff),
-        }),
-        this.prisma.refreshToken.deleteMany({
-          where: expiredBefore(credentialCutoff),
-        }),
-        this.prisma.oAuthRefreshToken.deleteMany({
-          where: expiredBefore(credentialCutoff),
-        }),
-        this.prisma.passwordResetToken.deleteMany({
-          where: expiredBefore(resetCutoff),
-        }),
-      ]);
+    const [
+      caches,
+      sessions,
+      codes,
+      refresh,
+      oauthRefresh,
+      resets,
+      verifications,
+      invitations,
+    ] = await this.prisma.$transaction([
+      this.prisma.analyticsCache.deleteMany({ where: expiredBefore(now) }),
+      this.prisma.authSession.deleteMany({
+        where: expiredBefore(credentialCutoff),
+      }),
+      this.prisma.authorizationCode.deleteMany({
+        where: expiredBefore(credentialCutoff),
+      }),
+      this.prisma.refreshToken.deleteMany({
+        where: expiredBefore(credentialCutoff),
+      }),
+      this.prisma.oAuthRefreshToken.deleteMany({
+        where: expiredBefore(credentialCutoff),
+      }),
+      this.prisma.passwordResetToken.deleteMany({
+        where: expiredBefore(resetCutoff),
+      }),
+      this.prisma.emailVerificationToken.deleteMany({
+        where: expiredBefore(linkCutoff),
+      }),
+      this.prisma.accountInvitation.deleteMany({
+        where: expiredBefore(linkCutoff),
+      }),
+    ]);
 
     const deleted = {
       analyticsCache: caches.count,
@@ -62,6 +80,8 @@ export class ExpiredRowsCron {
       refreshToken: refresh.count,
       oAuthRefreshToken: oauthRefresh.count,
       passwordResetToken: resets.count,
+      emailVerificationToken: verifications.count,
+      accountInvitation: invitations.count,
     };
     const total = Object.values(deleted).reduce((sum, n) => sum + n, 0);
     if (total > 0)

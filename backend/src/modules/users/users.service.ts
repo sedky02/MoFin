@@ -40,6 +40,7 @@ export class UsersService {
       select: {
         id: true,
         email: true,
+        emailVerifiedAt: true,
         displayName: true,
         settings: true,
         createdAt: true,
@@ -141,8 +142,12 @@ export class UsersService {
 
   /**
    * Deletes what the user recorded: ledger, transactions, drafts, goals,
-   * budgets, accounts, categories and cached summaries; sign-ins and the
-   * profile are left to the caller.
+   * budgets, accounts, categories, memberships, saved assistant chats and cached
+   * summaries; sign-ins and the profile are left to the caller.
+   *
+   * Accounts they own go for their members too, whose cached figures covered
+   * them. On accounts they are only a member of, their membership goes and the
+   * transactions stay: those rows are on the owner's ledger, not theirs.
    *
    * Every table is cleared explicitly, children before parents. The schema
    * cascades most of these from User, but not all in a safe order: ledger
@@ -154,6 +159,16 @@ export class UsersService {
    */
   private async clearOwnedData(tx: Prisma.TransactionClient, userId: string) {
     const mine = { userId };
+    const affected = await tx.accountMember.findMany({
+      where: { account: mine },
+      select: { userId: true },
+    });
+    if (affected.length) {
+      await tx.analyticsCache.deleteMany({
+        where: { userId: { in: affected.map((member) => member.userId) } },
+      });
+    }
+    await tx.accountMember.deleteMany({ where: mine });
     // Ledger first: items reference accounts (RESTRICT) and transactions.
     await tx.transactionItem.deleteMany({ where: mine });
     // Live and soft-deleted, occurrences and recurring roots (whose
@@ -166,6 +181,7 @@ export class UsersService {
     await tx.account.deleteMany({ where: mine });
     await tx.category.deleteMany({ where: mine });
     await tx.analyticsCache.deleteMany({ where: mine });
+    await tx.aiChat.deleteMany({ where: mine });
   }
 
   /** A 401 when the account is already gone (its access token outlives it by minutes). */

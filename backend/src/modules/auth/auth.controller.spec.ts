@@ -13,6 +13,7 @@ describe('AuthController.forgotPassword', () => {
       {} as never,
       passwordReset as never,
       {} as never,
+      {} as never,
     );
 
     const known = controller.forgotPassword({ email: 'a@b.com' });
