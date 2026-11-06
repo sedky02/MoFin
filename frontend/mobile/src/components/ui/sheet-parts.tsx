@@ -3,6 +3,7 @@ import {
   Animated,
   Keyboard,
   PanResponder,
+  Platform,
   ScrollView,
   TextInput,
   useWindowDimensions,
@@ -137,7 +138,9 @@ export function SheetScrollView({ onScroll, onLayout, style, children, ...props 
 
   const revealFocused = React.useCallback(() => {
     const scroll = ref.current;
-    const field = TextInput.State.currentlyFocusedInput() as unknown as Measurable | null;
+    // The browser keeps a focused field in view on its own (and has no focused-input lookup).
+    if (Platform.OS === 'web') return;
+    const field = TextInput.State?.currentlyFocusedInput?.() as unknown as Measurable | null;
     const content = scroll?.getInnerViewRef?.();
     if (!scroll || !field?.measureLayout || !content) return;
     try {
