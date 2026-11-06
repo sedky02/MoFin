@@ -9,6 +9,7 @@ import {
   chartToolDescriptions,
   chartToolSchemas,
 } from './chat/chart-tools';
+import { chatDraftSchema } from './drafts/model-draft-parser';
 import { LlmTool } from './llm/llm-provider';
 
 // Loosened signature: the generic return type trips TS2589 on larger schemas
@@ -19,11 +20,11 @@ const toJsonSchema = zodToJsonSchema as unknown as (
 ) => Record<string, unknown>;
 
 /**
- * The chat is read-only by construction: it may use only these tools.
- * `create_draft_transaction` is left out on purpose; drafts come from the
- * composer, and a model that reads user-written text must not be able to
- * write anything. `list_accounts` is left out too: the system prompt already
- * lists the accounts, and every tool offered costs tokens on every call.
+ * The read tools the chat may use, straight from MCP. The one writing tool,
+ * create_draft_transaction, is separate (CREATE_DRAFT_TOOL): it only ever makes
+ * a pending draft, through the same checks as the Drafts page's parser.
+ * `list_accounts` is left out: the system prompt already lists the accounts,
+ * and every tool offered costs tokens on every call.
  */
 export const CHAT_MCP_TOOLS: ReadonlyArray<McpToolName> = [
   'search_transactions',
@@ -36,6 +37,14 @@ export const CHAT_MCP_TOOLS: ReadonlyArray<McpToolName> = [
 export type ChatMcpToolName = (typeof CHAT_MCP_TOOLS)[number];
 
 export const LIST_CATEGORIES_TOOL = 'list_categories';
+
+/**
+ * The one tool that writes: it makes a PENDING draft, never a transaction.
+ * The user sees it as a card under the answer and approves, edits or rejects
+ * it there or in the Drafts inbox. It runs through the same checks as the
+ * Drafts page's own parser (ids must be the user's, dates in their zone).
+ */
+export const CREATE_DRAFT_TOOL = 'create_draft_transaction';
 
 /**
  * Argument schemas the chat validates against: the MCP ones, except that the
@@ -108,6 +117,12 @@ export function buildChatTools(): LlmTool[] {
       description: chartToolDescriptions[name],
       parameters: schemaOf(chartToolSchemas[name]),
     })),
+    {
+      name: CREATE_DRAFT_TOOL,
+      description:
+        'Propose one transaction as a pending draft the user approves. One call per transaction. Use ids from the account and category lists; EXPENSE uses fromAccountId, INCOME toAccountId, TRANSFER both. occurredAt is YYYY-MM-DD (default today).',
+      parameters: schemaOf(chatDraftSchema),
+    },
   ];
 }
 

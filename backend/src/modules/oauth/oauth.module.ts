@@ -8,5 +8,7 @@ import { WellKnownController } from './well-known.controller';
   imports: [JwtModule.register({})],
   controllers: [OAuthController, WellKnownController],
   providers: [OAuthService],
+  // MCP names the connected app on the drafts it creates.
+  exports: [OAuthService],
 })
 export class OAuthModule {}

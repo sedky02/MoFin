@@ -120,6 +120,15 @@ export class OAuthService {
     }
   }
 
+  /** The name a client registered with ("Claude"), for labelling what it did. */
+  async clientName(clientId: string): Promise<string | null> {
+    const client = await this.prisma.oAuthClient.findUnique({
+      where: { clientId },
+      select: { clientName: true },
+    });
+    return client?.clientName ?? null;
+  }
+
   // --- Authorization endpoint helpers ---
 
   async getClientOrThrow(clientId: string) {

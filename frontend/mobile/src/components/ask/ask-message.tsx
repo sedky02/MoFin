@@ -3,6 +3,7 @@ import * as React from 'react';
 import { Pressable, View } from 'react-native';
 
 import { AskChart } from '@/components/ask/ask-chart';
+import { ChatDraftCards } from '@/components/ask/chat-draft-cards';
 import { LogoMark } from '@/components/common/logo-mark';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
@@ -136,7 +137,8 @@ function CopyAnswer({ text }: { text: string }) {
 }
 
 export function AssistantMessage({ message }: { message: AiChatMessage }) {
-  const tools = message.usedTools.filter((t) => !t.startsWith('chart_'));
+  // Charts and drafts show themselves below; this line is for what was read.
+  const tools = message.usedTools.filter((t) => !t.startsWith('chart_') && t !== 'create_draft_transaction');
   return (
     <View className="flex-row gap-3">
       <Avatar />
@@ -147,6 +149,7 @@ export function AssistantMessage({ message }: { message: AiChatMessage }) {
         {message.charts.map((chart, i) => (
           <AskChart key={`${chart.title}-${i}`} chart={chart} />
         ))}
+        <ChatDraftCards drafts={message.drafts ?? []} />
         <View className="flex-row flex-wrap items-center gap-x-2 gap-y-1">
           <Text className="text-[11px] text-muted-foreground">{time(message.createdAt)}</Text>
           {tools.length > 0 ? (

@@ -5,7 +5,7 @@ import { groupChats } from '@/components/ask/ask-chat-list';
 import { AssistantMessage, RichText } from '@/components/ask/ask-message';
 import { AskThreadScreen } from '@/components/ask/ask-thread-screen';
 import { ApiClientError } from '@/api/client';
-import type { AiChart, AiChatTurn } from '@/core/types';
+import type { AiChart, AiChatTurn, DraftTransaction } from '@/core/types';
 import { chatErrorMessage } from '@/hooks/useAiChat';
 
 const mockMutateAsync = jest.fn();
@@ -17,6 +17,15 @@ jest.mock('expo-router', () => ({
   router: { setParams: (p: unknown) => mockSetParams(p), push: jest.fn() },
   useLocalSearchParams: () => mockParams,
 }));
+// The draft cards' requests and the account names they show.
+jest.mock('@/hooks/useDrafts', () => ({
+  useApproveDraft: () => ({ mutateAsync: jest.fn(), isPending: false }),
+  useRejectDraft: () => ({ mutate: jest.fn(), isPending: false }),
+}));
+jest.mock('@/hooks/useAccounts', () => ({
+  useAccounts: () => ({ data: [{ id: 'a1', name: 'Checking', type: 'BANK', currency: 'TND' }] }),
+}));
+jest.mock('@/hooks/useCategories', () => ({ useCategories: () => ({ data: [] }) }));
 jest.mock('@/hooks/useAiChat', () => {
   const actual = jest.requireActual('@/hooks/useAiChat');
   return {
@@ -38,8 +47,8 @@ const donut: AiChart = {
 const turn = (q: string, a: string): AiChatTurn => ({
   chat: { id: 'chat-1', title: q, createdAt: '', updatedAt: '' },
   messages: [
-    { id: 'q', role: 'user', content: q, usedTools: [], charts: [], createdAt: '2026-11-05T10:00:00Z' },
-    { id: 'a', role: 'assistant', content: a, usedTools: [], charts: [], createdAt: '2026-11-05T10:00:01Z' },
+    { id: 'q', role: 'user', content: q, usedTools: [], charts: [], drafts: [], createdAt: '2026-11-05T10:00:00Z' },
+    { id: 'a', role: 'assistant', content: a, usedTools: [], charts: [], drafts: [], createdAt: '2026-11-05T10:00:01Z' },
   ],
 });
 
@@ -80,6 +89,7 @@ describe('AssistantMessage', () => {
           content: 'Rent is the biggest.',
           usedTools: ['get_monthly_summary', 'chart_spending_by_category'],
           charts: [donut],
+          drafts: [],
           createdAt: '2026-11-05T10:00:00Z',
         }}
       />,
@@ -141,5 +151,43 @@ describe('chatErrorMessage', () => {
     expect(chatErrorMessage(err(503, { retryAfterSeconds: 30 }, 'Busy.'))).toBe('Busy. You can try again in about 30 seconds.');
     expect(chatErrorMessage(err(429, { code: 'DEMO_LIMIT' }, 'Demo cap.'))).toBe('Demo cap.');
     expect(chatErrorMessage(err(400, { code: 'CHAT_FULL' }, 'Full.'))).toBe('Full.');
+  });
+});
+
+describe('draft cards in an answer', () => {
+  const chatDraft = (over: Partial<DraftTransaction> = {}): DraftTransaction => ({
+    id: 'd1',
+    rawInput: 'coffee 4.5',
+    parsedData: { type: 'EXPENSE', description: 'Coffee', amount: '4.5', currency: 'TND', occurredAt: '2026-11-05T10:00:00.000Z', fromAccountId: 'a1' },
+    confidenceScore: '0.9',
+    status: 'PENDING',
+    source: 'CHAT',
+    createdAt: '2026-11-05T10:00:00.000Z',
+    updatedAt: '2026-11-05T10:00:00.000Z',
+    ...over,
+  });
+  const answerWith = (drafts: DraftTransaction[]) => (
+    <AssistantMessage
+      message={{ id: 'a', role: 'assistant', content: 'Drafted.', usedTools: ['create_draft_transaction'], charts: [], drafts, createdAt: '2026-11-05T10:00:00Z' }}
+    />
+  );
+
+  it('shows a pending draft with Approve, Review & edit and Reject', async () => {
+    await render(answerWith([chatDraft()]));
+    expect(screen.getByText('Coffee')).toBeTruthy();
+    expect(screen.getByLabelText('Approve')).toBeTruthy();
+    expect(screen.getByLabelText('Review & edit')).toBeTruthy();
+    expect(screen.getByLabelText('Reject')).toBeTruthy();
+    // The question is right above, so the card doesn't quote it again.
+    expect(screen.queryByText('“coffee 4.5”')).toBeNull();
+    // A draft is not something it "looked at".
+    expect(screen.queryByText(/Looked at/)).toBeNull();
+  });
+
+  it('shows the final status, without buttons, once the draft was handled elsewhere', async () => {
+    await render(answerWith([chatDraft({ status: 'APPROVED' })]));
+    expect(screen.getByText('Approved')).toBeTruthy();
+    expect(screen.queryByLabelText('Approve')).toBeNull();
+    expect(screen.queryByLabelText('Reject')).toBeNull();
   });
 });

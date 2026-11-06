@@ -1,7 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { AccountsService } from '../accounts/accounts.service';
 import { AnalyticsService } from '../analytics/analytics.service';
-import { DraftTransactionsService } from '../draft-transactions/draft-transactions.service';
+import { DraftSource } from '@prisma/client';
+import {
+  DraftOrigin,
+  DraftTransactionsService,
+} from '../draft-transactions/draft-transactions.service';
 import { GoalsService } from '../goals/goals.service';
 import { LedgerService } from '../ledger/ledger.service';
 import { SearchService } from '../search/search.service';
@@ -25,10 +29,19 @@ export class McpService {
     private readonly goalsService: GoalsService,
   ) {}
 
-  dispatch(userId: string, tool: McpToolName, args: unknown): unknown {
+  /**
+   * Runs one tool as `userId`. `origin` labels the drafts it creates (which
+   * connected app made them); it defaults to plain MCP.
+   */
+  dispatch(
+    userId: string,
+    tool: McpToolName,
+    args: unknown,
+    origin: DraftOrigin = { source: DraftSource.MCP },
+  ): unknown {
     switch (tool) {
       case 'create_draft_transaction':
-        return this.draftsService.create(userId, args as never);
+        return this.draftsService.create(userId, args as never, origin);
       case 'search_transactions':
         return this.searchService.searchTransactions(userId, args as never);
       case 'get_balance':

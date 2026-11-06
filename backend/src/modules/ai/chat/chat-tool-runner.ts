@@ -1,15 +1,22 @@
 import { HttpException, Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { DraftSource, DraftTransaction } from '@prisma/client';
 import { ZodError } from 'zod';
 import { localDate } from '../../../common/utils/time-zone';
 import { AnalyticsService } from '../../analytics/analytics.service';
 import { CategoriesService } from '../../categories/categories.service';
 import { listCategoriesQuerySchema } from '../../categories/dto/categories.dto';
+import { DraftTransactionsService } from '../../draft-transactions/draft-transactions.service';
 import { McpService } from '../../mcp/mcp.service';
+import { AiService } from '../ai.service';
+import { repairDraft } from '../drafts/draft-repairer';
+import { chatDraftSchema } from '../drafts/model-draft-parser';
 import {
   CHAT_MCP_TOOLS,
   ChatMcpToolName,
   chatToolSchemas,
   compactToolResult,
+  CREATE_DRAFT_TOOL,
   LIST_CATEGORIES_TOOL,
 } from '../ai-chat-tools';
 import {
@@ -26,6 +33,12 @@ export interface ToolRunContext {
   userId: string;
   timeZone: string;
   now: Date;
+  /** The question being answered: kept on the drafts it leads to, as their raw input. */
+  question: string;
+  /** Spoken questions label their drafts as voice. */
+  source: typeof DraftSource.CHAT | typeof DraftSource.VOICE;
+  /** Demo visitors are capped on AI drafts, as on the Drafts page. */
+  isDemo: boolean;
 }
 
 export interface ToolRunResult {
@@ -33,6 +46,8 @@ export interface ToolRunResult {
   content: string;
   /** Set when the tool drew a chart for the user. */
   chart?: AiChart;
+  /** Set when the tool created a draft for the user to approve. */
+  draft?: DraftTransaction;
 }
 
 const MONTHS = [
@@ -69,8 +84,8 @@ function daysBefore(date: string, n: number): string {
 
 /**
  * Runs one tool call from the chat model, always as `userId` (from the JWT,
- * never from the model). Read-only: anything off the allowlist is refused,
- * even a real MCP tool such as create_draft_transaction. Arguments are
+ * never from the model). Anything off the allowlist is refused. The only tool
+ * that writes makes a pending draft, never a transaction. Arguments are
  * validated before anything runs; errors go back to the model as text so it
  * can retry or explain.
  */
@@ -82,6 +97,9 @@ export class ChatToolRunner {
     private readonly mcp: McpService,
     private readonly categories: CategoriesService,
     private readonly analytics: AnalyticsService,
+    private readonly drafts: DraftTransactionsService,
+    private readonly draftParser: AiService,
+    private readonly config: ConfigService,
   ) {}
 
   async run(
@@ -112,6 +130,7 @@ export class ChatToolRunner {
         };
       }
       if (isChartTool(name)) return await this.chart(ctx, name, args);
+      if (name === CREATE_DRAFT_TOOL) return await this.createDraft(ctx, args);
       if (!(CHAT_MCP_TOOLS as readonly string[]).includes(name)) {
         return error(`Unknown tool: ${name}`);
       }
@@ -135,6 +154,58 @@ export class ChatToolRunner {
       this.logger.warn(`Chat tool ${name} failed: ${message}`);
       return error(message);
     }
+  }
+
+  /**
+   * A pending draft from the model's arguments, checked like the Drafts page's
+   * parser output: ids must be the user's (others are dropped and the
+   * confidence lowered), the date is read in the user's zone. Never a
+   * transaction: the user approves it.
+   */
+  private async createDraft(
+    ctx: ToolRunContext,
+    args: unknown,
+  ): Promise<ToolRunResult> {
+    if (ctx.isDemo) {
+      const cap = this.config.getOrThrow<number>('DEMO_AI_CAP');
+      if ((await this.drafts.countForUser(ctx.userId)) >= cap) {
+        return error(
+          `The demo allows ${cap} drafts and they are used up. Tell the user to create an account to keep going.`,
+        );
+      }
+    }
+    const parsed = chatDraftSchema.safeParse(args);
+    if (!parsed.success) return invalid(parsed.error);
+
+    const draftCtx = await this.draftParser.draftContext(ctx.userId, {
+      input: ctx.question,
+      timeZone: ctx.timeZone,
+    });
+    const { data, confidence } = repairDraft(
+      { ...parsed.data, occurredAt: parsed.data.occurredAt ?? draftCtx.today },
+      draftCtx,
+    );
+    const [draft] = await this.drafts.createMany(
+      ctx.userId,
+      [
+        {
+          rawInput: ctx.question,
+          parsedData: data,
+          confidenceScore: confidence,
+        },
+      ],
+      { source: ctx.source },
+    );
+    return {
+      content: JSON.stringify({
+        created: true,
+        draftId: draft.id,
+        status: 'PENDING',
+        draft: data,
+        note: 'Shown to the user as a card under your reply with Approve, Edit and Reject. It is only a draft until they approve it; do not ask them to confirm in text.',
+      }),
+      draft,
+    };
   }
 
   private async chart(

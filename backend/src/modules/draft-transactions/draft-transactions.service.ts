@@ -4,7 +4,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { DraftStatus, DraftTransaction, Prisma } from '@prisma/client';
+import {
+  DraftSource,
+  DraftStatus,
+  DraftTransaction,
+  Prisma,
+} from '@prisma/client';
 import {
   DomainEvents,
   DraftApprovedEvent,
@@ -19,6 +24,16 @@ import {
   parsedDraftTransactionSchema,
 } from './dto/draft-transactions.dto';
 
+/** Where a draft came from; the Drafts inbox labels each one with it. */
+export interface DraftOrigin {
+  source: DraftSource;
+  /** The connected app's name, for MCP drafts. */
+  sourceClient?: string | null;
+}
+
+/** The Drafts page's own input: what a draft is when nothing else is said. */
+export const COMPOSER_ORIGIN: DraftOrigin = { source: DraftSource.COMPOSER };
+
 @Injectable()
 export class DraftTransactionsService {
   constructor(
@@ -32,7 +47,11 @@ export class DraftTransactionsService {
    * leave some saved (the user would retry and get duplicates). Events go out
    * only after the commit, so no listener sees a draft that was rolled back.
    */
-  async createMany(userId: string, dtos: CreateDraftTransactionDto[]) {
+  async createMany(
+    userId: string,
+    dtos: CreateDraftTransactionDto[],
+    origin: DraftOrigin = COMPOSER_ORIGIN,
+  ) {
     const drafts = await this.prisma.$transaction(
       dtos.map((dto) =>
         this.prisma.draftTransaction.create({
@@ -41,6 +60,8 @@ export class DraftTransactionsService {
             rawInput: dto.rawInput,
             parsedData: dto.parsedData,
             confidenceScore: new Prisma.Decimal(dto.confidenceScore),
+            source: origin.source,
+            sourceClient: origin.sourceClient ?? null,
           },
         }),
       ),
@@ -54,13 +75,19 @@ export class DraftTransactionsService {
     return drafts;
   }
 
-  async create(userId: string, dto: CreateDraftTransactionDto) {
+  async create(
+    userId: string,
+    dto: CreateDraftTransactionDto,
+    origin: DraftOrigin = COMPOSER_ORIGIN,
+  ) {
     const draft = await this.prisma.draftTransaction.create({
       data: {
         userId,
         rawInput: dto.rawInput,
         parsedData: dto.parsedData,
         confidenceScore: new Prisma.Decimal(dto.confidenceScore),
+        source: origin.source,
+        sourceClient: origin.sourceClient ?? null,
       },
     });
 
@@ -69,6 +96,23 @@ export class DraftTransactionsService {
       userId,
     } satisfies DraftCreatedEvent);
     return draft;
+  }
+
+  /**
+   * The user's drafts with these ids, in their current state. The chat shows
+   * the drafts an answer created this way, so approving or rejecting one in the
+   * inbox shows up in the chat too. Ids of other users' drafts are ignored.
+   */
+  findByIds(userId: string, ids: string[]) {
+    if (!ids.length) return Promise.resolve([]);
+    return this.prisma.draftTransaction.findMany({
+      where: { userId, id: { in: ids } },
+    });
+  }
+
+  /** Every draft the user has, in any state (the demo's AI draft cap). */
+  countForUser(userId: string) {
+    return this.prisma.draftTransaction.count({ where: { userId } });
   }
 
   list(userId: string, query: DraftListQuery) {

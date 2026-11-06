@@ -1,6 +1,12 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { AiChat, AiChatMessage, Prisma } from '@prisma/client';
+import {
+  AiChat,
+  AiChatMessage,
+  DraftTransaction,
+  Prisma,
+} from '@prisma/client';
 import { PrismaService } from '../../../database/prisma.service';
+import { DraftTransactionsService } from '../../draft-transactions/draft-transactions.service';
 import {
   AiChatDetailView,
   AiChatMessageView,
@@ -13,7 +19,12 @@ export interface ReplyToSave {
   content: string;
   usedTools: string[];
   charts: AiChart[];
+  /** Drafts the answer created; kept as ids and read back fresh. */
+  draftIds: string[];
 }
+
+/** Drafts by id, in their current state, for the messages being shown. */
+export type DraftsById = ReadonlyMap<string, DraftTransaction>;
 
 export function toSummaryView(chat: AiChat): AiChatSummaryView {
   return {
@@ -24,13 +35,25 @@ export function toSummaryView(chat: AiChat): AiChatSummaryView {
   };
 }
 
-export function toMessageView(message: AiChatMessage): AiChatMessageView {
+/**
+ * A message as the API returns it. Its drafts come from `drafts` (read fresh),
+ * not from the message, so a draft approved in the inbox shows as approved
+ * here. A draft that no longer exists is left out.
+ */
+export function toMessageView(
+  message: AiChatMessage,
+  drafts: DraftsById = new Map(),
+): AiChatMessageView {
   return {
     id: message.id,
     role: message.role === 'USER' ? 'user' : 'assistant',
     content: message.content,
     usedTools: message.usedTools,
     charts: (message.charts as AiChart[] | null) ?? [],
+    drafts: message.draftIds.flatMap((id) => {
+      const draft = drafts.get(id);
+      return draft ? [draft] : [];
+    }),
     createdAt: message.createdAt.toISOString(),
   };
 }
@@ -45,7 +68,20 @@ const notFound = () => new NotFoundException('Chat not found');
  */
 @Injectable()
 export class AiChatsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly draftsService: DraftTransactionsService,
+  ) {}
+
+  /** The current state of every draft these messages created, by id. */
+  async draftsFor(
+    userId: string,
+    messages: Pick<AiChatMessage, 'draftIds'>[],
+  ): Promise<DraftsById> {
+    const ids = [...new Set(messages.flatMap((m) => m.draftIds))];
+    const drafts = await this.draftsService.findByIds(userId, ids);
+    return new Map(drafts.map((d) => [d.id, d]));
+  }
 
   async list(userId: string, query: ListChatsQueryDto) {
     const page = await this.prisma.paginated.aiChat.paginate({
@@ -63,9 +99,10 @@ export class AiChatsService {
       include: { messages: { orderBy: { createdAt: 'asc' } } },
     });
     if (!chat) throw notFound();
+    const drafts = await this.draftsFor(userId, chat.messages);
     return {
       ...toSummaryView(chat),
-      messages: chat.messages.map(toMessageView),
+      messages: chat.messages.map((m) => toMessageView(m, drafts)),
     };
   }
 
@@ -136,6 +173,7 @@ export class AiChatsService {
           role: 'ASSISTANT',
           content: reply.content,
           usedTools: reply.usedTools,
+          draftIds: reply.draftIds,
           charts: reply.charts.length
             ? (reply.charts as unknown as Prisma.InputJsonValue)
             : Prisma.JsonNull,

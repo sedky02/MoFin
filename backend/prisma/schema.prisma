@@ -6,6 +6,15 @@ datasource db {
   provider = "postgresql"
 }
 
+/// Where a draft came from: the Drafts page's own input, the in-app chat (typed
+/// or spoken), or an outside AI app connected over MCP.
+enum DraftSource {
+  COMPOSER
+  CHAT
+  VOICE
+  MCP
+}
+
 enum AiChatRole {
   USER
   ASSISTANT
@@ -244,6 +253,9 @@ model DraftTransaction {
   parsedData      Json
   confidenceScore Decimal      @db.Decimal(5, 4)
   status          DraftStatus  @default(PENDING)
+  source          DraftSource  @default(COMPOSER)
+  /// The connected app's name, for MCP drafts ("Claude").
+  sourceClient    String?
   rejectionReason String?
   approvedAt      DateTime?
   rejectedAt      DateTime?
@@ -474,6 +486,9 @@ model AiChatMessage {
   usedTools String[]   @default([])
   /// Charts computed on the server from the ledger (assistant turns only).
   charts    Json?
+  /// Drafts this answer created (assistant turns only). Read back fresh, so a
+  /// draft approved or rejected elsewhere shows its current status here.
+  draftIds  String[]   @default([])
   createdAt DateTime   @default(now())
 
   @@index([chatId, createdAt])

@@ -128,9 +128,15 @@ export interface DraftTransaction {
   confidenceScore: string;
   status: DraftStatus;
   reason?: string | null;
+  /** Where it came from: the Drafts page input, the chat (typed or spoken), or a connected app. */
+  source: DraftSource;
+  /** The connected app's name, for MCP drafts ("Claude"). */
+  sourceClient?: string | null;
   createdAt: string;
   updatedAt: string;
 }
+
+export type DraftSource = "COMPOSER" | "CHAT" | "VOICE" | "MCP";
 
 // A single period's snapshot — history is a series of these per goal.
 export interface GoalInstance {
@@ -241,6 +247,8 @@ export interface AiChatMessage {
   /** Tools the assistant read from to answer, e.g. "get_monthly_summary". */
   usedTools: string[];
   charts: AiChart[];
+  /** Drafts this answer created, in their current state (approved or rejected elsewhere shows here). */
+  drafts: DraftTransaction[];
   createdAt: string;
 }
 

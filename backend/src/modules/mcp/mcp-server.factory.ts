@@ -4,6 +4,7 @@ import { ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
 import { ZodRawShape } from 'zod';
 import { mcpToolSchemas } from './dto/mcp.dto';
 import { MCP_TOOLS } from './mcp-tools';
+import { DraftOrigin } from '../draft-transactions/draft-transactions.service';
 import { McpService } from './mcp.service';
 
 type ToolResult = { content: Array<{ type: 'text'; text: string }> };
@@ -29,7 +30,8 @@ type RegisterTool = (
 export class McpServerFactory {
   constructor(private readonly mcp: McpService) {}
 
-  create(userId: string): McpServer {
+  /** `origin` labels the drafts this session creates with the connected app's name. */
+  create(userId: string, origin?: DraftOrigin): McpServer {
     const server = new McpServer({ name: 'mofin', version: '0.1.0' });
 
     // Bind to a loose signature: registering a union of differently-typed
@@ -48,7 +50,12 @@ export class McpServerFactory {
           inputSchema: mcpToolSchemas[tool.name].shape,
         },
         async (args) => {
-          const result = await this.mcp.dispatch(userId, tool.name, args);
+          const result = await this.mcp.dispatch(
+            userId,
+            tool.name,
+            args,
+            origin,
+          );
           return { content: [{ type: 'text', text: JSON.stringify(result) }] };
         },
       );

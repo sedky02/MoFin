@@ -33,7 +33,20 @@ describe('McpService.dispatch', () => {
     expect(service.dispatch('u1', 'create_draft_transaction', args)).toBe(
       'created',
     );
-    expect(drafts.create).toHaveBeenCalledWith('u1', args);
+    // Labelled as MCP even when the caller doesn't say which app it is.
+    expect(drafts.create).toHaveBeenCalledWith('u1', args, { source: 'MCP' });
+  });
+
+  it("labels a draft with the connected app's name", () => {
+    const args = { rawInput: 'x', parsedData: {}, confidenceScore: 0.5 };
+    service.dispatch('u1', 'create_draft_transaction', args, {
+      source: 'MCP',
+      sourceClient: 'Claude',
+    });
+    expect(drafts.create).toHaveBeenCalledWith('u1', args, {
+      source: 'MCP',
+      sourceClient: 'Claude',
+    });
   });
 
   it('does not expose approve_draft_transaction as an MCP tool', () => {

@@ -20,6 +20,8 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 import { OAuthMcpAuthGuard } from '../../common/guards/oauth-mcp-auth.guard';
 import { AuthenticatedUser } from '../../common/types/authenticated-user';
+import { DraftSource } from '@prisma/client';
+import { OAuthService } from '../oauth/oauth.service';
 import { McpServerFactory } from './mcp-server.factory';
 
 /**
@@ -37,7 +39,10 @@ import { McpServerFactory } from './mcp-server.factory';
 @UseGuards(OAuthMcpAuthGuard)
 @Controller('mcp')
 export class McpController {
-  constructor(private readonly factory: McpServerFactory) {}
+  constructor(
+    private readonly factory: McpServerFactory,
+    private readonly oauth: OAuthService,
+  ) {}
 
   @Post()
   @ApiOperation({
@@ -61,7 +66,14 @@ export class McpController {
     @Req() req: Request,
     @Res() res: Response,
   ): Promise<void> {
-    const server = this.factory.create(user.id);
+    // Drafts made in this session say which connected app made them.
+    const clientName = user.clientId
+      ? await this.oauth.clientName(user.clientId)
+      : null;
+    const server = this.factory.create(user.id, {
+      source: DraftSource.MCP,
+      sourceClient: clientName,
+    });
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
       enableJsonResponse: true,

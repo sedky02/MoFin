@@ -12,7 +12,14 @@ import { useAccounts } from '@/hooks/useAccounts';
 import { Check, ChevronDown, Quote, X } from '@/lib/icons';
 import { cn } from '@/lib/utils';
 
-import { confidenceTier, draftAccountSummary, draftDisplayAmount, quickApproveState, rejectionReasonOf } from './draft-model';
+import {
+  confidenceTier,
+  draftAccountSummary,
+  draftDisplayAmount,
+  draftSourceLabel,
+  quickApproveState,
+  rejectionReasonOf,
+} from './draft-model';
 import { DraftReviewForm } from './draft-review-form';
 
 // Amber text on its own 15% tint is 4.1:1 in the light theme; this darker amber (amber-800) is 6+.
@@ -51,10 +58,16 @@ export function DraftCard({
   rejecting,
   onApprove,
   onReject,
+  variant = 'inbox',
 }: {
   draft: DraftTransaction;
   approving?: boolean;
   rejecting?: boolean;
+  /**
+   * `chat`: under an Ask answer, where the question is right above, so the quoted input and the
+   * source are left out. The actions and the review form are the same as in the inbox.
+   */
+  variant?: 'inbox' | 'chat';
   onApprove?: (id: string, edits: Partial<ParsedTransactionData>) => void | Promise<void>;
   onReject?: (id: string, reason?: string) => void;
 }) {
@@ -75,8 +88,19 @@ export function DraftCard({
     <View testID={`draft-${draft.id}`} className="overflow-hidden rounded-xl border border-border bg-card">
       <View className="p-4">
         <View className="flex-row items-start gap-2.5">
-          <Icon as={Quote} size={16} aria-hidden className="mt-0.5 text-muted-foreground/60" />
-          <Text className="min-w-0 flex-1 text-sm italic text-muted-foreground">“{draft.rawInput}”</Text>
+          {variant === 'chat' ? (
+            <Text className="min-w-0 flex-1 text-xs font-medium text-muted-foreground">Draft transaction</Text>
+          ) : (
+            <>
+              <Icon as={Quote} size={16} aria-hidden className="mt-0.5 text-muted-foreground/60" />
+              <View className="min-w-0 flex-1 gap-1">
+                <Text className="text-sm italic text-muted-foreground">“{draft.rawInput}”</Text>
+                <Text className="text-xs text-muted-foreground" accessibilityLabel={`From ${draftSourceLabel(draft)}`}>
+                  From {draftSourceLabel(draft)}
+                </Text>
+              </View>
+            </>
+          )}
           {isPending ? (
             <Pill label={conf.label} {...TIER_STYLE[conf.tier]} a11y={`Confidence ${conf.label}`} />
           ) : (

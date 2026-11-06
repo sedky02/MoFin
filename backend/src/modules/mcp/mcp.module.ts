@@ -6,6 +6,7 @@ import { AnalyticsModule } from '../analytics/analytics.module';
 import { DraftTransactionsModule } from '../draft-transactions/draft-transactions.module';
 import { GoalsModule } from '../goals/goals.module';
 import { LedgerModule } from '../ledger/ledger.module';
+import { OAuthModule } from '../oauth/oauth.module';
 import { SearchModule } from '../search/search.module';
 import { McpServerFactory } from './mcp-server.factory';
 import { McpController } from './mcp.controller';
@@ -20,6 +21,7 @@ import { McpService } from './mcp.service';
     AnalyticsModule,
     AccountsModule,
     GoalsModule,
+    OAuthModule,
   ],
   controllers: [McpController],
   providers: [McpService, McpServerFactory, OAuthMcpAuthGuard],

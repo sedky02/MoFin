@@ -20,6 +20,7 @@ function draft(parsed: Partial<DraftTransaction['parsedData']>): DraftTransactio
     id: 'd1',
     rawInput: 'raw text',
     confidenceScore: '0.9',
+    source: 'COMPOSER',
     status: 'PENDING',
     createdAt: '',
     updatedAt: '',

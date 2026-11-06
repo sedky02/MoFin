@@ -30,7 +30,9 @@ describe('buildChatTools', () => {
     }
   });
 
-  it('exposes only the read-only chat tools', () => {
-    expect(tools.map((t) => t.name)).not.toContain('create_draft_transaction');
+  it('offers one writing tool, which only makes a pending draft', () => {
+    const names = tools.map((t) => t.name);
+    expect(names).toContain('create_draft_transaction');
+    expect(names).not.toContain('approve_draft_transaction');
   });
 });

@@ -17,6 +17,7 @@ function draft(over: Partial<DraftTransaction> = {}): DraftTransaction {
     id: 'd1',
     rawInput: 'coffee 4.5',
     confidenceScore: '0.9',
+    source: 'COMPOSER',
     status: 'PENDING',
     createdAt: '2026-11-03T10:00:00.000Z',
     updatedAt: '2026-11-03T10:00:00.000Z',
@@ -87,5 +88,18 @@ describe('DraftCard', () => {
     const d = { ...draft({ status: 'REJECTED' }), rejectionReason: 'not mine' } as DraftTransaction;
     await render(<DraftCard draft={d} />);
     expect(screen.getByText('Reason: not mine')).toBeTruthy();
+  });
+});
+
+describe('DraftCard source label', () => {
+  it.each([
+    [{ source: 'COMPOSER' as const }, 'From Drafts'],
+    [{ source: 'CHAT' as const }, 'From Ask MoFin'],
+    [{ source: 'VOICE' as const }, 'From Voice'],
+    [{ source: 'MCP' as const, sourceClient: 'Claude' }, 'From Claude'],
+    [{ source: 'MCP' as const, sourceClient: null }, 'From Connected app'],
+  ])('says where a %j draft came from', async (over, label) => {
+    await render(<DraftCard draft={draft(over)} />);
+    expect(screen.getByText(label)).toBeTruthy();
   });
 });

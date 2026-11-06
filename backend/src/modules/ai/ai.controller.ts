@@ -79,7 +79,7 @@ export class AiController {
     @CurrentUser() user: AuthenticatedUser,
     @Body(new ZodValidationPipe(sendChatMessageSchema)) dto: SendChatMessageDto,
   ) {
-    return this.chatService.send(user.id, null, dto);
+    return this.chatService.send(user, null, dto);
   }
 
   /** A chat with every message, oldest first. */
@@ -98,7 +98,7 @@ export class AiController {
     @Param('id') id: string,
     @Body(new ZodValidationPipe(sendChatMessageSchema)) dto: SendChatMessageDto,
   ) {
-    return this.chatService.send(user.id, id, dto);
+    return this.chatService.send(user, id, dto);
   }
 
   @Patch('chats/:id')

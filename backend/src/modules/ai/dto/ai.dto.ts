@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { currencySchema } from '../../../common/dto/common-fields';
 import { paginationSchema } from '../../../common/dto/pagination';
 import { timeZoneSchema } from '../../../common/utils/time-zone';
+import type { DraftTransaction } from '@prisma/client';
 import type { AiChart } from '../chat/chart-tools';
 
 export const parseTransactionIntentSchema = z.object({
@@ -22,6 +23,8 @@ export const sendChatMessageSchema = z.object({
   content: z.string().trim().min(1).max(MAX_CHAT_MESSAGE_CHARS),
   /** The user's IANA zone: "this month" and "today" are read in it. Defaults to UTC. */
   timeZone: timeZoneSchema.optional(),
+  /** How the question was given: spoken questions label their drafts as voice. */
+  inputMode: z.enum(['text', 'voice']).default('text'),
 });
 export type SendChatMessageDto = z.infer<typeof sendChatMessageSchema>;
 
@@ -41,6 +44,11 @@ export interface AiChatMessageView {
   usedTools: string[];
   /** Charts computed from the ledger, shown under the reply. */
   charts: AiChart[];
+  /**
+   * Drafts this answer created, in their current state: one approved or
+   * rejected in the inbox shows that status here too.
+   */
+  drafts: DraftTransaction[];
   createdAt: string;
 }
 

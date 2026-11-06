@@ -143,3 +143,20 @@ export function rejectionReasonOf(draft: DraftTransaction): string | null {
   const raw = draft as DraftTransaction & { rejectionReason?: string | null };
   return raw.reason || raw.rejectionReason || null;
 }
+
+/**
+ * Where a draft came from, as the inbox labels it: the Drafts page input, the
+ * Ask chat (typed or spoken), or the connected app by name.
+ */
+export function draftSourceLabel(draft: Pick<DraftTransaction, 'source' | 'sourceClient'>): string {
+  switch (draft.source) {
+    case 'CHAT':
+      return 'Ask MoFin';
+    case 'VOICE':
+      return 'Voice';
+    case 'MCP':
+      return draft.sourceClient?.trim() || 'Connected app';
+    default:
+      return 'Drafts';
+  }
+}

@@ -71,6 +71,18 @@ export class AiService {
     return [parseWithRegex(ctx)];
   }
 
+  /**
+   * What a parser needs to read one message for this user: their accounts and
+   * categories, and today in their time zone. Shared with the chat, whose
+   * create_draft_transaction goes through the same checks.
+   */
+  async draftContext(
+    userId: string,
+    dto: ParseTransactionIntentDto,
+  ): Promise<DraftContext> {
+    return this.context(userId, dto);
+  }
+
   private async context(
     userId: string,
     dto: ParseTransactionIntentDto,

@@ -39,7 +39,7 @@ const calendarDate = z.preprocess(
     }, 'not a calendar date'),
 );
 
-const modelDraftSchema = z.object({
+export const modelDraftSchema = z.object({
   type: z.nativeEnum(TransactionType),
   description: z.string().min(1).max(200),
   amount: lenientAmount,
@@ -59,6 +59,16 @@ const modelResultSchema = z.object({
 
 /** A draft as the model proposed it, shape-checked but not yet repaired. */
 export type ModelDraft = z.infer<typeof modelDraftSchema>;
+
+/**
+ * One draft as the chat model asks for it with create_draft_transaction: the
+ * same fields, with the date and confidence optional (today, and fairly sure).
+ */
+export const chatDraftSchema = modelDraftSchema.extend({
+  occurredAt: calendarDate.optional(),
+  confidence: z.number().min(0).max(1).catch(0.8).default(0.8),
+});
+export type ChatDraftArgs = z.infer<typeof chatDraftSchema>;
 
 /**
  * Asks the model to read one message into drafts. Returns the shape-checked

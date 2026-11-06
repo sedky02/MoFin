@@ -11,6 +11,7 @@ function draft(parsed: Partial<DraftTransaction['parsedData']> = {}, confidence 
     id: 'd1',
     rawInput: 'coffee 4.5',
     confidenceScore: confidence,
+    source: 'COMPOSER',
     status: 'PENDING',
     createdAt: '2026-11-03T10:00:00.000Z',
     updatedAt: '2026-11-03T10:00:00.000Z',

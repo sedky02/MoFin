@@ -6,6 +6,7 @@ import {
 } from "@tanstack/react-query";
 import { api } from "@/api/client";
 import {
+  aiChatKeys,
   draftKeys,
   transactionKeys,
   ledgerKeys,
@@ -85,6 +86,16 @@ export function useCreateDraftIntent() {
   });
 }
 
+/**
+ * The inbox and the chat show the same drafts, so a decision in one refreshes
+ * both. Also on failure: a draft already approved or rejected elsewhere then
+ * shows its real status instead of buttons that no longer work.
+ */
+function refreshDraftViews(queryClient: ReturnType<typeof useQueryClient>) {
+  queryClient.invalidateQueries({ queryKey: draftKeys.all });
+  queryClient.invalidateQueries({ queryKey: aiChatKeys.all });
+}
+
 function invalidateAfterApproval(queryClient: ReturnType<typeof useQueryClient>) {
   // Draft approval ripples through transactions, balances, and analytics.
   queryClient.invalidateQueries({ queryKey: draftKeys.all });
@@ -118,6 +129,7 @@ export function useApproveDraft() {
       invalidateAfterApproval(queryClient);
     },
     onError: (err) => handleApiError(err, { fallback: "Could not approve draft." }),
+    onSettled: () => refreshDraftViews(queryClient),
   });
 }
 
@@ -131,5 +143,6 @@ export function useRejectDraft() {
       queryClient.invalidateQueries({ queryKey: draftKeys.all });
     },
     onError: (err) => handleApiError(err, { fallback: "Could not reject draft." }),
+    onSettled: () => refreshDraftViews(queryClient),
   });
 }

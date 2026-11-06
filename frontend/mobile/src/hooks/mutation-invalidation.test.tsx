@@ -4,12 +4,15 @@ import type { ReactNode } from 'react';
 
 import { api } from '@/api/client';
 import { ApiClientError } from '@/api/http';
-import { accountKeys, analyticsKeys, categoryKeys, goalKeys, ledgerKeys, searchKeys, transactionKeys } from '@/core/query-keys';
+import { accountKeys, aiChatKeys, analyticsKeys, categoryKeys, draftKeys, goalKeys, ledgerKeys, searchKeys, transactionKeys } from '@/core/query-keys';
 import { useArchiveAccount, useCreateAccount, useUpdateAccount } from '@/hooks/useAccounts';
 import { useArchiveCategory, useCreateCategory } from '@/hooks/useCategories';
+import { useApproveDraft, useRejectDraft } from '@/hooks/useDrafts';
 import { useCreateTransaction, useDeleteTransaction, useUpdateTransaction, UNDO_DELETE_MS } from '@/hooks/useTransactions';
 import { getToasts, resetToasts } from '@/lib/toast';
 
+// The approve toast's "View" link navigates; the router itself isn't needed here.
+jest.mock('expo-router', () => ({ router: { push: jest.fn() } }));
 jest.mock('@/api/client', () => {
   const actual = jest.requireActual('@/api/client');
   return { ...actual, api: { get: jest.fn(), post: jest.fn(), patch: jest.fn(), put: jest.fn(), delete: jest.fn() } };
@@ -155,5 +158,35 @@ describe('category mutations', () => {
     expect(api.patch).toHaveBeenCalledWith('/categories/c1/archive');
     await act(async () => getToasts()[0].action?.onClick());
     await waitFor(() => expect(api.patch).toHaveBeenCalledWith('/categories/c1/restore'));
+  });
+});
+
+// The chat's draft cards and the Drafts inbox read the same drafts: a decision in either refreshes both.
+describe('draft decisions refresh the inbox and the chat', () => {
+  const DRAFT_VIEWS = [draftKeys.all, aiChatKeys.all];
+
+  it('approve refreshes drafts, chats and the money views', async () => {
+    const { wrapper, invalidated } = setup();
+    (api.patch as jest.Mock).mockResolvedValue({ draft: { id: 'd1' }, transaction: { id: 't1' } });
+    const { result } = await renderHook(() => useApproveDraft(), { wrapper });
+    await act(async () => result.current.mutate({ id: 'd1' }));
+    await waitFor(() => expectRoots(invalidated(), [...DRAFT_VIEWS, transactionKeys.all, ledgerKeys.all]));
+    expect(api.patch).toHaveBeenCalledWith('/draft-transactions/d1/approve', undefined);
+  });
+
+  it('reject refreshes drafts and chats', async () => {
+    const { wrapper, invalidated } = setup();
+    (api.patch as jest.Mock).mockResolvedValue({ id: 'd1', status: 'REJECTED' });
+    const { result } = await renderHook(() => useRejectDraft(), { wrapper });
+    await act(async () => result.current.mutate({ id: 'd1', reason: 'duplicate' }));
+    await waitFor(() => expectRoots(invalidated(), DRAFT_VIEWS));
+  });
+
+  it('a draft already handled elsewhere refreshes both, so the card shows its real status', async () => {
+    const { wrapper, invalidated } = setup();
+    (api.patch as jest.Mock).mockRejectedValue(new ApiClientError(400, 'Draft is already approved', undefined));
+    const { result } = await renderHook(() => useRejectDraft(), { wrapper });
+    await act(async () => result.current.mutate({ id: 'd1' }));
+    await waitFor(() => expectRoots(invalidated(), DRAFT_VIEWS));
   });
 });

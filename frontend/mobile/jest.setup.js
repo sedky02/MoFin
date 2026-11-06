@@ -52,6 +52,21 @@ jest.mock('react-native-reanimated', () => {
   };
 });
 
+// Worklets and gestures need native modules too. Swipes (weeks, months, tabs) become plain wrappers in
+// tests; the arrows and tabs they duplicate are what the tests press.
+jest.mock('react-native-worklets', () => ({
+  scheduleOnRN: (fn, ...args) => fn(...args),
+  runOnJS: (fn) => fn,
+}));
+jest.mock('react-native-gesture-handler', () => {
+  const { View } = require('react-native');
+  return {
+    GestureHandlerRootView: View,
+    GestureDetector: ({ children }) => children,
+    usePanGesture: () => ({}),
+  };
+});
+
 jest.mock('react-native-safe-area-context', () => require('react-native-safe-area-context/jest/mock').default);
 
 // Haptics have native code; every call is a no-op in tests.

@@ -54,6 +54,7 @@ export class OAuthMcpAuthGuard implements CanActivate {
       sub: string;
       email: string;
       scope?: string;
+      client_id?: string;
     }>(token, {
       secret: this.config.getOrThrow<string>('JWT_MCP_SECRET'),
       issuer,
@@ -64,7 +65,11 @@ export class OAuthMcpAuthGuard implements CanActivate {
     if (!scopes.includes('mcp')) {
       throw new UnauthorizedException('token missing mcp scope');
     }
-    return { id: payload.sub, email: payload.email };
+    return {
+      id: payload.sub,
+      email: payload.email,
+      clientId: payload.client_id,
+    };
   }
 
   /**

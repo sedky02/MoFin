@@ -30,13 +30,14 @@ const box = () => screen.getByRole("textbox", { name: "Ask a question about your
 const turn = (question: string, answer: string): AiChatTurn => ({
   chat: { id: "chat-1", title: question, createdAt: "", updatedAt: "" },
   messages: [
-    { id: "q", role: "user", content: question, usedTools: [], charts: [], createdAt: "2026-11-05T10:00:00Z" },
+    { id: "q", role: "user", content: question, usedTools: [], charts: [], drafts: [], createdAt: "2026-11-05T10:00:00Z" },
     {
       id: "a",
       role: "assistant",
       content: answer,
       usedTools: ["get_monthly_summary"],
       charts: [],
+      drafts: [],
       createdAt: "2026-11-05T10:00:01Z",
     },
   ],
