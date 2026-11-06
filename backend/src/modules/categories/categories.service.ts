@@ -75,7 +75,11 @@ export class CategoriesService {
           ? { archivedAt: { not: null } }
           : {};
     const page = await this.prisma.paginated.category.paginate({
-      where: { OR: [{ userId }, { userId: null }], ...archivedFilter },
+      where: {
+        OR: [{ userId }, { userId: null }],
+        ...archivedFilter,
+        ...(query.type ? { type: query.type } : {}),
+      },
       orderBy: [{ type: 'asc' }, { name: 'asc' }],
       limit: query.limit,
       offset: query.offset,

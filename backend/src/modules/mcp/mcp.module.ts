@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { OAuthMcpAuthGuard } from '../../common/guards/oauth-mcp-auth.guard';
 import { AccountsModule } from '../accounts/accounts.module';
+import { CategoriesModule } from '../categories/categories.module';
 import { AnalyticsModule } from '../analytics/analytics.module';
 import { DraftTransactionsModule } from '../draft-transactions/draft-transactions.module';
 import { GoalsModule } from '../goals/goals.module';
@@ -20,6 +21,7 @@ import { McpService } from './mcp.service';
     LedgerModule,
     AnalyticsModule,
     AccountsModule,
+    CategoriesModule,
     GoalsModule,
     OAuthModule,
   ],

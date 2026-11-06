@@ -43,7 +43,9 @@ export const MCP_TOOLS: ReadonlyArray<{
     description:
       'Create a PENDING draft transaction from structured data. Never creates a real transaction directly — it must be approved first. ' +
       'EXPENSE uses fromAccountId, INCOME toAccountId, TRANSFER both. Pass an account id (from list_accounts) only when the user names the account; ' +
-      "otherwise leave it out and MoFin picks the user's default account. An unknown account id is rejected.",
+      "otherwise leave it out and MoFin picks the user's default account. " +
+      'categoryId must be an existing category of the same type as the draft (list_categories with `type`); leave it out when unsure. ' +
+      'Unknown ids and categories of the wrong type are rejected, and categories are never created. MoFin may replace the category with the one the user usually files similar descriptions under.',
   },
   {
     name: 'search_transactions',
@@ -74,6 +76,13 @@ export const MCP_TOOLS: ReadonlyArray<{
     annotations: READ_ONLY,
     title: 'List accounts',
     description: "List the user's active (non-archived) accounts.",
+  },
+  {
+    name: 'list_categories',
+    annotations: READ_ONLY,
+    title: 'List categories',
+    description:
+      "List the user's active categories (id, name, type INCOME or EXPENSE). Pass `type` to get only the ones that fit a draft: EXPENSE for an expense, INCOME for income. Transfers have no category.",
   },
   {
     name: 'list_goals',

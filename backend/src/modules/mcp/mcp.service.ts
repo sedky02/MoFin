@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { AccountsService } from '../accounts/accounts.service';
 import { AnalyticsService } from '../analytics/analytics.service';
+import { CategoriesService } from '../categories/categories.service';
 import { DraftSource } from '@prisma/client';
 import { DraftCompleter } from '../draft-transactions/draft-completer';
 import { CreateDraftTransactionDto } from '../draft-transactions/dto/draft-transactions.dto';
@@ -30,6 +31,7 @@ export class McpService {
     private readonly accountsService: AccountsService,
     private readonly goalsService: GoalsService,
     private readonly draftCompleter: DraftCompleter,
+    private readonly categoriesService: CategoriesService,
   ) {}
 
   /**
@@ -72,6 +74,8 @@ export class McpService {
       }
       case 'list_accounts':
         return this.accountsService.list(userId, args as never);
+      case 'list_categories':
+        return this.categoriesService.list(userId, args as never);
       case 'list_goals':
         return this.goalsService.list(userId, args as never);
       case 'get_goal':
@@ -90,8 +94,8 @@ export class McpService {
     }
   }
   /**
-   * The draft as the assistant sent it, with the account checked (a named one
-   * must be the user's) or picked server-side when it was left out.
+   * The draft as the assistant sent it, with its account and category checked
+   * (they must be the user's) and filled in server-side when left out.
    */
   private async createDraft(
     userId: string,

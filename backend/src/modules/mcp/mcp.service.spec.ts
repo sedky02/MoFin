@@ -11,6 +11,7 @@ describe('McpService.dispatch', () => {
   const ledger = { getBalance: jest.fn(() => 'balance') };
   const analytics = { getMonthlySummary: jest.fn(() => 'summary') };
   const accounts = { list: jest.fn(() => 'accounts') };
+  const categories = { list: jest.fn(() => 'categories') };
   const goals = {
     list: jest.fn(() => 'goals'),
     findOne: jest.fn(() => 'goal'),
@@ -32,6 +33,7 @@ describe('McpService.dispatch', () => {
     accounts as never,
     goals as never,
     completer as never,
+    categories as never,
   );
 
   afterEach(() => jest.clearAllMocks());
@@ -118,6 +120,12 @@ describe('McpService.dispatch', () => {
       'acc-1',
       undefined,
     );
+  });
+
+  it('routes list_categories to CategoriesService, with the type filter', () => {
+    const args = { limit: 20, offset: 0, status: 'active', type: 'EXPENSE' };
+    expect(service.dispatch('u1', 'list_categories', args)).toBe('categories');
+    expect(categories.list).toHaveBeenCalledWith('u1', args);
   });
 
   it('routes list_accounts to AccountsService, forwarding pagination args', () => {

@@ -195,6 +195,7 @@ function setup(chat: jest.Mock, enabled = true) {
     chats as never,
     runner,
     accounts as never,
+    categories as never,
   );
   const call = (i: number) => (chat.mock.calls[i] as ChatCall)[0];
   return { service, mcp, categories, analytics, chats, drafts, call };

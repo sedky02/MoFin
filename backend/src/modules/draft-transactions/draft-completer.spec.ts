@@ -2,12 +2,47 @@ import { BadRequestException } from '@nestjs/common';
 import { TransactionType } from '@prisma/client';
 import {
   accountUsage,
+  categoryFromHistory,
   DraftCompleter,
   pickDefaultAccount,
 } from './draft-completer';
 
 const NOW = new Date('2026-11-06T12:00:00Z');
 const day = (n: number) => new Date(NOW.getTime() - n * 86_400_000);
+
+type History = Array<{ description: string; categoryId: string | null }>;
+
+const FOOD = { id: 'food', name: 'Food', type: 'EXPENSE' };
+const DRINKS = { id: 'drinks', name: 'Drinks', type: 'EXPENSE' };
+const TRANSPORT = { id: 'transport', name: 'Transport', type: 'EXPENSE' };
+const SUBS = { id: 'subs', name: 'Subscriptions', type: 'EXPENSE' };
+const RENT = { id: 'rent', name: 'Rent', type: 'EXPENSE' };
+const SALARY = { id: 'salary', name: 'Salary', type: 'INCOME' };
+const FREELANCE = { id: 'freelance', name: 'Freelance', type: 'INCOME' };
+const CATEGORIES = [FOOD, DRINKS, TRANSPORT, SUBS, RENT, SALARY, FREELANCE];
+const EXPENSE_IDS = new Set(['food', 'drinks', 'transport', 'subs', 'rent']);
+const INCOME_IDS = new Set(['salary', 'freelance']);
+
+/** A user's past transactions: what they bought, and where they filed it. */
+const HISTORY: History = [
+  { description: 'Starbucks latte', categoryId: 'drinks' },
+  { description: 'Starbucks', categoryId: 'drinks' },
+  { description: 'Coffee at Starbucks', categoryId: 'drinks' },
+  { description: 'Uber to work', categoryId: 'transport' },
+  { description: 'Uber home', categoryId: 'transport' },
+  { description: 'Taxi', categoryId: 'transport' },
+  { description: 'Netflix', categoryId: 'subs' },
+  { description: 'Cafe', categoryId: 'drinks' },
+  { description: 'Carrefour groceries', categoryId: 'food' },
+  { description: 'Groceries Monoprix', categoryId: 'food' },
+  { description: 'Monoprix', categoryId: 'food' },
+  { description: 'Lunch with team', categoryId: 'food' },
+  { description: 'Lunch', categoryId: 'food' },
+  // The same shop, filed two ways: no clear answer for "Magasin general".
+  { description: 'Magasin general', categoryId: 'food' },
+  { description: 'Magasin general', categoryId: 'rent' },
+  { description: 'Gift', categoryId: null },
+];
 
 const CASH = { id: 'cash', name: 'cash' };
 const BANK = { id: 'bank', name: 'Bank' };
@@ -91,17 +126,27 @@ describe('DraftCompleter.complete', () => {
       accounts?: Array<{ id: string; name: string }>;
       settings?: Record<string, unknown>;
       recent?: Recent;
+      categories?: typeof CATEGORIES;
+      history?: History;
     } = {},
   ) {
     const {
       accounts = [CASH, BANK, SAVINGS],
       settings = {},
       recent = [],
+      categories = CATEGORIES,
+      history = [],
     } = opts;
     const prisma = {
       account: { findMany: jest.fn(() => Promise.resolve(accounts)) },
+      category: { findMany: jest.fn(() => Promise.resolve(categories)) },
       user: { findUnique: jest.fn(() => Promise.resolve({ settings })) },
-      transaction: { findMany: jest.fn(() => Promise.resolve(recent)) },
+      transaction: {
+        // One query counts account usage, the other reads category history.
+        findMany: jest.fn((args: { select: { description?: true } }) =>
+          Promise.resolve(args.select.description ? history : recent),
+        ),
+      },
     };
     return { completer: new DraftCompleter(prisma as never), prisma };
   }
@@ -213,5 +258,163 @@ describe('DraftCompleter.complete', () => {
     const { completer } = setup({ accounts: [] });
     const out = await completer.complete('u1', expense, NOW);
     expect(out.fromAccountId).toBeUndefined();
+  });
+});
+
+/**
+ * Description -> expected category, from the history above. `undefined` is
+ * "no confident match": the draft is left without a category (MoFin has no
+ * "Uncategorized" category to fall back to).
+ */
+describe('categoryFromHistory', () => {
+  const cases: Array<[string, string | undefined, string]> = [
+    // Exact past descriptions: one is enough.
+    ['Netflix', 'subs', 'same description once'],
+    ['starbucks', 'drinks', 'same words, other case'],
+    ['Monoprix 45 TND', 'food', 'amounts and currency ignored'],
+    // Merchant or item shared with several past transactions.
+    ['Starbucks cappuccino', 'drinks', 'merchant seen three times'],
+    ['Uber to the airport', 'transport', 'merchant seen twice'],
+    ['Groceries at Carrefour', 'food', 'words in another order'],
+    ['grocery run', 'food', 'singular of groceries'],
+    ['Team lunch', 'food', 'item seen twice'],
+    ['Café', 'drinks', 'accents ignored: matches a past "Cafe"'],
+    // Ambiguous or unknown.
+    ['Magasin general', undefined, 'same words filed two ways'],
+    ['Taxi', 'transport', 'one exact match'],
+    ['Taxis downtown', undefined, 'only one related transaction'],
+    ['Paid 20', undefined, 'no meaningful words'],
+    ['Birthday present', undefined, 'never seen'],
+    ['Gift', undefined, 'seen, but never categorised'],
+  ];
+  it.each(cases)('%s -> %s (%s)', (description, expected) => {
+    expect(categoryFromHistory(description, HISTORY, EXPENSE_IDS)).toBe(
+      expected,
+    );
+  });
+
+  it('only suggests categories of the draft type', () => {
+    expect(categoryFromHistory('Netflix', HISTORY, INCOME_IDS)).toBeUndefined();
+  });
+
+  it('needs a clear majority among related transactions', () => {
+    const split: History = [
+      { description: 'Amazon books', categoryId: 'food' },
+      { description: 'Amazon cable', categoryId: 'subs' },
+      { description: 'Amazon order', categoryId: 'rent' },
+    ];
+    expect(categoryFromHistory('Amazon', split, EXPENSE_IDS)).toBeUndefined();
+  });
+});
+
+describe('DraftCompleter.complete categories', () => {
+  function setup(history: History = HISTORY) {
+    const prisma = {
+      account: { findMany: jest.fn(() => Promise.resolve([CASH])) },
+      category: { findMany: jest.fn(() => Promise.resolve(CATEGORIES)) },
+      user: { findUnique: jest.fn(() => Promise.resolve({ settings: {} })) },
+      transaction: {
+        findMany: jest.fn((args: { select: { description?: true } }) =>
+          Promise.resolve(args.select.description ? history : []),
+        ),
+      },
+    };
+    return { completer: new DraftCompleter(prisma as never), prisma };
+  }
+  const expense = (description: string, categoryId?: string) => ({
+    type: TransactionType.EXPENSE,
+    description,
+    categoryId,
+  });
+
+  it("keeps the assistant's pick when history has nothing to say (a clear match)", async () => {
+    const { completer } = setup([]);
+    const out = await completer.complete('u1', expense('Pizza', 'food'), NOW);
+    expect(out.categoryId).toBe('food');
+  });
+
+  it('prefers the category the user files similar descriptions under', async () => {
+    const { completer } = setup();
+    const out = await completer.complete(
+      'u1',
+      expense('Starbucks muffin', 'food'),
+      NOW,
+    );
+    expect(out.categoryId).toBe('drinks');
+  });
+
+  it('fills the category from history when the assistant left it out', async () => {
+    const { completer } = setup();
+    const out = await completer.complete('u1', expense('Uber'), NOW);
+    expect(out.categoryId).toBe('transport');
+  });
+
+  it('leaves the category empty with no pick and no clear history', async () => {
+    const { completer } = setup();
+    const out = await completer.complete('u1', expense('Magasin general'), NOW);
+    expect(out.categoryId).toBeUndefined();
+  });
+
+  it('rejects an unknown category id, listing only the categories of the draft type', async () => {
+    const { completer } = setup();
+    const call = completer.complete('u1', expense('Pizza', 'made-up'), NOW);
+    await expect(call).rejects.toThrow(BadRequestException);
+    await expect(
+      completer.complete('u1', expense('Pizza', 'made-up'), NOW),
+    ).rejects.toThrow(/Unknown categoryId "made-up".*Food \(food\)/);
+    await expect(
+      completer.complete('u1', expense('Pizza', 'made-up'), NOW),
+    ).rejects.not.toThrow(/Salary/);
+  });
+
+  it('rejects a category of the wrong type', async () => {
+    const { completer } = setup();
+    await expect(
+      completer.complete('u1', expense('Pizza', 'salary'), NOW),
+    ).rejects.toThrow(
+      /"Salary" is an INCOME category, but this draft is EXPENSE/,
+    );
+  });
+
+  it('reads history only for active categories of the draft type', async () => {
+    const { completer, prisma } = setup();
+    await completer.complete(
+      'u1',
+      {
+        type: TransactionType.INCOME,
+        description: 'Salary',
+        categoryId: 'salary',
+      },
+      NOW,
+    );
+    expect(prisma.category.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { OR: [{ userId: 'u1' }, { userId: null }], archivedAt: null },
+      }),
+    );
+    expect(prisma.transaction.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          type: TransactionType.INCOME,
+          categoryId: { in: ['salary', 'freelance'] },
+        }),
+      }),
+    );
+  });
+
+  it('drops a category sent with a transfer instead of rejecting it', async () => {
+    const { completer } = setup();
+    const out = await completer.complete(
+      'u1',
+      {
+        type: TransactionType.TRANSFER,
+        description: 'To savings',
+        toAccountId: 'cash',
+        fromAccountId: 'cash',
+        categoryId: 'food',
+      },
+      NOW,
+    );
+    expect(out.categoryId).toBeUndefined();
   });
 });

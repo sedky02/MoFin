@@ -20,5 +20,7 @@ export type UpdateCategoryDto = z.infer<typeof updateCategorySchema>;
 // Archived categories are left out unless asked for, so pickers never offer them.
 export const listCategoriesQuerySchema = paginationSchema.extend({
   status: z.enum(['active', 'archived', 'all']).default('active'),
+  /** Only INCOME or only EXPENSE categories, e.g. the ones that fit a draft. */
+  type: z.nativeEnum(CategoryType).optional(),
 });
 export type ListCategoriesQueryDto = z.infer<typeof listCategoriesQuerySchema>;

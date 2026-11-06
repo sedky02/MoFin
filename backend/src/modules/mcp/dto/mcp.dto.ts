@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { monthlySummaryQueryObject } from '../../analytics/dto/analytics.dto';
 import { listAccountsQuerySchema } from '../../accounts/dto/accounts.dto';
+import { listCategoriesQuerySchema } from '../../categories/dto/categories.dto';
 import { createDraftTransactionSchema } from '../../draft-transactions/dto/draft-transactions.dto';
 import {
   goalHistoryQuerySchema,
@@ -28,6 +29,7 @@ export const mcpToolSchemas = {
   // rule is enforced again by AnalyticsService.getMonthlySummary.
   get_monthly_summary: monthlySummaryQueryObject,
   list_accounts: listAccountsQuerySchema,
+  list_categories: listCategoriesQuerySchema,
   list_goals: listGoalsQuerySchema,
   get_goal: z.object({ goalId: z.string().min(1) }),
   get_goal_history: goalHistoryQuerySchema.extend({
