@@ -46,6 +46,8 @@ jest.mock('react-native-reanimated', () => {
     useSharedValue: (value) => ({ value }),
     withSpring: (value) => value,
     withTiming: (value) => value,
+    withRepeat: (value) => value,
+    useReducedMotion: () => false,
     runOnJS: (fn) => fn,
     scheduleOnRN: (fn, ...args) => fn(...args),
     ...anim,
@@ -64,6 +66,38 @@ jest.mock('react-native-gesture-handler', () => {
     GestureHandlerRootView: View,
     GestureDetector: ({ children }) => children,
     usePanGesture: () => ({}),
+  };
+});
+
+// The speech recognizer is native. This fake records what was asked of it, and tests play the
+// recognizer's side with global.__speech.emit('result', {...}).
+jest.mock('expo-speech-recognition', () => {
+  const listeners = new Map();
+  const module = {
+    start: jest.fn(),
+    stop: jest.fn(),
+    abort: jest.fn(),
+    isRecognitionAvailable: jest.fn(() => true),
+    supportsOnDeviceRecognition: jest.fn(() => true),
+    requestPermissionsAsync: jest.fn(async () => ({ granted: true, canAskAgain: true, status: 'granted' })),
+  };
+  global.__speech = {
+    module,
+    emit: (event, payload = null) => [...(listeners.get(event) ?? [])].forEach((cb) => cb(payload)),
+  };
+  return {
+    ExpoSpeechRecognitionModule: module,
+    useSpeechRecognitionEvent: (event, cb) => {
+      const { useEffect, useRef } = require('react');
+      const latest = useRef(cb);
+      latest.current = cb;
+      useEffect(() => {
+        const handler = (payload) => latest.current(payload);
+        if (!listeners.has(event)) listeners.set(event, new Set());
+        listeners.get(event).add(handler);
+        return () => listeners.get(event).delete(handler);
+      }, [event]);
+    },
   };
 });
 

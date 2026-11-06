@@ -41,11 +41,20 @@ export function useAiChatDetail(id: string | null) {
 export function useSendChatMessage() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ chatId, content }: { chatId: string | null; content: string }) =>
+    mutationFn: ({
+      chatId,
+      content,
+      inputMode = "text",
+    }: {
+      chatId: string | null;
+      content: string;
+      /** Spoken questions label the drafts they lead to as voice. */
+      inputMode?: "text" | "voice";
+    }) =>
       api.post<AiChatTurn>(
         chatId ? `/ai/chats/${chatId}/messages` : "/ai/chats",
         // "This month" and "today" are read in the phone's zone, not the server's.
-        { content, timeZone: deviceTimeZone() },
+        { content, timeZone: deviceTimeZone(), inputMode },
         { timeoutMs: AI_TIMEOUT_MS },
       ),
     onSuccess: (turn) => {

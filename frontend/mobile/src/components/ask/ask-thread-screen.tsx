@@ -12,7 +12,8 @@ import { Text } from '@/components/ui/text';
 import { ApiClientError } from '@/api/client';
 import { chatErrorMessage, useAiChatDetail, useSendChatMessage } from '@/hooks/useAiChat';
 import { haptics } from '@/lib/haptics';
-import { ArrowUp } from '@/lib/icons';
+import { openSpeechSettings, useSpeechRecognition } from '@/hooks/use-speech-recognition';
+import { ArrowUp, Mic, Square } from '@/lib/icons';
 import { cn } from '@/lib/utils';
 
 const MAX_QUESTION_CHARS = 2000;
@@ -22,11 +23,16 @@ function Composer({
   onChange,
   onSend,
   pending,
+  listening,
+  onMic,
 }: {
   value: string;
   onChange: (v: string) => void;
   onSend: () => void;
   pending: boolean;
+  /** While the mic listens, the box shows what it hears and the mic becomes a stop button. */
+  listening: boolean;
+  onMic: () => void;
 }) {
   const canSend = value.trim().length > 0 && !pending;
   const left = MAX_QUESTION_CHARS - value.length;
@@ -43,7 +49,18 @@ function Composer({
         className="max-h-32 min-h-10 flex-1 py-2 text-base text-foreground"
         placeholderClassName="text-muted-foreground"
         textAlignVertical="center"
+        editable={!listening}
       />
+      <Pressable
+        role="button"
+        accessibilityLabel={listening ? 'Stop listening' : 'Speak your question'}
+        onPress={() => {
+          haptics.tap();
+          onMic();
+        }}
+        className={cn('size-11 items-center justify-center rounded-full', listening ? 'bg-destructive/15' : 'active:bg-accent')}>
+        <Icon as={listening ? Square : Mic} size={listening ? 16 : 18} className={listening ? 'text-destructive' : 'text-muted-foreground'} />
+      </Pressable>
       <Pressable
         role="button"
         accessibilityLabel={pending ? 'Answering' : 'Send question'}
@@ -81,13 +98,25 @@ export function AskThreadScreen() {
 
   const messages = detail.data?.messages ?? [];
 
+  // Spoken words go into the box to check or edit; the question then goes out marked as voice.
+  const [spoken, setSpoken] = React.useState(false);
+  const speech = useSpeechRecognition({
+    onDone: (text) => {
+      setInput((prev) => [prev.trim(), text].filter(Boolean).join(' '));
+      setSpoken(true);
+    },
+  });
+  const shown = speech.listening ? [input.trim(), speech.finalText, speech.interimText].filter(Boolean).join(' ') : input;
+
   async function ask(text: string) {
     const content = text.trim();
     if (!content || send.isPending) return;
+    const inputMode = spoken ? 'voice' : 'text';
     setPending({ content });
     setInput('');
+    setSpoken(false);
     try {
-      const turn = await send.mutateAsync({ chatId, content });
+      const turn = await send.mutateAsync({ chatId, content, inputMode });
       setPending(null);
       haptics.success();
       if (!chatId) router.setParams({ id: turn.chat.id, q: undefined });
@@ -175,8 +204,28 @@ export function AskThreadScreen() {
           )}
         </ScrollView>
         <View className="mx-auto w-full max-w-2xl border-t border-border/60 bg-background px-3 pt-2" style={{ paddingBottom: Math.max(insets.bottom, 8) }}>
-          <Composer value={input} onChange={setInput} onSend={() => void ask(input)} pending={send.isPending} />
-          <Text className="mt-1.5 text-center text-[11px] text-muted-foreground">Reads your data. Never changes it.</Text>
+          {speech.error ? (
+            <View accessibilityRole="alert" className="mb-2 flex-row items-center gap-2 px-1">
+              <Text className="flex-1 text-xs text-muted-foreground">{speech.error.message}</Text>
+              {speech.error.kind === 'permission' ? (
+                <Pressable role="link" accessibilityLabel="Open Settings" onPress={openSpeechSettings} className="min-h-11 justify-center px-2">
+                  <Text className="text-xs font-medium text-primary-text">Open Settings</Text>
+                </Pressable>
+              ) : null}
+            </View>
+          ) : null}
+          <Composer
+            value={shown}
+            onChange={(v) => {
+              setInput(v);
+              if (!v.trim()) setSpoken(false);
+            }}
+            onSend={() => void ask(input)}
+            pending={send.isPending}
+            listening={speech.listening}
+            onMic={() => (speech.listening ? speech.stop() : void speech.start())}
+          />
+          <Text className="mt-1.5 text-center text-[11px] text-muted-foreground">Drafts wait for your approval.</Text>
         </View>
       </KeyboardAvoidingView>
     </View>

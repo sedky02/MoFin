@@ -50,6 +50,7 @@ export { default as HeartPulse } from 'lucide-react-native/icons/heart-pulse';
 export { default as History } from 'lucide-react-native/icons/rotate-ccw-clock';
 export { default as House } from 'lucide-react-native/icons/house';
 export { default as Inbox } from 'lucide-react-native/icons/inbox';
+export { default as Keyboard } from 'lucide-react-native/icons/keyboard';
 export { default as Landmark } from 'lucide-react-native/icons/landmark';
 export { default as Laptop } from 'lucide-react-native/icons/laptop';
 export { default as Layers } from 'lucide-react-native/icons/layers';
@@ -86,6 +87,7 @@ export { default as SlidersHorizontal } from 'lucide-react-native/icons/sliders-
 export { default as Smartphone } from 'lucide-react-native/icons/smartphone';
 export { default as Sparkles } from 'lucide-react-native/icons/sparkles';
 export { default as Split } from 'lucide-react-native/icons/split';
+export { default as Square } from 'lucide-react-native/icons/square';
 export { default as Sun } from 'lucide-react-native/icons/sun';
 export { default as Tags } from 'lucide-react-native/icons/tags';
 export { default as Target } from 'lucide-react-native/icons/target';

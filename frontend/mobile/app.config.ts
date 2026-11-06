@@ -39,6 +39,14 @@ const config: ExpoConfig = {
   },
   plugins: [
     'expo-router',
+    // Voice questions (hold Add, or the mic in Ask): microphone and speech permission texts.
+    [
+      'expo-speech-recognition',
+      {
+        microphonePermission: 'MoFin listens when you hold Add or tap the mic, to turn what you say into a question or a draft.',
+        speechRecognitionPermission: 'MoFin turns what you say into text to answer your question or draft a transaction.',
+      },
+    ],
     // Adds the Android backup rules that keep the stored session out of cloud backups and device transfers.
     'expo-secure-store',
     [

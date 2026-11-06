@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
 
 import { AskChart, axisLabel, chartSummary } from '@/components/ask/ask-chart';
 import { groupChats } from '@/components/ask/ask-chat-list';
@@ -120,7 +120,7 @@ describe('AskThreadScreen', () => {
     await render(<AskThreadScreen />);
     await fireEvent.changeText(screen.getByLabelText('Ask a question about your finances'), 'How much?');
     await fireEvent.press(screen.getByLabelText('Send question'));
-    expect(mockMutateAsync).toHaveBeenCalledWith({ chatId: null, content: 'How much?' });
+    expect(mockMutateAsync).toHaveBeenCalledWith({ chatId: null, content: 'How much?', inputMode: 'text' });
     expect(mockSetParams).toHaveBeenCalledWith({ id: 'chat-1', q: undefined });
   });
 
@@ -129,7 +129,7 @@ describe('AskThreadScreen', () => {
     mockMutateAsync.mockResolvedValue(turn('q', 'a'));
     await render(<AskThreadScreen />);
     expect(mockMutateAsync).toHaveBeenCalledTimes(1);
-    expect(mockMutateAsync).toHaveBeenCalledWith({ chatId: null, content: 'Where did my money go this month?' });
+    expect(mockMutateAsync).toHaveBeenCalledWith({ chatId: null, content: 'Where did my money go this month?', inputMode: 'text' });
   });
 
   it('keeps a failed question on screen with the reason and a retry', async () => {
@@ -141,7 +141,7 @@ describe('AskThreadScreen', () => {
     expect(screen.getByLabelText('You: How much?')).toBeTruthy();
     mockMutateAsync.mockResolvedValueOnce(turn('How much?', 'ok'));
     await fireEvent.press(screen.getByLabelText('Try again'));
-    expect(mockMutateAsync).toHaveBeenLastCalledWith({ chatId: null, content: 'How much?' });
+    expect(mockMutateAsync).toHaveBeenLastCalledWith({ chatId: null, content: 'How much?', inputMode: 'text' });
   });
 });
 
@@ -189,5 +189,34 @@ describe('draft cards in an answer', () => {
     expect(screen.getByText('Approved')).toBeTruthy();
     expect(screen.queryByLabelText('Approve')).toBeNull();
     expect(screen.queryByLabelText('Reject')).toBeNull();
+  });
+});
+
+describe('AskThreadScreen: the mic', () => {
+  type SpeechFake = { module: Record<string, jest.Mock>; emit: (event: string, payload?: unknown) => void };
+  const speech = (globalThis as unknown as { __speech: SpeechFake }).__speech;
+  const heard = (transcript: string, isFinal: boolean) => ({ isFinal, results: [{ transcript, confidence: 0.9, segments: [] }] });
+
+  beforeEach(() => {
+    mockParams = { id: 'new' };
+    mockMutateAsync.mockReset();
+    speech.module.requestPermissionsAsync.mockResolvedValue({ granted: true });
+  });
+
+  it('puts what was said in the box to check, then sends it as a voice question', async () => {
+    mockMutateAsync.mockResolvedValue(turn('Coffee 4.5', 'Drafted.'));
+    await render(<AskThreadScreen />);
+    await fireEvent.press(screen.getByLabelText('Speak your question'));
+    await act(async () => speech.emit('start'));
+    await act(async () => speech.emit('result', heard('Coffee', false)));
+    // While listening the box shows the words as they come.
+    expect(screen.getByLabelText('Ask a question about your finances').props.value).toBe('Coffee');
+    await act(async () => speech.emit('result', heard('Coffee 4.5', true)));
+    await act(async () => speech.emit('end'));
+    expect(screen.getByLabelText('Ask a question about your finances').props.value).toBe('Coffee 4.5');
+    expect(mockMutateAsync).not.toHaveBeenCalled();
+
+    await fireEvent.press(screen.getByLabelText('Send question'));
+    expect(mockMutateAsync).toHaveBeenCalledWith({ chatId: null, content: 'Coffee 4.5', inputMode: 'voice' });
   });
 });

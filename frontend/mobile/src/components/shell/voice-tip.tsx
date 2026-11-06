@@ -22,14 +22,18 @@ export function VoiceTip({ dismissed }: { dismissed: boolean }) {
   const setup = useSetup();
   const { data: user } = useUser();
   const ready = !!user && setup.status === 'off';
-  // Decided once when it can show; marking it shown must not hide it straight away.
+  // Decided once, the first render it can show (marking it shown must not hide it straight away).
   const [visible, setVisible] = React.useState(false);
-
-  React.useEffect(() => {
-    if (!ready || shown) return;
+  const [decided, setDecided] = React.useState(false);
+  if (!decided && ready && !shown) {
+    setDecided(true);
     setVisible(true);
-    markShown();
-  }, [ready, shown, markShown]);
+  }
+
+  // Remember it the moment it appears, so it never comes back.
+  React.useEffect(() => {
+    if (visible) markShown();
+  }, [visible, markShown]);
 
   React.useEffect(() => {
     if (!visible) return;

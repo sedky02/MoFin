@@ -16,6 +16,7 @@ import {
   type PreferenceValues,
 } from '@/components/settings/settings-logic';
 import { ThemeSetting } from '@/components/settings/theme-setting';
+import { VoiceLanguageSetting } from '@/components/settings/voice-language-setting';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
@@ -184,6 +185,10 @@ export function PreferencesSection() {
 
       <View className="rounded-xl border border-border bg-card p-5 shadow-sm shadow-black/5">
         <ThemeSetting />
+      </View>
+
+      <View className="rounded-xl border border-border bg-card p-5 shadow-sm shadow-black/5">
+        <VoiceLanguageSetting />
       </View>
     </View>
   );

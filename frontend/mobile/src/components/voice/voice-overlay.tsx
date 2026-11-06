@@ -1,0 +1,248 @@
+import { router } from 'expo-router';
+import * as React from 'react';
+import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, TextInput, View } from 'react-native';
+import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { AssistantMessage, FailedMessage, ThinkingMessage, UserMessage } from '@/components/ask/ask-message';
+import { Button } from '@/components/ui/button';
+import { Icon } from '@/components/ui/icon';
+import { Text } from '@/components/ui/text';
+import { chatErrorMessage, useAiChatDetail, useSendChatMessage } from '@/hooks/useAiChat';
+import { openSpeechSettings, useSpeechRecognition } from '@/hooks/use-speech-recognition';
+import { haptics } from '@/lib/haptics';
+import { ArrowUp, Keyboard, Mic, Square, X } from '@/lib/icons';
+import { cn } from '@/lib/utils';
+import { useVoiceOverlayOpen, voiceOverlay } from '@/lib/voice-overlay';
+
+/** The rings around the mic while it listens. Still when the system asks for less motion. */
+function ListeningRings({ active }: { active: boolean }) {
+  const reduceMotion = useReducedMotion();
+  const pulse = useSharedValue(0);
+  React.useEffect(() => {
+    pulse.value = active && !reduceMotion ? withRepeat(withTiming(1, { duration: 1100 }), -1, false) : withTiming(0, { duration: 200 });
+  }, [active, reduceMotion, pulse]);
+  const ring = useAnimatedStyle(() => ({
+    opacity: active ? 0.45 * (1 - pulse.value) : 0,
+    transform: [{ scale: 1 + pulse.value * 0.7 }],
+  }));
+  const ring2 = useAnimatedStyle(() => ({
+    opacity: active ? 0.3 * (1 - pulse.value) : 0,
+    transform: [{ scale: 1 + pulse.value * 1.2 }],
+  }));
+  return (
+    <View pointerEvents="none" className="absolute inset-0 items-center justify-center">
+      <Animated.View className="absolute size-16 rounded-full bg-primary" style={ring2} />
+      <Animated.View className="absolute size-16 rounded-full bg-primary" style={ring} />
+    </View>
+  );
+}
+
+/**
+ * The voice overlay, opened by holding the Add button: it listens straight away, shows what it
+ * hears (settled words normally, words still being recognized lighter), sends the question to Ask
+ * MoFin when you pause, and shows the answer, with draft cards to approve. Tap the mic to ask a
+ * follow-up in the same chat, or switch to the keyboard. Everything is saved in an Ask chat, so
+ * closing loses nothing; "Open in chat" goes there.
+ */
+export function VoiceOverlay() {
+  const open = useVoiceOverlayOpen();
+  if (!open) return null;
+  // Mounted only while open: closing unmounts it, which stops the microphone.
+  return <VoiceSheet />;
+}
+
+function VoiceSheet() {
+  const insets = useSafeAreaInsets();
+  const [chatId, setChatId] = React.useState<string | null>(null);
+  const detail = useAiChatDetail(chatId);
+  const send = useSendChatMessage();
+  const [pending, setPending] = React.useState<{ content: string; error?: string } | null>(null);
+  const [typing, setTyping] = React.useState(false);
+  const [input, setInput] = React.useState('');
+  const scrollRef = React.useRef<React.ComponentRef<typeof ScrollView>>(null);
+  // The chat this overlay writes to, read when an answer lands.
+  const chatRef = React.useRef<string | null>(null);
+
+  async function ask(text: string, inputMode: 'voice' | 'text') {
+    const content = text.trim();
+    if (!content || send.isPending) return;
+    setPending({ content });
+    try {
+      const turn = await send.mutateAsync({ chatId: chatRef.current, content, inputMode });
+      chatRef.current = turn.chat.id;
+      setChatId(turn.chat.id);
+      setPending(null);
+      haptics.success();
+    } catch (err) {
+      haptics.error();
+      setPending({ content, error: chatErrorMessage(err) });
+    }
+  }
+
+  const speech = useSpeechRecognition({ onDone: (text) => void ask(text, 'voice') });
+
+  // Listening starts as soon as the overlay opens.
+  const { start } = speech;
+  React.useEffect(() => {
+    void start();
+  }, [start]);
+
+  function close() {
+    // Unmounting stops the microphone; the chat is already saved.
+    voiceOverlay.close();
+  }
+
+  function toggleMic() {
+    haptics.tap();
+    if (speech.listening) speech.stop();
+    else {
+      setTyping(false);
+      void speech.start();
+    }
+  }
+
+  function switchToKeyboard() {
+    speech.abort();
+    setTyping(true);
+  }
+
+  function openInChat() {
+    const id = chatRef.current;
+    close();
+    if (id) router.push({ pathname: '/ask/[id]', params: { id } });
+  }
+
+  const messages = detail.data?.messages ?? [];
+  const nothingYet = messages.length === 0 && !pending;
+  const hearing = speech.finalText || speech.interimText;
+
+  return (
+    <Modal visible transparent animationType="slide" onRequestClose={close} statusBarTranslucent>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1 justify-end">
+        {/* The screen behind stays visible, dimmed; tapping it closes the overlay. */}
+        <Pressable accessibilityLabel="Close voice" onPress={close} className="absolute inset-0 bg-black/50" />
+        <View
+          accessibilityViewIsModal
+          className="max-h-[85%] rounded-t-3xl border-t border-border bg-card"
+          style={{ paddingBottom: Math.max(insets.bottom, 12) }}>
+          <View className="flex-row items-center justify-between px-5 pb-2 pt-4">
+            <Text role="heading" aria-level={2} className="text-base font-semibold">
+              Ask MoFin
+            </Text>
+            <View className="flex-row items-center gap-1">
+              {chatId ? (
+                <Button variant="ghost" size="sm" className="min-h-11" accessibilityLabel="Open in chat" onPress={openInChat}>
+                  <Text className="text-primary-text">Open in chat</Text>
+                </Button>
+              ) : null}
+              <Pressable
+                role="button"
+                accessibilityLabel="Close"
+                onPress={close}
+                className="size-11 items-center justify-center rounded-full active:bg-accent">
+                <Icon as={X} size={20} className="text-muted-foreground" />
+              </Pressable>
+            </View>
+          </View>
+
+          <ScrollView
+            ref={scrollRef}
+            className="px-5"
+            contentContainerClassName="gap-5 pb-4"
+            keyboardShouldPersistTaps="handled"
+            onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}>
+            {messages.map((m) =>
+              m.role === 'user' ? <UserMessage key={m.id} content={m.content} /> : <AssistantMessage key={m.id} message={m} />,
+            )}
+            {pending ? <UserMessage content={pending.content} /> : null}
+            {pending && !pending.error ? <ThinkingMessage /> : null}
+            {pending?.error ? <FailedMessage error={pending.error} onRetry={() => void ask(pending.content, 'voice')} /> : null}
+
+            {/* What is being heard: settled words normally, words still being recognized lighter. */}
+            {speech.listening || hearing ? (
+              <Text accessibilityLiveRegion="polite" className="text-xl leading-8">
+                {speech.finalText ? <Text className="text-xl leading-8 text-foreground">{speech.finalText} </Text> : null}
+                {speech.interimText ? <Text className="text-xl leading-8 text-muted-foreground">{speech.interimText}</Text> : null}
+                {!hearing ? <Text className="text-xl leading-8 text-muted-foreground">Listening…</Text> : null}
+              </Text>
+            ) : nothingYet && !speech.error && !typing ? (
+              <Text className="text-xl leading-8 text-muted-foreground">Ask about your money, or say what you spent.</Text>
+            ) : null}
+
+            {speech.error ? (
+              <View accessibilityRole="alert" className="gap-2 rounded-2xl bg-secondary px-4 py-3">
+                <Text className="text-sm">{speech.error.message}</Text>
+                {speech.error.kind === 'permission' ? (
+                  <Button variant="outline" size="sm" className="min-h-11 self-start" accessibilityLabel="Open Settings" onPress={openSpeechSettings}>
+                    <Text>Open Settings</Text>
+                  </Button>
+                ) : null}
+              </View>
+            ) : null}
+          </ScrollView>
+
+          {typing ? (
+            <View className="mx-4 flex-row items-end gap-2 rounded-3xl border border-border bg-background py-1.5 pl-4 pr-1.5">
+              <TextInput
+                autoFocus
+                value={input}
+                onChangeText={setInput}
+                placeholder="Type your question…"
+                multiline
+                maxLength={2000}
+                accessibilityLabel="Type your question"
+                className="max-h-28 min-h-10 flex-1 py-2 text-base text-foreground"
+                placeholderClassName="text-muted-foreground"
+              />
+              <Pressable
+                role="button"
+                accessibilityLabel="Switch to voice"
+                onPress={toggleMic}
+                className="size-11 items-center justify-center rounded-full active:bg-accent">
+                <Icon as={Mic} size={18} className="text-muted-foreground" />
+              </Pressable>
+              <Pressable
+                role="button"
+                accessibilityLabel="Send question"
+                accessibilityState={{ disabled: !input.trim() || send.isPending }}
+                disabled={!input.trim() || send.isPending}
+                onPress={() => {
+                  const text = input;
+                  setInput('');
+                  void ask(text, 'text');
+                }}
+                className={cn('size-11 items-center justify-center rounded-full bg-primary', (!input.trim() || send.isPending) && 'opacity-40')}>
+                <Icon as={ArrowUp} size={18} className="text-primary-foreground" />
+              </Pressable>
+            </View>
+          ) : (
+            <View className="flex-row items-center justify-center gap-8 px-6 pt-2">
+              <Pressable
+                role="button"
+                accessibilityLabel="Type instead"
+                onPress={switchToKeyboard}
+                className="size-12 items-center justify-center rounded-full bg-secondary active:bg-accent">
+                <Icon as={Keyboard} size={20} className="text-foreground" />
+              </Pressable>
+              <View className="size-24 items-center justify-center">
+                <ListeningRings active={speech.listening} />
+                <Pressable
+                  role="button"
+                  accessibilityLabel={speech.listening ? 'Stop and send' : 'Speak'}
+                  accessibilityState={{ busy: send.isPending }}
+                  disabled={send.isPending}
+                  onPress={toggleMic}
+                  className={cn('size-16 items-center justify-center rounded-full bg-primary shadow-md shadow-black/25', send.isPending && 'opacity-50')}>
+                  <Icon as={speech.listening ? Square : Mic} size={speech.listening ? 20 : 26} className="text-primary-foreground" />
+                </Pressable>
+              </View>
+              {/* Balances the keyboard button so the mic stays centred. */}
+              <View className="size-12" />
+            </View>
+          )}
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+}

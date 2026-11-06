@@ -4,6 +4,7 @@ import { View } from 'react-native';
 import { OfflineBanner } from '@/components/shell/offline-banner';
 import { StackHeader } from '@/components/shell/stack-header';
 import { useStackScreenOptions } from '@/components/shell/stack-options';
+import { VoiceOverlay } from '@/components/voice/voice-overlay';
 
 export default function AppLayout() {
   const options = useStackScreenOptions();
@@ -31,6 +32,8 @@ export default function AppLayout() {
           </Stack.Protected>
         </Stack>
       </View>
+      {/* Opened by holding the Add button; drawn over whatever screen is showing. */}
+      <VoiceOverlay />
     </View>
   );
 }
