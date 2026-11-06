@@ -73,6 +73,6 @@ jest.mock('react-native-safe-area-context', () => require('react-native-safe-are
 jest.mock('expo-haptics', () => ({
   impactAsync: jest.fn(async () => {}),
   notificationAsync: jest.fn(async () => {}),
-  ImpactFeedbackStyle: { Light: 'light' },
+  ImpactFeedbackStyle: { Light: 'light', Medium: 'medium' },
   NotificationFeedbackType: { Success: 'success', Warning: 'warning', Error: 'error' },
 }));

@@ -58,6 +58,7 @@ export { default as Lock } from 'lucide-react-native/icons/lock';
 export { default as LogOut } from 'lucide-react-native/icons/log-out';
 export { default as Menu } from 'lucide-react-native/icons/menu';
 export { default as MessageCircle } from 'lucide-react-native/icons/message-circle';
+export { default as Mic } from 'lucide-react-native/icons/mic';
 export { default as Monitor } from 'lucide-react-native/icons/monitor';
 export { default as Moon } from 'lucide-react-native/icons/moon';
 export { default as MoreVertical } from 'lucide-react-native/icons/ellipsis-vertical';

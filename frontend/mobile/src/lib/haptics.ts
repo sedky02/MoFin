@@ -37,6 +37,8 @@ function run(effect: () => Promise<void>): void {
 export const haptics = {
   /** A press that starts something (the Add tab). */
   tap: () => run(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)),
+  /** A long press took hold (Add opening the voice overlay): firmer than a tap. */
+  hold: () => run(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)),
   /** Something was saved. */
   success: () => run(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)),
   /** Confirming a destructive action. */
