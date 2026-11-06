@@ -6,6 +6,7 @@ import { localDate } from '../../../common/utils/time-zone';
 import { AnalyticsService } from '../../analytics/analytics.service';
 import { CategoriesService } from '../../categories/categories.service';
 import { listCategoriesQuerySchema } from '../../categories/dto/categories.dto';
+import { DraftCompleter } from '../../draft-transactions/draft-completer';
 import { DraftTransactionsService } from '../../draft-transactions/draft-transactions.service';
 import { McpService } from '../../mcp/mcp.service';
 import { AiService } from '../ai.service';
@@ -100,6 +101,7 @@ export class ChatToolRunner {
     private readonly drafts: DraftTransactionsService,
     private readonly draftParser: AiService,
     private readonly config: ConfigService,
+    private readonly completer: DraftCompleter,
   ) {}
 
   async run(
@@ -177,12 +179,19 @@ export class ChatToolRunner {
     const parsed = chatDraftSchema.safeParse(args);
     if (!parsed.success) return invalid(parsed.error);
 
+    // A named account must be one of the user's (a 400 the model can correct);
+    // a missing one is picked here, the same way as for MCP.
+    const completed = await this.completer.complete(
+      ctx.userId,
+      parsed.data,
+      ctx.now,
+    );
     const draftCtx = await this.draftParser.draftContext(ctx.userId, {
       input: ctx.question,
       timeZone: ctx.timeZone,
     });
     const { data, confidence } = repairDraft(
-      { ...parsed.data, occurredAt: parsed.data.occurredAt ?? draftCtx.today },
+      { ...completed, occurredAt: completed.occurredAt ?? draftCtx.today },
       draftCtx,
     );
     const [draft] = await this.drafts.createMany(

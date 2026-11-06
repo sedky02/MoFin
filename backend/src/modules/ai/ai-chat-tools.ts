@@ -120,7 +120,7 @@ export function buildChatTools(): LlmTool[] {
     {
       name: CREATE_DRAFT_TOOL,
       description:
-        'Propose one transaction as a pending draft the user approves. One call per transaction. Use ids from the account and category lists; EXPENSE uses fromAccountId, INCOME toAccountId, TRANSFER both. occurredAt is YYYY-MM-DD (default today).',
+        'Propose one transaction as a pending draft the user approves. One call per transaction. EXPENSE uses fromAccountId, INCOME toAccountId, TRANSFER both. Pass an account id only when the user names the account; otherwise leave it out and the server picks their default. occurredAt is YYYY-MM-DD (default today).',
       parameters: schemaOf(chatDraftSchema),
     },
   ];

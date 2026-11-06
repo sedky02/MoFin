@@ -170,6 +170,17 @@ function setup(chat: jest.Mock, enabled = true) {
     ),
   };
   const config = { getOrThrow: jest.fn(() => 3) };
+  // Picks the account when none is named; tested in draft-completer.spec.ts.
+  const completer = {
+    complete: jest.fn(
+      (_userId: string, d: { type: string; fromAccountId?: string }) =>
+        Promise.resolve(
+          d.type === 'EXPENSE'
+            ? { ...d, fromAccountId: d.fromAccountId ?? 'acc-1' }
+            : d,
+        ),
+    ),
+  };
   const runner = new ChatToolRunner(
     mcp as never,
     categories as never,
@@ -177,6 +188,7 @@ function setup(chat: jest.Mock, enabled = true) {
     drafts as never,
     draftParser as never,
     config as never,
+    completer as never,
   );
   const service = new AiChatService(
     { enabled, chat },

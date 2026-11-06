@@ -41,7 +41,9 @@ export const MCP_TOOLS: ReadonlyArray<{
     annotations: CREATES_DRAFT,
     title: 'Create draft transaction',
     description:
-      'Create a PENDING draft transaction from structured data. Never creates a real transaction directly — it must be approved first.',
+      'Create a PENDING draft transaction from structured data. Never creates a real transaction directly — it must be approved first. ' +
+      'EXPENSE uses fromAccountId, INCOME toAccountId, TRANSFER both. Pass an account id (from list_accounts) only when the user names the account; ' +
+      "otherwise leave it out and MoFin picks the user's default account. An unknown account id is rejected.",
   },
   {
     name: 'search_transactions',

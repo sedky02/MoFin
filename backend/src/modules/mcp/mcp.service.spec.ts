@@ -17,6 +17,13 @@ describe('McpService.dispatch', () => {
     history: jest.fn(() => 'goal-history'),
   };
 
+  // Fills the account in; tested on its own in draft-completer.spec.ts.
+  const completer = {
+    complete: jest.fn((_userId: string, data: object) =>
+      Promise.resolve({ ...data, fromAccountId: 'acc-default' }),
+    ),
+  };
+
   const service = new McpService(
     drafts as never,
     search as never,
@@ -24,26 +31,36 @@ describe('McpService.dispatch', () => {
     analytics as never,
     accounts as never,
     goals as never,
+    completer as never,
   );
 
   afterEach(() => jest.clearAllMocks());
 
-  it('routes create_draft_transaction to DraftTransactionsService.create', () => {
+  const completed = {
+    rawInput: 'x',
+    parsedData: { fromAccountId: 'acc-default' },
+    confidenceScore: 0.5,
+  };
+
+  it('routes create_draft_transaction to DraftTransactionsService.create, with the account picked server-side', async () => {
     const args = { rawInput: 'x', parsedData: {}, confidenceScore: 0.5 };
-    expect(service.dispatch('u1', 'create_draft_transaction', args)).toBe(
-      'created',
-    );
+    await expect(
+      service.dispatch('u1', 'create_draft_transaction', args),
+    ).resolves.toBe('created');
+    expect(completer.complete).toHaveBeenCalledWith('u1', {});
     // Labelled as MCP even when the caller doesn't say which app it is.
-    expect(drafts.create).toHaveBeenCalledWith('u1', args, { source: 'MCP' });
+    expect(drafts.create).toHaveBeenCalledWith('u1', completed, {
+      source: 'MCP',
+    });
   });
 
-  it("labels a draft with the connected app's name", () => {
+  it("labels a draft with the connected app's name", async () => {
     const args = { rawInput: 'x', parsedData: {}, confidenceScore: 0.5 };
-    service.dispatch('u1', 'create_draft_transaction', args, {
+    await service.dispatch('u1', 'create_draft_transaction', args, {
       source: 'MCP',
       sourceClient: 'Claude',
     });
-    expect(drafts.create).toHaveBeenCalledWith('u1', args, {
+    expect(drafts.create).toHaveBeenCalledWith('u1', completed, {
       source: 'MCP',
       sourceClient: 'Claude',
     });

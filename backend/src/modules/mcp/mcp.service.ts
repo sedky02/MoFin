@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { AccountsService } from '../accounts/accounts.service';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { DraftSource } from '@prisma/client';
+import { DraftCompleter } from '../draft-transactions/draft-completer';
+import { CreateDraftTransactionDto } from '../draft-transactions/dto/draft-transactions.dto';
 import {
   DraftOrigin,
   DraftTransactionsService,
@@ -27,6 +29,7 @@ export class McpService {
     private readonly analyticsService: AnalyticsService,
     private readonly accountsService: AccountsService,
     private readonly goalsService: GoalsService,
+    private readonly draftCompleter: DraftCompleter,
   ) {}
 
   /**
@@ -41,7 +44,11 @@ export class McpService {
   ): unknown {
     switch (tool) {
       case 'create_draft_transaction':
-        return this.draftsService.create(userId, args as never, origin);
+        return this.createDraft(
+          userId,
+          args as CreateDraftTransactionDto,
+          origin,
+        );
       case 'search_transactions':
         return this.searchService.searchTransactions(userId, args as never);
       case 'get_balance':
@@ -81,5 +88,20 @@ export class McpService {
         return this.goalsService.history(userId, goalId, query);
       }
     }
+  }
+  /**
+   * The draft as the assistant sent it, with the account checked (a named one
+   * must be the user's) or picked server-side when it was left out.
+   */
+  private async createDraft(
+    userId: string,
+    dto: CreateDraftTransactionDto,
+    origin: DraftOrigin,
+  ) {
+    const parsedData = await this.draftCompleter.complete(
+      userId,
+      dto.parsedData,
+    );
+    return this.draftsService.create(userId, { ...dto, parsedData }, origin);
   }
 }
