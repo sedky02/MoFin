@@ -59,6 +59,7 @@ describe('UsersService.deleteAccount and resetData', () => {
     'refreshToken',
     'authSession',
     'passwordResetToken',
+    'emailVerificationToken',
     'oAuthRefreshToken',
     'authorizationCode',
     'oAuthGrant',

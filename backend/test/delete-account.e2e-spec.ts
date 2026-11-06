@@ -156,6 +156,27 @@ function seedUser(db: Db, id: string, passwordHash: string | null) {
     tokenHash: `${id}-reset-hash`,
     usedAt: null,
   });
+  add('emailVerificationToken', {
+    id: `${id}-verify`,
+    userId: id,
+    tokenHash: `${id}-verify-hash`,
+    usedAt: null,
+  });
+  add('accountMember', {
+    id: `${id}-member`,
+    accountId: `${id}-cash`,
+    userId: id,
+    role: 'VIEWER',
+  });
+  add('accountInvitation', {
+    id: `${id}-invite`,
+    accountId: `${id}-cash`,
+    invitedById: id,
+    email: `friend-of-${id}@example.com`,
+    tokenHash: `${id}-invite-hash`,
+  });
+  add('aiChat', { id: `${id}-chat`, userId: id, title: 'Coffee' });
+  add('aiChatMessage', { id: `${id}-chat-1`, chatId: `${id}-chat` });
   add('oAuthRefreshToken', {
     id: `${id}-ort`,
     userId: id,
@@ -399,9 +420,13 @@ describe('deleting an account and its data (e2e)', () => {
       'refreshToken',
       'authSession',
       'passwordResetToken',
+      'emailVerificationToken',
       'oAuthRefreshToken',
       'authorizationCode',
       'oAuthGrant',
+      // Saved assistant chats aren't cleared by a reset today.
+      'aiChat',
+      'aiChatMessage',
     ];
 
     it("deletes everything recorded, soft-deleted rows included, keeps the profile, sign-ins and connected apps, and touches nobody else's", async () => {

@@ -126,10 +126,11 @@ export class UsersService {
     await this.prisma.$transaction(async (tx) => {
       await this.clearOwnedData(tx, userId);
       const mine = { userId };
-      // Sessions and credentials: web, OAuth (MCP connectors) and reset links.
+      // Sessions and credentials: web, OAuth (MCP connectors) and emailed links.
       await tx.refreshToken.deleteMany({ where: mine });
       await tx.authSession.deleteMany({ where: mine });
       await tx.passwordResetToken.deleteMany({ where: mine });
+      await tx.emailVerificationToken.deleteMany({ where: mine });
       await tx.oAuthRefreshToken.deleteMany({ where: mine });
       await tx.authorizationCode.deleteMany({ where: mine });
       await tx.oAuthGrant.deleteMany({ where: mine });

@@ -20,6 +20,21 @@ enum AiChatRole {
   ASSISTANT
 }
 
+/// What a member other than the owner may do. The owner is Account.userId, not a
+/// role row, so an account can't end up with no owner or with two.
+enum AccountMemberRole {
+  EDITOR
+  VIEWER
+}
+
+/// An expired invitation stays PENDING: expiry is read from expiresAt.
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  REVOKED
+}
+
 enum AccountType {
   CASH
   BANK
@@ -85,34 +100,43 @@ enum GoalStatus {
 }
 
 model User {
-  id                 String               @id @default(uuid())
-  email              String               @unique
-  passwordHash       String?
-  displayName        String?
-  googleId           String?              @unique
-  settings           Json                 @default("{}")
+  id                  String                   @id @default(uuid())
+  email               String                   @unique
+  /// When this person proved they control `email`: Google sign-in, a
+  /// verification link, or a completed password reset. Null until then;
+  /// registering alone proves nothing.
+  emailVerifiedAt     DateTime?
+  passwordHash        String?
+  displayName         String?
+  googleId            String?                  @unique
+  settings            Json                     @default("{}")
   /// A temporary "Try the demo" user: password-less, seeded with sample data,
   /// deleted by DemoCleanupCron once expiresAt passes.
-  isDemo             Boolean              @default(false)
+  isDemo              Boolean                  @default(false)
   /// Only set on demo users.
-  expiresAt          DateTime?
-  accounts           Account[]
-  categories         Category[]
-  transactions       Transaction[]
-  transactionItems   TransactionItem[]
-  drafts             DraftTransaction[]
-  budgets            Budget[]
-  goals              Goal[]
-  analyticsCaches    AnalyticsCache[]
-  oauthCodes         AuthorizationCode[]
-  refreshTokens      RefreshToken[]
-  oauthRefreshTokens OAuthRefreshToken[]
-  oauthGrants        OAuthGrant[]
-  authSessions       AuthSession[]
-  passwordResets     PasswordResetToken[]
-  aiChats            AiChat[]
-  createdAt          DateTime             @default(now())
-  updatedAt          DateTime             @updatedAt
+  expiresAt           DateTime?
+  accounts            Account[]
+  categories          Category[]
+  transactions        Transaction[]
+  transactionItems    TransactionItem[]
+  drafts              DraftTransaction[]
+  budgets             Budget[]
+  goals               Goal[]
+  analyticsCaches     AnalyticsCache[]
+  oauthCodes          AuthorizationCode[]
+  refreshTokens       RefreshToken[]
+  oauthRefreshTokens  OAuthRefreshToken[]
+  oauthGrants         OAuthGrant[]
+  authSessions        AuthSession[]
+  passwordResets      PasswordResetToken[]
+  aiChats             AiChat[]
+  emailVerifications  EmailVerificationToken[]
+  accountMemberships  AccountMember[]
+  sentInvitations     AccountInvitation[]
+  createdTransactions Transaction[]            @relation("TransactionCreatedBy")
+  updatedTransactions Transaction[]            @relation("TransactionUpdatedBy")
+  createdAt           DateTime                 @default(now())
+  updatedAt           DateTime                 @updatedAt
 
   // Demo cleanup selects isDemo && expiresAt < now; the active-demo cap counts
   // isDemo && expiresAt > now.
@@ -120,26 +144,72 @@ model User {
 }
 
 model Account {
-  id               String            @id @default(uuid())
+  id               String              @id @default(uuid())
+  /// The owner, the only one per account. Other people reach it through `members`.
   userId           String
-  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user             User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   name             String
   type             AccountType
   currency         String
   /// What the account held before tracking started, in its own currency.
   /// Added to the ledger-derived balance; never a transaction, so it stays
   /// out of income, expenses and Income/Expense goals.
-  openingBalance   Decimal           @default(0) @db.Decimal(18, 4)
-  metadata         Json              @default("{}")
+  openingBalance   Decimal             @default(0) @db.Decimal(18, 4)
+  metadata         Json                @default("{}")
   archivedAt       DateTime?
   transactionItems TransactionItem[]
   goals            Goal[]
-  recurringFrom    Transaction[]     @relation("RecurringFromAccount")
-  recurringTo      Transaction[]     @relation("RecurringToAccount")
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
+  recurringFrom    Transaction[]       @relation("RecurringFromAccount")
+  recurringTo      Transaction[]       @relation("RecurringToAccount")
+  members          AccountMember[]
+  invitations      AccountInvitation[]
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
 
   @@index([userId, currency])
+}
+
+// Someone other than the owner who can reach an account. Goes with the account
+// and with the user; their transactions on it stay (see Transaction.createdById).
+model AccountMember {
+  id         String            @id @default(uuid())
+  accountId  String
+  account    Account           @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role       AccountMemberRole
+  /// This member's own "hide amounts" eye. The owner's lives in Account.metadata.
+  hideAmount Boolean           @default(false)
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+
+  @@unique([accountId, userId])
+  @@index([userId])
+}
+
+// An invitation to join an account. One row per (account, email): reinviting
+// overwrites it, so the new token replaces the old one in the same write. Only
+// the SHA-256 of the token is stored, so a database read never yields a usable link.
+model AccountInvitation {
+  id          String            @id @default(uuid())
+  accountId   String
+  account     Account           @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  invitedById String
+  invitedBy   User              @relation(fields: [invitedById], references: [id], onDelete: Cascade)
+  /// Trimmed and lowercased, like User.email.
+  email       String
+  role        AccountMemberRole
+  tokenHash   String            @unique
+  status      InvitationStatus  @default(PENDING)
+  expiresAt   DateTime
+  respondedAt DateTime?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@unique([accountId, email])
+  @@index([email])
+  @@index([invitedById])
+  @@index([expiresAt])
 }
 
 model Category {
@@ -164,8 +234,18 @@ model Category {
 
 model Transaction {
   id          String            @id @default(uuid())
+  /// Whose ledger this is: the owner of the account(s) it posts to, which is
+  /// not always who entered it (see createdById). Access goes through the
+  /// accounts, not through this column.
   userId      String
   user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Who entered it. Null once that person has deleted their MoFin user: the
+  /// record stays, because removing it would change the account's balance.
+  createdById String?
+  createdBy   User?             @relation("TransactionCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  /// Who last edited it; null until someone does.
+  updatedById String?
+  updatedBy   User?             @relation("TransactionUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
   categoryId  String?
   category    Category?         @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   draftId     String?           @unique
@@ -221,10 +301,13 @@ model Transaction {
   @@index([parentTransactionId])
   @@index([recurringFromAccountId])
   @@index([recurringToAccountId])
+  @@index([createdById])
+  @@index([updatedById])
 }
 
 model TransactionItem {
   id            String          @id @default(uuid())
+  /// The account owner, as on Transaction.
   userId        String
   user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   transactionId String
@@ -240,6 +323,8 @@ model TransactionItem {
   createdAt     DateTime        @default(now())
 
   @@index([userId, accountId, createdAt])
+  // Reads of a shared account come in by account, whoever's ledger it is.
+  @@index([accountId, transactionId])
   @@index([transactionId])
   @@index([categoryId])
 }
@@ -297,6 +382,7 @@ model Budget {
 
 model Goal {
   id             String              @id @default(uuid())
+  /// The owner of `account`. Access goes through the account.
   userId         String
   user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   accountId      String
@@ -453,6 +539,22 @@ model PasswordResetToken {
   createdAt DateTime  @default(now())
 
   @@index([userId])
+}
+
+// Single-use link proving control of an email address, same scheme as
+// PasswordResetToken: only the SHA-256 is stored, `usedAt` is set when it is
+// redeemed or a newer link supersedes it.
+model EmailVerificationToken {
+  id        String    @id @default(uuid())
+  tokenHash String    @unique
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 // A saved conversation with the in-app assistant. Read-only Q&A over the

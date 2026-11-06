@@ -14,7 +14,8 @@
     "prisma:migrate": "prisma migrate dev",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "test:db": "jest --config ./test/jest-db.json --runInBand"
   },
   "jest": {
     "moduleFileExtensions": [

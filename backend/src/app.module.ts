@@ -10,6 +10,7 @@ import { PrismaExceptionFilter } from './common/filters/prisma-exception.filter'
 import { LoggerModule } from './common/logger/logger.module';
 import { validateEnv } from './config/env.validation';
 import { HealthModule } from './health/health.module';
+import { AccountAccessModule } from './modules/account-access/account-access.module';
 import { AccountsModule } from './modules/accounts/accounts.module';
 import { AiModule } from './modules/ai/ai.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
@@ -47,6 +48,7 @@ import { UsersModule } from './modules/users/users.module';
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 300 }]),
     AuthModule,
     UsersModule,
+    AccountAccessModule,
     AccountsModule,
     CategoriesModule,
     TransactionsModule,
