@@ -75,6 +75,8 @@
     "dev": "expo start --dev-client",
     "dev:tunnel": "expo start --dev-client --tunnel",
     "build:dev": "npx eas-cli build --profile development --platform android",
+    "build:preview": "npx eas-cli build --profile preview --platform android",
+    "build:prod": "npx eas-cli build --profile production --platform android",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
