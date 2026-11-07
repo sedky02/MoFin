@@ -6,15 +6,21 @@ import {
   ArchiveRestore,
   Bitcoin,
   Banknote,
+  Ban,
   Eye,
   EyeOff,
+  Lock,
   Landmark,
   PiggyBank,
   Pencil,
   Users,
   type LucideIcon,
 } from "lucide-react";
-import { isAmountHidden } from "@/lib/account-privacy";
+import {
+  VISIBILITY_OPTIONS,
+  visibilityOf,
+  type AccountVisibilityLevel,
+} from "@/lib/account-privacy";
 import { canManage, ROLE_LABEL } from "@/lib/account-sharing";
 import type { Account, AccountType } from "@/lib/types";
 import { useLedgerBalance } from "@/hooks/useLedger";
@@ -22,9 +28,27 @@ import { HideableAmount } from "@/components/common/hideable-amount";
 import { MoneyAmount } from "@/components/common/money-amount";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { tryParse } from "@/lib/decimal";
 import { cn } from "@/lib/utils";
+
+const LEVEL_ICON: Record<AccountVisibilityLevel, LucideIcon> = {
+  visible: Eye,
+  masked: EyeOff,
+  private: Lock,
+  hidden: Ban,
+};
+const LEVEL_LABEL = Object.fromEntries(VISIBILITY_OPTIONS.map((o) => [o.value, o.label])) as Record<
+  AccountVisibilityLevel,
+  string
+>;
 
 export const TYPE_ICON: Record<AccountType, LucideIcon> = {
   CASH: Banknote,
@@ -36,7 +60,7 @@ export const TYPE_ICON: Record<AccountType, LucideIcon> = {
 export function AccountRow({
   account,
   onEdit,
-  onToggleHidden,
+  onChangeVisibility,
   onArchive,
   onRestore,
   onMembers,
@@ -44,7 +68,7 @@ export function AccountRow({
 }: {
   account: Account;
   onEdit?: (account: Account) => void;
-  onToggleHidden?: (account: Account) => void;
+  onChangeVisibility?: (account: Account, level: AccountVisibilityLevel) => void;
   onArchive?: (account: Account) => void;
   onRestore?: (account: Account) => void;
   onMembers?: (account: Account) => void;
@@ -66,7 +90,8 @@ export function AccountRow({
     "transition-opacity sm:opacity-0 sm:group-hover/row:opacity-100 sm:group-focus-within/row:opacity-100 pointer-coarse:opacity-100";
 
   const isZero = tryParse(balance)?.isZero() ?? false;
-  const hidden = isAmountHidden(account);
+  const level = visibilityOf(account);
+  const LevelIcon = LEVEL_ICON[level];
   // The API refuses these for anyone but the owner; don't offer them.
   const owner = canManage(account);
 
@@ -114,19 +139,36 @@ export function AccountRow({
             </Button>
           ) : (
             <div className={cn("-mr-1 flex shrink-0 items-center", reveal)}>
-              {onToggleHidden && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="size-8 text-muted-foreground"
-                  disabled={busy}
-                  onClick={() => onToggleHidden(account)}
-                  aria-label={hidden ? `Show the balance of ${account.name}` : `Hide the balance of ${account.name}`}
-                  aria-pressed={hidden}
-                  title={hidden ? "Show balance" : "Hide balance"}
-                >
-                  {hidden ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-                </Button>
+              {onChangeVisibility && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-8 text-muted-foreground"
+                      disabled={busy}
+                      aria-label={`Visibility of ${account.name}: ${LEVEL_LABEL[level]}`}
+                      title={`Visibility: ${LEVEL_LABEL[level]}`}
+                    >
+                      <LevelIcon className="size-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-60">
+                    <DropdownMenuRadioGroup
+                      value={level}
+                      onValueChange={(next) => onChangeVisibility(account, next as AccountVisibilityLevel)}
+                    >
+                      {VISIBILITY_OPTIONS.map((option) => (
+                        <DropdownMenuRadioItem key={option.value} value={option.value} className="items-start py-2">
+                          <span className="flex flex-col">
+                            <span className="font-medium">{option.label}</span>
+                            <span className="text-xs text-muted-foreground">{option.effect}</span>
+                          </span>
+                        </DropdownMenuRadioItem>
+                      ))}
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
               {onMembers && (
                 <Button

@@ -1,81 +1,77 @@
 import { describe, expect, it } from "vitest";
 import {
-  hiddenAccountIds,
+  accountVisibility,
+  excludedFromTotals,
   hiddenCaption,
   isAmountHidden,
-  MASKED_AMOUNT,
-  withHideAmount,
-  withoutHiddenBalances,
-  withoutHiddenSeries,
+  selectableOnDashboard,
+  visibilityOf,
+  withVisibility,
 } from "@/lib/account-privacy";
 
-describe("isAmountHidden", () => {
-  it("is true only when the account says so", () => {
-    expect(isAmountHidden({ metadata: { hideAmount: true } })).toBe(true);
-    expect(isAmountHidden({ metadata: { hideAmount: "true" } })).toBe(false);
-    expect(isAmountHidden({ metadata: {} })).toBe(false);
-    expect(isAmountHidden({ metadata: null })).toBe(false);
-    expect(isAmountHidden(undefined)).toBe(false);
+const acct = (visibility?: unknown, extra: Record<string, unknown> = {}) => ({
+  id: String(visibility ?? "plain"),
+  currency: "TND",
+  metadata: { ...(visibility === undefined ? {} : { visibility }), ...extra },
+});
+
+describe("accountVisibility", () => {
+  it.each([
+    ["visible", { maskValue: false, countInTotals: true, showOnDashboard: true }],
+    ["masked", { maskValue: true, countInTotals: true, showOnDashboard: true }],
+    ["private", { maskValue: true, countInTotals: false, showOnDashboard: true }],
+    ["hidden", { maskValue: true, countInTotals: false, showOnDashboard: false }],
+  ])("%s", (level, effects) => {
+    expect(accountVisibility(acct(level))).toEqual(effects);
   });
-});
 
-describe("withHideAmount", () => {
-  it("sets or clears the choice and keeps every other metadata key", () => {
-    expect(withHideAmount({ color: "red" }, true)).toEqual({ color: "red", hideAmount: true });
-    expect(withHideAmount({ color: "red", hideAmount: true }, false)).toEqual({ color: "red" });
-    expect(withHideAmount(null, false)).toEqual({});
-    expect(withHideAmount(undefined, true)).toEqual({ hideAmount: true });
+  it("reads an account with no level, or a bad one, as visible", () => {
+    expect(visibilityOf(acct())).toBe("visible");
+    expect(visibilityOf(acct("secret"))).toBe("visible");
+    expect(visibilityOf(undefined)).toBe("visible");
   });
-});
 
-it("masks with dots, no digits", () => {
-  expect(MASKED_AMOUNT).not.toMatch(/\d/);
-});
-
-const hiddenAcc = (id: string, currency: string, hide: boolean) => ({ id, currency, metadata: hide ? { hideAmount: true } : {} });
-
-describe("hiddenAccountIds", () => {
-  it("lists hidden accounts, optionally in one currency", () => {
-    const accounts = [hiddenAcc("a", "TND", true), hiddenAcc("b", "TND", false), hiddenAcc("c", "EUR", true)];
-    expect(hiddenAccountIds(accounts)).toEqual(["a", "c"]);
-    expect(hiddenAccountIds(accounts, "TND")).toEqual(["a"]);
-    expect(hiddenAccountIds(undefined)).toEqual([]);
+  it("reads the old flag as private, so cached data from before keeps its meaning", () => {
+    expect(visibilityOf(acct(undefined, { hideAmount: true }))).toBe("private");
   });
-});
 
-describe("withoutHiddenBalances", () => {
-  it("drops the hidden accounts' rows from all-accounts balances", () => {
-    const rows = [
-      { key: "a:TND", balance: "100" },
-      { key: "b:TND", balance: "50" },
-      { key: "c:EUR", balance: "7" },
-    ];
-    expect(withoutHiddenBalances(rows, ["a"])).toEqual([rows[1], rows[2]]);
-    expect(withoutHiddenBalances(rows, [])).toBe(rows);
-  });
-});
-
-describe("withoutHiddenSeries", () => {
-  const p = (date: string, income: string, expenses: string, balance: string) => ({ date, income, expenses, balance });
-
-  it("takes each hidden account's figures out of every day, exactly", () => {
-    const all = [p("2026-11-02", "100", "30.5", "1000.25"), p("2026-11-03", "0", "10", "990.25")];
-    const hidden = [[p("2026-11-02", "40", "0.5", "600.125"), p("2026-11-03", "0", "0", "600.125")]];
-    expect(withoutHiddenSeries(all, hidden)).toEqual([
-      p("2026-11-02", "60", "30", "400.125"),
-      p("2026-11-03", "0", "10", "390.125"),
+  it("masks the value for every level but visible", () => {
+    expect(["visible", "masked", "private", "hidden"].map((l) => isAmountHidden(acct(l)))).toEqual([
+      false,
+      true,
+      true,
+      true,
     ]);
   });
+});
 
-  it("leaves a day alone when a hidden series has no point for it, and the series alone with none hidden", () => {
-    const all = [p("2026-11-02", "1", "2", "3")];
-    expect(withoutHiddenSeries(all, [[]])).toEqual(all);
-    expect(withoutHiddenSeries(all, [])).toBe(all);
+describe("withVisibility", () => {
+  it("sets the level and keeps every other key, dropping the old flag", () => {
+    expect(withVisibility({ note: "x", hideAmount: true }, "masked")).toEqual({ note: "x", visibility: "masked" });
+  });
+
+  it("stores nothing for visible, the default", () => {
+    expect(withVisibility({ note: "x", visibility: "private" }, "visible")).toEqual({ note: "x" });
+    expect(withVisibility(undefined, "visible")).toEqual({});
+  });
+});
+
+describe("what the dashboard offers and counts", () => {
+  const accounts = [acct("visible"), acct("masked"), acct("private"), acct("hidden")];
+
+  it("offers every account but the hidden ones", () => {
+    expect(selectableOnDashboard(accounts).map((a) => a.id)).toEqual(["visible", "masked", "private"]);
+  });
+
+  it("lists the accounts left out of All accounts, per currency when asked", () => {
+    expect(excludedFromTotals(accounts)).toEqual(["private", "hidden"]);
+    expect(excludedFromTotals(accounts, "USD")).toEqual([]);
+    expect(excludedFromTotals(undefined)).toEqual([]);
   });
 });
 
 describe("hiddenCaption", () => {
-  it("says how many accounts are left out", () => {
+  it("is empty with none and counts them otherwise", () => {
     expect(hiddenCaption(0)).toBe("");
     expect(hiddenCaption(1)).toBe(" · excl. 1 hidden account");
     expect(hiddenCaption(2)).toBe(" · excl. 2 hidden accounts");

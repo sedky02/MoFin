@@ -353,7 +353,9 @@ describe('Authorization on shared accounts (Postgres)', () => {
     'PATCH /accounts/:id/preferences': {
       expected: READ,
       send: (as, w) =>
-        as.patch(`/accounts/${w.shared}/preferences`, { hideAmount: true }),
+        as.patch(`/accounts/${w.shared}/preferences`, {
+          visibility: 'private',
+        }),
     },
     'POST /accounts/:id/transfer-ownership': {
       expected: MANAGE,

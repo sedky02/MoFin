@@ -1,6 +1,7 @@
 import { View } from 'react-native';
 
 import { TYPE_ICON } from '@/components/common/account-type-picker';
+import { LEVEL_ICON } from '@/components/accounts/visibility-sheet';
 import { HideableAmount } from '@/components/common/hideable-amount';
 import { MoneyAmount } from '@/components/common/money-amount';
 import { Button } from '@/components/ui/button';
@@ -8,18 +9,18 @@ import { Card } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
-import { isAmountHidden } from '@/core/account-privacy';
+import { visibilityOf } from '@/core/account-privacy';
 import { canManage, ROLE_LABEL } from '@/core/account-sharing';
 import { tryParse } from '@/core/decimal';
 import type { Account } from '@/core/types';
 import { useLedgerBalance } from '@/hooks/useLedger';
-import { AlertTriangle, Archive, ArchiveRestore, Eye, EyeOff, Pencil, Users } from '@/lib/icons';
+import { AlertTriangle, Archive, ArchiveRestore, Pencil, Users } from '@/lib/icons';
 import { cn } from '@/lib/utils';
 
 export function AccountRow({
   account,
   onEdit,
-  onToggleHidden,
+  onOpenVisibility,
   onArchive,
   onRestore,
   onMembers,
@@ -27,7 +28,7 @@ export function AccountRow({
 }: {
   account: Account;
   onEdit?: (account: Account) => void;
-  onToggleHidden?: (account: Account) => void;
+  onOpenVisibility?: (account: Account) => void;
   onArchive?: (account: Account) => void;
   onRestore?: (account: Account) => void;
   onMembers?: (account: Account) => void;
@@ -38,7 +39,7 @@ export function AccountRow({
   const { data, isLoading, isError, refetch } = useLedgerBalance({ accountId: account.id });
   const balance = data?.find((b) => b.key === account.currency)?.balance ?? data?.[0]?.balance ?? '0';
   const isZero = tryParse(balance)?.isZero() ?? false;
-  const hidden = isAmountHidden(account);
+  const level = visibilityOf(account);
   // The API refuses these for anyone but the owner; don't offer them.
   const owner = canManage(account);
 
@@ -79,16 +80,17 @@ export function AccountRow({
           </Button>
         ) : (
           <View className="-mr-2 flex-row items-center">
-            {onToggleHidden ? (
+            {onOpenVisibility ? (
               <Button
                 variant="ghost"
                 size="icon"
                 className="size-11"
                 disabled={busy}
-                onPress={() => onToggleHidden(account)}
-                accessibilityLabel={hidden ? `Show the balance of ${account.name}` : `Hide the balance of ${account.name}`}
-                accessibilityState={{ selected: hidden, disabled: busy }}>
-                <Icon as={hidden ? EyeOff : Eye} size={16} className="text-muted-foreground" />
+                onPress={() => onOpenVisibility(account)}
+                accessibilityLabel={`Visibility of ${account.name}: ${level}`}
+                accessibilityHint="Opens the visibility levels"
+                accessibilityState={{ disabled: busy }}>
+                <Icon as={LEVEL_ICON[level]} size={16} className="text-muted-foreground" />
               </Button>
             ) : null}
             {onMembers ? (

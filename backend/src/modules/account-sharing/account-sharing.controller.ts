@@ -100,7 +100,7 @@ export class AccountSharingController {
     @Body(new ZodValidationPipe(accountPreferencesSchema))
     dto: AccountPreferencesDto,
   ) {
-    return this.members.setHideAmount(user.id, id, dto.hideAmount);
+    return this.members.setVisibility(user.id, id, dto.visibility);
   }
 
   @DemoBlocked()

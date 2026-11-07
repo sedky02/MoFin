@@ -8,6 +8,10 @@ import {
 import { PrismaService } from '../../database/prisma.service';
 import { AccountRole } from '../account-access/account-access';
 import { AccountAccessService } from '../account-access/account-access.service';
+import {
+  AccountVisibility,
+  withVisibility,
+} from '../accounts/account-visibility';
 
 const notFound = () => new NotFoundException('Member not found');
 
@@ -93,10 +97,14 @@ export class MembersService {
   }
 
   /**
-   * The "hide amounts" eye is each person's own: the owner's stays in
-   * Account.metadata, a member's on their membership.
+   * The visibility level is each person's own: the owner's stays in Account.metadata, a member's
+   * on their membership.
    */
-  async setHideAmount(userId: string, accountId: string, hideAmount: boolean) {
+  async setVisibility(
+    userId: string,
+    accountId: string,
+    visibility: AccountVisibility,
+  ) {
     const { account, role } = await this.access.assertAccess(
       userId,
       accountId,
@@ -105,24 +113,24 @@ export class MembersService {
     if (role !== 'OWNER') {
       await this.prisma.accountMember.update({
         where: { accountId_userId: { accountId, userId } },
-        data: { hideAmount },
+        data: { visibility },
       });
-      return { hideAmount };
+    } else {
+      await this.prisma.account.update({
+        where: { id: accountId },
+        data: {
+          metadata: withVisibility(
+            account.metadata,
+            visibility,
+          ) as Prisma.InputJsonValue,
+        },
+      });
     }
-    const { hideAmount: _old, ...rest } = account.metadata as Record<
-      string,
-      unknown
-    >;
-    void _old;
-    await this.prisma.account.update({
-      where: { id: accountId },
-      data: {
-        metadata: (hideAmount
-          ? { ...rest, hideAmount: true }
-          : rest) as Prisma.InputJsonValue,
-      },
-    });
-    return { hideAmount };
+    // "All accounts" figures are cached per person.
+    this.events.emit(DomainEvents.AccountAccessChanged, {
+      userIds: [userId],
+    } satisfies AccountAccessChangedEvent);
+    return { visibility };
   }
 
   /**

@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 
 import { HideableAmount } from '@/components/common/hideable-amount';
 import { MoneyAmount } from '@/components/common/money-amount';
-import { hiddenAccountIds, hiddenCaption, isAmountHidden, withoutHiddenBalances, withoutHiddenSeries } from '@/core/account-privacy';
+import { excludedFromTotals, hiddenCaption, isAmountHidden } from '@/core/account-privacy';
 import { useRevealedAmount } from '@/hooks/use-revealed-amount';
 import { SwipeStepper } from '@/components/common/swipe';
 import { EmptyState, ErrorState } from '@/components/common/states';
@@ -25,7 +25,7 @@ import { addDaysIso, deviceTimeZone, localIso, mondayOf, weekHeadline, weekRange
 import { ChevronLeft, ChevronRight, Wallet } from '@/lib/icons';
 import { cn } from '@/lib/utils';
 import { useAccounts } from '@/hooks/useAccounts';
-import { useDailySeries, useDailySeriesFor } from '@/hooks/useAnalytics';
+import { useDailySeries } from '@/hooks/useAnalytics';
 import { useLedgerBalance } from '@/hooks/useLedger';
 import { useUser } from '@/hooks/useUser';
 
@@ -64,13 +64,8 @@ export function BalanceHero({
   // The ledger scoped to one account is keyed by currency alone; totalsByCurrency reads both forms.
   const ledgerTotals = totalsByCurrency((data ?? []).map((b) => ({ key: b.key, balance: b.balance })));
   const noActivity = ledgerTotals.length === 0 && scopedAccounts.length > 0;
-  // All accounts leaves hidden accounts out. A currency held only in hidden accounts keeps its
-  // place in the switch, at zero, rather than vanishing.
-  const hiddenIds = accountId ? [] : hiddenAccountIds(activeAccounts);
-  const shownTotals = totalsByCurrency(withoutHiddenBalances(data ?? [], hiddenIds));
-  const visibleTotals = ledgerTotals.map(
-    (t) => shownTotals.find((s) => s.currency === t.currency) ?? { currency: t.currency, amount: '0' },
-  );
+  // The server already leaves private and hidden accounts out of All accounts.
+  const visibleTotals = ledgerTotals;
   const totals = (noActivity ? zeroTotals(scopedAccounts) : visibleTotals).sort(
     (a, b) => Number(b.currency === primary) - Number(a.currency === primary),
   );
@@ -103,12 +98,11 @@ export function BalanceHero({
       // The account chips above already say which account this is; the caption says what the figure is.
       caption={
         (archivedCount > 0 ? `Current balance · incl. ${archivedCount} archived` : 'Current balance') +
-        (accountId ? '' : hiddenCaption(hiddenAccountIds(activeAccounts, hero.currency).length))
+        (accountId ? '' : hiddenCaption(excludedFromTotals(activeAccounts, hero.currency).length))
       }
       overdrawn={isOverdrawn(hero.amount)}
       accountId={accountId}
       account={accountId ? activeAccounts?.find((a) => a.id === accountId) : undefined}
-      hiddenIds={accountId ? [] : hiddenAccountIds(activeAccounts, hero.currency)}
       currencies={totals.map((t) => ({ code: t.currency, overdrawn: isOverdrawn(t.amount) }))}
       onCurrencyChange={onCurrencyChange}
       emptyAction={
@@ -130,7 +124,6 @@ function HeroCard({
   overdrawn,
   accountId,
   account,
-  hiddenIds = [],
   currencies,
   onCurrencyChange,
   emptyAction,
@@ -142,7 +135,6 @@ function HeroCard({
   overdrawn: boolean;
   accountId?: string;
   account?: Account;
-  hiddenIds?: string[];
   currencies: { code: string; overdrawn: boolean }[];
   onCurrencyChange: (c: string) => void;
   emptyAction?: React.ReactNode;
@@ -159,20 +151,11 @@ function HeroCard({
   // Two weeks: the one shown and the one before it, for the "vs the week before" chip.
   const from = addDaysIso(monday, -7);
   const series = useDailySeries(currency, from, 14, timeZone, accountId);
-  // All accounts with some hidden: their own series come out of every day, and nothing is drawn
-  // until each is in (and the main series is the same week), so hidden money never flashes.
-  const hidden = useDailySeriesFor(currency, from, 14, timeZone, accountId ? [] : hiddenIds);
-  const hiddenIn =
-    hidden.length === 0 ||
-    (series.data?.points[0]?.date === from && hidden.every((q) => q.data?.points[0]?.date === from));
-  const data = series.data && hiddenIn ? series.data : undefined;
-  const isLoading = series.isLoading || hidden.some((q) => q.isLoading);
-  const isError = series.isError || hidden.some((q) => q.isError);
-  const refetch = () => {
-    void series.refetch();
-    hidden.forEach((q) => void q.refetch());
-  };
-  const all = data ? withoutHiddenSeries(data.points, hidden.map((q) => q.data?.points ?? [])) : [];
+  const data = series.data;
+  const isLoading = series.isLoading;
+  const isError = series.isError;
+  const refetch = () => void series.refetch();
+  const all = data ? data.points : [];
   // While the next week loads the previous one stays on screen (dimmed); its figures aren't this week's.
   const ready = all[7]?.date === monday;
   const weekPoints = ready ? all.slice(7) : [];

@@ -187,8 +187,8 @@ model AccountMember {
   userId     String
   user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   role       AccountMemberRole
-  /// This member's own "hide amounts" eye. The owner's lives in Account.metadata.
-  hideAmount Boolean           @default(false)
+  /// This member's own AccountVisibility level. The owner's lives in Account.metadata.visibility.
+  visibility String            @default("visible")
   createdAt  DateTime          @default(now())
   updatedAt  DateTime          @updatedAt
 

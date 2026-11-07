@@ -4,6 +4,11 @@ import { PrismaService } from '../../database/prisma.service';
 import { AccountAction, accountScope } from '../account-access/account-access';
 import { AccountAccessService } from '../account-access/account-access.service';
 import {
+  accountVisibility,
+  readVisibility,
+  visibilityOfMetadata,
+} from './account-visibility';
+import {
   CreateAccountDto,
   ListAccountsQueryDto,
   UpdateAccountDto,
@@ -13,27 +18,42 @@ import {
 type Db = Prisma.TransactionClient;
 
 type AccountWithAccess = Account & {
-  members: { role: AccountMemberRole; hideAmount: boolean }[];
+  members: { role: AccountMemberRole; visibility: string }[];
   user: { displayName: string | null };
   _count: { members: number };
 };
 
-/** A member gets only their own hide-amount choice in `metadata`, where clients already read it. */
+/**
+ * Everyone gets their own visibility level in `metadata`, where clients read it. `hideAmount` is
+ * still sent for older app versions that only know the old flag.
+ */
 function accountView(row: AccountWithAccess, userId: string) {
   const { members, user, _count, ...account } = row;
   const isOwner = account.userId === userId;
+  const visibility = isOwner
+    ? visibilityOfMetadata(account.metadata)
+    : readVisibility(members[0].visibility);
   return {
     ...account,
-    metadata: isOwner
-      ? account.metadata
-      : members[0].hideAmount
-        ? { hideAmount: true }
-        : {},
+    metadata: {
+      ...(isOwner ? (account.metadata as Record<string, unknown>) : {}),
+      ...(visibility === 'visible' ? {} : { visibility }),
+      ...(accountVisibility(visibility).countInTotals
+        ? {}
+        : { hideAmount: true }),
+    },
     role: isOwner ? 'OWNER' : members[0].role,
     isShared: _count.members > 0,
     memberCount: _count.members + 1,
     ownerName: user.displayName,
   };
+}
+
+/** Older apps send `hideAmount` back with the rest of the metadata; it no longer means anything. */
+function withoutLegacyFlag(metadata: Record<string, unknown>) {
+  const { hideAmount: _legacy, ...rest } = metadata;
+  void _legacy;
+  return rest;
 }
 
 function toDecimal(amount: string | undefined): Prisma.Decimal | undefined {
@@ -79,7 +99,7 @@ export class AccountsService {
       include: {
         members: {
           where: { userId },
-          select: { role: true, hideAmount: true },
+          select: { role: true, visibility: true },
         },
         user: { select: { displayName: true } },
         _count: { select: { members: true } },
@@ -100,14 +120,21 @@ export class AccountsService {
     await this.access.assertAccess(userId, accountId, 'manage', {
       activeOnly: true,
     });
-    return this.prisma.account.update({
+    const updated = await this.prisma.account.update({
       where: { id: accountId },
       data: {
         ...dto,
         openingBalance: toDecimal(dto.openingBalance),
-        metadata: dto.metadata as Prisma.InputJsonValue | undefined,
+        metadata: dto.metadata
+          ? (withoutLegacyFlag(dto.metadata) as Prisma.InputJsonValue)
+          : undefined,
       },
     });
+    // "All accounts" figures depend on the owner's visibility level and are cached per person.
+    if (dto.metadata) {
+      await this.prisma.analyticsCache.deleteMany({ where: { userId } });
+    }
+    return updated;
   }
 
   /** Read-only for everyone on it until restored; the owner alone can do either. */

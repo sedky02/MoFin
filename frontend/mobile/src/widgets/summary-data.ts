@@ -1,6 +1,6 @@
 // The home screen widgets' numbers and words, worked out in the app: widgets can't fetch or compute
 // anything themselves, so they get finished strings. Pure functions, tested in summary-data.test.ts.
-import { hiddenAccountIds, isAmountHidden, MASKED_AMOUNT, withoutHiddenBalances } from '@/core/account-privacy';
+import { excludedFromTotals, isAmountHidden, MASKED_AMOUNT } from '@/core/account-privacy';
 import { totalsByCurrency } from '@/core/balances';
 import { add } from '@/core/decimal';
 import { scopeBalances } from '@/core/dashboard-scope';
@@ -109,16 +109,15 @@ export function scopeCurrency(account: Account | undefined, balances: LedgerBala
 }
 
 /**
- * Today's balance for the scope, in `currency`, from the all-accounts balance rows. All accounts
- * leaves out the accounts the user hid, as the dashboard does.
+ * Today's balance for the scope, in `currency`, from the all-accounts balance rows. The server
+ * already leaves private and hidden accounts out of those rows.
  */
 export function scopeBalance(
   all: LedgerBalance[],
   account: Account | undefined,
   currency: string,
-  accounts: Account[] = [],
 ): string {
-  const rows = account ? scopeBalances(all, account.id) : withoutHiddenBalances(all, hiddenAccountIds(accounts));
+  const rows = account ? scopeBalances(all, account.id) : all;
   return totalsByCurrency(rows).find((t) => t.currency === currency)?.amount ?? '0';
 }
 
@@ -168,7 +167,7 @@ export function summaryProps(input: {
   const { account, currency, hidden } = input;
   if (!input.accounts.length) return noAccountsSummary(input.period);
   const money = (amount: string) => (hidden ? maskedAmount(currency) : formatMoney(amount, currency));
-  const hiddenLeftOut = !account && hiddenAccountIds(input.accounts, currency).length > 0;
+  const hiddenLeftOut = !account && excludedFromTotals(input.accounts, currency).length > 0;
   return {
     ...emptySummary(input.period, ''),
     kind: 'data',

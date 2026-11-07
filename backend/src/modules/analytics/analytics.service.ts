@@ -46,14 +46,14 @@ export class AnalyticsService {
   ) {}
 
   /**
-   * The account asked for (checked) or every account the caller can reach. Always before a cache
+   * The account asked for (checked) or every account the caller counts in "All accounts". Always before a cache
    * read, since a cache entry can outlive the access it was computed with.
    */
   private async accountsInScope(
     userId: string,
     accountId?: string,
   ): Promise<string[]> {
-    if (!accountId) return this.access.accessibleAccountIds(userId, 'view');
+    if (!accountId) return this.access.accountIdsForTotals(userId);
     await this.access.assertAccess(userId, accountId, 'view');
     return [accountId];
   }

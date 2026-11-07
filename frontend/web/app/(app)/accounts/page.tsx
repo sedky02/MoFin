@@ -12,8 +12,8 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState, ErrorState } from "@/components/common/states";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
-import { useAccountMembers, useSetHideAmount } from "@/hooks/useAccountSharing";
-import { isAmountHidden, withHideAmount } from "@/lib/account-privacy";
+import { useAccountMembers, useSetVisibility } from "@/hooks/useAccountSharing";
+import { withVisibility, type AccountVisibilityLevel } from "@/lib/account-privacy";
 import { canManage, memberName } from "@/lib/account-sharing";
 import type { Account, AccountType } from "@/lib/types";
 
@@ -34,7 +34,7 @@ function Group({
   hint?: string;
   items: Account[];
   onEdit?: (a: Account) => void;
-  onToggleHidden?: (a: Account) => void;
+  onChangeVisibility?: (a: Account, level: AccountVisibilityLevel) => void;
   onArchive?: (a: Account) => void;
   onRestore?: (a: Account) => void;
   onMembers?: (a: Account) => void;
@@ -84,13 +84,13 @@ export default function AccountsPage() {
   const archived = useAccounts("archived");
   const archive = useArchiveAccount();
   const update = useUpdateAccount();
-  const setHideAmount = useSetHideAmount();
-  // The eye beside Edit: hides or shows this account's balance everywhere. Each person's own
-  // choice: the owner's is saved on the account, a member's on their membership.
-  const toggleHidden = (a: Account) =>
+  const setVisibilityOf = useSetVisibility();
+  // The eye beside Edit: how much of this account stays out of sight. Each person's own choice:
+  // the owner's is saved on the account, a member's on their membership.
+  const changeVisibility = (a: Account, level: AccountVisibilityLevel) =>
     canManage(a)
-      ? update.mutate({ id: a.id, metadata: withHideAmount(a.metadata, !isAmountHidden(a)) })
-      : setHideAmount.mutate({ accountId: a.id, hideAmount: !isAmountHidden(a) });
+      ? update.mutate({ id: a.id, metadata: withVisibility(a.metadata, level) })
+      : setVisibilityOf.mutate({ accountId: a.id, visibility: level });
   const restore = useRestoreAccount();
   const archivedCount = archived.data?.length ?? 0;
 
@@ -179,7 +179,7 @@ export default function AccountsPage() {
                 title={g.title}
                 items={optimisticAccounts.filter((a) => a.type === g.type)}
                 onEdit={openEdit}
-                onToggleHidden={toggleHidden}
+                onChangeVisibility={changeVisibility}
                 onArchive={setToArchive}
                 onMembers={setMembersOf}
                 busyId={update.isPending ? update.variables?.id : undefined}

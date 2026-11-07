@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tansta
 import { toast } from "@/lib/toast";
 import { api } from "@/api/client";
 import { handleApiError } from "@/core/form-errors";
+import type { AccountVisibilityLevel } from "@/core/account-privacy";
 import {
   accountKeys,
   analyticsKeys,
@@ -133,15 +134,13 @@ export function useTransferOwnership(accountId: string) {
   });
 }
 
-export function useSetHideAmount() {
+export function useSetVisibility() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ accountId, hideAmount }: { accountId: string; hideAmount: boolean }) =>
-      api.patch<void>(`/accounts/${accountId}/preferences`, { hideAmount }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: accountKeys.all });
-      queryClient.invalidateQueries({ queryKey: ledgerKeys.all });
-    },
+    mutationFn: ({ accountId, visibility }: { accountId: string; visibility: AccountVisibilityLevel }) =>
+      api.patch<void>(`/accounts/${accountId}/preferences`, { visibility }),
+    // The level decides which accounts the All accounts figures count.
+    onSuccess: () => invalidateAccess(queryClient),
     onError: (err) => handleApiError(err, { fallback: "Could not update the account." }),
   });
 }

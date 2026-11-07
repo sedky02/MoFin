@@ -4,6 +4,10 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Account, Prisma } from '@prisma/client';
+import {
+  accountVisibility,
+  visibilityOfMetadata,
+} from '../accounts/account-visibility';
 import { PrismaService } from '../../database/prisma.service';
 import {
   AccountAction,
@@ -73,6 +77,38 @@ export class AccountAccessService {
       select: { id: true },
     });
     return accounts.map((account) => account.id);
+  }
+
+  /**
+   * The accounts that count in this person's "All accounts" figures: those they can reach minus
+   * the ones they set to a level that leaves totals (private, hidden). Asking for one account by
+   * id never goes through here.
+   */
+  async accountIdsForTotals(
+    userId: string,
+    { db = this.prisma, activeOnly = false }: AccessOptions = {},
+  ): Promise<string[]> {
+    const accounts = await db.account.findMany({
+      where: {
+        ...accountScope(userId, 'view'),
+        ...(activeOnly ? { archivedAt: null } : {}),
+      },
+      select: {
+        id: true,
+        userId: true,
+        metadata: true,
+        members: { where: { userId }, select: { visibility: true } },
+      },
+    });
+    return accounts
+      .filter((account) => {
+        const level =
+          account.userId === userId
+            ? visibilityOfMetadata(account.metadata)
+            : account.members[0]?.visibility;
+        return accountVisibility(level).countInTotals;
+      })
+      .map((account) => account.id);
   }
 
   /** The user's role on each of these accounts; the ones they can't reach are left out. */

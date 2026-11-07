@@ -1,6 +1,7 @@
 import { AccountMemberRole } from '@prisma/client';
 import { z } from 'zod';
 import { isDemoEmail } from '../../../common/utils/demo-identity';
+import { accountVisibilitySchema } from '../../accounts/account-visibility';
 
 const roleField = z.nativeEnum(AccountMemberRole);
 
@@ -27,7 +28,9 @@ export type InvitationTokenDto = z.infer<typeof invitationTokenSchema>;
 export const updateMemberSchema = z.object({ role: roleField });
 export type UpdateMemberDto = z.infer<typeof updateMemberSchema>;
 
-export const accountPreferencesSchema = z.object({ hideAmount: z.boolean() });
+export const accountPreferencesSchema = z.object({
+  visibility: accountVisibilitySchema,
+});
 export type AccountPreferencesDto = z.infer<typeof accountPreferencesSchema>;
 
 export const transferOwnershipSchema = z.object({

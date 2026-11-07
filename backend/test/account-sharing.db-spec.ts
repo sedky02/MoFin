@@ -525,23 +525,28 @@ describe('Account sharing (Postgres)', () => {
       ]);
     });
 
-    it('keeps each person’s hide-amount choice their own', async () => {
+    it('keeps each person’s visibility level their own', async () => {
       const { owner, guest, accountId } = await shared();
       await prisma.account.update({
         where: { id: accountId },
         data: { metadata: { other: 1 } },
       });
-      await members.setHideAmount(guest.id, accountId, true);
+      await members.setVisibility(guest.id, accountId, 'private');
       expect(
         (await prisma.account.findUniqueOrThrow({ where: { id: accountId } }))
           .metadata,
       ).toEqual({ other: 1 });
 
-      await members.setHideAmount(owner.id, accountId, true);
+      await members.setVisibility(owner.id, accountId, 'masked');
       expect(
         (await prisma.account.findUniqueOrThrow({ where: { id: accountId } }))
           .metadata,
-      ).toEqual({ other: 1, hideAmount: true });
+      ).toEqual({ other: 1, visibility: 'masked' });
+      await expect(
+        prisma.accountMember.findUniqueOrThrow({
+          where: { accountId_userId: { accountId, userId: guest.id } },
+        }),
+      ).resolves.toMatchObject({ visibility: 'private' });
     });
 
     it('lists what the delete warning needs: owned accounts others can reach', async () => {
@@ -815,9 +820,9 @@ describe('Account sharing (Postgres)', () => {
       );
     });
 
-    it('swaps the hide-amount choices with the roles', async () => {
+    it('swaps the visibility levels with the roles', async () => {
       const { owner, guest, accountId } = await shared();
-      await members.setHideAmount(owner.id, accountId, true);
+      await members.setVisibility(owner.id, accountId, 'hidden');
       await ownership.transfer(owner.id, accountId, guest.id);
       const row = await prisma.account.findUniqueOrThrow({
         where: { id: accountId },
@@ -827,7 +832,7 @@ describe('Account sharing (Postgres)', () => {
         prisma.accountMember.findUniqueOrThrow({
           where: { accountId_userId: { accountId, userId: owner.id } },
         }),
-      ).resolves.toMatchObject({ hideAmount: true });
+      ).resolves.toMatchObject({ visibility: 'hidden' });
     });
 
     it('lets only one of two concurrent handovers through', async () => {

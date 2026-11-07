@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { Switch } from '@/components/ui/switch';
 import { Text } from '@/components/ui/text';
+import { selectableOnDashboard } from '@/core/account-privacy';
 import type { Goal } from '@/core/types';
 import { useAccounts } from '@/hooks/useAccounts';
 import { useGoals } from '@/hooks/useGoals';
@@ -107,7 +108,7 @@ export function WidgetSetup({ widget }: { widget: WidgetName }) {
     else router.replace('/dashboard');
   }
 
-  const accountList = accounts.data ?? [];
+  const accountList = selectableOnDashboard(accounts.data ?? []);
   const goalList = goals.data ?? [];
   const picked = values.Goals.goalIds.filter((id) => goalList.some((g) => g.id === id));
 
@@ -182,7 +183,7 @@ export function WidgetSetup({ widget }: { widget: WidgetName }) {
                 ))}
               </View>
               <Text className="px-1 text-xs text-muted-foreground">
-                All accounts leaves out hidden accounts, and never adds different currencies together.
+                All accounts leaves out private and hidden accounts, and never adds different currencies together.
               </Text>
             </View>
           )}

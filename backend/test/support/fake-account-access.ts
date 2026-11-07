@@ -13,6 +13,7 @@ export function fakeAccess(accounts: string[] = ['a1'], ownerId = 'u1') {
       }),
     ),
     accessibleAccountIds: jest.fn(async () => accounts),
+    accountIdsForTotals: jest.fn(async () => accounts),
     rolesOn: jest.fn(
       async (_userId: string, ids: string[]) =>
         new Map<string, AccountRole>(ids.map((id) => [id, 'OWNER'])),

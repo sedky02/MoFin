@@ -54,7 +54,12 @@ describe('LedgerService', () => {
                 currency: a.currency,
                 openingBalance: new Prisma.Decimal(a.openingBalance!),
               }))
-          : Object.values(accounts).map((a) => ({ id: a.id })),
+          : Object.values(accounts).map((a) => ({
+              id: a.id,
+              userId: 'u1',
+              metadata: {},
+              members: [],
+            })),
     );
     const prisma = {
       account: { findFirst, findMany },

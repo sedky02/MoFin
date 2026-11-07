@@ -136,7 +136,7 @@ export async function computeWidgets(at: Date): Promise<WidgetsProps> {
       account,
       missing,
       currency,
-      balance: scopeBalance(balances, account, currency, accounts),
+      balance: scopeBalance(balances, account, currency),
       ...flows,
       hidden: amountsHidden(settings.hideAmounts, account),
       at,

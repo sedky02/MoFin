@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useAccounts } from "@/hooks/useAccounts";
 import { useUser } from "@/hooks/useUser";
+import { selectableOnDashboard } from "@/lib/account-privacy";
 import type { Account } from "@/lib/types";
 import { ACTIVE_ACCOUNT_COOKIE, ALL_ACCOUNTS as ALL, resolveActiveAccount } from "@/lib/dashboard-scope";
 
@@ -65,7 +66,8 @@ export function useActiveAccount(initialStored?: string): {
 } {
   const { data } = useAccounts();
   const { data: user } = useUser();
-  const accounts = data ?? [];
+  // A hidden account is never offered on the dashboard, so it can't stay the active one either.
+  const accounts = selectableOnDashboard(data ?? []);
   // The server snapshot is what SSR and the first client render agree on; callers that know the
   // stored choice on the server (the dashboard reads the cookie) pass it in.
   const stored = React.useSyncExternalStore(subscribe, read, () => initialStored);

@@ -160,7 +160,7 @@ export class LedgerService {
       await this.access.assertAccess(userId, query.accountId, 'view');
     const accountIds = query.accountId
       ? [query.accountId]
-      : await this.access.accessibleAccountIds(userId, 'view');
+      : await this.access.accountIdsForTotals(userId);
 
     const where = {
       accountId: { in: accountIds },

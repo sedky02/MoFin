@@ -5,15 +5,16 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AccountDialog } from '@/components/accounts/account-dialog';
 import { AccountRow } from '@/components/accounts/account-row';
+import { VisibilitySheet } from '@/components/accounts/visibility-sheet';
 import { ConfirmDialog } from '@/components/common/confirm-dialog';
 import { EmptyState, ErrorState, SkeletonCard } from '@/components/common/states';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
-import { isAmountHidden, withHideAmount } from '@/core/account-privacy';
+import { withVisibility, type AccountVisibilityLevel } from '@/core/account-privacy';
 import { canManage, memberName } from '@/core/account-sharing';
 import type { Account, AccountType } from '@/core/types';
-import { useAccountMembers, useSetHideAmount } from '@/hooks/useAccountSharing';
+import { useAccountMembers, useSetVisibility } from '@/hooks/useAccountSharing';
 import { useAccounts, useArchiveAccount, useRestoreAccount, useUpdateAccount } from '@/hooks/useAccounts';
 import { Archive, ArrowLeft, Plus, Wallet } from '@/lib/icons';
 
@@ -26,7 +27,7 @@ const GROUPS: { type: AccountType; title: string }[] = [
 
 type RowActions = {
   onEdit?: (a: Account) => void;
-  onToggleHidden?: (a: Account) => void;
+  onOpenVisibility?: (a: Account) => void;
   onArchive?: (a: Account) => void;
   onRestore?: (a: Account) => void;
   onMembers?: (a: Account) => void;
@@ -68,13 +69,14 @@ export default function AccountsScreen() {
   const archived = useAccounts('archived');
   const archive = useArchiveAccount();
   const update = useUpdateAccount();
-  const setHideAmount = useSetHideAmount();
-  // The eye beside Edit: hides or shows this account's balance everywhere. Each person's own
-  // choice: the owner's is saved on the account, a member's on their membership.
-  const toggleHidden = (a: Account) =>
+  const setVisibilityOf = useSetVisibility();
+  const [visibilityFor, setVisibilityFor] = React.useState<Account | undefined>();
+  // The eye beside Edit opens the levels. Each person's own choice: the owner's is saved on the
+  // account, a member's on their membership.
+  const changeVisibility = (a: Account, level: AccountVisibilityLevel) =>
     canManage(a)
-      ? update.mutate({ id: a.id, metadata: withHideAmount(a.metadata, !isAmountHidden(a)) })
-      : setHideAmount.mutate({ accountId: a.id, hideAmount: !isAmountHidden(a) });
+      ? update.mutate({ id: a.id, metadata: withVisibility(a.metadata, level) })
+      : setVisibilityOf.mutate({ accountId: a.id, visibility: level });
   const openMembers = (a: Account) => router.push(`/accounts/${a.id}`);
   const restore = useRestoreAccount();
   const archivedCount = archived.data?.length ?? 0;
@@ -155,7 +157,7 @@ export default function AccountsScreen() {
                 title={g.title}
                 items={accounts.filter((a) => a.type === g.type)}
                 onEdit={openEdit}
-                onToggleHidden={toggleHidden}
+                onOpenVisibility={setVisibilityFor}
                 onArchive={setToArchive}
                 onMembers={openMembers}
                 busyId={update.isPending ? update.variables?.id : undefined}
@@ -179,6 +181,8 @@ export default function AccountsScreen() {
           busyId={restoringId}
         />
       )}
+
+      <VisibilitySheet account={visibilityFor} onClose={() => setVisibilityFor(undefined)} onPick={changeVisibility} />
 
       <AccountDialog open={dialogOpen} onOpenChange={setDialogOpen} account={editing} />
 

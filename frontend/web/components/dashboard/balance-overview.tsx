@@ -2,11 +2,11 @@
 
 import * as React from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { useDailySeries, useDailySeriesFor } from "@/hooks/useAnalytics";
+import { useDailySeries } from "@/hooks/useAnalytics";
 import { HideableAmount } from "@/components/common/hideable-amount";
 import { MoneyAmount } from "@/components/common/money-amount";
 import { useRevealedAmount } from "@/hooks/use-revealed-amount";
-import { isAmountHidden, withoutHiddenSeries } from "@/lib/account-privacy";
+import { isAmountHidden } from "@/lib/account-privacy";
 import { CurrencySwitch } from "@/components/dashboard/currency-switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -49,7 +49,6 @@ export function BalanceOverview({
   overdrawn,
   accountId,
   account,
-  hiddenIds = [],
   currencies = [],
   onCurrencyChange,
   emptyAction,
@@ -61,8 +60,6 @@ export function BalanceOverview({
   overdrawn: boolean;
   accountId?: string;
   account?: Account;
-  /** All accounts: hidden accounts in this currency, whose figures the chart leaves out. */
-  hiddenIds?: string[];
   currencies?: { code: string; overdrawn: boolean }[];
   onCurrencyChange?: (currency: string) => void;
   emptyAction?: React.ReactNode;
@@ -82,21 +79,11 @@ export function BalanceOverview({
   // Two weeks: the one shown and the one before it, for the "vs the week before" chip.
   const from = addDaysIso(monday, -7);
   const series = useDailySeries(currency, from, 14, timeZone, accountId);
-  // All accounts with some hidden: their own series come out of every day. Until each one is in,
-  // nothing is drawn, so the hidden money never shows even for a moment.
-  const hidden = useDailySeriesFor(currency, from, 14, timeZone, accountId ? [] : hiddenIds);
-  // (The main series may still hold the previous week while paging: it has to be the same week too.)
-  const hiddenIn =
-    hidden.length === 0 ||
-    (series.data?.points[0]?.date === from && hidden.every((q) => q.data?.points[0]?.date === from));
-  const data = series.data && hiddenIn ? series.data : undefined;
-  const isLoading = series.isLoading || hidden.some((q) => q.isLoading);
-  const isError = series.isError || hidden.some((q) => q.isError);
-  const refetch = () => {
-    void series.refetch();
-    hidden.forEach((q) => void q.refetch());
-  };
-  const all = data ? withoutHiddenSeries(data.points, hidden.map((q) => q.data?.points ?? [])) : [];
+  const data = series.data;
+  const isLoading = series.isLoading;
+  const isError = series.isError;
+  const refetch = () => void series.refetch();
+  const all = data ? data.points : [];
   const ready = all[7]?.date === monday;
   const week = all.slice(7);
   const atCurrent = monday === thisMonday;

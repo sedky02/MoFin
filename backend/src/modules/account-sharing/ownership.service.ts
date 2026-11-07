@@ -18,6 +18,11 @@ import {
 import { escapeHtml } from '../../common/utils/escape-html';
 import { PrismaService } from '../../database/prisma.service';
 import { AccountAccessService } from '../account-access/account-access.service';
+import {
+  readVisibility,
+  visibilityOfMetadata,
+  withVisibility,
+} from '../accounts/account-visibility';
 import { MailSender } from '../mail/mail-sender';
 
 type Db = Prisma.TransactionClient;
@@ -59,15 +64,16 @@ export class OwnershipService {
 
         // Conditional, and it locks the row: of two concurrent handovers one
         // waits here, then finds the owner changed and stops.
-        const { hideAmount: ownerHid, ...metadata } =
-          account.metadata as Record<string, unknown>;
+        // Each keeps their own level: the old owner's moves to their new membership.
+        const ownerLevel = visibilityOfMetadata(account.metadata);
         const { count } = await db.account.updateMany({
           where: { id: accountId, userId },
           data: {
             userId: newOwnerId,
-            metadata: (member.hideAmount
-              ? { ...metadata, hideAmount: true }
-              : metadata) as Prisma.InputJsonValue,
+            metadata: withVisibility(
+              account.metadata,
+              readVisibility(member.visibility),
+            ) as Prisma.InputJsonValue,
           },
         });
         if (count !== 1)
@@ -97,7 +103,7 @@ export class OwnershipService {
             accountId,
             userId,
             role: AccountMemberRole.EDITOR,
-            hideAmount: ownerHid === true,
+            visibility: ownerLevel,
           },
         });
         await db.accountInvitation.updateMany({

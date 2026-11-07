@@ -77,9 +77,8 @@ describe('scopeCurrency and scopeBalance', () => {
     expect(scopeBalance(BALANCES, undefined, 'TND')).toBe('1120.75');
   });
 
-  it('leaves hidden accounts out of the all-accounts balance', () => {
-    const hiddenBank = account('bank', 'TND', { metadata: { hideAmount: true } });
-    expect(scopeBalance(BALANCES, undefined, 'TND', [CASH, hiddenBank, EURO])).toBe('120.5');
+  it('sums the all-accounts rows as the server sends them, private accounts already left out', () => {
+    expect(scopeBalance(BALANCES.filter((b) => !b.key.startsWith('bank:')), undefined, 'TND')).toBe('120.5');
   });
 
   it('is zero for an account with no ledger rows yet', () => {
@@ -101,8 +100,8 @@ describe('sumDays', () => {
 describe('masking', () => {
   it('hides every widget amount, or those of an account the user hid', () => {
     expect(amountsHidden(true, undefined)).toBe(true);
-    expect(amountsHidden(false, account('x', 'TND', { metadata: { hideAmount: true } }))).toBe(true);
-    expect(amountsHidden(false, account('x', 'TND', { metadata: { hideAmount: 'yes' } }))).toBe(false);
+    expect(amountsHidden(false, account('x', 'TND', { metadata: { visibility: 'masked' } }))).toBe(true);
+    expect(amountsHidden(false, account('x', 'TND', { metadata: { visibility: 'yes' } }))).toBe(false);
     expect(amountsHidden(false, undefined)).toBe(false);
     expect(maskedAmount('TND')).toBe('•••• TND');
   });
@@ -147,7 +146,7 @@ describe('summaryProps', () => {
   });
 
   it('says when hidden accounts are left out of all accounts', () => {
-    const accounts = [CASH, account('bank', 'TND', { metadata: { hideAmount: true } }), EURO];
+    const accounts = [CASH, account('bank', 'TND', { metadata: { visibility: 'private' } }), EURO];
     expect(summaryProps({ ...base, accounts }).scope).toBe('All accounts · excl. hidden');
     expect(summaryProps({ ...base, accounts, currency: 'EUR' }).scope).toBe('All accounts');
   });

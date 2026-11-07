@@ -13,6 +13,7 @@ import {
   userKeys,
 } from "@/lib/query-keys";
 import { pickPrimaryCurrency } from "@/lib/format";
+import { accountVisibility, selectableOnDashboard } from "@/lib/account-privacy";
 import {
   ACTIVE_ACCOUNT_COOKIE,
   DASHBOARD_RECENT_LIMIT,
@@ -87,9 +88,13 @@ async function prefetchDashboard() {
     serverGet<Paginated<Account>>("/accounts", { status: "all", limit: 100, offset: 0 }),
   ]);
   const accounts = accountsPage?.data ?? [];
-  const activeAccount = resolveActiveAccount(stored, accounts, user?.settings?.mainAccountId);
+  const activeAccount = resolveActiveAccount(stored, selectableOnDashboard(accounts), user?.settings?.mainAccountId);
   const accountId = activeAccount?.id;
-  const scopedBalances = accountId && allBalances ? scopeBalances(allBalances, accountId) : undefined;
+  // A private account is not in the all-accounts rows, so its balances are fetched on the client.
+  const scopedBalances =
+    accountId && allBalances && accountVisibility(activeAccount).countInTotals
+      ? scopeBalances(allBalances, accountId)
+      : undefined;
 
   // The client derives the same once hydrated; the server needs it first to pick the currency for
   // the summary and series.

@@ -3,6 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAccounts } from "@/hooks/useAccounts";
 import { useUser } from "@/hooks/useUser";
 import type { Account } from "@/core/types";
+import { selectableOnDashboard } from "@/core/account-privacy";
 import { ALL_ACCOUNTS as ALL, resolveActiveAccount } from "@/core/dashboard-scope";
 
 // A per-device convenience (like a remembered tab), not server state: it only pre-fills account
@@ -83,7 +84,8 @@ export function useActiveAccount(): {
 } {
   const { data } = useAccounts();
   const { data: user } = useUser();
-  const accounts = data ?? [];
+  // A hidden account is never offered on the dashboard, so it can't stay the active one either.
+  const accounts = selectableOnDashboard(data ?? []);
   React.useEffect(() => {
     load();
   }, []);
