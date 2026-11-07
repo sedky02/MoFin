@@ -87,13 +87,10 @@ export type ChatDraftArgs = z.infer<typeof chatDraftSchema>;
  */
 @Injectable()
 export class ModelDraftParser {
-  constructor(private readonly llm: LlmProvider) {}
-
-  get enabled(): boolean {
-    return this.llm.enabled;
-  }
-
-  async parse(ctx: DraftContext): Promise<ModelDraft[] | null> {
+  async parse(
+    ctx: DraftContext,
+    llm: LlmProvider,
+  ): Promise<ModelDraft[] | null> {
     const messages: LlmMessage[] = [
       { role: 'system', content: this.prompt(ctx) },
       { role: 'user', content: ctx.input },
@@ -102,7 +99,7 @@ export class ModelDraftParser {
     // One retry: a second try with the validation errors usually fixes a
     // missing field or a malformed amount.
     for (let attempt = 0; attempt < 2; attempt++) {
-      const completion = await this.llm.chat({
+      const completion = await llm.chat({
         messages,
         json: true,
         maxTokens: 1500,

@@ -6,26 +6,26 @@ const tops = (values: number[]) => Object.fromEntries(SETTINGS_SECTIONS.map((s, 
 
 describe("activeSectionAt", () => {
   it("starts on the first section at the top of the page", () => {
-    expect(activeSectionAt(tops([200, 700, 1200, 1700, 2100, 2400]), false)).toBe("profile");
+    expect(activeSectionAt(tops([200, 700, 1200, 1700, 1900, 2100, 2400]), false)).toBe("profile");
   });
 
   it("switches as soon as the next section's top reaches the offset, not when the last one leaves", () => {
     // Preferences' top is 100px down, above the 140px offset, while Profile's bottom is still on screen.
-    expect(activeSectionAt(tops([-300, 100, 600, 1100, 1500, 1800]), false)).toBe("preferences");
+    expect(activeSectionAt(tops([-300, 100, 600, 1100, 1300, 1500, 1800]), false)).toBe("preferences");
     // 20px short of the offset: still on Profile.
-    expect(activeSectionAt(tops([-300, ACTIVE_SECTION_OFFSET + 20, 600, 1100, 1500, 1800]), false)).toBe("profile");
+    expect(activeSectionAt(tops([-300, ACTIVE_SECTION_OFFSET + 20, 600, 1100, 1300, 1500, 1800]), false)).toBe("profile");
   });
 
   it("treats a top exactly at the offset as reached", () => {
-    expect(activeSectionAt(tops([-300, ACTIVE_SECTION_OFFSET, 600, 1100, 1500, 1800]), false)).toBe("preferences");
+    expect(activeSectionAt(tops([-300, ACTIVE_SECTION_OFFSET, 600, 1100, 1300, 1500, 1800]), false)).toBe("preferences");
   });
 
   it("stays on the section being read through a tall one", () => {
-    expect(activeSectionAt(tops([-1500, -900, -300, 400, 800, 1100]), false)).toBe("security");
+    expect(activeSectionAt(tops([-1500, -900, -300, 400, 600, 800, 1100]), false)).toBe("security");
   });
 
   it("is the last section at the bottom of the page, even if it never reached the offset", () => {
-    expect(activeSectionAt(tops([-1500, -1200, -900, -500, 200, 420]), true)).toBe("delete-account");
+    expect(activeSectionAt(tops([-1500, -1200, -900, -500, -150, 200, 420]), true)).toBe("delete-account");
   });
 
   it("skips sections that aren't on the page", () => {

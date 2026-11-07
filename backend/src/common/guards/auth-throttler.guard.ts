@@ -154,3 +154,13 @@ export class DeleteAccountThrottlerGuard extends ChangePasswordThrottlerGuard {
     return DELETE_ACCOUNT_THROTTLE;
   }
 }
+
+/** Per-user limit on saving or removing a stored AI key; each save also calls the provider. */
+export const AI_CREDENTIAL_THROTTLE = { limit: 20, ttl: 60 * 60_000 } as const;
+
+@Injectable()
+export class AiCredentialThrottlerGuard extends ChangePasswordThrottlerGuard {
+  protected throttle(): { limit: number; ttl: number } {
+    return AI_CREDENTIAL_THROTTLE;
+  }
+}

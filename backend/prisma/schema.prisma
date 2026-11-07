@@ -113,6 +113,10 @@ model User {
   /// Push notification choices. Columns rather than `settings`, which clients replace wholesale.
   notifyMcpDrafts     Boolean                  @default(true)
   notifyRecurring     Boolean                  @default(true)
+  /// Which stored AI key answers this person's questions; null means the shared one.
+  aiProvider          String?
+  /// When their own key fails, whether the shared key may answer that request instead.
+  aiFallbackEnabled   Boolean                  @default(true)
   /// A temporary "Try the demo" user: password-less, seeded with sample data,
   /// deleted by DemoCleanupCron once expiresAt passes.
   isDemo              Boolean                  @default(false)
@@ -135,6 +139,7 @@ model User {
   aiChats             AiChat[]
   emailVerifications  EmailVerificationToken[]
   pushDevices         PushDevice[]
+  aiCredentials       AiCredential[]
   accountMemberships  AccountMember[]
   sentInvitations     AccountInvitation[]
   createdTransactions Transaction[]            @relation("TransactionCreatedBy")
@@ -533,6 +538,24 @@ model AuthSession {
 // random token is stored, so a database read never yields a usable link.
 // `usedAt` is set when the token is redeemed, or when a newer request or a
 // completed reset supersedes it; rows are kept rather than deleted for audit.
+// A person's own API key for one AI provider. Only the AES-GCM ciphertext is stored (see
+// SecretBox); nothing ever returns the key, only `last4`.
+model AiCredential {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider   String
+  ciphertext String
+  last4      String
+  /// A model other than the provider's default, checked against the provider's own list when saved.
+  model      String?
+  verifiedAt DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([userId, provider])
+}
+
 // One row per installed app that can receive pushes. The Expo token identifies the install, so
 // signing in as someone else on the same phone moves the row to them.
 model PushDevice {

@@ -18,6 +18,8 @@ import { customLogLevel, customProps, genReqId } from './pino-options';
           'req.headers.authorization',
           'req.headers.cookie',
           'req.headers["x-mofin-bff-secret"]',
+          // Bodies are not logged today; this keeps a stored AI key out if that changes.
+          'req.body.apiKey',
         ],
       },
     }),

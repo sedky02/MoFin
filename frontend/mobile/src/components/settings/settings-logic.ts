@@ -5,11 +5,11 @@ import { z } from 'zod';
 
 import { MIN_PASSWORD_LENGTH } from '@/core/password-strength';
 import type { Account, User } from '@/core/types';
-import { Bell, Database, Plug, ShieldCheck, SlidersHorizontal, Trash2, User as UserIcon } from '@/lib/icons';
+import { Bell, Database, Plug, ShieldCheck, SlidersHorizontal, Sparkles, Trash2, User as UserIcon } from '@/lib/icons';
 
 // ─── Sections ────────────────────────────────────────────────────────────────
 
-export type SettingsSectionId = 'profile' | 'preferences' | 'notifications' | 'security' | 'connected-apps' | 'data' | 'delete-account';
+export type SettingsSectionId = 'profile' | 'preferences' | 'notifications' | 'security' | 'connected-apps' | 'ai-provider' | 'data' | 'delete-account';
 
 export type SettingsSection = {
   id: SettingsSectionId;
@@ -45,6 +45,13 @@ export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
     href: '/settings/connected-apps',
     icon: Plug,
   },
+  {
+    id: 'ai-provider',
+    label: 'AI provider',
+    summary: 'Use your own API key',
+    href: '/settings/ai-provider',
+    icon: Sparkles,
+  },
   { id: 'data', label: 'Data', summary: 'Export or delete', href: '/settings/data', icon: Database },
   {
     id: 'delete-account',
@@ -63,6 +70,7 @@ export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
 export function settingsSections(user: User | undefined): SettingsSection[] {
   return SETTINGS_SECTIONS.map((s) => {
     if (!user?.isDemo) return s;
+    if (s.id === 'ai-provider') return { ...s, summary: 'Not available in the demo' };
     if (s.id === 'security') return { ...s, summary: 'Not available in the demo' };
     if (s.id === 'delete-account') return { ...s, summary: 'Deleted automatically when the demo ends', tone: undefined };
     if (s.id === 'data') return { ...s, summary: 'Export as JSON or CSV' };

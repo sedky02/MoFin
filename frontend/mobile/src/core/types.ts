@@ -308,6 +308,8 @@ export interface AiChatDetail extends AiChatSummary {
 
 /** What sending a question returns: the chat (new or updated) and the two saved turns. */
 export interface AiChatTurn {
+  /** Set when the person's own AI key failed and MoFin's shared assistant answered instead. */
+  notice?: string;
   chat: AiChatSummary;
   messages: [AiChatMessage, AiChatMessage];
 }

@@ -55,6 +55,7 @@ export function useSendChatMessage() {
         { timeoutMs: AI_TIMEOUT_MS },
       ),
     onSuccess: (turn) => {
+      if (turn.notice) toast.error(turn.notice);
       queryClient.setQueryData<AiChatDetail>(aiChatKeys.detail(turn.chat.id), (old) => ({
         ...turn.chat,
         messages: [...(old?.messages ?? []), ...turn.messages],

@@ -9,7 +9,11 @@ import { DraftContext, ProposedDraft } from './drafts/draft-context';
 import { categoryFitsAccount, repairDraft } from './drafts/draft-repairer';
 import { ModelDraftParser } from './drafts/model-draft-parser';
 import { parseWithRegex } from './drafts/regex-draft-parser';
-import { isAiProviderFailure } from './llm/ai-unavailable.exception';
+import {
+  AiKeyRejectedException,
+  isAiProviderFailure,
+} from './llm/ai-unavailable.exception';
+import { LlmResolver } from './llm/llm-resolver';
 
 /** How many accounts and categories the model is shown (the list API's max). */
 export const CONTEXT_LIST_LIMIT = 100;
@@ -27,6 +31,7 @@ export class AiService {
     private readonly accountsService: AccountsService,
     private readonly categoriesService: CategoriesService,
     private readonly modelParser: ModelDraftParser,
+    private readonly llmResolver: LlmResolver,
   ) {}
 
   async createDraftsFromNaturalLanguage(
@@ -34,7 +39,7 @@ export class AiService {
     dto: ParseTransactionIntentDto,
   ): Promise<DraftTransaction[]> {
     const ctx = await this.context(userId, dto);
-    const proposed = await this.propose(ctx);
+    const proposed = await this.propose(userId, ctx);
     return this.draftsService.createMany(
       userId,
       proposed.map(({ data, confidence }) => ({
@@ -57,20 +62,29 @@ export class AiService {
       : { ...draft, data: { ...draft.data, categoryId: undefined } };
   }
 
-  private async propose(ctx: DraftContext): Promise<ProposedDraft[]> {
-    if (!this.modelParser.enabled) {
+  private async propose(
+    userId: string,
+    ctx: DraftContext,
+  ): Promise<ProposedDraft[]> {
+    const llm = await this.llmResolver.forUser(userId);
+    if (!llm.enabled) {
       this.logger.warn('AI_API_KEY is not set, using the local parser');
       return [this.withFittingCategory(parseWithRegex(ctx), ctx)];
     }
     try {
-      const drafts = await this.modelParser.parse(ctx);
+      const drafts = await this.modelParser.parse(ctx, llm);
       if (drafts) return drafts.map((draft) => repairDraft(draft, ctx));
       this.logger.warn(
         'Model gave invalid drafts twice, using the local parser',
       );
     } catch (error) {
       // A provider outage must not block drafting: fall through to the regex.
-      if (!isAiProviderFailure(error)) throw error;
+      // A refused personal key is theirs to fix: a quiet fall back to the regex would hide it.
+      if (
+        !isAiProviderFailure(error) ||
+        error instanceof AiKeyRejectedException
+      )
+        throw error;
       this.logger.warn(
         `Model unavailable (${error.message}), using the local parser`,
       );

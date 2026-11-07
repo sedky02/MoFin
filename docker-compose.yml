@@ -33,6 +33,7 @@ services:
       JWT_MCP_SECRET: ${JWT_MCP_SECRET:-local-demo-only-jwt-mcp-key-4b8e2d6a0c9f1e37}
       REFRESH_TOKEN_SECRET: ${REFRESH_TOKEN_SECRET:-local-demo-only-refresh-key-9d1f5c3a7e2b8064}
       BFF_SHARED_SECRET: ${BFF_SHARED_SECRET:-local-demo-only-bff-shared-key-2a6c8e0f4b7d1935}
+      AI_KEY_ENCRYPTION_KEY: ${AI_KEY_ENCRYPTION_KEY:-bG9jYWwtZGVtby1vbmx5LWFpLWtleS03ZjNjOWExZTU=}
       OAUTH_ISSUER: ${OAUTH_ISSUER:-http://localhost:3000}
       WEB_URL: ${WEB_URL:-http://localhost:3001}
       # Applies migrations, then creates the demo account if it doesn't exist

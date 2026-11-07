@@ -49,6 +49,7 @@ export function useSendChatMessage() {
         timeZone: deviceTimeZone(),
       }),
     onSuccess: (turn) => {
+      if (turn.notice) toast.info(turn.notice);
       queryClient.setQueryData<AiChatDetail>(aiChatKeys.detail(turn.chat.id), (old) => ({
         ...turn.chat,
         messages: [...(old?.messages ?? []), ...turn.messages],

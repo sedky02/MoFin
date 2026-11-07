@@ -42,6 +42,7 @@ describe('sections', () => {
       'notifications',
       'security',
       'connected-apps',
+      'ai-provider',
       'data',
       'delete-account',
     ]);

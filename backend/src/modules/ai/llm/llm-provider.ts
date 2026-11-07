@@ -38,5 +38,9 @@ export interface LlmCompletion {
 export abstract class LlmProvider {
   /** False when no API key is configured: callers use their fallback. */
   abstract readonly enabled: boolean;
+  /** True once a request meant for the person's own key was answered by the shared one. */
+  get usedSharedFallback(): boolean {
+    return false;
+  }
   abstract chat(request: LlmChatRequest): Promise<LlmCompletion>;
 }

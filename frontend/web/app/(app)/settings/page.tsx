@@ -26,6 +26,7 @@ import { SettingsNav } from "@/components/settings/settings-nav";
 import { SaveBar } from "@/components/settings/save-bar";
 import { ThemeSetting } from "@/components/settings/theme-setting";
 import { ConnectedAppsCard } from "@/components/settings/connected-apps-card";
+import { AiProviderCard } from "@/components/settings/ai-provider-card";
 import { DataCard } from "@/components/settings/data-card";
 import { DeleteAccountCard } from "@/components/settings/delete-account-card";
 import { useUser, useUpdateUser } from "@/hooks/useUser";
@@ -259,6 +260,8 @@ export default function SettingsPage() {
           <SecurityCard user={user} isLoading={isLoading} />
 
           <ConnectedAppsCard />
+
+          <AiProviderCard user={user} isLoading={isLoading} />
 
           <DataCard user={user} isLoading={isLoading} />
 

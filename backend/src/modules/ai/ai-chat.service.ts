@@ -33,6 +33,7 @@ import {
 import { AiChatTurnView, SendChatMessageDto } from './dto/ai.dto';
 import { AiUnavailableException } from './llm/ai-unavailable.exception';
 import { LlmMessage, LlmProvider, LlmToolCall } from './llm/llm-provider';
+import { LlmResolver } from './llm/llm-resolver';
 
 export const MAX_TOOL_ROUNDS = 4;
 /** Drafts one answer may create (a message listing a few purchases). */
@@ -41,6 +42,10 @@ export const MAX_DRAFTS_PER_REPLY = 5;
 const PROMPT_ACCOUNTS = 50;
 /** Categories listed in the system prompt, so a draft's category is a real one. */
 const PROMPT_CATEGORIES = 60;
+
+/** Shown once to the person when their own key failed and the shared one answered. */
+export const FALLBACK_NOTICE =
+  'Your own AI key could not answer, so MoFin used its shared assistant for this reply.';
 
 type ChatWithMessages = AiChat & { messages: AiChatMessage[] };
 
@@ -54,7 +59,7 @@ export class AiChatService {
   private readonly tools = buildChatTools();
 
   constructor(
-    private readonly llm: LlmProvider,
+    private readonly resolver: LlmResolver,
     private readonly chats: AiChatsService,
     private readonly runner: ChatToolRunner,
     private readonly accounts: AccountsService,
@@ -67,7 +72,8 @@ export class AiChatService {
     dto: SendChatMessageDto,
   ): Promise<AiChatTurnView> {
     const userId = user.id;
-    if (!this.llm.enabled) {
+    const llm = await this.resolver.forUser(userId);
+    if (!llm.enabled) {
       this.logger.error('Chat unavailable: AI_API_KEY is not set');
       throw new AiUnavailableException();
     }
@@ -89,7 +95,7 @@ export class AiChatService {
       isDemo: isDemoEmail(user.email),
     };
     const started = Date.now();
-    const reply = await this.answer(ctx, chat, dto.content);
+    const reply = await this.answer(ctx, chat, dto.content, llm);
     this.logger.log(
       `Chat answered in ${Date.now() - started}ms: ${reply.rounds} model calls, ` +
         `tools [${reply.usedTools.join(', ')}], ${reply.charts.length} charts, ${reply.drafts.length} drafts`,
@@ -102,9 +108,10 @@ export class AiChatService {
       { content: dto.content, askedAt },
       { ...reply, draftIds: reply.drafts.map((d) => d.id) },
     );
-    await this.summarize(saved.chat.id, chat);
+    await this.summarize(saved.chat.id, chat, llm);
 
     return {
+      ...(llm.usedSharedFallback ? { notice: FALLBACK_NOTICE } : {}),
       chat: toSummaryView(saved.chat),
       messages: [
         toMessageView(saved.asked),
@@ -120,6 +127,7 @@ export class AiChatService {
     ctx: ToolRunContext,
     chat: ChatWithMessages | null,
     question: string,
+    llm: LlmProvider,
   ) {
     const stored: StoredMessage[] = (chat?.messages ?? []).map((m) => ({
       role: m.role,
@@ -142,7 +150,7 @@ export class AiChatService {
       // On the last pass offer no tools, so the model has to answer with what it has.
       const lastPass = round === MAX_TOOL_ROUNDS;
       trimToolResults(messages);
-      const completion = await this.llm.chat({
+      const completion = await llm.chat({
         messages,
         tools: lastPass ? undefined : this.tools,
         maxTokens: 900,
@@ -232,7 +240,11 @@ export class AiChatService {
    * Best effort: the answer is already saved; on failure those messages stay verbatim until the
    * next turn.
    */
-  private async summarize(chatId: string, before: ChatWithMessages | null) {
+  private async summarize(
+    chatId: string,
+    before: ChatWithMessages | null,
+    llm: LlmProvider,
+  ) {
     if (!before) return;
     // The two messages just saved are the newest; `before` holds the rest.
     const total = before.messages.length + 2;
@@ -243,7 +255,7 @@ export class AiChatService {
       const transcript = folded
         .map((m) => `${m.role === 'USER' ? 'User' : 'Assistant'}: ${m.content}`)
         .join('\n\n');
-      const completion = await this.llm.chat({
+      const completion = await llm.chat({
         messages: [
           {
             role: 'system',

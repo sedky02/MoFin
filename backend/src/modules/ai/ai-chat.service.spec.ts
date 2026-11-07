@@ -1,6 +1,10 @@
 import { BadRequestException } from '@nestjs/common';
 import { demoEmail } from '../../common/utils/demo-identity';
-import { AiChatService, MAX_TOOL_ROUNDS } from './ai-chat.service';
+import {
+  AiChatService,
+  FALLBACK_NOTICE,
+  MAX_TOOL_ROUNDS,
+} from './ai-chat.service';
 import {
   buildChatTools,
   compactToolResult,
@@ -190,15 +194,18 @@ function setup(chat: jest.Mock, enabled = true) {
     config as never,
     completer as never,
   );
+  const resolver = {
+    forUser: jest.fn(() => Promise.resolve({ enabled, chat })),
+  };
   const service = new AiChatService(
-    { enabled, chat },
+    resolver as never,
     chats as never,
     runner,
     accounts as never,
     categories as never,
   );
   const call = (i: number) => (chat.mock.calls[i] as ChatCall)[0];
-  return { service, mcp, categories, analytics, chats, drafts, call };
+  return { service, mcp, categories, analytics, chats, drafts, call, resolver };
 }
 
 const USER = { id: USER_ID, email: 'real@example.com' };
@@ -219,6 +226,30 @@ describe('AiChatService', () => {
     await expect(service.send(USER, null, ask())).rejects.toBeInstanceOf(
       AiUnavailableException,
     );
+  });
+
+  it('resolves the provider for the person asking', async () => {
+    const { service, resolver } = setup(jest.fn(() => answer('Hi.')));
+    await service.send(USER, null, ask());
+    expect(resolver.forUser).toHaveBeenCalledWith(USER_ID);
+  });
+
+  it('tells the person when the shared assistant answered because their key failed', async () => {
+    const llm = {
+      enabled: true,
+      usedSharedFallback: true,
+      chat: jest.fn(() => answer('Hi.')),
+    };
+    const { service, resolver } = setup(jest.fn());
+    resolver.forUser.mockResolvedValue(llm);
+    const turn = await service.send(USER, null, ask());
+    expect(turn.notice).toBe(FALLBACK_NOTICE);
+  });
+
+  it('adds no notice when their own key answered', async () => {
+    const { service } = setup(jest.fn(() => answer('Hi.')));
+    const turn = await service.send(USER, null, ask());
+    expect(turn.notice).toBeUndefined();
   });
 
   it('starts a chat: runs a tool, saves both turns, titles it from the question', async () => {

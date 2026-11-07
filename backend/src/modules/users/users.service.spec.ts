@@ -66,6 +66,7 @@ describe('UsersService.deleteAccount and resetData', () => {
     'authorizationCode',
     'oAuthGrant',
     'pushDevice',
+    'aiCredential',
   ] as const;
 
   function makeService(

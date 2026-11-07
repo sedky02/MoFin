@@ -71,6 +71,10 @@ export const connectedAppKeys = {
   all: ["connected-apps"] as const,
 };
 
+export const aiCredentialKeys = {
+  all: ["ai-credentials"] as const,
+};
+
 export const aiChatKeys = {
   all: ["ai-chats"] as const,
   list: () => [...aiChatKeys.all, "list"] as const,

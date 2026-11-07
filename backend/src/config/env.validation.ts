@@ -94,6 +94,15 @@ const envSchema = z
     AI_MODEL: z.string().min(1).default('openai/gpt-oss-120b'),
     AI_TIMEOUT_MS: z.coerce.number().int().positive().default(30_000),
     // Chat questions one demo visitor can ask (counted in the database).
+    // 32 random bytes, base64 (openssl rand -base64 32). Encrypts the API keys people store for
+    // their own AI provider; losing it makes those keys unreadable, never exposed.
+    AI_KEY_ENCRYPTION_KEY: z
+      .string()
+      .refine(
+        (value) => Buffer.from(value, 'base64').length === 32,
+        'AI_KEY_ENCRYPTION_KEY must be 32 bytes, base64 encoded (openssl rand -base64 32)',
+      )
+      .optional(),
     DEMO_AI_CHAT_CAP: z.coerce.number().int().positive().default(15),
   })
   .superRefine((env, ctx) => {
@@ -102,6 +111,13 @@ const envSchema = z
         code: z.ZodIssueCode.custom,
         path: ['BFF_SHARED_SECRET'],
         message: 'BFF_SHARED_SECRET is required in production',
+      });
+    }
+    if (env.NODE_ENV === 'production' && !env.AI_KEY_ENCRYPTION_KEY) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['AI_KEY_ENCRYPTION_KEY'],
+        message: 'AI_KEY_ENCRYPTION_KEY is required in production',
       });
     }
     if (env.NODE_ENV === 'production' && env.MAIL_CAPTURE_DIR) {

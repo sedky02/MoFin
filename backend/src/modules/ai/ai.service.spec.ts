@@ -2,6 +2,7 @@ import { AiService } from './ai.service';
 import { ModelDraftParser } from './drafts/model-draft-parser';
 import { REGEX_CONFIDENCE } from './drafts/regex-draft-parser';
 import {
+  AiKeyRejectedException,
   AiProviderRejectedException,
   AiUnavailableException,
 } from './llm/ai-unavailable.exception';
@@ -54,14 +55,16 @@ function setup(
     listForOwners: jest.fn(() => Promise.resolve([FOOD, SALARY])),
   };
   const llm = { enabled, chat };
+  const resolver = { forUser: jest.fn(() => Promise.resolve(llm)) };
   const service = new AiService(
     drafts as never,
     accounts as never,
     categories as never,
-    new ModelDraftParser(llm),
+    new ModelDraftParser(),
+    resolver as never,
   );
   const saved = (i = 0): SavedDraft => drafts.createMany.mock.calls[0][1][i];
-  return { service, drafts, saved };
+  return { service, drafts, saved, resolver };
 }
 
 const reply = (value: unknown) =>
@@ -211,6 +214,27 @@ describe('AiService.createDraftsFromNaturalLanguage', () => {
       expect(drafts.createMany).toHaveBeenCalledTimes(1);
     },
   );
+
+  it('does not hide a refused personal key behind the local parser, so the person can fix it', async () => {
+    const chat = jest.fn(() =>
+      Promise.reject(new AiKeyRejectedException('OpenAI')),
+    );
+    const { service, drafts } = setup(chat);
+
+    await expect(
+      service.createDraftsFromNaturalLanguage('u1', { input: 'coffee 4.5' }),
+    ).rejects.toBeInstanceOf(AiKeyRejectedException);
+    expect(drafts.createMany).not.toHaveBeenCalled();
+  });
+
+  it('asks for the provider of the person who is drafting', async () => {
+    const chat = jest.fn(() => reply({ drafts: [draft()] }));
+    const { service, resolver } = setup(chat);
+    await service.createDraftsFromNaturalLanguage('u7', {
+      input: 'coffee 4.5',
+    });
+    expect(resolver.forUser).toHaveBeenCalledWith('u7');
+  });
 
   it('uses the local parser without calling the model when no key is set', async () => {
     const chat = jest.fn();

@@ -11,7 +11,14 @@ import { AiService } from './ai.service';
 import { AiChatsService } from './chat/ai-chats.service';
 import { ChatToolRunner } from './chat/chat-tool-runner';
 import { ModelDraftParser } from './drafts/model-draft-parser';
+import { SecretBox } from '../../common/utils/secret-box';
+import { AiCredentialsController } from './credentials/ai-credentials.controller';
+import {
+  AI_SECRET_BOX,
+  AiCredentialsService,
+} from './credentials/ai-credentials.service';
 import { LlmProvider } from './llm/llm-provider';
+import { LlmResolver } from './llm/llm-resolver';
 import { OpenAiCompatibleProvider } from './llm/openai-compatible.provider';
 
 @Module({
@@ -22,13 +29,23 @@ import { OpenAiCompatibleProvider } from './llm/openai-compatible.provider';
     CategoriesModule,
     McpModule,
   ],
-  controllers: [AiController],
+  controllers: [AiController, AiCredentialsController],
   providers: [
     AiService,
     ModelDraftParser,
     AiChatService,
     AiChatsService,
     ChatToolRunner,
+    AiCredentialsService,
+    LlmResolver,
+    {
+      provide: AI_SECRET_BOX,
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => {
+        const key = config.get<string>('AI_KEY_ENCRYPTION_KEY');
+        return key ? new SecretBox(key) : null;
+      },
+    },
     {
       provide: LlmProvider,
       inject: [ConfigService],

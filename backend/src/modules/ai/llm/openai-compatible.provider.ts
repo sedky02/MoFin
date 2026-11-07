@@ -1,5 +1,6 @@
 import { Logger } from '@nestjs/common';
 import {
+  AiKeyRejectedException,
   AiProviderRejectedException,
   AiUnavailableException,
 } from './ai-unavailable.exception';
@@ -15,6 +16,14 @@ export interface OpenAiCompatibleOptions {
   baseUrl: string;
   model: string;
   timeoutMs: number;
+  /**
+   * `user`: a key a person stored. It is never logged about, a redirect is an error (the key must
+   * not follow one to another host) and a 401/403 is theirs to fix.
+   */
+  origin?: 'shared' | 'user';
+  providerLabel?: string;
+  tokenLimitParam?: 'max_tokens' | 'max_completion_tokens';
+  sendTemperature?: boolean;
 }
 
 interface ChatCompletionResponse {
@@ -160,6 +169,7 @@ export class OpenAiCompatibleProvider extends LlmProvider {
 
   constructor(private readonly options: OpenAiCompatibleOptions) {
     super();
+    if (options.origin === 'user') return;
     // One line per cold start, so a bad deployment config shows up in the logs.
     // Reports only whether the key is present and well-formed, never the key.
     const key = options.apiKey;
@@ -182,8 +192,9 @@ export class OpenAiCompatibleProvider extends LlmProvider {
       JSON.stringify({
         model: this.options.model,
         messages: request.messages.map(toWireMessage),
-        temperature,
-        max_tokens: request.maxTokens ?? 1024,
+        ...(this.options.sendTemperature === false ? {} : { temperature }),
+        [this.options.tokenLimitParam ?? 'max_tokens']:
+          request.maxTokens ?? 1024,
         ...(request.json ? { response_format: { type: 'json_object' } } : {}),
         ...(request.tools?.length
           ? {
@@ -242,7 +253,12 @@ export class OpenAiCompatibleProvider extends LlmProvider {
       }
       const retryable =
         error.status === 400 && error.code === 'tool_use_failed' && attempt < 2;
-      const log = `LLM provider answered ${error.status} (model ${this.options.model}, tools ${request.tools?.length ?? 0}, attempt ${attempt}): ${error.code}: ${error.message}`;
+      // A refusal can quote part of the key it was sent, so a person's own key logs the code only.
+      const detail =
+        this.options.origin === 'user'
+          ? error.code
+          : `${error.code}: ${error.message}`;
+      const log = `LLM provider answered ${error.status} (model ${this.options.model}, tools ${request.tools?.length ?? 0}, attempt ${attempt}): ${detail}`;
       if (retryable) {
         this.logger.warn(`${log}; retrying`);
         continue;
@@ -262,6 +278,14 @@ export class OpenAiCompatibleProvider extends LlmProvider {
         );
       }
       if (error.status >= 500) throw new AiUnavailableException();
+      if (
+        this.options.origin === 'user' &&
+        (error.status === 401 || error.status === 403)
+      ) {
+        throw new AiKeyRejectedException(
+          this.options.providerLabel ?? 'Your AI provider',
+        );
+      }
       if (error.code === 'tool_use_failed') {
         throw new AiUnavailableException(
           'The assistant got confused. Try rephrasing the question.',
@@ -281,6 +305,7 @@ export class OpenAiCompatibleProvider extends LlmProvider {
         },
         body,
         signal: AbortSignal.timeout(this.options.timeoutMs),
+        redirect: this.options.origin === 'user' ? 'error' : 'follow',
       });
     } catch (error) {
       // Timeouts are a TimeoutError; DNS/TLS/connection failures carry the

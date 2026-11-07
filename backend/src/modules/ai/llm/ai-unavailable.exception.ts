@@ -37,11 +37,31 @@ export class AiProviderRejectedException extends HttpException {
   }
 }
 
+/**
+ * A person's own key was refused (revoked, wrong or out of credit). Unlike a rejected shared key
+ * this is theirs to fix, so the message says where.
+ */
+export class AiKeyRejectedException extends HttpException {
+  constructor(providerLabel: string) {
+    super(
+      {
+        code: 'AI_KEY_REJECTED',
+        message: `${providerLabel} rejected your API key. Check it in Settings > AI provider.`,
+      },
+      HttpStatus.BAD_GATEWAY,
+    );
+  }
+}
+
 export function isAiProviderFailure(
   error: unknown,
-): error is AiUnavailableException | AiProviderRejectedException {
+): error is
+  | AiUnavailableException
+  | AiProviderRejectedException
+  | AiKeyRejectedException {
   return (
     error instanceof AiUnavailableException ||
-    error instanceof AiProviderRejectedException
+    error instanceof AiProviderRejectedException ||
+    error instanceof AiKeyRejectedException
   );
 }

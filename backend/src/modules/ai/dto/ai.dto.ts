@@ -62,6 +62,8 @@ export interface AiChatDetailView extends AiChatSummaryView {
 }
 
 export interface AiChatTurnView {
+  /** Present when the person's own key failed and the shared assistant answered. */
+  notice?: string;
   chat: AiChatSummaryView;
   messages: [AiChatMessageView, AiChatMessageView];
 }

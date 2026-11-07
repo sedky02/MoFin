@@ -197,6 +197,14 @@ function seedUser(db: Db, id: string, passwordHash: string | null) {
     expoToken: `ExponentPushToken[${id}]`,
     platform: 'android',
   });
+  add('aiCredential', {
+    id: `${id}-ai-key`,
+    userId: id,
+    provider: 'groq',
+    ciphertext: 'v1.iv.tag.ct',
+    last4: '1234',
+    verifiedAt: new Date(),
+  });
 }
 
 /** Rows per table that belong to `userId`, directly or through a parent (goal instances). */
@@ -426,6 +434,7 @@ describe('deleting an account and its data (e2e)', () => {
       'authorizationCode',
       'oAuthGrant',
       'pushDevice',
+      'aiCredential',
     ];
 
     it("deletes everything recorded, soft-deleted rows included, keeps the profile, sign-ins and connected apps, and touches nobody else's", async () => {

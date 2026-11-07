@@ -137,6 +137,8 @@ Defaults and examples are in `backend/.env.example`.
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | backend | no | Outgoing email for password reset. Without `SMTP_HOST`, emails are logged outside production. |
 | `PASSWORD_RESET_TTL` | backend | no | Reset link lifetime (`30m`). |
 | `MAIL_CAPTURE_DIR` | backend | no | Development and test only. Writes emails as JSON files for the E2E suite. |
+| `AI_API_KEY`, `AI_BASE_URL`, `AI_MODEL`, `AI_TIMEOUT_MS` | backend | no | The shared assistant (Groq by default). Without `AI_API_KEY`, drafts use the local parser and chat answers 503, unless a person stores their own key. |
+| `AI_KEY_ENCRYPTION_KEY` | backend | production | 32 random bytes, base64 (`openssl rand -base64 32`). Encrypts, with AES-256-GCM, the AI provider keys people store in Settings. Losing it makes those keys unreadable; it never exposes them. |
 | `EXPO_PUSH_ENABLED`, `EXPO_ACCESS_TOKEN` | backend | no | Send push notifications to the mobile app through Expo. Off by default: pushes are only counted in the log. |
 | `SENTRY_DSN` | backend | no | Error reporting. |
 | `BFF_SHARED_SECRET` | backend, web | production | Shared secret that lets the API trust the client IP header sent by the BFF. Used for rate limiting. |
