@@ -138,8 +138,8 @@ export function amountsHidden(hideInWidgets: boolean, account: Account | undefin
 }
 
 /**
- * "Updated 6 Nov, 14:32". Always with the date: the widget can't redraw the words by itself, so
- * "14:32" alone would read as today's on the next day.
+ * "6 Nov, 14:32", shown beside the refresh arrow. Always with the date: the widget can't redraw the
+ * words by itself, so "14:32" alone would read as today's on the next day.
  */
 export function updatedLabel(at: Date, locale?: string): string {
   const when = new Intl.DateTimeFormat(locale, {
@@ -148,7 +148,7 @@ export function updatedLabel(at: Date, locale?: string): string {
     hour: '2-digit',
     minute: '2-digit',
   }).format(at);
-  return `Updated ${when}`;
+  return when;
 }
 
 export function summaryProps(input: {

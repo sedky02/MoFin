@@ -110,7 +110,6 @@ describe('masking', () => {
 describe('updatedLabel', () => {
   it('always carries the date, so an old update never reads as today', () => {
     const label = updatedLabel(new Date(2026, 10, 6, 14, 32), 'en-GB');
-    expect(label).toMatch(/^Updated /);
     expect(label).toContain('6 Nov');
     expect(label).toContain('14:32');
   });

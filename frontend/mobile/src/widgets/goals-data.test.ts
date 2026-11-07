@@ -1,5 +1,5 @@
 import type { Goal } from '@/core/types';
-import { goalRow, goalsProps, MAX_WIDGET_GOALS, toggleGoal } from '@/widgets/goals-data';
+import { goalRow, goalsProps, MAX_WIDGET_GOALS, pillName, toggleGoal } from '@/widgets/goals-data';
 import { parseWidgetSettings } from '@/widgets/widget-settings';
 
 const NOW = new Date('2026-11-15T12:00:00Z');
@@ -29,7 +29,24 @@ const goal = (id: string, over: Partial<Goal> = {}, progress = '0', target = '10
 
 describe('goalRow', () => {
   it('shows the percentage reached and a 0-1 bar', () => {
-    expect(goalRow(goal('a', {}, '450'), NOW)).toMatchObject({ name: 'Goal a', percent: '45%', progress: 0.45, tone: 'good' });
+    expect(goalRow(goal('a', {}, '450'), NOW)).toMatchObject({
+      name: 'Goal a',
+      percent: '45%',
+      progress: 0.45,
+      tone: 'good',
+      status: 'On track',
+    });
+  });
+
+  it('says it in words: behind, over budget, missed, done', () => {
+    expect(goalRow(goal('a', {}, '100'), NOW).status).toBe('Behind');
+    expect(goalRow(goal('a', { type: 'EXPENSE' }, '1170'), NOW).status).toBe('Over budget');
+    const missed = goal('b');
+    missed.currentInstance!.status = 'FAILED';
+    expect(goalRow(missed, NOW).status).toBe('Missed');
+    const done = goal('c', {}, '1000');
+    done.currentInstance!.status = 'ACHIEVED';
+    expect(goalRow(done, NOW).status).toBe('Done');
   });
 
   it('marks a spending cap that is passed, with the real percentage but a full bar', () => {
@@ -53,11 +70,28 @@ describe('goalRow', () => {
 describe('goalsProps', () => {
   const goals = [goal('a', {}, '500'), goal('b'), goal('c'), goal('d')];
 
-  it('shows the chosen goals in the order picked, at most three', () => {
+  it('focuses the first goal picked and lists the rest as pills, at most three goals in all', () => {
     const props = goalsProps({ goals, chosenIds: ['c', 'a', 'd', 'b'], at: NOW });
     expect(props.kind).toBe('data');
-    expect(props.rows.map((r) => r.name)).toEqual(['Goal c', 'Goal a', 'Goal d']);
+    expect(props.focus?.name).toBe('Goal c');
+    expect(props.others).toEqual([
+      { name: 'Goal a', percent: '50%' },
+      { name: 'Goal d', percent: '0%' },
+    ]);
     expect(props.openUrl).toBe('mofin://goals');
+  });
+
+  it('works with one goal, no pills', () => {
+    const props = goalsProps({ goals, chosenIds: ['a'], at: NOW });
+    expect(props).toMatchObject({ summary: '1 goal', others: [] });
+    expect(props.focus?.percent).toBe('50%');
+  });
+
+  it('counts the goals that are off track in the summary', () => {
+    const behind = goal('x', {}, '100');
+    const over = goal('y', { type: 'EXPENSE' }, '1170');
+    const props = goalsProps({ goals: [goal('a', {}, '500'), behind, over], chosenIds: ['a', 'x', 'y'], at: NOW });
+    expect(props.summary).toBe('3 goals · 2 off track');
   });
 
   it('asks to choose when none are picked yet, and links to the setup', () => {
@@ -73,6 +107,15 @@ describe('goalsProps', () => {
 
   it('invites to set a goal when there are none', () => {
     expect(goalsProps({ goals: [], chosenIds: ['a'], at: NOW }).message).toMatch(/Set a goal/);
+  });
+});
+
+describe('pillName', () => {
+  it('cuts a name to what fits: short for two pills, longer for one', () => {
+    expect(pillName('Emergency fund', 2)).toBe('Emergenc…');
+    expect(pillName('Emergency fund', 1)).toBe('Emergency fund');
+    expect(pillName('Don\'t spend more than 300 TND on food', 1)).toBe('Don\'t spend more than…');
+    expect(pillName('Rent', 2)).toBe('Rent');
   });
 });
 
