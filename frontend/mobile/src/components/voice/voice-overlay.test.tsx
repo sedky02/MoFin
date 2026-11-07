@@ -3,11 +3,20 @@ import { act, fireEvent, render, screen } from '@testing-library/react-native';
 
 import { VoiceOverlay } from '@/components/voice/voice-overlay';
 import type { AiChatDetail, AiChatTurn, DraftTransaction } from '@/core/types';
+import { PAUSE_MS } from '@/hooks/use-speech-recognition';
 import { voiceOverlay } from '@/lib/voice-overlay';
 
 type SpeechFake = { module: Record<string, jest.Mock>; emit: (event: string, payload?: unknown) => void };
 const speech = (globalThis as unknown as { __speech: SpeechFake }).__speech;
 const result = (transcript: string, isFinal: boolean) => ({ isFinal, results: [{ transcript, confidence: 0.9, segments: [] }] });
+
+/** The pause ends the turn, then the engine reports it ended. */
+async function pauseThenEnd() {
+  await act(async () => {
+    await jest.advanceTimersByTimeAsync(PAUSE_MS);
+  });
+  await act(async () => speech.emit('end'));
+}
 
 const mockSend = jest.fn();
 const mockPush = jest.fn();
@@ -57,11 +66,15 @@ async function openOverlay() {
 }
 
 beforeEach(() => {
+  jest.useFakeTimers();
   jest.clearAllMocks();
   mockDetail = undefined;
   speech.module.requestPermissionsAsync.mockResolvedValue({ granted: true });
 });
-afterEach(() => act(() => voiceOverlay.close()));
+afterEach(async () => {
+  await act(() => voiceOverlay.close());
+  jest.useRealTimers();
+});
 
 describe('VoiceOverlay', () => {
   it('stays closed until opened, then starts listening straight away', async () => {
@@ -86,7 +99,7 @@ describe('VoiceOverlay', () => {
     await openOverlay();
     await act(async () => speech.emit('result', result('Coffee', false)));
     await act(async () => speech.emit('result', result('Coffee 4.5', true)));
-    await act(async () => speech.emit('end'));
+    await pauseThenEnd();
 
     expect(mockSend).toHaveBeenCalledTimes(1);
     expect(mockSend).toHaveBeenCalledWith({ chatId: null, content: 'Coffee 4.5', inputMode: 'voice' });
@@ -98,13 +111,15 @@ describe('VoiceOverlay', () => {
     mockSend.mockResolvedValue(turn('Coffee 4.5', 'Drafted.'));
     await openOverlay();
     await act(async () => speech.emit('result', result('Coffee 4.5', true)));
-    await act(async () => speech.emit('end'));
+    await pauseThenEnd();
 
-    // Tap the mic for a follow-up.
-    await fireEvent.press(screen.getByLabelText('Speak'));
+    // A quick tap on the mic for a follow-up: it listens until a pause.
+    const mic = screen.getByLabelText('Speak');
+    await fireEvent(mic, 'pressIn');
+    await fireEvent(mic, 'pressOut');
     await act(async () => speech.emit('start'));
     await act(async () => speech.emit('result', result('and lunch 18', true)));
-    await act(async () => speech.emit('end'));
+    await pauseThenEnd();
     expect(mockSend).toHaveBeenLastCalledWith({ chatId: 'chat-1', content: 'and lunch 18', inputMode: 'voice' });
 
     await fireEvent.press(screen.getByLabelText('Open in chat'));

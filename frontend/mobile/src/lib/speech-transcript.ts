@@ -25,3 +25,8 @@ export function finalText(state: Transcript): string {
 export function textToSend(state: Transcript): string {
   return [finalText(state), state.interim].filter(Boolean).join(' ').trim();
 }
+
+/** A new engine session starts its interim afresh, so the unfinished words are kept as heard. */
+export function commitInterim(state: Transcript): Transcript {
+  return state.interim ? { finals: [...state.finals, state.interim], interim: '' } : state;
+}

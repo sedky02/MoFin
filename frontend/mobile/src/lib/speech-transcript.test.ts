@@ -1,4 +1,5 @@
-import { addResult, EMPTY_TRANSCRIPT, finalText, textToSend } from '@/lib/speech-transcript';
+import {
+  commitInterim, addResult, EMPTY_TRANSCRIPT, finalText, textToSend } from '@/lib/speech-transcript';
 
 describe('speech transcript', () => {
   it('replaces the interim with each new interim, and closes it with the final', () => {
@@ -28,5 +29,13 @@ describe('speech transcript', () => {
     let t = addResult(EMPTY_TRANSCRIPT, 'how much', true);
     t = addResult(t, 'on food', false);
     expect(textToSend(t)).toBe('how much on food');
+  });
+
+  it('keeps the unfinished words when a new engine session starts its own interim', () => {
+    let t = addResult(EMPTY_TRANSCRIPT, 'rent', true);
+    t = addResult(t, 'and food', false);
+    t = addResult(commitInterim(t), 'twenty', false);
+    expect(textToSend(t)).toBe('rent and food twenty');
+    expect(commitInterim(EMPTY_TRANSCRIPT)).toBe(EMPTY_TRANSCRIPT);
   });
 });

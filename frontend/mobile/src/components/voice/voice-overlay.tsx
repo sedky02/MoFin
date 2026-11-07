@@ -10,6 +10,7 @@ import { Icon } from '@/components/ui/icon';
 import { SheetScrollView } from '@/components/ui/sheet-parts';
 import { Text } from '@/components/ui/text';
 import { chatErrorMessage, useAiChatDetail, useSendChatMessage } from '@/hooks/useAiChat';
+import { useHoldToTalk } from '@/hooks/use-hold-to-talk';
 import { openSpeechSettings, useSpeechRecognition } from '@/hooks/use-speech-recognition';
 import { haptics } from '@/lib/haptics';
 import { ArrowUp, Keyboard, Mic, Square } from '@/lib/icons';
@@ -85,6 +86,7 @@ function VoiceSheet() {
   }
 
   const speech = useSpeechRecognition({ onDone: (text) => void ask(text, 'voice') });
+  const mic = useHoldToTalk(speech, { onStart: () => setTyping(false) });
 
   // Listening starts as soon as the overlay opens.
   const { start } = speech;
@@ -219,9 +221,10 @@ function VoiceSheet() {
                 <Pressable
                   role="button"
                   accessibilityLabel={speech.listening ? 'Stop and send' : 'Speak'}
+                  accessibilityHint={speech.listening ? 'Double tap to send' : 'Double tap to listen'}
                   accessibilityState={{ busy: send.isPending }}
                   disabled={send.isPending}
-                  onPress={toggleMic}
+                  {...mic.pressProps}
                   className={cn('size-16 items-center justify-center rounded-full bg-primary shadow-md shadow-black/25', send.isPending && 'opacity-50')}>
                   <Icon as={speech.listening ? Square : Mic} size={speech.listening ? 20 : 26} className="text-primary-foreground" />
                 </Pressable>
@@ -230,6 +233,9 @@ function VoiceSheet() {
               <View className="size-12" />
             </View>
           )}
+          {!typing && speech.listening ? (
+            <Text className="px-6 pt-1 text-center text-xs text-muted-foreground">{mic.held ? 'Release to send' : 'Tap to send'}</Text>
+          ) : null}
     </>
   );
 }

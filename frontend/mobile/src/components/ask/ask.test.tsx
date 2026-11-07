@@ -6,6 +6,7 @@ import { AssistantMessage, RichText } from '@/components/ask/ask-message';
 import { AskThreadScreen } from '@/components/ask/ask-thread-screen';
 import { ApiClientError } from '@/api/client';
 import type { AiChart, AiChatTurn, DraftTransaction } from '@/core/types';
+import { PAUSE_MS } from '@/hooks/use-speech-recognition';
 import { chatErrorMessage } from '@/hooks/useAiChat';
 
 const mockMutateAsync = jest.fn();
@@ -193,6 +194,9 @@ describe('draft cards in an answer', () => {
 });
 
 describe('AskThreadScreen: the mic', () => {
+  beforeEach(() => jest.useFakeTimers());
+  afterEach(() => jest.useRealTimers());
+
   type SpeechFake = { module: Record<string, jest.Mock>; emit: (event: string, payload?: unknown) => void };
   const speech = (globalThis as unknown as { __speech: SpeechFake }).__speech;
   const heard = (transcript: string, isFinal: boolean) => ({ isFinal, results: [{ transcript, confidence: 0.9, segments: [] }] });
@@ -212,6 +216,9 @@ describe('AskThreadScreen: the mic', () => {
     // While listening the box shows the words as they come.
     expect(screen.getByLabelText('Ask a question about your finances').props.value).toBe('Coffee');
     await act(async () => speech.emit('result', heard('Coffee 4.5', true)));
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(PAUSE_MS);
+    });
     await act(async () => speech.emit('end'));
     expect(screen.getByLabelText('Ask a question about your finances').props.value).toBe('Coffee 4.5');
     expect(mockMutateAsync).not.toHaveBeenCalled();
