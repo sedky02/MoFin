@@ -32,6 +32,11 @@ export interface DraftOrigin {
   sourceClient?: string | null;
 }
 
+export type ApprovalOverrides = Omit<
+  Partial<ParsedDraftTransaction>,
+  'items'
+> & { items?: ParsedDraftTransaction['items'] | null };
+
 export const COMPOSER_ORIGIN: DraftOrigin = { source: DraftSource.COMPOSER };
 
 @Injectable()
@@ -147,7 +152,7 @@ export class DraftTransactionsService {
   async approve(
     userId: string,
     draftId: string,
-    overrides?: Partial<ParsedDraftTransaction>,
+    overrides?: ApprovalOverrides,
   ) {
     const draft = await this.prisma.draftTransaction.findFirst({
       where: { id: draftId, userId },
@@ -158,9 +163,13 @@ export class DraftTransactionsService {
       return this.reconcileAlreadyApproved(draft);
     }
 
+    const { items: itemsOverride, ...fieldOverrides } = overrides ?? {};
     const merged = {
       ...(draft.parsedData as unknown as ParsedDraftTransaction),
-      ...overrides,
+      ...fieldOverrides,
+      ...(itemsOverride === undefined
+        ? {}
+        : { items: itemsOverride ?? undefined }),
     };
     const result = parsedDraftTransactionSchema.safeParse(merged);
     if (!result.success) {
@@ -204,6 +213,7 @@ export class DraftTransactionsService {
               fromAccountId: parsed.fromAccountId,
               toAccountId: parsed.toAccountId,
               categoryId: parsed.categoryId,
+              items: parsed.items,
               draftId: draft.id,
             },
             db,

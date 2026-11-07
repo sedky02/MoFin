@@ -113,7 +113,7 @@ export function buildChatTools(): LlmTool[] {
     {
       name: CREATE_DRAFT_TOOL,
       description:
-        'Propose one transaction as a pending draft the user approves. One call per transaction. EXPENSE uses fromAccountId, INCOME toAccountId, TRANSFER both. Pass an account id only when the user names the account; otherwise leave it out and the server picks their default. categoryId: an id from the category list for this type, or left out when unsure. occurredAt is YYYY-MM-DD (default today).',
+        'Propose one transaction as a pending draft the user approves. One call per transaction. EXPENSE uses fromAccountId, INCOME toAccountId, TRANSFER both. Pass an account id only when the user names the account; otherwise leave it out and the server picks their default. categoryId: an id from the category list for this type, or left out when unsure. occurredAt is YYYY-MM-DD (default today). For one purchase with several priced lines (a receipt, a bill with different categories), make ONE call with items [{amount, categoryId?, memo}] and amount as their sum; with items, leave the top-level categoryId out. Not for transfers.',
       parameters: schemaOf(chatDraftSchema),
     },
   ];

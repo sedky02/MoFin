@@ -395,6 +395,65 @@ describe('DraftCompleter.complete categories', () => {
     );
   });
 
+  describe('split items', () => {
+    const split = (
+      items: Array<{ amount: string; categoryId?: string; memo?: string }>,
+    ) => ({
+      type: TransactionType.EXPENSE,
+      description: 'Supermarket',
+      categoryId: 'food',
+      items,
+    });
+
+    it('drops the top-level category and keeps each line category', async () => {
+      const { completer } = setup([]);
+      const out = await completer.complete(
+        'u1',
+        split([
+          { amount: '3', categoryId: 'food', memo: 'milk' },
+          { amount: '2', categoryId: 'rent' },
+        ]),
+        NOW,
+      );
+      expect(out.categoryId).toBeUndefined();
+      expect(out.items?.map((i) => i.categoryId)).toEqual(['food', 'rent']);
+    });
+
+    it('fills a missing line category from history using the memo', async () => {
+      const { completer } = setup();
+      const out = await completer.complete(
+        'u1',
+        split([
+          { amount: '3', categoryId: 'food' },
+          { amount: '2', memo: 'Uber' },
+        ]),
+        NOW,
+      );
+      expect(out.items?.[1].categoryId).toBe('transport');
+    });
+
+    it('rejects an unknown or wrong-type category on a line', async () => {
+      const { completer } = setup();
+      await expect(
+        completer.complete(
+          'u1',
+          split([
+            { amount: '3', categoryId: 'food' },
+            { amount: '2', categoryId: 'salary' },
+          ]),
+          NOW,
+        ),
+      ).rejects.toThrow(/"Salary" is an INCOME category/);
+      await expect(
+        completer.complete(
+          'u1',
+          split([{ amount: '3', categoryId: 'made-up' }, { amount: '2' }]),
+          NOW,
+        ),
+      ).rejects.toThrow(/Unknown categoryId "made-up"/);
+    });
+  });
+
   it('drops a category sent with a transfer instead of rejecting it', async () => {
     const { completer } = setup();
     const out = await completer.complete(

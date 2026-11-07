@@ -37,4 +37,4 @@ create draft -> user approves -> TransactionsService.create()
 
 ## MCP tools
 
-Served at `/api/v1/mcp`, authenticated with an OAuth 2.1 access token. Tools include `create_draft_transaction`, `search_transactions`, `get_balance`, `get_monthly_summary` and `list_accounts`. Check `src/modules/mcp/` for the current list.
+Served at `/api/v1/mcp`, authenticated with an OAuth 2.1 access token. Tools include `create_draft_transaction`, `search_transactions`, `get_balance`, `get_monthly_summary`, `list_accounts`, `list_categories` and the goal tools (`list_goals`, `get_goal`, `get_goal_history`). `create_draft_transaction` accepts `items` to put several priced lines (each with its own category) in one draft. Check `src/modules/mcp/` for the current list.

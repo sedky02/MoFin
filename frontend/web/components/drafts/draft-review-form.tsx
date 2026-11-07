@@ -2,7 +2,7 @@
 
 import { CategoryGlyph } from "@/components/categories/category-glyph";
 import * as React from "react";
-import { useForm } from "react-hook-form";
+import { useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Form,
@@ -29,10 +29,11 @@ import { useCategories } from "@/hooks/useCategories";
 import { categoryScope, sameOwnerAccounts, writableAccounts } from "@/lib/account-sharing";
 import { makeTransactionSchema, type TransactionFormValues } from "@/lib/transaction-schema";
 import { handleApiError } from "@/lib/form-errors";
-import { parseMoneyInput, toDatetimeLocal } from "@/lib/format";
-import { draftAmountInput } from "@/lib/draft-review";
+import { formatMoneyInput, parseMoneyInput, toDatetimeLocal } from "@/lib/format";
+import { add } from "@/lib/decimal";
+import { draftAmountInput, draftItemFormValues, draftItemsPayload } from "@/lib/draft-review";
 import type { DraftTransaction, ParsedTransactionData } from "@/lib/types";
-import { Loader2 } from "lucide-react";
+import { Loader2, Plus, Trash2 } from "lucide-react";
 
 export function DraftReviewForm({
   draft,
@@ -61,6 +62,7 @@ export function DraftReviewForm({
       toAccountId: p.toAccountId ?? undefined,
       categoryId: p.categoryId ?? undefined,
       occurredAt: toDatetimeLocal(p.occurredAt),
+      items: draftItemFormValues(p),
     },
   });
 
@@ -68,6 +70,18 @@ export function DraftReviewForm({
   const fromAccountId = form.watch("fromAccountId");
   const toAccountId = form.watch("toAccountId");
   const currency = form.watch("currency");
+  const watchedItems = form.watch("items");
+  const itemsArray = useFieldArray({ control: form.control, name: "items" });
+  const splitting = itemsArray.fields.length > 1;
+  const itemsTotal = formatMoneyInput(
+    (watchedItems ?? []).reduce((sum, item) => add(sum, parseMoneyInput(item.amountRaw) ?? "0"), "0"),
+    currency || undefined,
+  );
+
+  // While split, the total is derived from the lines, not entered separately.
+  React.useEffect(() => {
+    if (splitting) form.setValue("amountRaw", itemsTotal, { shouldValidate: false });
+  }, [splitting, itemsTotal, form]);
 
   // Pre-select a default account once accounts load, when the parser left it empty.
   React.useEffect(() => {
@@ -97,6 +111,8 @@ export function DraftReviewForm({
     if (!accountList.length || previousCategorySet.current === categorySet) return;
     previousCategorySet.current = categorySet;
     form.setValue("categoryId", undefined);
+    // "" not undefined: react-hook-form falls back to the row default for undefined.
+    (form.getValues("items") ?? []).forEach((_, i) => form.setValue(`items.${i}.categoryId`, ""));
   }, [categorySet, accountList.length, form]);
 
   const destinationAccounts =
@@ -114,6 +130,7 @@ export function DraftReviewForm({
     const v = form.getValues();
     const amount = parseMoneyInput(v.amountRaw);
     if (!amount) return;
+    const items = v.type !== "TRANSFER" ? draftItemsPayload(v.items) : undefined;
     try {
       await onApprove({
       type: v.type,
@@ -123,7 +140,8 @@ export function DraftReviewForm({
       occurredAt: new Date(v.occurredAt).toISOString(),
       fromAccountId: v.type !== "INCOME" ? v.fromAccountId : undefined,
       toAccountId: v.type !== "EXPENSE" ? v.toAccountId : undefined,
-      categoryId: v.type !== "TRANSFER" ? v.categoryId : undefined,
+      categoryId: v.type !== "TRANSFER" && !items ? v.categoryId : undefined,
+      items: items ?? null,
       });
     } catch (err) {
       // Backend field errors (e.g. bad account/currency) land on the field the user can fix.
@@ -146,6 +164,10 @@ export function DraftReviewForm({
                   field.onChange(t);
                   // Categories are per type; a kept id would be hidden but still sent.
                   form.setValue("categoryId", undefined);
+                  (form.getValues("items") ?? []).forEach((_, i) =>
+                    form.setValue(`items.${i}.categoryId`, ""),
+                  );
+                  if (t === "TRANSFER") itemsArray.replace([]);
                 }}
               />
             </FormItem>
@@ -165,9 +187,13 @@ export function DraftReviewForm({
                     onChange={field.onChange}
                     onBlur={field.onBlur}
                     currency={currency || undefined}
+                    disabled={splitting}
                     aria-invalid={!!form.formState.errors.amountRaw}
                   />
                 </FormControl>
+                {splitting && (
+                  <p className="text-xs text-muted-foreground">Calculated from the items below.</p>
+                )}
                 <FormMessage />
               </FormItem>
             )}
@@ -244,7 +270,114 @@ export function DraftReviewForm({
           )}
         </div>
 
-        {type !== "TRANSFER" && (
+        {type !== "TRANSFER" && splitting && (
+          <div className="space-y-3 rounded-2xl bg-muted/50 p-4">
+            <p className="text-sm font-medium">Split into {itemsArray.fields.length} items</p>
+            {itemsArray.fields.map((field, i) => (
+              <div key={field.id} className="flex items-start gap-2">
+                <span className="mt-2.5 w-4 shrink-0 text-xs text-muted-foreground">{i + 1}</span>
+                <div className="flex-1 space-y-2">
+                  <div className="flex items-start gap-2">
+                    <FormField
+                      control={form.control}
+                      name={`items.${i}.amountRaw`}
+                      render={({ field: amountField }) => (
+                        <FormItem className="w-28 shrink-0">
+                          <FormLabel className="sr-only">Item {i + 1} amount</FormLabel>
+                          <FormControl>
+                            <MoneyInput
+                              value={amountField.value ?? ""}
+                              onChange={amountField.onChange}
+                              onBlur={amountField.onBlur}
+                              currency={currency || undefined}
+                              aria-invalid={!!form.formState.errors.items?.[i]?.amountRaw}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name={`items.${i}.categoryId`}
+                      render={({ field: catField }) => (
+                        <FormItem className="flex-1">
+                          <FormLabel className="sr-only">Item {i + 1} category</FormLabel>
+                          <Select
+                            value={catField.value ?? ""}
+                            onValueChange={(v) => catField.onChange(v || undefined)}
+                          >
+                            <FormControl>
+                              <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Uncategorized" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {relevantCategories.map((c) => (
+                                <SelectItem key={c.id} value={c.id}>
+                                  <span className="flex items-center gap-2">
+                                    <CategoryGlyph category={c} className="size-4" />
+                                    {c.name}
+                                  </span>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </FormItem>
+                      )}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="shrink-0 text-muted-foreground hover:text-destructive"
+                      disabled={itemsArray.fields.length <= 2}
+                      onClick={() => itemsArray.remove(i)}
+                      aria-label={`Remove item ${i + 1}`}
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </div>
+                  <FormField
+                    control={form.control}
+                    name={`items.${i}.description`}
+                    render={({ field: descField }) => (
+                      <FormItem>
+                        <FormLabel className="sr-only">Item {i + 1} note</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Item description (optional)"
+                            className="text-sm"
+                            {...descField}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
+            ))}
+            <div className="flex items-center justify-between pt-1">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="gap-1.5"
+                onClick={() =>
+                  itemsArray.append({ amountRaw: "", categoryId: undefined, description: "" })
+                }
+              >
+                <Plus className="size-4" />
+                Add item
+              </Button>
+              <p className="text-xs text-muted-foreground">
+                Total: {itemsTotal} {currency}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {type !== "TRANSFER" && !splitting && (
           <FormField
             control={form.control}
             name="categoryId"

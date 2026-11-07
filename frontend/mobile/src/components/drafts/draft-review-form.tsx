@@ -1,16 +1,18 @@
 import * as React from 'react';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import { MoneyInput } from '@/components/common/money-input';
 import { DateTimeField } from '@/components/transactions/datetime-field';
 import {
   accountOptions,
+  categoryOptions,
   CategoryChips,
   PickerField,
   TypeSwitcher,
 } from '@/components/transactions/transaction-form-fields';
-import { tidyMoneyText } from '@/components/transactions/transaction-form-model';
+import { splitItemsTotal, tidyMoneyText } from '@/components/transactions/transaction-form-model';
 import { Button } from '@/components/ui/button';
+import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Text } from '@/components/ui/text';
 import { handleApiError } from '@/core/form-errors';
@@ -18,6 +20,8 @@ import type { TransactionFormValues } from '@/core/transaction-schema';
 import type { DraftTransaction, ParsedTransactionData } from '@/core/types';
 import { useAccounts } from '@/hooks/useAccounts';
 import { useCategories } from '@/hooks/useCategories';
+import { Plus, Trash2 } from '@/lib/icons';
+import { cn } from '@/lib/utils';
 import { categoryScope, sameOwnerAccounts, writableAccounts } from '@/core/account-sharing';
 
 import { buildApproval, initialReviewValues, syncCurrency, withDefaultAccounts, type ReviewErrors } from './draft-model';
@@ -56,6 +60,11 @@ export function DraftReviewForm({
 
   const set = (patch: Partial<TransactionFormValues>) => setValues((v) => syncCurrency({ ...v, ...patch }, accountList));
   const { type } = values;
+  const items = values.items ?? [];
+  const splitting = type !== 'TRANSFER' && items.length > 1;
+  const setItems = (next: typeof items) => setValues((v) => ({ ...v, items: next }));
+  const setItem = (index: number, patch: Partial<(typeof items)[number]>) =>
+    setItems(items.map((item, i) => (i === index ? { ...item, ...patch } : item)));
   // A shared account uses its owner's categories, so moving the draft can drop the pick.
   const ledgerAccountId = type === 'INCOME' ? values.toAccountId : values.fromAccountId;
   const categorySet = categoryScope(accountList.find((a) => a.id === ledgerAccountId));
@@ -64,13 +73,23 @@ export function DraftReviewForm({
   React.useEffect(() => {
     if (!accountList.length || previousCategorySet.current === categorySet) return;
     previousCategorySet.current = categorySet;
-    setValues((v) => ({ ...v, categoryId: undefined }));
+    setValues((v) => ({
+      ...v,
+      categoryId: undefined,
+      items: v.items?.map((item) => ({ ...item, categoryId: undefined })),
+    }));
   }, [categorySet, accountList.length]);
   const relevantCategories = (categories ?? []).filter((c) => (type === 'TRANSFER' ? false : c.type === type));
 
   async function submit() {
     if (approving) return;
-    const tidy = { ...values, amountRaw: tidyMoneyText(values.amountRaw, values.currency || undefined) };
+    const currency = values.currency || undefined;
+    const tidyItems = items.map((item) => ({ ...item, amountRaw: tidyMoneyText(item.amountRaw, currency) }));
+    const tidy = {
+      ...values,
+      items: tidyItems,
+      amountRaw: splitting ? splitItemsTotal(tidyItems, currency) : tidyMoneyText(values.amountRaw, currency),
+    };
     setValues(tidy);
     const result = buildApproval(tidy, accountList);
     if (!result.ok) {
@@ -96,18 +115,20 @@ export function DraftReviewForm({
         onChange={(t) => {
           if (t === type) return;
           // Categories are per type; a kept id would be hidden but still sent.
-          set({ type: t, categoryId: undefined });
+          set({ type: t, categoryId: undefined, items: t === 'TRANSFER' ? [] : items.map((item) => ({ ...item, categoryId: undefined })) });
         }}
       />
 
       <View className="gap-1.5">
         <Text className="text-sm font-medium">Amount</Text>
         <MoneyInput
-          value={values.amountRaw}
+          value={splitting ? splitItemsTotal(items, values.currency) : values.amountRaw}
           onChange={(v) => set({ amountRaw: v })}
           currency={values.currency || undefined}
           invalid={!!errors.amountRaw}
+          disabled={splitting}
         />
+        {splitting ? <Text className="text-xs text-muted-foreground">Calculated from the items below.</Text> : null}
         <FieldError message={errors.amountRaw} />
       </View>
 
@@ -165,7 +186,65 @@ export function DraftReviewForm({
         </View>
       ) : null}
 
-      {type !== 'TRANSFER' ? (
+      {splitting ? (
+        <View className="gap-3 rounded-2xl bg-muted/50 p-4" testID="draft-split-items">
+          <Text role="heading" aria-level={2} className="text-sm font-medium">
+            Split into {items.length} items
+          </Text>
+          {items.map((item, i) => (
+            <View key={i} className="gap-2">
+              <View className="flex-row items-start gap-2">
+                <View className="min-w-0 flex-1">
+                  <MoneyInput
+                    value={item.amountRaw}
+                    onChange={(v) => setItem(i, { amountRaw: v })}
+                    currency={values.currency || undefined}
+                    accessibilityLabel={`Item ${i + 1} amount`}
+                    testID={`item-${i}-amount`}
+                  />
+                </View>
+                <Pressable
+                  role="button"
+                  accessibilityLabel={`Remove item ${i + 1}`}
+                  accessibilityState={{ disabled: items.length <= 2 }}
+                  disabled={items.length <= 2}
+                  onPress={() => setItems(items.filter((_, index) => index !== i))}
+                  className={cn('size-11 items-center justify-center rounded-md active:bg-accent', items.length <= 2 && 'opacity-40')}>
+                  <Icon as={Trash2} size={16} aria-hidden className="text-muted-foreground" />
+                </Pressable>
+              </View>
+              <PickerField
+                title="Category"
+                accessibilityLabel={`Item ${i + 1} category`}
+                options={categoryOptions(relevantCategories)}
+                value={item.categoryId || undefined}
+                onChange={(v) => setItem(i, { categoryId: v })}
+                placeholder="Uncategorized"
+                emptyOption="Uncategorized"
+                className="min-h-11 rounded-md border border-input bg-background dark:bg-input/30"
+              />
+              <Input
+                value={item.description ?? ''}
+                onChangeText={(v) => setItem(i, { description: v })}
+                placeholder="Item description (optional)"
+                accessibilityLabel={`Item ${i + 1} note`}
+                maxLength={140}
+                className="min-h-11 text-sm"
+              />
+            </View>
+          ))}
+          <Pressable
+            role="button"
+            accessibilityLabel="Add item"
+            onPress={() => setItems([...items, { amountRaw: '', categoryId: undefined, description: '' }])}
+            className="min-h-11 flex-row items-center gap-1.5 self-start px-1 active:opacity-70">
+            <Icon as={Plus} size={16} aria-hidden className="text-primary-text" />
+            <Text className="text-xs font-medium text-primary-text">Add item</Text>
+          </Pressable>
+        </View>
+      ) : null}
+
+      {type !== 'TRANSFER' && !splitting ? (
         <View className="gap-1.5">
           <Text className="text-sm font-medium">
             Category <Text className="font-normal text-muted-foreground">(optional)</Text>

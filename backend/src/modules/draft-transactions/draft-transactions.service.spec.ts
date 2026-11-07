@@ -163,6 +163,51 @@ describe('DraftTransactionsService state machine', () => {
     );
   });
 
+  it('creates the transaction with the draft items so a split survives approval', async () => {
+    const items = [
+      { amount: '3', categoryId: 'food', memo: 'milk' },
+      { amount: '2', categoryId: 'home', memo: 'soap' },
+    ];
+    const { service, transactionsService } = makeService({
+      draft: { parsedData: { ...PARSED, items } },
+    });
+    await service.approve('u1', 'd1');
+    expect(transactionsService.create).toHaveBeenCalledWith(
+      'u1',
+      expect.objectContaining({ amount: '5', items }),
+      expect.anything(),
+    );
+  });
+
+  it('removes the items when the approval sends null, so a split can become a single line', async () => {
+    const { service, transactionsService } = makeService({
+      draft: {
+        parsedData: { ...PARSED, items: [{ amount: '3' }, { amount: '2' }] },
+      },
+    });
+    await service.approve('u1', 'd1', { items: null, categoryId: 'food' });
+    expect(transactionsService.create).toHaveBeenCalledWith(
+      'u1',
+      expect.objectContaining({ categoryId: 'food', items: undefined }),
+      expect.anything(),
+    );
+  });
+
+  it('rejects an approval whose edited amount no longer matches the items', async () => {
+    const { service, transactionsService } = makeService({
+      draft: {
+        parsedData: {
+          ...PARSED,
+          items: [{ amount: '3' }, { amount: '2' }],
+        },
+      },
+    });
+    await expect(
+      service.approve('u1', 'd1', { amount: '9' }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(transactionsService.create).not.toHaveBeenCalled();
+  });
+
   it('loses the race safely when a concurrent approval already flipped the draft to APPROVED (updateMany affects 0 rows)', async () => {
     const { service, transactionsService } = makeService({
       txUpdateManyCount: 0,

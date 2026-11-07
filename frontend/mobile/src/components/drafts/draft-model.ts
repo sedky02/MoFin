@@ -2,7 +2,7 @@
 // amount goes through the copied core helpers and the components only render what comes back.
 import { localDateTimeToIso } from '@/components/transactions/transaction-form-model';
 import { tryParse } from '@/core/decimal';
-import { draftAmountInput } from '@/core/draft-review';
+import { draftAmountInput, draftItemFormValues, draftItemsPayload } from '@/core/draft-review';
 import { parseMoneyInput, toDatetimeLocal } from '@/core/format';
 import { makeTransactionSchema, type TransactionFormValues } from '@/core/transaction-schema';
 import type { Account, DraftTransaction, ParsedTransactionData } from '@/core/types';
@@ -37,6 +37,16 @@ export function draftAccountSummary(p: ParsedTransactionData, accounts: Account[
   return from ? `From ${from}` : null;
 }
 
+export function draftItemLabel(
+  item: { memo?: string | null; categoryId?: string | null },
+  index: number,
+  categories: { id: string; name: string }[] | undefined,
+): string {
+  const category = categories?.find((c) => c.id === item.categoryId)?.name;
+  const name = item.memo || `Item ${index + 1}`;
+  return category ? `${name} · ${category}` : name;
+}
+
 export function draftDisplayAmount(p: ParsedTransactionData): string | null {
   if (!p.amount || !p.currency) return null;
   return p.type === 'EXPENSE' ? `-${p.amount.replace(/^-/, '')}` : p.amount;
@@ -67,6 +77,7 @@ export function initialReviewValues(draft: DraftTransaction, accounts: Account[]
     toAccountId: p.toAccountId ?? undefined,
     categoryId: p.categoryId ?? undefined,
     occurredAt: toDatetimeLocal(p.occurredAt),
+    items: draftItemFormValues(p),
   };
   return withDefaultAccounts(values, accounts);
 }
@@ -107,6 +118,7 @@ export function buildApproval(
   const v = result.data;
   const amount = parseMoneyInput(v.amountRaw);
   if (!amount) return { ok: false, errors: { amountRaw: 'Enter an amount greater than 0.' } };
+  const items = v.type !== 'TRANSFER' ? draftItemsPayload(v.items) : undefined;
   return {
     ok: true,
     edits: {
@@ -117,7 +129,8 @@ export function buildApproval(
       occurredAt: localDateTimeToIso(v.occurredAt),
       fromAccountId: v.type !== 'INCOME' ? v.fromAccountId : undefined,
       toAccountId: v.type !== 'EXPENSE' ? v.toAccountId : undefined,
-      categoryId: v.type !== 'TRANSFER' ? v.categoryId : undefined,
+      categoryId: v.type !== 'TRANSFER' && !items ? v.categoryId : undefined,
+      items: items ?? null,
     },
   };
 }

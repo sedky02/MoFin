@@ -312,7 +312,7 @@ export class AiChatService {
       'Prefer get_monthly_summary for totals and category breakdowns; use search_transactions for specific purchases. Call list_categories to turn a category name into an id.',
       `When a breakdown, comparison or trend is easier to see than to read, call a chart_ tool (at most ${MAX_CHARTS_PER_REPLY} per answer). The chart is drawn from the ledger and shown under your reply; refer to it instead of listing every number.`,
       'Be concise: a short answer first, then at most a few supporting lines. Plain text, no tables. Simple "- " bullet lists are fine.',
-      'When the user wants to record a transaction (spent, paid, received, moved money), call create_draft_transaction once per transaction. It only makes a pending draft, shown under your reply for them to approve, edit or reject; say so in one short line. You cannot change or delete anything that exists.',
+      'When the user wants to record a transaction (spent, paid, received, moved money), call create_draft_transaction once per transaction (one purchase with several priced lines is still one call, using items). It only makes a pending draft, shown under your reply for them to approve, edit or reject; say so in one short line. You cannot change or delete anything that exists.',
       `Expense categories: ${categoryList('EXPENSE')}.`,
       `Income categories: ${categoryList('INCOME')}.`,
       "A draft's categoryId must be an id from the list for its type (EXPENSE or INCOME; transfers have none). Leave it out when no category clearly fits: never guess, invent or create one.",

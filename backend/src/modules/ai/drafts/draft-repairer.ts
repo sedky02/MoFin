@@ -1,4 +1,4 @@
-import { TransactionType } from '@prisma/client';
+import { Prisma, TransactionType } from '@prisma/client';
 import { localNoon } from '../../../common/utils/time-zone';
 import { DraftContext, ProposedDraft } from './draft-context';
 import { ModelDraft } from './model-draft-parser';
@@ -62,13 +62,30 @@ export function repairDraft(
     confidence = Math.min(confidence, MISSING_ACCOUNT_CONFIDENCE);
   }
 
-  const category = ctx.categories.find(
-    (c) =>
-      c.id === draft.categoryId &&
-      draft.type !== TransactionType.TRANSFER &&
-      c.type === draft.type &&
-      categoryFitsAccount(c.id, fromAccountId ?? toAccountId, ctx),
-  );
+  const usableCategoryId = (id?: string) =>
+    ctx.categories.find(
+      (c) =>
+        c.id === id &&
+        draft.type !== TransactionType.TRANSFER &&
+        c.type === draft.type &&
+        categoryFitsAccount(c.id, fromAccountId ?? toAccountId, ctx),
+    )?.id;
+
+  const splittable =
+    draft.type !== TransactionType.TRANSFER && (draft.items?.length ?? 0) > 1;
+  // The lines are what the user named, so the total follows them, not a miscounted amount.
+  const items = splittable
+    ? draft.items?.map((item) => ({
+        amount: item.amount,
+        categoryId: usableCategoryId(item.categoryId),
+        memo: item.memo,
+      }))
+    : undefined;
+  const amount = items
+    ? items
+        .reduce((sum, item) => sum.plus(item.amount), new Prisma.Decimal(0))
+        .toFixed()
+    : draft.amount;
 
   // "Today" keeps the actual time; any other day is stored at local noon so it
   // stays on that calendar day in the user's zone.
@@ -81,12 +98,13 @@ export function repairDraft(
     data: {
       type: draft.type,
       description: draft.description,
-      amount: draft.amount,
+      amount,
       currency: draft.currency,
       occurredAt: occurredAt.toISOString(),
       fromAccountId,
       toAccountId,
-      categoryId: category?.id,
+      categoryId: items ? undefined : usableCategoryId(draft.categoryId),
+      items,
     },
     confidence: Math.round(Math.min(confidence, MAX_CONFIDENCE) * 100) / 100,
   };

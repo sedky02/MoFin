@@ -9,6 +9,7 @@ import { Text } from '@/components/ui/text';
 import { formatDate } from '@/core/format';
 import type { DraftStatus, DraftTransaction, ParsedTransactionData, TransactionType } from '@/core/types';
 import { useAccounts } from '@/hooks/useAccounts';
+import { useCategories } from '@/hooks/useCategories';
 import { Check, ChevronDown, Quote, X } from '@/lib/icons';
 import { cn } from '@/lib/utils';
 
@@ -16,6 +17,7 @@ import {
   confidenceTier,
   draftAccountSummary,
   draftDisplayAmount,
+  draftItemLabel,
   draftSourceLabel,
   quickApproveState,
   rejectionReasonOf,
@@ -77,6 +79,7 @@ export function DraftCard({
   const isPending = draft.status === 'PENDING';
   const p = draft.parsedData;
   const { data: accounts } = useAccounts('all');
+  const { data: categories } = useCategories('all', true);
   const quick = quickApproveState(draft);
   const accountSummary = draftAccountSummary(p, accounts);
   const amount = draftDisplayAmount(p);
@@ -126,6 +129,19 @@ export function DraftCard({
             />
           ) : null}
         </View>
+
+        {p.items && p.items.length > 1 ? (
+          <View className="mt-3 gap-1 rounded-xl bg-secondary/40 px-3 py-2" testID="draft-items">
+            {p.items.map((item, i) => (
+              <View key={i} className="flex-row items-center justify-between gap-3">
+                <Text className="flex-1 text-xs text-muted-foreground" numberOfLines={1}>
+                  {draftItemLabel(item, i, categories)}
+                </Text>
+                {p.currency ? <MoneyAmount amount={item.amount} currency={p.currency} className="text-xs" /> : null}
+              </View>
+            ))}
+          </View>
+        ) : null}
 
         {isPending ? (
           <View className="mt-4 gap-2">

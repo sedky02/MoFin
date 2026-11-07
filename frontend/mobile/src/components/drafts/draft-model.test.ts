@@ -85,3 +85,36 @@ describe('review precision rules', () => {
     expect(buildApproval({ ...v, description: ' ' }, accounts)).toMatchObject({ ok: false, errors: { description: 'Add a short description.' } });
   });
 });
+
+describe('split drafts', () => {
+  const split = draft({
+    amount: '9.5',
+    currency: 'TND',
+    fromAccountId: 'a2',
+    items: [
+      { amount: '3.5', categoryId: 'food', memo: 'milk' },
+      { amount: '6', categoryId: null, memo: null },
+    ],
+  });
+
+  it('starts the review form with the lines', () => {
+    expect(initialReviewValues(split, accounts).items).toEqual([
+      { amountRaw: '3.500', categoryId: 'food', description: 'milk' },
+      { amountRaw: '6.000', categoryId: undefined, description: '' },
+    ]);
+  });
+
+  it('sends the lines and no top-level category on approval', () => {
+    const result = buildApproval(initialReviewValues(split, accounts), accounts);
+    expect(result.ok && result.edits.items).toEqual([
+      { amount: '3.5', categoryId: 'food', memo: 'milk' },
+      { amount: '6', categoryId: undefined, memo: undefined },
+    ]);
+    expect(result.ok && result.edits.categoryId).toBeUndefined();
+  });
+
+  it('sends null items for an unsplit draft so a stale split is removed', () => {
+    const result = buildApproval(initialReviewValues(draft(), accounts), accounts);
+    expect(result.ok && result.edits.items).toBeNull();
+  });
+});

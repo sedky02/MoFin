@@ -164,6 +164,13 @@ export interface ParsedTransactionData {
   fromAccountId?: string | null;
   toAccountId?: string | null;
   categoryId?: string | null;
+  items?: ParsedTransactionItem[] | null;
+}
+
+export interface ParsedTransactionItem {
+  amount: string;
+  categoryId?: string | null;
+  memo?: string | null;
 }
 
 export interface DraftTransaction {

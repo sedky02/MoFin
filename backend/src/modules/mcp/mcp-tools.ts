@@ -38,7 +38,10 @@ export const MCP_TOOLS: ReadonlyArray<{
       "otherwise leave it out and MoFin picks the user's default account. " +
       'Only accounts with the role OWNER or EDITOR can be used, and a transfer needs both accounts to have the same owner. ' +
       "categoryId must be an existing category of the same type as the draft (list_categories with `type`, and `accountId` for a shared account, which uses its owner's categories); leave it out when unsure. " +
-      'Unknown ids and categories of the wrong type are rejected, and categories are never created. MoFin may replace the category with the one the user usually files similar descriptions under.',
+      'Unknown ids and categories of the wrong type are rejected, and categories are never created. MoFin may replace the category with the one the user usually files similar descriptions under. ' +
+      'For one purchase with several lines (a grocery receipt, a restaurant bill with different categories), send ONE draft with `items` ([{amount, categoryId?, memo?}]) instead of several drafts. ' +
+      '`amount` must equal the sum of the items. With more than one item, set the category on each item and leave the top-level categoryId out. Only EXPENSE and INCOME can have items, never TRANSFER. ' +
+      'Use `memo` for what each line is (e.g. "milk", "bread"). Omit `items` for a single-line transaction.',
   },
   {
     name: 'search_transactions',

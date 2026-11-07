@@ -9,6 +9,7 @@ import { LlmMessage, LlmProvider } from '../llm/llm-provider';
 import { DraftContext } from './draft-context';
 
 export const MAX_DRAFTS_PER_MESSAGE = 10;
+export const MAX_ITEMS_PER_DRAFT = 30;
 
 /** Models sometimes send numbers, nulls or "12,5": normalise before checking. */
 const lenientAmount = z.preprocess(
@@ -51,6 +52,20 @@ export const modelDraftSchema = z.object({
   fromAccountId: optionalId,
   toAccountId: optionalId,
   categoryId: optionalId,
+  items: z
+    .array(
+      z.object({
+        amount: lenientAmount,
+        categoryId: optionalId,
+        memo: z.preprocess(
+          (value) => (value === null || value === '' ? undefined : value),
+          z.string().max(200).optional(),
+        ),
+      }),
+    )
+    .min(2)
+    .max(MAX_ITEMS_PER_DRAFT)
+    .optional(),
   confidence: z.number().min(0).max(1).catch(0.5),
 });
 const modelResultSchema = z.object({
@@ -130,10 +145,11 @@ export class ModelDraftParser {
   private prompt(ctx: DraftContext): string {
     return [
       'You turn a personal-finance message into transaction drafts. Reply with one JSON object only:',
-      '{"drafts":[{"type":"EXPENSE|INCOME|TRANSFER","description":"short text","amount":"12.50","currency":"ISO code","occurredAt":"YYYY-MM-DD","fromAccountId":"id or null","toAccountId":"id or null","categoryId":"id or null","confidence":0.0-1.0}]}',
+      '{"drafts":[{"type":"EXPENSE|INCOME|TRANSFER","description":"short text","amount":"12.50","currency":"ISO code","occurredAt":"YYYY-MM-DD","fromAccountId":"id or null","toAccountId":"id or null","categoryId":"id or null","items":[{"amount":"5.00","categoryId":"id or null","memo":"what this line is"}],"confidence":0.0-1.0}]}',
       `Today is ${ctx.today} (the user's time zone is ${ctx.timeZone}). Resolve words like yesterday or last Friday to a date. Use today when no date is given.`,
       `One draft per transaction mentioned, at most ${MAX_DRAFTS_PER_MESSAGE}.`,
       'amount is a positive decimal string with a dot, no currency symbol or thousands separator.',
+      'items is optional: use it only when ONE purchase has several priced lines the user named (a receipt, a bill). Then amount is their sum, each item gets its own categoryId and a short memo, and the draft itself has no categoryId. Never use items for a transfer or for a single line.',
       'EXPENSE uses fromAccountId (the account paid from). INCOME uses toAccountId (the account paid into). TRANSFER uses both.',
       'Only use account and category ids from the lists below. If unsure, use null. Pick a category only when its type matches the transaction type.',
       `Default account id: ${ctx.defaultAccountId ?? 'none'}. Default currency: ${ctx.defaultCurrency ?? 'none'}. Use the account currency when the account is known.`,

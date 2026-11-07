@@ -11,6 +11,7 @@ import { TypeBadge, ConfidencePill, StatusBadge } from "@/components/common/badg
 import { DraftReviewForm } from "./draft-review-form";
 import { draftSourceLabel } from "./draft-source";
 import { useAccounts } from "@/hooks/useAccounts";
+import { useCategories } from "@/hooks/useCategories";
 import { tryParse } from "@/lib/decimal";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -41,6 +42,8 @@ export function DraftCard({
   const p = draft.parsedData;
   const { data: accounts } = useAccounts("all");
   const accountName = (id?: string | null) => accounts?.find((a) => a.id === id)?.name;
+  const { data: categories } = useCategories("all", true);
+  const categoryName = (id?: string | null) => categories?.find((c) => c.id === id)?.name;
 
   // Quick-approve skips the review form, so only allow it when everything the
   // ledger entry needs is present and the AI was reasonably sure.
@@ -108,6 +111,26 @@ export function DraftCard({
             />
           )}
         </div>
+
+        {p.items && p.items.length > 1 && (
+          <ul className="mt-3 space-y-1 rounded-xl bg-secondary/40 px-3 py-2 text-xs">
+            {p.items.map((item, i) => (
+              <li key={i} className="flex items-center justify-between gap-3">
+                <span className="truncate text-muted-foreground">
+                  {item.memo || `Item ${i + 1}`}
+                  {item.categoryId && categoryName(item.categoryId) ? ` · ${categoryName(item.categoryId)}` : ""}
+                </span>
+                {p.currency && (
+                  <MoneyAmount
+                    amount={item.amount}
+                    currency={p.currency}
+                    className="shrink-0 tabular"
+                  />
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
 
         {isPending && (
           <div className="mt-4 flex items-center gap-2">

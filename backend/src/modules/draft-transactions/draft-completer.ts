@@ -32,6 +32,7 @@ export interface DraftIds {
   fromAccountId?: string;
   toAccountId?: string;
   categoryId?: string;
+  items?: Array<{ amount: string; categoryId?: string; memo?: string }>;
 }
 
 /**
@@ -103,19 +104,31 @@ export function assertKnownCategory(
   draft: DraftIds,
   categories: CompleterCategory[],
 ): void {
-  const id = draft.categoryId;
-  if (!id || draft.type === TransactionType.TRANSFER) return;
+  if (draft.type === TransactionType.TRANSFER) return;
+  for (const id of [
+    draft.categoryId,
+    ...(draft.items ?? []).map((item) => item.categoryId),
+  ]) {
+    if (id) assertCategoryFits(id, draft.type, categories);
+  }
+}
+
+function assertCategoryFits(
+  id: string,
+  type: TransactionType,
+  categories: CompleterCategory[],
+): void {
   const fitting = categories
-    .filter((c) => c.type === draft.type)
+    .filter((c) => c.type === type)
     .map((c) => `${c.name} (${c.id})`)
     .join('; ');
-  const options = `Use one of the ${draft.type} categories: ${fitting || 'none'}, or leave categoryId out when unsure. Categories are never created from a draft.`;
+  const options = `Use one of the ${type} categories: ${fitting || 'none'}, or leave categoryId out when unsure. Categories are never created from a draft.`;
   const found = categories.find((c) => c.id === id);
   if (!found)
     throw new BadRequestException(`Unknown categoryId "${id}". ${options}`);
-  if (found.type !== draft.type)
+  if (found.type !== type)
     throw new BadRequestException(
-      `"${found.name}" is an ${found.type} category, but this draft is ${draft.type}. ${options}`,
+      `"${found.name}" is an ${found.type} category, but this draft is ${type}. ${options}`,
     );
 }
 
@@ -251,6 +264,7 @@ export class DraftCompleter {
     assertKnownCategory(draft, categories);
 
     let categoryId: string | undefined;
+    let items = draft.items;
     if (draft.type !== TransactionType.TRANSFER) {
       const allowed = new Set(
         categories.filter((c) => c.type === draft.type).map((c) => c.id),
@@ -266,11 +280,22 @@ export class DraftCompleter {
         take: CATEGORY_HISTORY_LIMIT,
         select: { description: true, categoryId: true },
       });
-      categoryId =
-        categoryFromHistory(draft.description, history, allowed) ??
-        draft.categoryId;
+      const isSplit = (draft.items?.length ?? 0) > 1;
+      // A split keeps its categories on the lines; a top-level one would conflict with them.
+      categoryId = isSplit
+        ? undefined
+        : (categoryFromHistory(draft.description, history, allowed) ??
+          draft.categoryId);
+      if (isSplit) {
+        items = draft.items?.map((item) => ({
+          ...item,
+          categoryId:
+            item.categoryId ??
+            categoryFromHistory(item.memo ?? '', history, allowed),
+        }));
+      }
     }
-    return { ...draft, fromAccountId, toAccountId, categoryId };
+    return { ...draft, fromAccountId, toAccountId, categoryId, items };
   }
 
   async defaultAccountId(
