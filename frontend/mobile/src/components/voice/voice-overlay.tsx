@@ -7,6 +7,7 @@ import { AssistantMessage, FailedMessage, ThinkingMessage, UserMessage } from '@
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Icon } from '@/components/ui/icon';
+import { PLACEHOLDER_CLASS } from '@/components/ui/input';
 import { SheetScrollView } from '@/components/ui/sheet-parts';
 import { Text } from '@/components/ui/text';
 import { chatErrorMessage, useAiChatDetail, useSendChatMessage } from '@/hooks/useAiChat';
@@ -184,7 +185,7 @@ function VoiceSheet() {
                 maxLength={2000}
                 accessibilityLabel="Type your question"
                 className="max-h-28 min-h-10 flex-1 py-2 text-base text-foreground"
-                placeholderClassName="text-muted-foreground"
+                placeholderClassName={PLACEHOLDER_CLASS}
               />
               <Pressable
                 role="button"

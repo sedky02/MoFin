@@ -455,6 +455,7 @@ function TransactionFormBody({
           name="description"
           render={({ field, fieldState }) => (
             <View>
+              <Text className="text-sm font-medium">Description</Text>
               <Input
                 value={field.value}
                 onChangeText={field.onChange}

@@ -8,6 +8,7 @@ import { AssistantMessage, FailedMessage, ThinkingMessage, UserMessage } from '@
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PLACEHOLDER_CLASS } from '@/components/ui/input';
 import { Text } from '@/components/ui/text';
 import { ApiClientError } from '@/api/client';
 import { chatErrorMessage, useAiChatDetail, useSendChatMessage } from '@/hooks/useAiChat';
@@ -46,7 +47,7 @@ function Composer({
         accessibilityLabel="Ask a question about your finances"
         accessibilityHint={left <= 200 ? `${left} characters left` : undefined}
         className="max-h-32 min-h-10 flex-1 py-2 text-base text-foreground"
-        placeholderClassName="text-muted-foreground"
+        placeholderClassName={PLACEHOLDER_CLASS}
         textAlignVertical="center"
         editable={!listening}
       />

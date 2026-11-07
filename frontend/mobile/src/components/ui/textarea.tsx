@@ -1,3 +1,4 @@
+import { PLACEHOLDER_CLASS } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { Platform, TextInput } from 'react-native';
 
@@ -18,7 +19,7 @@ function Textarea({
         props.editable === false && 'opacity-50',
         className
       )}
-      placeholderClassName={cn('text-muted-foreground', placeholderClassName)}
+      placeholderClassName={cn(PLACEHOLDER_CLASS, placeholderClassName)}
       multiline={multiline}
       numberOfLines={numberOfLines}
       textAlignVertical="top"

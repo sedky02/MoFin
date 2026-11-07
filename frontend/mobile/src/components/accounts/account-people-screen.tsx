@@ -74,9 +74,10 @@ function InviteForm({ accountId }: { accountId: string }) {
 
   return (
     <View className="gap-2">
+      <Text className="text-sm font-medium">Invite by email</Text>
       <Input
         accessibilityLabel="Email to invite"
-        placeholder="Email"
+        placeholder="name@example.com"
         keyboardType="email-address"
         autoCapitalize="none"
         autoCorrect={false}

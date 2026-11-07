@@ -9,6 +9,7 @@ import { EmptyState, ErrorState, SkeletonRows } from '@/components/common/states
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
+import { PLACEHOLDER_CLASS } from '@/components/ui/input';
 import { Text } from '@/components/ui/text';
 import type { Category } from '@/core/types';
 import { useArchiveCategory, useCategories, useRestoreCategory } from '@/hooks/useCategories';
@@ -123,7 +124,7 @@ export default function CategoriesScreen() {
             autoCapitalize="none"
             autoCorrect={false}
             className="border-input bg-background text-foreground min-h-11 rounded-md border pl-9 pr-3 text-base"
-            placeholderTextColor="rgba(128,128,128,0.7)"
+            placeholderClassName={PLACEHOLDER_CLASS}
           />
         </View>
       ) : null}

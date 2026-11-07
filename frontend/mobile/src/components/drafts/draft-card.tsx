@@ -180,6 +180,7 @@ export function DraftCard({
 
         {isPending && rejectOpen ? (
           <View className="mt-3 gap-2 rounded-lg bg-secondary/60 p-3">
+            <Text className="text-sm font-medium">Reason</Text>
             <Input
               value={reason}
               onChangeText={setReason}

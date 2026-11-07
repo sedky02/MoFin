@@ -3,6 +3,7 @@ import { FlatList, Pressable, TextInput, View } from 'react-native';
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Icon } from '@/components/ui/icon';
+import { PLACEHOLDER_CLASS } from '@/components/ui/input';
 import { Text } from '@/components/ui/text';
 import { currencyName } from '@/core/currency-names';
 import { currencyOptions } from '@/lib/currency-options';
@@ -81,7 +82,7 @@ export function CurrencyPicker({ value, onChange, pinned = [], disabled, classNa
               spellCheck={false}
               returnKeyType="search"
               className="border-input bg-background text-foreground min-h-11 rounded-md border pl-9 pr-3 text-base"
-              placeholderTextColor="rgba(128,128,128,0.7)"
+              placeholderClassName={PLACEHOLDER_CLASS}
             />
           </View>
           {options.length === 0 ? (

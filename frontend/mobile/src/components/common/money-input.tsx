@@ -114,7 +114,7 @@ export function MoneyInput({
             includeFontPadding: false,
             textAlignVertical: 'center',
           }}
-          placeholderTextColor="rgba(128,128,128,0.4)"
+          placeholderClassName="text-muted-foreground/40"
           className={cn(
             'w-full bg-transparent text-center font-semibold tracking-tight text-foreground',
             invalid && 'text-destructive',
