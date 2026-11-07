@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { CornerDownRight, Loader2, Sparkles } from "lucide-react";
+import { Loader2, Sparkles } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,13 +15,6 @@ import { useCreateDraftIntent } from "@/hooks/useDrafts";
 import { useAccounts } from "@/hooks/useAccounts";
 import { writableAccounts } from "@/lib/account-sharing";
 import { useActiveAccount } from "@/hooks/useActiveAccount";
-
-// Example sentences, shown whole so it is plain what a click puts in the box.
-const EXAMPLES = [
-  "Spent 42.50 on groceries at the market yesterday",
-  "Got paid 3200 salary into my bank account",
-  "Moved 500 from checking to savings",
-];
 
 export function DraftComposer() {
   const [input, setInput] = React.useState("");
@@ -115,21 +108,6 @@ export function DraftComposer() {
           </Button>
         </div>
       </div>
-
-      <ul aria-label="Examples" className="mt-4 divide-y divide-border/60">
-        {EXAMPLES.map((text) => (
-          <li key={text}>
-            <button
-              type="button"
-              onClick={() => setInput(text)}
-              className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm text-muted-foreground transition-colors pointer-coarse:min-h-11 hover:bg-secondary/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <CornerDownRight className="size-4 shrink-0" aria-hidden />
-              <span className="min-w-0 truncate">{text}</span>
-            </button>
-          </li>
-        ))}
-      </ul>
     </div>
   );
 }

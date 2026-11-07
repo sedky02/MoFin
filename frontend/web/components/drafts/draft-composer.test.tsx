@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import * as React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { DraftComposer } from "@/components/drafts/draft-composer";
 
@@ -41,25 +41,8 @@ describe("DraftComposer", () => {
     expect(mutateAsync).toHaveBeenCalledWith({ input: "Coffee 4.20", defaultAccountId: "a1", defaultCurrency: "USD" });
   });
 
-  it("lists the examples as a return arrow and the sentence, with no chip border", () => {
+  it("has no clickable example sentences under the box", () => {
     render(<DraftComposer />);
-    const list = screen.getByRole("list", { name: "Examples" });
-    const buttons = within(list).getAllByRole("button");
-    expect(buttons.map((b) => b.textContent)).toEqual([
-      "Spent 42.50 on groceries at the market yesterday",
-      "Got paid 3200 salary into my bank account",
-      "Moved 500 from checking to savings",
-    ]);
-    for (const b of buttons) {
-      expect(b.querySelector("svg.lucide-corner-down-right")).toBeTruthy();
-      expect(b.className).not.toMatch(/\bborder\b|rounded-full/);
-    }
-  });
-
-  it("fills the box with an example on click, without drafting it", async () => {
-    render(<DraftComposer />);
-    await userEvent.click(screen.getByRole("button", { name: "Got paid 3200 salary into my bank account" }));
-    expect(box().value).toBe("Got paid 3200 salary into my bank account");
-    expect(mutateAsync).not.toHaveBeenCalled();
+    expect(screen.queryByRole("list", { name: "Examples" })).toBeNull();
   });
 });
