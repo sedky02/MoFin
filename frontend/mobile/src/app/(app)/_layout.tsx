@@ -5,12 +5,14 @@ import { OfflineBanner } from '@/components/shell/offline-banner';
 import { StackHeader } from '@/components/shell/stack-header';
 import { useStackScreenOptions } from '@/components/shell/stack-options';
 import { VoiceOverlay } from '@/components/voice/voice-overlay';
+import { usePushRegistration } from '@/notifications/use-push-registration';
 import { useWidgetSync } from '@/widgets/use-widget-sync';
 
 export default function AppLayout() {
   const options = useStackScreenOptions();
   // Home screen widgets follow the data while signed in (Android).
   useWidgetSync();
+  usePushRegistration();
   return (
     <View className="flex-1 bg-background">
       <OfflineBanner />

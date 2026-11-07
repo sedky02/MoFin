@@ -90,6 +90,8 @@ export class DraftTransactionsService {
       this.events.emit(DomainEvents.DraftCreated, {
         draftId: draft.id,
         userId,
+        source: origin.source,
+        sourceClient: origin.sourceClient ?? null,
       } satisfies DraftCreatedEvent);
     }
     return drafts;
@@ -115,6 +117,8 @@ export class DraftTransactionsService {
     this.events.emit(DomainEvents.DraftCreated, {
       draftId: draft.id,
       userId,
+      source: origin.source,
+      sourceClient: origin.sourceClient ?? null,
     } satisfies DraftCreatedEvent);
     return draft;
   }

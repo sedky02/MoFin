@@ -65,6 +65,10 @@ const envSchema = z
     SMTP_SECURE: z.enum(['true', 'false']).default('false'),
     SMTP_USER: z.string().optional(),
     SMTP_PASS: z.string().optional(),
+    // "true" sends pushes through the Expo push service; otherwise they are only counted in the log.
+    EXPO_PUSH_ENABLED: z.enum(['true', 'false']).default('false'),
+    // Only needed when "Enhanced Security for Push Notifications" is on for the Expo project.
+    EXPO_ACCESS_TOKEN: z.string().min(1).optional(),
     MAIL_FROM: z.string().min(1).default('MoFin <no-reply@mofin.local>'),
     // Development/test only: writes each email as a JSON file so local e2e tests can read the
     // links.

@@ -14,6 +14,7 @@ export function widgetScreen(name: unknown): WidgetScreen {
 }
 
 export const INVITATION_PATH = '/invitations';
+export const DRAFTS_PATH = '/drafts';
 const INVITE_TOKEN = /^[A-Za-z0-9_-]{16,256}$/;
 
 export function inviteToken(path: string): string | undefined {
@@ -40,6 +41,8 @@ export function safeDeepLinkPath(path: string): string {
   const parts = pathname.split('/').filter(Boolean);
   // Home screen widgets: the screen they show, or ↻ (refresh the widgets, then that screen).
   if (parts.length === 1 && Object.prototype.hasOwnProperty.call(WIDGET_SCREENS, parts[0]!)) return WIDGET_SCREENS[parts[0] as WidgetScreen];
+  // Push notifications for connected-app drafts open the inbox.
+  if (parts.length === 1 && parts[0] === 'drafts') return DRAFTS_PATH;
   if (parts.length === 1 && parts[0] === 'refresh') {
     const to = new URLSearchParams(query).get('to');
     return `/widget-refresh?to=${widgetScreen(to)}`;

@@ -5,6 +5,7 @@ import {
   getAccessToken,
   getSessionState,
   hasSession,
+  onBeforeSignOut,
   onSessionEnd,
   resetSessionForTests,
   restoreSession,
@@ -236,6 +237,29 @@ describe('sign-out', () => {
     expect(getAccessToken()).toBeUndefined();
     expect(getSessionState()).toEqual({ status: 'signedOut', endReason: 'signed_out' });
     expect(ended).toHaveBeenCalledWith('signed_out');
+  });
+
+  it('runs before-sign-out work while the token still works, then signs out', async () => {
+    await startSession({ accessToken: 'access-1', refreshToken: 'refresh-1' });
+    onBeforeSignOut(async () => {
+      await api.delete('/notifications/devices/T1');
+    });
+    mockFetch(() => new Response(null, { status: 204 }));
+    await signOut();
+
+    expect(calls.map((c) => [c.method, c.url, c.auth])).toEqual([
+      ['DELETE', `${API}/notifications/devices/T1`, 'Bearer access-1'],
+      ['POST', `${API}/auth/logout`, undefined],
+    ]);
+    expect(getSessionState().status).toBe('signedOut');
+  });
+
+  it('signs out even when before-sign-out work fails', async () => {
+    await startSession({ accessToken: 'access-1', refreshToken: 'refresh-1' });
+    onBeforeSignOut(() => Promise.reject(new Error('offline')));
+    mockFetch(() => new Response(null, { status: 201 }));
+    await expect(signOut()).resolves.toBeUndefined();
+    expect(getSessionState().status).toBe('signedOut');
   });
 
   it('still signs out locally when the logout call fails', async () => {

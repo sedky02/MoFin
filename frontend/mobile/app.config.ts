@@ -39,6 +39,8 @@ const config: ExpoConfig = {
   },
   plugins: [
     'expo-router',
+    // Pushes for connected-app drafts and recurring transactions. Needs a new build, and FCM credentials on Android.
+    ['expo-notifications', { defaultChannel: 'default' }],
     // Voice questions (hold Add, or the mic in Ask): microphone and speech permission texts.
     [
       'expo-speech-recognition',

@@ -8,6 +8,12 @@ describe('safeDeepLinkPath', () => {
     expect(safeDeepLinkPath('/transactions/clx123abc?x=1')).toBe('/transactions/clx123abc');
   });
 
+  it('opens the drafts inbox, which a push notification links to', () => {
+    expect(safeDeepLinkPath('/drafts')).toBe('/drafts');
+    expect(safeDeepLinkPath('mofin://drafts')).toBe('/drafts');
+    expect(safeDeepLinkPath('/drafts/anything')).toBe('/');
+  });
+
   it('opens the screens home screen widgets link to', () => {
     expect(safeDeepLinkPath('mofin://dashboard')).toBe('/dashboard');
     expect(safeDeepLinkPath('mofin://goals')).toBe('/goals');

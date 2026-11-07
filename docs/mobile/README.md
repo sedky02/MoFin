@@ -32,7 +32,8 @@ frontend/mobile/
 - **Auth:** the app talks to the backend directly (no BFF). Access token (15 min) in memory. Refresh token (30 days) in `expo-secure-store`. Refresh tokens rotate on every use, with reuse detection and a 30 s grace (`auth.service.ts`, `ROTATION_GRACE_MS`). Refresh must be **single-flight**, or parallel 401s trip reuse detection and sign the user out.
 - **Data:** same React Query, same query keys, same endpoints as the web.
 - **Charts:** `react-native-svg` (the web draws bars and the donut with DOM elements).
-- **Out of scope for now:** push notifications, widgets, offline writes, store submission.
+- **Push notifications:** Expo Push, for connected-app drafts and recurring transactions (Settings > Notifications). Needs a development or EAS build, not Expo Go, and FCM credentials on Android (`eas credentials`, plus `google-services.json`). The backend sends only when `EXPO_PUSH_ENABLED=true`.
+- **Out of scope for now:** offline writes, store submission.
 
 ## Rules for every phase
 1. Work in the current checkout (the project's branch/PR workflow is paused). **Do not commit or push.** End each phase with a suggested one-line conventional commit message per logical group, no trailers, no mention of AI.

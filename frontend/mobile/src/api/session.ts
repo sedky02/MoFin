@@ -29,6 +29,8 @@ let restoring: Promise<{ user: User | null }> | undefined;
 
 const stateListeners = new Set<() => void>();
 const endListeners = new Set<(reason: SessionEndReason) => void>();
+const beforeSignOutListeners = new Set<() => Promise<void>>();
+const BEFORE_SIGN_OUT_TIMEOUT_MS = 3000;
 
 function setState(next: SessionState) {
   state = next;
@@ -50,6 +52,17 @@ export function onSessionEnd(listener: (reason: SessionEndReason) => void): () =
   endListeners.add(listener);
   return () => {
     endListeners.delete(listener);
+  };
+}
+
+/**
+ * Work that needs the session's token, such as unregistering this phone from push. Runs only for a
+ * deliberate sign-out and never delays it by more than a few seconds or fails it.
+ */
+export function onBeforeSignOut(listener: () => Promise<void>): () => void {
+  beforeSignOutListeners.add(listener);
+  return () => {
+    beforeSignOutListeners.delete(listener);
   };
 }
 
@@ -133,11 +146,23 @@ function endSession(reason: SessionEndReason): Promise<void> {
   return cleared;
 }
 
+async function runBeforeSignOut(): Promise<void> {
+  if (!beforeSignOutListeners.size) return;
+  const work = Promise.allSettled([...beforeSignOutListeners].map((listener) => listener()));
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const limit = new Promise<void>((resolve) => {
+    timer = setTimeout(resolve, BEFORE_SIGN_OUT_TIMEOUT_MS);
+  });
+  await Promise.race([work, limit]);
+  clearTimeout(timer);
+}
+
 /**
  * Forgets the session here first (memory, secure storage, caches via onSessionEnd), then revokes it
  * with POST /auth/logout, so nothing can refresh it meanwhile.
  */
 export async function signOut(): Promise<void> {
+  await runBeforeSignOut();
   const token = refreshToken;
   await Promise.all([endSession('signed_out'), token ? revoke(token) : undefined]);
 }
@@ -258,4 +283,5 @@ export function resetSessionForTests(): void {
   restoring = undefined;
   stateListeners.clear();
   endListeners.clear();
+  beforeSignOutListeners.clear();
 }

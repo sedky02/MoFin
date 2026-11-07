@@ -5,11 +5,11 @@ import { z } from 'zod';
 
 import { MIN_PASSWORD_LENGTH } from '@/core/password-strength';
 import type { Account, User } from '@/core/types';
-import { Database, Plug, ShieldCheck, SlidersHorizontal, Trash2, User as UserIcon } from '@/lib/icons';
+import { Bell, Database, Plug, ShieldCheck, SlidersHorizontal, Trash2, User as UserIcon } from '@/lib/icons';
 
 // ─── Sections ────────────────────────────────────────────────────────────────
 
-export type SettingsSectionId = 'profile' | 'preferences' | 'security' | 'connected-apps' | 'data' | 'delete-account';
+export type SettingsSectionId = 'profile' | 'preferences' | 'notifications' | 'security' | 'connected-apps' | 'data' | 'delete-account';
 
 export type SettingsSection = {
   id: SettingsSectionId;
@@ -29,6 +29,13 @@ export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
     summary: 'Currency, default account, theme',
     href: '/settings/preferences',
     icon: SlidersHorizontal,
+  },
+  {
+    id: 'notifications',
+    label: 'Notifications',
+    summary: 'Drafts and recurring transactions',
+    href: '/settings/notifications',
+    icon: Bell,
   },
   { id: 'security', label: 'Security', summary: 'Password and devices', href: '/settings/security', icon: ShieldCheck },
   {

@@ -41,23 +41,44 @@ describe('RecurringTransactionsCron', () => {
     };
     fakeDb.$queryRaw.mockResolvedValue([{ locked }]);
     const transactionsService = {
-      create: jest
-        .fn()
-        .mockResolvedValue({ id: 'occ-1', occurredAt: root.nextOccurrenceAt }),
+      create: jest.fn().mockResolvedValue({
+        id: 'occ-1',
+        occurredAt: root.nextOccurrenceAt,
+        items: [{ accountId: 'acc-1' }, { accountId: 'acc-1' }],
+      }),
       announceCreated: jest.fn(),
     };
     const seriesService = {
       findSeriesProblem: jest.fn().mockResolvedValue(null),
     };
+    const events = { emit: jest.fn() };
     const cron = new RecurringTransactionsCron(
       prisma as never,
       transactionsService as never,
       seriesService as never,
+      events as never,
     );
-    return { cron, prisma, transactionsService, seriesService };
+    return { cron, prisma, transactionsService, seriesService, events };
   }
 
   afterEach(() => jest.clearAllMocks());
+
+  it('announces each posted occurrence with its series and distinct accounts', async () => {
+    const { cron, events } = makeCron();
+    await cron.generateDueOccurrences();
+    expect(events.emit).toHaveBeenCalledWith('transaction.recurring-posted', {
+      transactionId: 'occ-1',
+      parentTransactionId: root.id,
+      accountIds: ['acc-1'],
+    });
+  });
+
+  it('announces nothing for a series that is paused instead of posting', async () => {
+    const { cron, events, seriesService } = makeCron();
+    seriesService.findSeriesProblem.mockResolvedValue('Account archived');
+    await cron.generateDueOccurrences();
+    expect(events.emit).not.toHaveBeenCalled();
+  });
 
   it('skips deleted roots: deleting the root stops its series', async () => {
     const { cron, prisma } = makeCron();

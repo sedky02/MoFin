@@ -16,8 +16,9 @@ Source: `phase-10-store-release-deferred.md`, `PROGRESS.md`, the `expo:eas-app-s
 
 ## 3. Versioning and signing
 - [ ] `version` in `app.config.ts` (marketing version, currently 1.0.0); build numbers managed remotely (`autoIncrement`).
+- [ ] Android push: upload an FCM v1 service-account key to EAS and add `google-services.json` to the build; test a draft push and a recurring push on a real device.
 - [ ] Android upload key: let EAS generate it, back up the credentials (`eas credentials`), enrol in Play App Signing; record the **SHA-1 of the upload key and the Play app-signing key** (both are needed for Google sign-in, section 6).
-- [ ] iOS: distribution certificate and provisioning profile via EAS; push/other capabilities only if used (none now).
+- [ ] iOS: distribution certificate and provisioning profile via EAS; the push notifications capability is used (`expo-notifications`); keep any other capability to what is used.
 
 ## 4. Privacy, data and permissions
 - [ ] **iOS privacy manifest**: list the required-reason APIs actually used by the app and its pods (expo modules usually ship their own manifests; AsyncStorage, file timestamp, UserDefaults, system boot time are typical). Set `ios.privacyManifests` in `app.config.ts` where a dependency lacks one, and check the generated report in Xcode/App Store Connect after upload.

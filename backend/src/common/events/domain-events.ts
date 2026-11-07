@@ -1,9 +1,13 @@
+import { DraftSource } from '@prisma/client';
+
 export const DomainEvents = {
   DraftCreated: 'draft-transaction.created',
   DraftApproved: 'draft-transaction.approved',
   TransactionCreated: 'transaction.created',
   // An existing transaction was edited, deleted or restored.
   TransactionChanged: 'transaction.changed',
+  // A recurring series posted one of its occurrences (announced after TransactionCreated).
+  RecurringOccurrencePosted: 'transaction.recurring-posted',
   LedgerEntriesCreated: 'ledger.entries-created',
   AnalyticsRefreshRequested: 'analytics.refresh-requested',
   // Who can reach an account changed: a member joined, left or was removed, or it changed owner.
@@ -13,6 +17,15 @@ export const DomainEvents = {
 export interface DraftCreatedEvent {
   draftId: string;
   userId: string;
+  source: DraftSource;
+  /** The connected app's name, for MCP drafts. */
+  sourceClient?: string | null;
+}
+
+export interface RecurringOccurrencePostedEvent {
+  transactionId: string;
+  parentTransactionId: string;
+  accountIds: string[];
 }
 
 export interface DraftApprovedEvent {

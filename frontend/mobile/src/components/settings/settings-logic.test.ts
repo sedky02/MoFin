@@ -35,10 +35,11 @@ const user = (over: Partial<User> = {}): User => ({
 const account = (id: string, currency = 'EUR') => ({ id, name: id, currency }) as Account;
 
 describe('sections', () => {
-  it('lists the web sections in its page order', () => {
+  it('lists the web sections in its page order, plus the mobile-only notifications', () => {
     expect(SETTINGS_SECTIONS.map((s) => s.id)).toEqual([
       'profile',
       'preferences',
+      'notifications',
       'security',
       'connected-apps',
       'data',

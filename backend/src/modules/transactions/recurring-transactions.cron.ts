@@ -1,6 +1,11 @@
 import { HttpException, Injectable, Logger } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { RecurringStatus } from '@prisma/client';
+import {
+  DomainEvents,
+  RecurringOccurrencePostedEvent,
+} from '../../common/events/domain-events';
 import { withAdvisoryLock } from '../../common/utils/advisory-lock';
 import { PrismaService } from '../../database/prisma.service';
 import { computeNextOccurrence, isPastEndDate } from './recurrence';
@@ -22,6 +27,7 @@ export class RecurringTransactionsCron {
     private readonly prisma: PrismaService,
     private readonly transactionsService: TransactionsService,
     private readonly seriesService: RecurringSeriesService,
+    private readonly events: EventEmitter2,
   ) {}
 
   // UTC, like the occurrence dates the cron compares against.
@@ -110,6 +116,11 @@ export class RecurringTransactionsCron {
         });
 
         this.transactionsService.announceCreated(created);
+        this.events.emit(DomainEvents.RecurringOccurrencePosted, {
+          transactionId: created.id,
+          parentTransactionId: root.id,
+          accountIds: [...new Set(created.items.map((i) => i.accountId))],
+        } satisfies RecurringOccurrencePostedEvent);
       } catch (error) {
         // A 4xx from create() means the template is invalid in a way findSeriesProblem doesn't know
         // yet, and would fail the same way tomorrow.

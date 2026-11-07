@@ -119,6 +119,7 @@ export class UsersService {
       await tx.oAuthRefreshToken.deleteMany({ where: mine });
       await tx.authorizationCode.deleteMany({ where: mine });
       await tx.oAuthGrant.deleteMany({ where: mine });
+      await tx.pushDevice.deleteMany({ where: mine });
       // Anything created by a request racing this one still cascades from here.
       await tx.user.delete({ where: { id: userId } });
     });

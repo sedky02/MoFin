@@ -191,6 +191,12 @@ function seedUser(db: Db, id: string, passwordHash: string | null) {
     clientId: 'claude',
     scope: 'mcp',
   });
+  add('pushDevice', {
+    id: `${id}-device`,
+    userId: id,
+    expoToken: `ExponentPushToken[${id}]`,
+    platform: 'android',
+  });
 }
 
 /** Rows per table that belong to `userId`, directly or through a parent (goal instances). */
@@ -419,6 +425,7 @@ describe('deleting an account and its data (e2e)', () => {
       'oAuthRefreshToken',
       'authorizationCode',
       'oAuthGrant',
+      'pushDevice',
     ];
 
     it("deletes everything recorded, soft-deleted rows included, keeps the profile, sign-ins and connected apps, and touches nobody else's", async () => {

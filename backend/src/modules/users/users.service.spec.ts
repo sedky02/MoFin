@@ -65,6 +65,7 @@ describe('UsersService.deleteAccount and resetData', () => {
     'oAuthRefreshToken',
     'authorizationCode',
     'oAuthGrant',
+    'pushDevice',
   ] as const;
 
   function makeService(
