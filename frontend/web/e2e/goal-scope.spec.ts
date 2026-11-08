@@ -4,8 +4,6 @@ import { expect, test } from "@playwright/test";
 // Needs `npm run e2e:seed`.
 
 const EXPENSE = "Counts all expenses from Main checking";
-const INCOME = "Counts all income into Main checking";
-const BALANCE = "Tracks the balance of Emergency fund";
 
 test("goal cards say what they count with badges", async ({ page }) => {
   await page.goto("/goals");

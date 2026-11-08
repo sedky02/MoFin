@@ -1,5 +1,6 @@
 "use client";
 
+import { TransactionDaysSkeleton } from "@/components/common/page-skeletons";
 import { DatePicker } from "@/components/common/date-picker";
 import { formatPeriodDate, normalizeMoneyTyping } from "@/lib/format";
 import * as React from "react";
@@ -17,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { TransactionRow } from "@/components/transactions/transaction-row";
-import { SkeletonRows, EmptyState, ErrorState } from "@/components/common/states";
+import { EmptyState, ErrorState } from "@/components/common/states";
 import { useAccounts } from "@/hooks/useAccounts";
 import { useCategories } from "@/hooks/useCategories";
 import { useSearchPage, type SearchParams } from "@/hooks/useSearch";
@@ -418,7 +419,7 @@ export function SearchView({ initial, active = true }: { initial: SearchInitial;
       )}
 
       {isLoading ? (
-        <SkeletonRows rows={6} />
+        <TransactionDaysSkeleton />
       ) : isError ? (
         <ErrorState description="Couldn't load transactions." onRetry={() => refetch()} />
       ) : rows.length === 0 ? (

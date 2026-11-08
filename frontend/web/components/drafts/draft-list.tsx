@@ -1,11 +1,12 @@
 "use client";
 
+import { DraftCardsSkeleton } from "@/components/common/page-skeletons";
 import * as React from "react";
 import type { DraftStatus, DraftTransaction, ParsedTransactionData } from "@/lib/types";
 import { useDrafts, useApproveDraft, useRejectDraft } from "@/hooks/useDrafts";
 import { DraftCard } from "./draft-card";
 import { Button } from "@/components/ui/button";
-import { SkeletonRows, EmptyState, ErrorState } from "@/components/common/states";
+import { EmptyState, ErrorState } from "@/components/common/states";
 import { Sparkles, CheckCircle2, XCircle } from "lucide-react";
 
 const EMPTY: Record<DraftStatus, { title: string; description: string; icon: React.ComponentType<{ className?: string }> }> = {
@@ -74,7 +75,7 @@ export function DraftList({ status }: { status: DraftStatus }) {
     });
   }
 
-  if (isLoading) return <SkeletonRows rows={3} />;
+  if (isLoading) return <DraftCardsSkeleton />;
   if (isError) return <ErrorState description="Couldn't load drafts." onRetry={() => refetch()} />;
 
   if (optimistic.length === 0) {

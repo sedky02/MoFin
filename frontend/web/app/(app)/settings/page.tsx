@@ -11,7 +11,6 @@ import {
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -124,12 +123,38 @@ export default function SettingsPage() {
           {isLoading ? (
             <>
               <SettingsCard id="profile" icon={UserIcon} title="Profile" description="Your sign-in email. Changing it isn't supported yet.">
-                <Skeleton className="h-16 w-full" />
-                <Skeleton className="mt-5 h-[4.5rem] w-full" />
+                <div className="mb-5 flex items-center gap-4 rounded-xl bg-muted/40 p-4">
+                  <Skeleton className="size-14 shrink-0 rounded-full" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-3.5 w-44" />
+                  </div>
+                </div>
+                <div className="grid gap-5 sm:grid-cols-2">
+                  {[0, 1].map((i) => (
+                    <div key={i} className="space-y-2">
+                      <Skeleton className="h-3.5 w-24" />
+                      <Skeleton className="h-9 w-full rounded-lg" />
+                    </div>
+                  ))}
+                </div>
               </SettingsCard>
               <SettingsCard id="preferences" icon={SlidersHorizontal} title="Preferences" description="How your money is shown and where new entries start.">
-                <Skeleton className="h-28 w-full" />
-                <Skeleton className="mt-6 h-32 w-full" />
+                <div className="grid gap-5 sm:grid-cols-2">
+                  {[0, 1].map((i) => (
+                    <div key={i} className="space-y-2">
+                      <Skeleton className="h-3.5 w-28" />
+                      <Skeleton className="h-9 w-full rounded-lg" />
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-6 border-t border-border pt-5">
+                  <Skeleton className="h-3.5 w-24" />
+                  <div className="mt-3 grid max-w-sm grid-cols-2 gap-3">
+                    <Skeleton className="h-24 rounded-xl" />
+                    <Skeleton className="h-24 rounded-xl" />
+                  </div>
+                </div>
               </SettingsCard>
             </>
           ) : (

@@ -1,5 +1,6 @@
 "use client";
 
+import { CategoryListsSkeleton } from "@/components/common/page-skeletons";
 import { HelpHint } from "@/components/common/help-hint";
 import * as React from "react";
 import { Archive, ArchiveRestore, ArrowLeft, Plus, Search, Tags, Lock, Pencil } from "lucide-react";
@@ -14,7 +15,6 @@ import { PageHeader } from "@/components/common/page-header";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState, ErrorState } from "@/components/common/states";
 import {
   Tooltip,
@@ -139,26 +139,6 @@ function Group({
   );
 }
 
-function ListSkeleton() {
-  return (
-    <div className="grid items-start gap-4 lg:grid-cols-2">
-      {[4, 3].map((rows, i) => (
-        <Card key={i} className="gap-0 border-0 p-4">
-          <Skeleton className="mb-4 h-4 w-24" />
-          <div className="space-y-3">
-            {Array.from({ length: rows }).map((_, j) => (
-              <div key={j} className="flex items-center gap-3">
-                <Skeleton className="size-10 rounded-xl" />
-                <Skeleton className="h-4 w-32" />
-              </div>
-            ))}
-          </div>
-        </Card>
-      ))}
-    </div>
-  );
-}
-
 export default function CategoriesPage() {
   const [view, setView] = React.useState<"active" | "archived">("active");
   const { data, isLoading, isError, refetch } = useCategories("active");
@@ -240,7 +220,7 @@ export default function CategoriesPage() {
       <div className={showFilter ? "mt-5" : undefined}>
         {view === "active" ? (
           isLoading ? (
-            <ListSkeleton />
+            <CategoryListsSkeleton />
           ) : isError ? (
             <ErrorState description="Couldn't load categories." onRetry={() => refetch()} />
           ) : (data ?? []).length === 0 ? (
@@ -264,7 +244,7 @@ export default function CategoriesPage() {
             </div>
           )
         ) : archived.isLoading ? (
-          <ListSkeleton />
+          <CategoryListsSkeleton />
         ) : archived.isError ? (
           <ErrorState
             description="Couldn't load your archived categories."

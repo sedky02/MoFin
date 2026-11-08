@@ -1,5 +1,6 @@
 "use client";
 
+import { AccountGroupsSkeleton } from "@/components/common/page-skeletons";
 import { HelpHint } from "@/components/common/help-hint";
 import * as React from "react";
 import { Archive, ArrowLeft, Plus, Wallet } from "lucide-react";
@@ -9,8 +10,6 @@ import { AccountDialog } from "@/components/accounts/account-dialog";
 import { AccountMembersDialog } from "@/components/accounts/account-members-dialog";
 import { PageHeader } from "@/components/common/page-header";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState, ErrorState } from "@/components/common/states";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { useAccountMembers, useSetVisibility } from "@/hooks/useAccountSharing";
@@ -59,25 +58,6 @@ function Group({
         ))}
       </ul>
     </section>
-  );
-}
-
-function ListSkeleton() {
-  return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-      {Array.from({ length: 3 }).map((_, i) => (
-        <Card key={i} className="gap-4 border-0 p-5">
-          <div className="flex items-center gap-3">
-            <Skeleton className="size-10 rounded-xl" />
-            <div className="flex-1 space-y-2">
-              <Skeleton className="h-4 w-28" />
-              <Skeleton className="h-3 w-10" />
-            </div>
-          </div>
-          <Skeleton className="h-8 w-36" />
-        </Card>
-      ))}
-    </div>
   );
 }
 
@@ -160,7 +140,7 @@ export default function AccountsPage() {
 
       {view === "active" ? (
         active.isLoading ? (
-          <ListSkeleton />
+          <AccountGroupsSkeleton />
         ) : active.isError ? (
           <ErrorState description="Couldn't load your accounts." onRetry={() => active.refetch()} />
         ) : optimisticAccounts.length === 0 ? (
@@ -192,7 +172,7 @@ export default function AccountsPage() {
           </div>
         )
       ) : archived.isLoading ? (
-        <ListSkeleton />
+        <AccountGroupsSkeleton />
       ) : archived.isError ? (
         <ErrorState
           description="Couldn't load your archived accounts."

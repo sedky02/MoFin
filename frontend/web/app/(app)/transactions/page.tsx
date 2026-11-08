@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { TransactionDaysSkeleton, TransactionFiltersSkeleton } from "@/components/common/page-skeletons";
 import { Suspense } from "react";
 import { PageHeader } from "@/components/common/page-header";
 import type { SearchInitial } from "@/components/search/search-view";
@@ -63,16 +64,22 @@ async function SearchContent({
 
 function TransactionsSkeleton() {
   return (
-    <>
-      <PageHeader title={TRANSACTIONS_TITLE} description={TRANSACTIONS_DESCRIPTION} className="mb-3" />
-      <div className="space-y-4">
-        <Skeleton className="h-10 w-full rounded-lg" />
-        <div className="space-y-2">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} className="h-14 w-full rounded-lg" />
-          ))}
-        </div>
+    <div className="flex flex-col gap-5">
+      <PageHeader
+        title={TRANSACTIONS_TITLE}
+        description={TRANSACTIONS_DESCRIPTION}
+        className="mb-3"
+        action={
+          <div className="flex flex-wrap items-center gap-2">
+            <Skeleton className="h-10 w-48 rounded-lg" />
+            <Skeleton className="h-10 w-40 rounded-lg" />
+          </div>
+        }
+      />
+      <div className="space-y-5">
+        <TransactionFiltersSkeleton />
+        <TransactionDaysSkeleton />
       </div>
-    </>
+    </div>
   );
 }

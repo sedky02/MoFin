@@ -19,9 +19,18 @@ function AskSkeleton() {
         <Skeleton className="h-9 w-full rounded-xl" />
         <Skeleton className="h-9 w-full rounded-xl" />
       </div>
-      <div className="space-y-4">
-        <Skeleton className="h-8 w-56" />
-        <Skeleton className="h-40 w-full rounded-2xl" />
+      <div className="flex min-h-[60vh] flex-col">
+        <div className="flex flex-1 flex-col items-center justify-center py-10">
+          <Skeleton className="size-10 rounded-xl" />
+          <Skeleton className="mt-4 h-7 w-64 max-w-full" />
+          <Skeleton className="mt-2 h-4 w-52 max-w-full" />
+          <div className="mt-7 flex max-w-2xl flex-wrap justify-center gap-2">
+            {[36, 44, 32, 40].map((w) => (
+              <Skeleton key={w} className="h-9 rounded-full" style={{ width: `${w * 4}px` }} />
+            ))}
+          </div>
+        </div>
+        <Skeleton className="mx-auto h-14 w-full max-w-3xl rounded-3xl" />
       </div>
     </div>
   );

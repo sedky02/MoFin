@@ -1,5 +1,6 @@
 "use client";
 
+import { GoalCardsSkeleton } from "@/components/common/page-skeletons";
 import * as React from "react";
 import { Ban, ArrowLeft, Plus, Target } from "lucide-react";
 import { useGoals, useArchiveGoal, useRestoreGoal } from "@/hooks/useGoals";
@@ -11,7 +12,7 @@ import { CancelledGoalsList } from "@/components/goals/cancelled-goals-list";
 import { GoalHistoryDialog } from "@/components/goals/goal-history-dialog";
 import { PageHeader } from "@/components/common/page-header";
 import { Button } from "@/components/ui/button";
-import { SkeletonRows, EmptyState, ErrorState } from "@/components/common/states";
+import { EmptyState, ErrorState } from "@/components/common/states";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { groupGoalsByStanding, STANDING_LABEL } from "@/lib/goal-standing";
 import type { Goal } from "@/lib/types";
@@ -89,7 +90,7 @@ export default function GoalsPage() {
 
       {view === "active" ? (
         active.isLoading ? (
-          <SkeletonRows rows={4} />
+          <GoalCardsSkeleton />
         ) : active.isError ? (
           <ErrorState description="Couldn't load your goals." onRetry={() => active.refetch()} />
         ) : optimisticActive.length === 0 ? (
@@ -129,7 +130,7 @@ export default function GoalsPage() {
           </div>
         )
       ) : cancelled.isLoading ? (
-        <SkeletonRows rows={4} />
+        <GoalCardsSkeleton />
       ) : cancelled.isError ? (
         <ErrorState description="Couldn't load your cancelled goals." onRetry={() => cancelled.refetch()} />
       ) : cancelledCount === 0 ? (
