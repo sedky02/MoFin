@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { ArrowRight, MailCheck, RotateCw, Smartphone } from "lucide-react";
+import { ArrowRight, RotateCw, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AUTH_BUTTON, AUTH_INPUT, AUTH_LABEL, AUTH_LINK, AuthHeading, AuthSwitch } from "@/components/auth/auth-parts";
 import { InboxButton, SentAddressCard } from "@/components/auth/email-sent";
@@ -10,11 +10,9 @@ import { Input } from "@/components/ui/input";
 import { AuthBrokenLinkScene, AuthMailScene, AuthSuccessScene } from "@/components/auth/auth-scenes";
 import { afterVerificationHref, forgetContinuation } from "@/lib/pending-signup";
 
-type Status =
-  | { kind: "ready"; token: string; fromApp: boolean }
-  | { kind: "verifying"; token: string; fromApp: boolean }
-  | { kind: "signedIn" }
-  | { kind: "verified"; email: string; fromApp: boolean }
+type Outcome =
+  | { kind: "signedIn"; href: string }
+  | { kind: "verified"; email: string; fromApp: boolean; already: boolean }
   | { kind: "invalid" };
 
 const GHOST_BUTTON = "h-11 w-full text-[15px] font-semibold text-muted-foreground";
@@ -30,118 +28,109 @@ function noopSubscribe() {
   return () => {};
 }
 
-function statusFromFragment(fragment: string): Status {
+function parseLink(fragment: string) {
   const params = new URLSearchParams(fragment);
-  const token = params.get("token");
-  return token ? { kind: "ready", token, fromApp: params.get("from") === "app" } : { kind: "invalid" };
+  return { token: params.get("token"), fromApp: params.get("from") === "app" };
 }
 
+// One redemption per token and page load: development's double effects would otherwise redeem twice.
+const redemptions = new Map<string, Promise<Outcome>>();
+
+async function redeem(token: string, fromApp: boolean): Promise<Outcome> {
+  const res = await fetch("/api/auth/verify-email", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token }),
+  }).catch(() => null);
+  const body = res?.ok
+    ? ((await res.json().catch(() => null)) as { email?: string; signedIn?: boolean; alreadyVerified?: boolean } | null)
+    : null;
+  if (!body) return { kind: "invalid" };
+  if (body.signedIn) {
+    const href = afterVerificationHref();
+    forgetContinuation();
+    return { kind: "signedIn", href };
+  }
+  return { kind: "verified", email: body.email ?? "", fromApp, already: body.alreadyVerified === true };
+}
+
+/** Opening the emailed link is the verification: it redeems on load and says where to go next. */
 export default function VerifyEmailPage() {
   // null on the server and during hydration, so the prerender matches.
   const fragment = React.useSyncExternalStore(noopSubscribe, readLinkFragment, () => null);
-  const [outcome, setOutcome] = React.useState<Status | null>(null);
-  const [continueHref, setContinueHref] = React.useState("/dashboard");
+  const [outcome, setOutcome] = React.useState<Outcome | null>(null);
 
   React.useEffect(() => {
+    if (fragment === null) return;
     // Out of the address bar and the back stack.
-    if (fragment !== null) window.history.replaceState(null, "", window.location.pathname);
+    window.history.replaceState(null, "", window.location.pathname);
+    const { token, fromApp } = parseLink(fragment);
+    if (!token) return;
+    let active = true;
+    let pending = redemptions.get(token);
+    if (!pending) {
+      pending = redeem(token, fromApp);
+      redemptions.set(token, pending);
+    }
+    void pending.then((result) => {
+      if (active) setOutcome(result);
+    });
+    return () => {
+      active = false;
+    };
   }, [fragment]);
 
-  // Verified on a tap, not on load: mail scanners that open links would otherwise use them up.
-  async function verify(token: string, fromApp: boolean) {
-    setOutcome({ kind: "verifying", token, fromApp });
-    const res = await fetch("/api/auth/verify-email", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token }),
-    }).catch(() => null);
-    const body = res?.ok ? ((await res.json().catch(() => null)) as { email?: string; signedIn?: boolean } | null) : null;
-    if (!body) return setOutcome({ kind: "invalid" });
-    if (body.signedIn) {
-      setContinueHref(afterVerificationHref());
-      forgetContinuation();
-      return setOutcome({ kind: "signedIn" });
-    }
-    setOutcome({ kind: "verified", email: body.email ?? "", fromApp });
-  }
-
   if (fragment === null) return <div aria-busy="true" className="min-h-64" />;
-  const status = outcome ?? statusFromFragment(fragment);
+  if (!parseLink(fragment).token || outcome?.kind === "invalid") return <ExpiredLink />;
 
-  if (status.kind === "ready" || status.kind === "verifying") {
-    const { token, fromApp } = status;
+  if (!outcome) {
     return (
-      <div className="text-center">
+      <div className="text-center" aria-busy="true">
         <AuthMailScene className="mb-7" />
-        <AuthHeading
-          align="center"
-          title="Verify your"
-          accent="email"
-          subtitle="One tap to confirm this address is yours and finish setting up your account."
-        />
-        <Button className={AUTH_BUTTON} disabled={status.kind === "verifying"} onClick={() => verify(token, fromApp)}>
-          <MailCheck className="size-[18px]" aria-hidden />
-          {status.kind === "verifying" ? "Verifying…" : "Verify my email"}
-        </Button>
+        <AuthHeading align="center" title="Verifying your" accent="email" subtitle="This only takes a moment." />
       </div>
     );
   }
 
-  if (status.kind === "invalid") return <ExpiredLink />;
+  const dashboardHref = outcome.kind === "signedIn" ? outcome.href : "/dashboard";
+  const subtitle =
+    outcome.kind === "signedIn"
+      ? "You're signed in and your account is ready."
+      : outcome.fromApp
+        ? "Go back to the MoFin app to carry on where you left off."
+        : "Your account is ready. Sign in once to open your dashboard.";
 
-
-  if (status.kind === "signedIn") {
-    return (
-      <div className="text-center">
-        <AuthSuccessScene className="mb-7" />
-        <AuthHeading
-          align="center"
-          title="Your email is"
-          accent="verified"
-          subtitle="You're signed in and ready to go."
-        />
-        <Button className={AUTH_BUTTON} onClick={() => window.location.assign(continueHref)}>
-          {continueHref === "/dashboard" ? "Go to dashboard" : "Continue"}
-          <ArrowRight className="size-[18px]" aria-hidden />
-        </Button>
-      </div>
-    );
-  }
-
-  const signInHref = `/login?email=${encodeURIComponent(status.email)}`;
   return (
     <div className="text-center">
       <AuthSuccessScene className="mb-7" />
       <AuthHeading
         align="center"
-        title="Your email is"
+        title={outcome.kind === "verified" && outcome.already ? "Your email is already" : "Your email is"}
         accent="verified"
-        subtitle={
-          status.fromApp
-            ? "Go back to the MoFin app to carry on where you left off."
-            : "Sign in with the password you chose to start using MoFin."
-        }
+        subtitle={subtitle}
       />
-      {status.fromApp ? (
-        <div className="flex flex-col gap-3.5">
+      <div className="flex flex-col gap-3.5">
+        {outcome.kind === "verified" && outcome.fromApp && (
           <Button asChild className={AUTH_BUTTON}>
-            <a href={`mofin://verified?email=${encodeURIComponent(status.email)}`}>
+            <a href={`mofin://verified?email=${encodeURIComponent(outcome.email)}`}>
               <Smartphone className="size-[18px]" aria-hidden />
               Open the MoFin app
             </a>
           </Button>
+        )}
+        {outcome.kind === "verified" && outcome.fromApp ? (
           <Button asChild variant="ghost" className={GHOST_BUTTON}>
-            <Link href={signInHref}>Sign in on the web instead</Link>
+            <a href={dashboardHref}>Go to dashboard on the web</a>
           </Button>
-        </div>
-      ) : (
-        <Button asChild className={AUTH_BUTTON}>
-          <Link href={signInHref}>
-            Sign in
-            <ArrowRight className="size-[18px]" aria-hidden />
-          </Link>
-        </Button>
-      )}
+        ) : (
+          <Button asChild className={AUTH_BUTTON}>
+            <a href={dashboardHref}>
+              {dashboardHref === "/dashboard" ? "Go to dashboard" : "Continue"}
+              <ArrowRight className="size-[18px]" aria-hidden />
+            </a>
+          </Button>
+        )}
+      </div>
     </div>
   );
 }

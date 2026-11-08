@@ -32,6 +32,8 @@ export interface VerifiedEmail {
   email: string;
   /** True only when the link was redeemed by the browser that signed up. */
   sameBrowser: boolean;
+  /** The link had been used already (often by a mail scanner) but the address is verified. */
+  alreadyVerified: boolean;
 }
 
 /**
@@ -133,8 +135,24 @@ export class EmailVerificationService {
     const stored = await this.prisma.emailVerificationToken.findUnique({
       where: { tokenHash: sha256(token) },
     });
-    if (!stored || stored.usedAt || stored.expiresAt <= now) {
+    if (!stored)
       throw new BadRequestException(INVALID_VERIFICATION_TOKEN_MESSAGE);
+
+    // Mail scanners open links before people do. A link that can no longer be redeemed but belongs
+    // to a verified address says so instead of failing; it never starts a session.
+    if (stored.usedAt || stored.expiresAt <= now) {
+      const owner = await this.prisma.user.findUnique({
+        where: { id: stored.userId },
+        select: { id: true, email: true, emailVerifiedAt: true },
+      });
+      if (!owner?.emailVerifiedAt)
+        throw new BadRequestException(INVALID_VERIFICATION_TOKEN_MESSAGE);
+      return {
+        userId: owner.id,
+        email: owner.email,
+        sameBrowser: false,
+        alreadyVerified: true,
+      };
     }
 
     const user = await this.prisma.$transaction(async (tx) => {
@@ -156,7 +174,12 @@ export class EmailVerificationService {
       !!stored.browserBindingHash &&
       !!browserBinding &&
       sha256(browserBinding) === stored.browserBindingHash;
-    return { userId: user.id, email: user.email, sameBrowser };
+    return {
+      userId: user.id,
+      email: user.email,
+      sameBrowser,
+      alreadyVerified: false,
+    };
   }
 
   private webUrl(): string {

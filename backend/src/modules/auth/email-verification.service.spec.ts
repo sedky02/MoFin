@@ -136,6 +136,7 @@ describe('EmailVerificationService.verify', () => {
       userId: 'u1',
       email: 'a@b.com',
       sameBrowser: true,
+      alreadyVerified: false,
     });
   });
 
@@ -151,9 +152,10 @@ describe('EmailVerificationService.verify', () => {
     );
   });
 
-  it('rejects a used or expired link', async () => {
+  it('rejects a used or expired link while the address is still unverified', async () => {
     const used = makeService({
       stored: { ...validToken(null), usedAt: new Date() },
+      user: { ...pendingUser },
     });
     await expect(used.service.verify('token')).rejects.toBeInstanceOf(
       BadRequestException,
@@ -161,9 +163,25 @@ describe('EmailVerificationService.verify', () => {
 
     const expired = makeService({
       stored: { ...validToken(null), expiresAt: new Date(Date.now() - 1) },
+      user: { ...pendingUser },
     });
     await expect(expired.service.verify('token')).rejects.toBeInstanceOf(
       BadRequestException,
     );
+  });
+
+  it('reports an already verified address for a used link, without a session', async () => {
+    const { service, tokens } = makeService({
+      stored: { ...validToken(sha256(BINDING)), usedAt: new Date() },
+      user: { ...pendingUser, emailVerifiedAt: new Date() },
+    });
+
+    await expect(service.verify('token', BINDING)).resolves.toEqual({
+      userId: 'u1',
+      email: 'a@b.com',
+      sameBrowser: false,
+      alreadyVerified: true,
+    });
+    expect(tokens.updateMany).not.toHaveBeenCalled();
   });
 });

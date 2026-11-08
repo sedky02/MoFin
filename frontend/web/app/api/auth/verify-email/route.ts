@@ -24,9 +24,9 @@ export async function POST(req: NextRequest) {
   });
   if (!result.ok) return result.response;
 
-  const { accessToken, refreshToken, email } = result.data;
+  const { accessToken, refreshToken, email, alreadyVerified } = result.data;
   const signedIn = typeof accessToken === "string" && typeof refreshToken === "string";
-  const res = NextResponse.json({ email, signedIn });
+  const res = NextResponse.json({ email, signedIn, alreadyVerified: alreadyVerified === true });
   if (signedIn) {
     setAuthCookies(res, { accessToken, refreshToken } as BackendTokens);
     clearSignupBindingCookie(res);

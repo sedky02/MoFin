@@ -185,6 +185,7 @@ export class AuthController {
     return {
       message: 'Your email is verified.',
       email: verified.email,
+      alreadyVerified: verified.alreadyVerified,
       ...(session ?? {}),
     };
   }
