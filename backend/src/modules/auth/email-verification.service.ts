@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomBytes } from 'crypto';
+import { runAfterResponse } from '../../common/utils/after-response';
 import { sha256 } from '../../common/utils/hash';
 import { PrismaService } from '../../database/prisma.service';
 import { MailSender } from '../mail/mail-sender';
@@ -132,8 +133,10 @@ export class EmailVerificationService {
    * unknown email answer alike; only accounts still waiting for verification get a link.
    */
   resendInBackground(email: string, options: LinkOptions): void {
-    this.resend(email, options).catch((err: unknown) =>
-      this.logFailure('Verification resend', err),
+    runAfterResponse(
+      this.logger,
+      'Verification resend',
+      this.resend(email, options),
     );
   }
 
@@ -145,7 +148,7 @@ export class EmailVerificationService {
 
   /** Mail sent on behalf of an unauthenticated request: logged, never surfaced. */
   runInBackground(label: string, task: Promise<unknown>): void {
-    task.catch((err: unknown) => this.logFailure(label, err));
+    runAfterResponse(this.logger, label, task);
   }
 
   async verify(token: string, browserBinding?: string): Promise<VerifiedEmail> {
@@ -183,11 +186,5 @@ export class EmailVerificationService {
     return this.config
       .get<string>('WEB_URL', 'http://localhost:3001')
       .replace(/\/$/, '');
-  }
-
-  private logFailure(label: string, err: unknown): void {
-    this.logger.error(
-      `${label} could not be processed: ${err instanceof Error ? err.message : String(err)}`,
-    );
   }
 }

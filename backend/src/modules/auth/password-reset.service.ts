@@ -4,6 +4,7 @@ import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
 import { PrismaService } from '../../database/prisma.service';
 import { parseDurationMs } from '../../common/utils/duration';
+import { runAfterResponse } from '../../common/utils/after-response';
 import { sha256 } from '../../common/utils/hash';
 import { MailSender } from '../mail/mail-sender';
 import { UsersService } from '../users/users.service';
@@ -33,11 +34,11 @@ export class PasswordResetService {
    * failures are logged, never surfaced.
    */
   requestResetInBackground(email: string): void {
-    this.requestReset(email).catch((err: unknown) => {
-      this.logger.error(
-        `Password reset request could not be processed: ${err instanceof Error ? err.message : String(err)}`,
-      );
-    });
+    runAfterResponse(
+      this.logger,
+      'Password reset request',
+      this.requestReset(email),
+    );
   }
 
   async requestReset(email: string): Promise<void> {

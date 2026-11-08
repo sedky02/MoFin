@@ -2,11 +2,13 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Check, Clock, RotateCw } from "lucide-react";
+import { ExternalLink, Mail, RotateCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { AUTH_BUTTON, AUTH_LINK, AuthChip, AuthChips, AuthHeading, AuthSwitch } from "@/components/auth/auth-parts";
+import { AUTH_BUTTON, AUTH_LINK, AuthHeading, AuthSwitch } from "@/components/auth/auth-parts";
 import { AuthMailScene } from "@/components/auth/auth-scenes";
+import { mailProviderFor } from "@/lib/mail-providers";
 import { SIGNED_IN_COOKIE } from "@/lib/session-hint";
+import { cn } from "@/lib/utils";
 import { afterVerificationHref, forgetContinuation, rememberContinuation } from "@/lib/pending-signup";
 
 const RESEND_COOLDOWN_S = 60;
@@ -83,56 +85,66 @@ export default function CheckEmailPage() {
 
   const resendLabel =
     resend === "sending" ? "Sending…" : cooldown > 0 ? `Resend email in ${cooldown}s` : "Resend email";
+  const provider = mailProviderFor(email);
 
   return (
     <div className="text-center">
-      <AuthMailScene className="mb-7" />
+      <AuthMailScene className="mb-6" />
       <AuthHeading
         align="center"
+        compact
         headingRef={headingRef}
         title="Check your"
         accent="email"
-        subtitle={
-          <>
-            {fromSignIn ? "Verify your email to sign in. " : ""}
-            We sent an email to <span className="font-semibold text-foreground">{email || "your address"}</span>. Open
-            the link in it to finish setting up your account.
-          </>
-        }
+        subtitle={fromSignIn ? "Verify your email to sign in. We sent a link to:" : "We sent a verification link to:"}
       />
-      <AuthChips>
-        <AuthChip icon={Clock}>Expires in 24 hours</AuthChip>
-        <AuthChip icon={Check}>Works once</AuthChip>
-      </AuthChips>
-      <p className="mt-8 text-[15px] leading-relaxed text-muted-foreground">
-        Open it in this browser to go straight to your dashboard. Nothing arrived? Check your spam folder.
-      </p>
 
-      <p role="status" className="mt-4 min-h-5 text-sm">
-        {resend === "sent" && <span className="text-success">We sent a new link.</span>}
-        {resend === "limited" && <span className="text-destructive">Too many attempts. Try again in a few minutes.</span>}
-        {resend === "failed" && <span className="text-destructive">Couldn&apos;t send it. Try again.</span>}
-      </p>
+      <div className="flex items-center gap-3.5 rounded-2xl border border-border bg-card px-4 py-3.5 text-left">
+        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/20">
+          <Mail className="size-[18px] text-primary-text" aria-hidden />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[15px] font-semibold text-foreground">{email || "your address"}</span>
+          <span className="mt-0.5 block text-[13px] text-muted-foreground">Expires in 24 hours · works once</span>
+        </span>
+        <Link href={`/register${carriedQuery}`} className={cn(AUTH_LINK, "shrink-0 text-sm")}>
+          Change
+        </Link>
+      </div>
 
-      <div className="mt-6 flex flex-col gap-3.5">
+      <div className="mt-8 flex flex-col gap-3">
+        {provider && (
+          <Button asChild className={AUTH_BUTTON}>
+            <a href={provider.inboxUrl} target="_blank" rel="noopener noreferrer">
+              Open {provider.name}
+              <ExternalLink className="size-4" aria-hidden />
+            </a>
+          </Button>
+        )}
         <Button
           type="button"
-          variant={fromSignIn ? "default" : "outline"}
+          variant={provider ? "outline" : "default"}
           className={AUTH_BUTTON}
           disabled={!email || cooldown > 0 || resend === "sending"}
           onClick={resendLink}
         >
-          <RotateCw className="size-[18px]" aria-hidden />
+          <RotateCw className="size-4" aria-hidden />
           {resendLabel}
-        </Button>
-        <Button asChild variant="ghost" className="h-11 w-full text-[15px] font-semibold text-muted-foreground">
-          <Link href={`/register${carriedQuery}`}>
-            Use a different email
-          </Link>
         </Button>
       </div>
 
-      <AuthSwitch className="mt-6">
+      <p role="status" className="mt-3 min-h-5 text-sm">
+        {resend === "sent" && <span className="text-success">We sent a new link. It replaces the old one.</span>}
+        {resend === "limited" && <span className="text-destructive">Too many attempts. Try again in a few minutes.</span>}
+        {resend === "failed" && <span className="text-destructive">Couldn&apos;t send it. Try again.</span>}
+      </p>
+
+      <p className="mx-auto mt-4 max-w-[400px] text-[13px] leading-relaxed text-muted-foreground">
+        Open the link in this browser to go straight to your dashboard. Can&apos;t find the email? Check your spam
+        folder.
+      </p>
+
+      <AuthSwitch className="mt-7">
         Already verified?{" "}
         <Link href={`/login${carriedQuery}${carriedQuery ? "&" : "?"}email=${encodeURIComponent(email)}`} className={AUTH_LINK}>
           Sign in
