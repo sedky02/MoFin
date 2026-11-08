@@ -184,21 +184,18 @@ export default function RegisterPage() {
             Create account
             <ArrowRight className="size-[18px]" aria-hidden />
           </SubmitButton>
-          <p className="text-center text-[12.5px] text-muted-foreground">
-            By continuing you agree to keep your finances honest.
-          </p>
         </form>
       </Form>
 
-      <AuthDivider compact />
-      <GoogleButton label="Sign up with Google" />
-
-      <AuthSwitch>
+      <AuthSwitch className="mt-5">
         Already have an account?{" "}
         <Link href="/login" className={AUTH_LINK}>
           Sign in
         </Link>
       </AuthSwitch>
+
+      <AuthDivider compact />
+      <GoogleButton label="Sign up with Google" />
     </div>
   );
 }

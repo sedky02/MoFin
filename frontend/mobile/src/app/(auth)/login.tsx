@@ -96,15 +96,15 @@ export default function LoginScreen() {
         </SubmitButton>
       </View>
 
-      <OrDivider />
-      <OtherSignIn />
-
-      <Text className="mt-8 text-center text-sm text-muted-foreground">
+      <Text className="mt-5 text-center text-sm text-muted-foreground">
         New to MoFin?{' '}
         <Link href="/register" className="font-semibold text-primary-text">
           Create an account
         </Link>
       </Text>
+
+      <OrDivider />
+      <OtherSignIn />
     </AuthScreen>
   );
 }

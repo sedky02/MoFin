@@ -62,8 +62,8 @@ export function AuthDivider({ compact = false }: { compact?: boolean }) {
 }
 
 /** The "other screen" line, always under the form. */
-export function AuthSwitch({ children }: { children: React.ReactNode }) {
-  return <p className="mt-10 text-center text-sm text-muted-foreground">{children}</p>;
+export function AuthSwitch({ children, className }: { children: React.ReactNode; className?: string }) {
+  return <p className={cn("mt-10 text-center text-sm text-muted-foreground", className)}>{children}</p>;
 }
 
 const STRENGTH = [

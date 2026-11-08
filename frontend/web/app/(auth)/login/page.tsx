@@ -218,18 +218,18 @@ export default function LoginPage() {
         </form>
       </Form>
 
-      <AuthDivider />
-      <div className="space-y-3.5">
-        <GoogleButton />
-        <DemoButton size="quiet" />
-      </div>
-
-      <AuthSwitch>
+      <AuthSwitch className="mt-5">
         New to MoFin?{" "}
         <Link href="/register" className={AUTH_LINK}>
           Create an account
         </Link>
       </AuthSwitch>
+
+      <AuthDivider />
+      <div className="space-y-3.5">
+        <GoogleButton />
+        <DemoButton size="quiet" />
+      </div>
     </div>
   );
 }

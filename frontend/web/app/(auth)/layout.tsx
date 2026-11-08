@@ -9,11 +9,11 @@ export default function AuthLayout({
   return (
     <div className="grid min-h-dvh bg-background lg:grid-cols-[46%_1fr]">
       <AuthBrandPanel />
-      <div className="flex min-h-dvh flex-col px-6 py-8 sm:px-12 lg:px-16 lg:py-9">
+      <div className="flex min-h-dvh flex-col px-6 py-8 sm:px-12 lg:px-12 xl:px-16 lg:py-9">
         <div className="mb-8 lg:hidden">
           <Logo />
         </div>
-        <div className="m-auto w-full max-w-[400px]">{children}</div>
+        <div className="m-auto w-full max-w-[560px]">{children}</div>
       </div>
     </div>
   );

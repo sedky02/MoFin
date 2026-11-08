@@ -108,15 +108,15 @@ export default function RegisterScreen() {
         </SubmitButton>
       </View>
 
-      <OrDivider />
-      <OtherSignIn googleLabel="Sign up with Google" showDemo={false} />
-
-      <Text className="mt-8 text-center text-sm text-muted-foreground">
+      <Text className="mt-5 text-center text-sm text-muted-foreground">
         Already have an account?{' '}
         <Link href="/login" className="font-semibold text-primary-text">
           Sign in
         </Link>
       </Text>
+
+      <OrDivider />
+      <OtherSignIn googleLabel="Sign up with Google" showDemo={false} />
     </AuthScreen>
   );
 }
