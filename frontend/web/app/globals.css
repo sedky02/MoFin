@@ -283,6 +283,67 @@
       top: 100%;
     }
   }
+
+  /* Sign-in panel: four account cards take turns at the front of the stack (12s loop, 3s per slot). */
+  .account-deck-card {
+    transform: translateY(var(--deck-y)) scale(var(--deck-scale));
+    transform-origin: 50% 0;
+    z-index: var(--deck-z);
+    filter: brightness(var(--deck-brightness));
+    box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.5);
+    animation: account-deck 12s cubic-bezier(0.65, 0, 0.25, 1) var(--deck-delay) infinite;
+  }
+  @keyframes account-deck {
+    0%,
+    20% {
+      transform: translateY(0) scale(0.84);
+      z-index: 1;
+      filter: brightness(0.62);
+      opacity: 1;
+    }
+    25%,
+    45% {
+      transform: translateY(58px) scale(0.89);
+      z-index: 2;
+      filter: brightness(0.76);
+    }
+    50%,
+    70% {
+      transform: translateY(120px) scale(0.945);
+      z-index: 3;
+      filter: brightness(0.9);
+    }
+    75%,
+    94% {
+      transform: translateY(186px) scale(1);
+      z-index: 4;
+      filter: brightness(1);
+      opacity: 1;
+    }
+    97% {
+      transform: translateY(232px) scale(1);
+      z-index: 4;
+      opacity: 0;
+    }
+    97.5% {
+      transform: translateY(-24px) scale(0.84);
+      z-index: 0;
+      opacity: 0;
+      filter: brightness(0.62);
+    }
+    100% {
+      transform: translateY(0) scale(0.84);
+      z-index: 1;
+      opacity: 1;
+      filter: brightness(0.62);
+    }
+  }
+  /* The global reduced-motion rule would run each card to its last keyframe and pile them in the back slot. */
+  @media (prefers-reduced-motion: reduce) {
+    .account-deck-card {
+      animation: none !important;
+    }
+  }
 }
 
 /* View Transitions: gentle cross-fade for sidebar navigation */
