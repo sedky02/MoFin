@@ -5,18 +5,18 @@ import { useForm } from 'react-hook-form';
 import { Linking, View } from 'react-native';
 
 import { ApiClientError, authApi } from '@/api/client';
-import { AuthChip } from '@/components/auth/auth-chip';
 import { AuthMailScene } from '@/components/auth/auth-scenes';
 import { AuthScreen } from '@/components/auth/auth-screen';
 import { FormField } from '@/components/auth/form-field';
 import { Notice } from '@/components/auth/notice';
+import { SentAddressCard, resendLabel, useCooldown } from '@/components/auth/sent-address-card';
 import { SubmitButton } from '@/components/auth/submit-button';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { handleApiError } from '@/core/form-errors';
 import { AUTH_COPY, forgotSchema, type ForgotValues } from '@/lib/auth-forms';
-import { Check, Clock, Mail } from '@/lib/icons';
+import { Mail } from '@/lib/icons';
 
 // The emailed link opens the MoFin website's reset page (the backend builds it from the web URL),
 // where the new password is chosen. The app has no reset screen of its own.
@@ -24,6 +24,9 @@ export default function ForgotPasswordScreen() {
   const router = useRouter();
   const [rateLimited, setRateLimited] = React.useState(false);
   const [sentTo, setSentTo] = React.useState<string | null>(null);
+  const [resending, setResending] = React.useState(false);
+  const [feedback, setFeedback] = React.useState<'resent' | 'limited' | 'failed' | null>(null);
+  const cooldown = useCooldown(0);
 
   const form = useForm<ForgotValues>({
     resolver: zodResolver(forgotSchema),
@@ -36,6 +39,7 @@ export default function ForgotPasswordScreen() {
     try {
       await authApi.forgotPassword({ email });
       setSentTo(email);
+      cooldown.restart();
     } catch (err) {
       if (err instanceof ApiClientError && err.status === 429) {
         setRateLimited(true);
@@ -44,6 +48,21 @@ export default function ForgotPasswordScreen() {
       handleApiError(err, { setError: form.setError, fallback: AUTH_COPY.forgotFailed });
     }
   });
+
+  async function sendAgain() {
+    if (!sentTo) return;
+    setResending(true);
+    setFeedback(null);
+    try {
+      await authApi.forgotPassword({ email: sentTo });
+      setFeedback('resent');
+      cooldown.restart();
+    } catch (err) {
+      setFeedback(err instanceof ApiClientError && err.status === 429 ? 'limited' : 'failed');
+    } finally {
+      setResending(false);
+    }
+  }
 
   if (sentTo) {
     return (
@@ -54,45 +73,54 @@ export default function ForgotPasswordScreen() {
         accent="email"
         subtitle={
           <Text role="status" className="text-sm leading-6 text-muted-foreground">
-            If an account exists for <Text className="text-sm font-semibold text-foreground">{sentTo}</Text>, we have
-            sent it a link to reset the password.
+            If an account exists for this email, we sent it a reset link:
           </Text>
         }>
-        <View className="flex-row flex-wrap justify-center gap-2.5">
-          <AuthChip icon={Clock}>Expires in 30 minutes</AuthChip>
-          <AuthChip icon={Check}>Works once</AuthChip>
-        </View>
-        <Text className="mt-6 text-center text-sm leading-6 text-muted-foreground">
-          The link opens the MoFin website, where you choose the new password. Then come back here and sign in.
-        </Text>
-        <Text className="mt-3 text-center text-sm leading-6 text-muted-foreground">
-          Nothing arrived? Check your spam folder, or try again in a few minutes.
-        </Text>
-        <View className="mt-9 gap-3.5">
+        <SentAddressCard
+          email={sentTo}
+          meta="Expires in 30 minutes · works once"
+          onChange={() => {
+            setSentTo(null);
+            setFeedback(null);
+            form.reset({ email: sentTo });
+          }}
+        />
+
+        <View className="mt-7 gap-3">
           <SubmitButton
-            arrow
             pending={false}
             pendingText=""
             leading={<Icon as={Mail} size={18} className="text-primary-foreground" />}
             onPress={() => void Linking.openURL('mailto:')}>
             Open email app
           </SubmitButton>
-          <SubmitButton variant="outline" pending={false} pendingText="" onPress={() => router.replace('/login')}>
-            Back to sign in
+          <SubmitButton
+            variant="outline"
+            pending={false}
+            pendingText=""
+            disabled={cooldown.seconds > 0 || resending}
+            onPress={sendAgain}>
+            {resendLabel('Send again', resending, cooldown.seconds)}
           </SubmitButton>
-          <Button
-            variant="ghost"
-            className="min-h-11"
-            onPress={() => {
-              setSentTo(null);
-              form.reset({ email: '' });
-            }}>
-            <Text className="text-[15px] font-semibold text-muted-foreground">Use a different email</Text>
-          </Button>
         </View>
+
+        <View className="mt-4">
+          {feedback === 'resent' ? <Notice kind="success">We sent a new link. It replaces the old one.</Notice> : null}
+          {feedback === 'limited' ? <Notice kind="error">{AUTH_COPY.rateLimitedForgot}</Notice> : null}
+          {feedback === 'failed' ? <Notice kind="error">{AUTH_COPY.forgotFailed}</Notice> : null}
+        </View>
+
+        <Text className="text-center text-[13px] leading-5 text-muted-foreground">
+          The link opens the MoFin website, where you choose the new password. Then come back and sign in.
+        </Text>
+
+        <Button variant="ghost" className="mt-4 min-h-11" onPress={() => router.replace('/login')}>
+          <Text className="text-[15px] font-semibold text-primary-text">Back to sign in</Text>
+        </Button>
       </AuthScreen>
     );
   }
+
 
   return (
     <AuthScreen

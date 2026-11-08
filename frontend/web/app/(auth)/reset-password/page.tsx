@@ -108,36 +108,36 @@ export default function ResetPasswordPage() {
   if (!token || linkRejected) {
     return (
       <div className="text-center">
-        <AuthBrokenLinkScene className="mb-7" />
-        <AuthHeading align="center" title="This link can't be" accent="used" />
-        <div
-          role="alert"
-          className="flex items-start gap-2.5 rounded-xl border border-destructive/30 bg-destructive/10 px-3.5 py-3 text-left text-sm leading-relaxed text-destructive"
-        >
-          <AlertCircle className="mt-0.5 size-4 shrink-0" />
-          <span>
-            {linkRejected
-              ? "This reset link is invalid, was already used, or has expired."
-              : "This reset link is incomplete. Open the link from the email again, or copy the whole address."}
-          </span>
-        </div>
-        <p className="mt-7 text-[15px] leading-relaxed text-muted-foreground">
-          Reset links work once and expire after 30 minutes. You can ask for a new one.
-        </p>
-        <div className="mt-11 flex flex-col gap-3.5">
-          <Button asChild className={AUTH_BUTTON}>
-            <Link href="/forgot-password">
-              Request a new link
-              <ArrowRight className="size-[18px]" aria-hidden />
-            </Link>
-          </Button>
-          <Button asChild variant="ghost" className="h-11 w-full text-[15px] font-semibold text-muted-foreground">
-            <Link href="/login">Back to sign in</Link>
-          </Button>
-        </div>
+        <AuthBrokenLinkScene className="mb-6" />
+        <AuthHeading
+          align="center"
+          compact
+          title="This link can't be"
+          accent="used"
+          subtitle={
+            <span role="alert">
+              {linkRejected
+                ? "It has expired or was already used. Reset links work once, for 30 minutes."
+                : "It looks incomplete. Open the link from the email again, or copy the whole address."}
+            </span>
+          }
+        />
+        <Button asChild className={`${AUTH_BUTTON} mt-2`}>
+          <Link href="/forgot-password">
+            Send me a new link
+            <ArrowRight className="size-[18px]" aria-hidden />
+          </Link>
+        </Button>
+        <AuthSwitch className="mt-7">
+          Remembered it?{" "}
+          <Link href="/login" className={AUTH_LINK}>
+            Sign in
+          </Link>
+        </AuthSwitch>
       </div>
     );
   }
+
 
   return (
     <div>

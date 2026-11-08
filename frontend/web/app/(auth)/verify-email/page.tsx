@@ -2,9 +2,11 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { AlertCircle, ArrowRight, MailCheck, Smartphone } from "lucide-react";
+import { ArrowRight, MailCheck, RotateCw, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { AUTH_BUTTON, AuthHeading } from "@/components/auth/auth-parts";
+import { AUTH_BUTTON, AUTH_INPUT, AUTH_LABEL, AUTH_LINK, AuthHeading, AuthSwitch } from "@/components/auth/auth-parts";
+import { InboxButton, SentAddressCard } from "@/components/auth/email-sent";
+import { Input } from "@/components/ui/input";
 import { AuthBrokenLinkScene, AuthMailScene, AuthSuccessScene } from "@/components/auth/auth-scenes";
 import { afterVerificationHref, forgetContinuation } from "@/lib/pending-signup";
 
@@ -85,24 +87,8 @@ export default function VerifyEmailPage() {
     );
   }
 
-  if (status.kind === "invalid") {
-    return (
-      <div className="text-center">
-        <AuthBrokenLinkScene className="mb-7" />
-        <AuthHeading align="center" title="This link can't be" accent="used" />
-        <div
-          role="alert"
-          className="flex items-start gap-2.5 rounded-xl border border-destructive/30 bg-destructive/10 px-3.5 py-3 text-left text-sm leading-relaxed text-destructive"
-        >
-          <AlertCircle className="mt-0.5 size-4 shrink-0" />
-          <span>It may have expired or already been used. Sign in to get a new one.</span>
-        </div>
-        <Button asChild variant="outline" className={`${AUTH_BUTTON} mt-11`}>
-          <Link href="/login">Go to sign in</Link>
-        </Button>
-      </div>
-    );
-  }
+  if (status.kind === "invalid") return <ExpiredLink />;
+
 
   if (status.kind === "signedIn") {
     return (
@@ -156,6 +142,106 @@ export default function VerifyEmailPage() {
           </Link>
         </Button>
       )}
+    </div>
+  );
+}
+
+type ResendState = "idle" | "sending" | "sent" | "limited" | "failed";
+
+/** A used or expired link can't say which address it was for, so ask for it right here. */
+function ExpiredLink() {
+  const [email, setEmail] = React.useState("");
+  const [state, setState] = React.useState<ResendState>("idle");
+  const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+
+  async function sendNewLink(event: React.FormEvent) {
+    event.preventDefault();
+    if (!valid) return;
+    setState("sending");
+    const res = await fetch("/api/auth/verification/resend", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email.trim() }),
+    }).catch(() => null);
+    if (res?.status === 429) return setState("limited");
+    setState(res?.ok ? "sent" : "failed");
+  }
+
+  if (state === "sent") {
+    return (
+      <div className="text-center">
+        <AuthMailScene className="mb-6" />
+        <AuthHeading
+          align="center"
+          compact
+          title="Check your"
+          accent="email"
+          subtitle={<span role="status">If this address is waiting to be verified, we sent it a new link:</span>}
+        />
+        <SentAddressCard
+          email={email.trim()}
+          meta="Expires in 24 hours · works once"
+          action={
+            <button type="button" className={AUTH_LINK} onClick={() => setState("idle")}>
+              Change
+            </button>
+          }
+        />
+        <div className="mt-8 flex flex-col gap-3">
+          <InboxButton email={email.trim()} />
+        </div>
+        <AuthSwitch className="mt-7">
+          Already verified?{" "}
+          <Link href={`/login?email=${encodeURIComponent(email.trim())}`} className={AUTH_LINK}>
+            Sign in
+          </Link>
+        </AuthSwitch>
+      </div>
+    );
+  }
+
+  return (
+    <div className="text-center">
+      <AuthBrokenLinkScene className="mb-6" />
+      <AuthHeading
+        align="center"
+        compact
+        title="This link can't be"
+        accent="used"
+        subtitle={
+          <span role="alert">It has expired or was already used. Enter your email and we&apos;ll send a new one.</span>
+        }
+      />
+      <form onSubmit={sendNewLink} className="space-y-4 text-left" noValidate>
+        <div className="grid gap-2">
+          <label htmlFor="resend-email" className={AUTH_LABEL}>
+            Email
+          </label>
+          <Input
+            id="resend-email"
+            type="email"
+            autoComplete="email"
+            placeholder="you@example.com"
+            className={AUTH_INPUT}
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+          />
+        </div>
+        <Button type="submit" className={AUTH_BUTTON} disabled={!valid || state === "sending"}>
+          <RotateCw className="size-4" aria-hidden />
+          {state === "sending" ? "Sending…" : "Send a new link"}
+        </Button>
+      </form>
+      <p role="status" className="mt-3 min-h-5 text-sm">
+        {state === "limited" && <span className="text-destructive">Too many attempts. Try again in a few minutes.</span>}
+        {state === "failed" && <span className="text-destructive">Couldn&apos;t send it. Try again.</span>}
+      </p>
+      <AuthSwitch className="mt-5">
+        Already verified?{" "}
+        <Link href="/login" className={AUTH_LINK}>
+          Sign in
+        </Link>
+      </AuthSwitch>
     </div>
   );
 }
