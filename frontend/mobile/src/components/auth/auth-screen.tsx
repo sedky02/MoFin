@@ -1,6 +1,7 @@
 import { StatusBar } from 'expo-status-bar';
+import { KeyboardScrollView } from '@/components/common/keyboard-scroll-view';
 import * as React from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { LogoMark } from '@/components/common/logo-mark';
@@ -32,8 +33,8 @@ export function AuthScreen({
     <View className="flex-1 bg-[#0a0a09]">
       <StatusBar style="light" />
       <SafeAreaView className="flex-1" edges={['top']}>
-        <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <ScrollView contentContainerClassName="flex-grow" keyboardShouldPersistTaps="handled" bounces={false}>
+        <View className="flex-1">
+          <KeyboardScrollView contentContainerClassName="flex-grow" bounces={false}>
             <View className="h-[104px] overflow-hidden px-6 pt-7">
               <View
                 aria-hidden
@@ -75,8 +76,8 @@ export function AuthScreen({
                 {children}
               </View>
             </View>
-          </ScrollView>
-        </KeyboardAvoidingView>
+          </KeyboardScrollView>
+        </View>
       </SafeAreaView>
     </View>
   );

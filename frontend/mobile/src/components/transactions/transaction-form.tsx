@@ -2,6 +2,7 @@
  * The phone version of the web's TransactionForm, with the same schema, messages, rounding and
  * payload (see transaction-form-model.ts).
  */
+import { KeyboardScrollView } from '@/components/common/keyboard-scroll-view';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { router, type Href } from 'expo-router';
 import * as React from 'react';
@@ -9,7 +10,6 @@ import {
   AccessibilityInfo,
   Keyboard,
   Pressable,
-  ScrollView,
   View,
 } from 'react-native';
 import { Controller, useFieldArray, useForm, useFormState, useWatch } from 'react-hook-form';
@@ -151,9 +151,9 @@ function TransactionFormGate(props: TransactionFormProps) {
 function FormFrame({ compact, children }: { compact?: boolean; children: React.ReactNode }) {
   if (compact) return <View>{children}</View>;
   return (
-    <ScrollView className="flex-1 bg-background" contentContainerClassName="w-full max-w-lg self-center p-4">
+    <KeyboardScrollView className="flex-1 bg-background" contentContainerClassName="w-full max-w-lg self-center p-4">
       {children}
-    </ScrollView>
+    </KeyboardScrollView>
   );
 }
 

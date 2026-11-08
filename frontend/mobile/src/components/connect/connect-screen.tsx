@@ -1,4 +1,5 @@
 import { Link } from 'expo-router';
+import { KeyboardScrollView } from '@/components/common/keyboard-scroll-view';
 import type { LucideIcon } from 'lucide-react-native';
 import * as React from 'react';
 import { Linking, Pressable, ScrollView, View } from 'react-native';
@@ -116,7 +117,7 @@ export function ConnectScreen() {
   }
 
   return (
-    <ScrollView
+    <KeyboardScrollView
       className="flex-1 bg-background"
       keyboardShouldPersistTaps="handled"
       contentContainerClassName="mx-auto w-full max-w-3xl p-4"
@@ -255,6 +256,6 @@ export function ConnectScreen() {
           ))}
         </View>
       </View>
-    </ScrollView>
+    </KeyboardScrollView>
   );
 }

@@ -8,6 +8,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useColorScheme } from 'nativewind';
 import { useEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
 
 import { useSession } from '@/api/session';
 import { WebPhoneFrame } from '@/components/shell/web-phone-frame';
@@ -62,6 +63,7 @@ export default function RootLayout() {
   const signedIn = status === 'signedIn';
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
+    <KeyboardProvider>
     <QueryClientProvider client={getQueryClient()}>
       <ThemeProvider value={NAV_THEME[scheme]}>
         <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
@@ -81,6 +83,7 @@ export default function RootLayout() {
         </WebPhoneFrame>
       </ThemeProvider>
     </QueryClientProvider>
+    </KeyboardProvider>
     </GestureHandlerRootView>
   );
 }

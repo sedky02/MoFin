@@ -1,8 +1,9 @@
 // Who is on an account: everyone can see it, and the owner manages it from here. The web's
 // AccountMembersDialog, as a screen.
+import { KeyboardScrollView } from '@/components/common/keyboard-scroll-view';
 import { router, Stack } from 'expo-router';
 import * as React from 'react';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ConfirmDialog } from '@/components/common/confirm-dialog';
@@ -135,7 +136,7 @@ export function AccountPeopleScreen({ accountId }: { accountId: string }) {
   const pending = invitations.data ?? [];
 
   return (
-    <ScrollView
+    <KeyboardScrollView
       className="flex-1 bg-background"
       keyboardShouldPersistTaps="handled"
       contentContainerClassName="mx-auto w-full max-w-3xl gap-6 p-4"
@@ -260,6 +261,6 @@ export function AccountPeopleScreen({ accountId }: { accountId: string }) {
           setLeaving(false);
         }}
       />
-    </ScrollView>
+    </KeyboardScrollView>
   );
 }

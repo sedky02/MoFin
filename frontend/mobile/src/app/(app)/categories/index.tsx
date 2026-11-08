@@ -1,5 +1,6 @@
 import * as React from 'react';
-import { RefreshControl, ScrollView, TextInput, View } from 'react-native';
+import { KeyboardScrollView } from '@/components/common/keyboard-scroll-view';
+import { RefreshControl, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CategoryDialog } from '@/components/categories/category-dialog';
@@ -80,7 +81,7 @@ export default function CategoriesScreen() {
   );
 
   return (
-    <ScrollView
+    <KeyboardScrollView
       className="flex-1 bg-background"
       contentInsetAdjustmentBehavior="automatic"
       keyboardShouldPersistTaps="handled"
@@ -183,6 +184,6 @@ export default function CategoriesScreen() {
           setToArchive(undefined);
         }}
       />
-    </ScrollView>
+    </KeyboardScrollView>
   );
 }

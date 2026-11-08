@@ -1,5 +1,6 @@
 import * as React from 'react';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { KeyboardScrollView } from '@/components/common/keyboard-scroll-view';
+import { RefreshControl, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
@@ -38,7 +39,7 @@ export function DraftsScreen() {
   }
 
   return (
-    <ScrollView
+    <KeyboardScrollView
       className="flex-1 bg-background"
       keyboardShouldPersistTaps="handled"
       contentContainerClassName="mx-auto w-full max-w-2xl p-4"
@@ -81,6 +82,6 @@ export function DraftsScreen() {
           </View>
         </View>
       </View>
-    </ScrollView>
+    </KeyboardScrollView>
   );
 }

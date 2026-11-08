@@ -1,6 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
+import { KeyboardScrollView } from '@/components/common/keyboard-scroll-view';
 import * as React from 'react';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, View } from 'react-native';
 
 import { DashboardBody } from '@/components/dashboard/dashboard-body';
 import { currentUtcMonth } from '@/components/dashboard/dashboard-logic';
@@ -39,7 +40,7 @@ export function DashboardScreen() {
   const waiting = !ready || accounts.isLoading || user.isLoading || balances.isLoading;
 
   return (
-    <ScrollView
+    <KeyboardScrollView
       className="flex-1 bg-background"
       contentContainerClassName="p-4"
       contentContainerStyle={{ paddingBottom: 24 }}
@@ -59,6 +60,6 @@ export function DashboardScreen() {
           <DashboardBody year={year} month={month} />
         )}
       </View>
-    </ScrollView>
+    </KeyboardScrollView>
   );
 }
