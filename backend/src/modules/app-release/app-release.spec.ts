@@ -1,5 +1,7 @@
 import { AppPlatform } from '@prisma/client';
+import { AppReleaseController } from './app-release.controller';
 import { AppReleaseService } from './app-release.service';
+import { ReleaseTokenGuard } from './release-token.guard';
 import { publishRelease, withdrawRelease } from './app-release.publishing';
 
 const row = (over: Record<string, unknown> = {}) => ({
@@ -120,5 +122,74 @@ describe('withdrawRelease', () => {
         99,
       ),
     ).rejects.toThrow(/No published/);
+  });
+});
+
+describe('ReleaseTokenGuard', () => {
+  const token = 'a'.repeat(40);
+  const ctx = (authorization?: string) =>
+    ({
+      switchToHttp: () => ({
+        getRequest: () => ({ headers: { authorization } }),
+      }),
+    }) as never;
+  const guard = (configured?: string) =>
+    new ReleaseTokenGuard({ get: () => configured } as never);
+
+  it('lets the release token through', () => {
+    expect(guard(token).canActivate(ctx(`Bearer ${token}`))).toBe(true);
+  });
+
+  it('refuses a missing or wrong token', () => {
+    expect(() => guard(token).canActivate(ctx())).toThrow('Unauthorized');
+    expect(() =>
+      guard(token).canActivate(ctx(`Bearer ${'b'.repeat(40)}`)),
+    ).toThrow('Unauthorized');
+  });
+
+  it('hides the routes when no token is configured', () => {
+    expect(() => guard(undefined).canActivate(ctx(`Bearer ${token}`))).toThrow(
+      'Not Found',
+    );
+  });
+});
+
+describe('AppReleaseController', () => {
+  const controller = (newestBuild: number | null) =>
+    new AppReleaseController(
+      {} as never,
+      {
+        appRelease: {
+          findFirst: jest.fn(async () =>
+            newestBuild === null ? null : { build: newestBuild },
+          ),
+          create: jest.fn(async ({ data }: { data: object }) => ({
+            ...row(),
+            ...data,
+          })),
+        },
+      } as never,
+    );
+  const body = {
+    platform: 'ANDROID',
+    version: '1.1.0',
+    build: 5,
+    url: 'https://example.com/mofin-5.apk',
+    notes: ['Widgets'],
+  };
+
+  it('publishes a valid build', async () => {
+    await expect(controller(4).publish(body)).resolves.toMatchObject({
+      build: 5,
+    });
+  });
+
+  it('answers 400 for bad input and 409 for a build that is not newer', async () => {
+    await expect(
+      controller(4).publish({ ...body, url: 'http://x' }),
+    ).rejects.toMatchObject({ status: 400 });
+    await expect(controller(5).publish(body)).rejects.toMatchObject({
+      status: 409,
+    });
   });
 });

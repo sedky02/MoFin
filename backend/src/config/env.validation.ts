@@ -89,6 +89,9 @@ const envSchema = z
     DEMO_TTL_HOURS: z.coerce.number().int().positive().max(168).default(24),
     // Live demo users at once; further visitors get "demo is busy".
     DEMO_MAX_ACTIVE: z.coerce.number().int().positive().default(200),
+    // Bearer token the release script sends to publish or withdraw mobile builds. Unset: those
+    // routes are off. Long and random (e.g. `openssl rand -hex 32`).
+    APP_RELEASE_TOKEN: z.string().min(32).optional(),
     // AI drafts one demo user can create.
     DEMO_AI_CAP: z.coerce.number().int().positive().default(30),
 

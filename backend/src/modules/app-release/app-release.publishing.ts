@@ -18,6 +18,9 @@ export type PublishReleaseInput = z.input<typeof publishReleaseSchema>;
 
 type ReleaseDb = Pick<Prisma.TransactionClient, 'appRelease'>;
 
+/** A publish or withdraw that can't happen as asked (a build number that isn't newer, nothing to withdraw). */
+export class ReleaseConflictError extends Error {}
+
 /**
  * Adds a build as the newest release. A build number never goes backwards, even past a withdrawn
  * one: phones compare numbers, so reusing one would hide the update from people who had it.
@@ -33,7 +36,7 @@ export async function publishRelease(
     select: { build: true },
   });
   if (newest && release.build <= newest.build) {
-    throw new Error(
+    throw new ReleaseConflictError(
       `Build ${release.build} isn't newer than the last published build (${newest.build}).`,
     );
   }
@@ -51,5 +54,7 @@ export async function withdrawRelease(
     data: { withdrawnAt: new Date() },
   });
   if (count === 0)
-    throw new Error(`No published ${platform} build ${build} to withdraw.`);
+    throw new ReleaseConflictError(
+      `No published ${platform} build ${build} to withdraw.`,
+    );
 }

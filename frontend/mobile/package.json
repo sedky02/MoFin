@@ -83,6 +83,7 @@
     "build:prod:arm64": "npx eas-cli build --profile production-arm64 --platform android",
     "build:prod:legacy": "npx eas-cli build --profile production-legacy --platform android",
     "build:prod:split": "npx eas-cli build --profile production-arm64 --platform android --no-wait && npx eas-cli build --profile production-legacy --platform android --no-wait",
+    "release:android": "node scripts/release-android.mjs",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
