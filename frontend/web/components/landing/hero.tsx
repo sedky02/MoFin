@@ -8,6 +8,7 @@ import { DemoButton } from "./demo-button";
 import { DemoNotice } from "./demo-notice";
 import { AppFrame } from "./mock/app-frame";
 import { MockDashboard } from "./mock/mock-dashboard";
+import { HeroSentence, useHeroLoop } from "./hero-sentence";
 import { useSignedIn } from "./use-signed-in";
 import { ArrowDown, ArrowRight } from "lucide-react";
 import { LogoMark } from "@/components/brand/logo";
@@ -24,6 +25,7 @@ export function Hero() {
   const play = useInView(frameRef, { once: true, amount: 0.25 });
   const signedIn = useSignedIn();
   const { data: release } = useAppRelease();
+  const loop = useHeroLoop();
 
   const { scrollYProgress } = useScroll({ target: frameRef, offset: ["start end", "center center"] });
   const scale = useSpring(useTransform(scrollYProgress, [0, 1], [0.86, 1.04]), SCROLL_SPRING);
@@ -31,7 +33,7 @@ export function Hero() {
   const y = useSpring(useTransform(scrollYProgress, [0, 1], [32, 0]), SCROLL_SPRING);
 
   return (
-    <section className="relative px-4 pt-12 pb-16 sm:px-6 sm:pt-20">
+    <section className="relative overflow-x-clip px-4 pt-10 pb-16 sm:px-6 sm:pt-14">
       {release?.android && <AndroidSticker version={release.android.version} />}
       <div className="mx-auto flex max-w-3xl flex-col items-center text-center">
         {release?.android && (
@@ -44,8 +46,13 @@ export function Hero() {
             <ArrowRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" aria-hidden />
           </a>
         )}
-        <h1 className="text-[2.9rem] leading-[1] font-semibold tracking-[-0.045em] text-balance sm:text-7xl">
-          Know where your money goes.
+        <h1 className="isolate text-[2.9rem] leading-[1] font-semibold tracking-[-0.045em] text-balance sm:text-7xl">
+          Know where your{" "}
+          <span className="relative inline-block">
+            <span aria-hidden className="absolute inset-x-[-0.08em] bottom-[0.06em] -z-10 h-[0.34em] -rotate-1 rounded-sm bg-primary" />
+            money
+          </span>{" "}
+          goes.
         </h1>
 
         <p className="mt-6 max-w-2xl text-lg leading-relaxed text-pretty text-muted-foreground sm:text-xl">
@@ -73,8 +80,10 @@ export function Hero() {
           )}
         </div>
 
+        <HeroSentence {...loop} />
+
         {!signedIn && (
-          <p className="mt-4 text-sm text-muted-foreground">
+          <p className="mt-5 text-sm text-muted-foreground">
             The demo is your own copy, filled with sample data, and it deletes itself after 24 hours.
           </p>
         )}
@@ -84,7 +93,7 @@ export function Hero() {
         </Suspense>
       </div>
 
-      <div className="mx-auto mt-14 max-w-6xl [perspective:1800px]">
+      <div className="relative mx-auto mt-12 max-w-6xl [perspective:1800px]">
         <motion.div
           ref={frameRef}
           // With reduced motion the window stays put (CSS overrides the scroll-linked transform).
