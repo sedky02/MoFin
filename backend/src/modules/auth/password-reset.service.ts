@@ -6,6 +6,7 @@ import { PrismaService } from '../../database/prisma.service';
 import { parseDurationMs } from '../../common/utils/duration';
 import { runAfterResponse } from '../../common/utils/after-response';
 import { sha256 } from '../../common/utils/hash';
+import { passwordResetEmail } from '../mail/auth-emails';
 import { MailSender } from '../mail/mail-sender';
 import { UsersService } from '../users/users.service';
 
@@ -77,20 +78,7 @@ export class PasswordResetService {
 
     await this.mail.send({
       to: user.email,
-      subject: 'Reset your MoFin password',
-      text: [
-        'Someone asked to reset the password for your MoFin account.',
-        '',
-        `Open this link within ${minutes} minutes to choose a new password:`,
-        link,
-        '',
-        "If you didn't ask for this, ignore this email. Your password won't change.",
-      ].join('\n'),
-      html: [
-        '<p>Someone asked to reset the password for your MoFin account.</p>',
-        `<p><a href="${link}">Choose a new password</a> (the link works once, within ${minutes} minutes).</p>`,
-        "<p>If you didn't ask for this, ignore this email. Your password won't change.</p>",
-      ].join('\n'),
+      ...passwordResetEmail({ email: user.email, link, minutes }),
     });
   }
 

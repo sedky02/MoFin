@@ -4,6 +4,7 @@ import { randomBytes } from 'crypto';
 import { runAfterResponse } from '../../common/utils/after-response';
 import { sha256 } from '../../common/utils/hash';
 import { PrismaService } from '../../database/prisma.service';
+import { accountExistsEmail, verificationEmail } from '../mail/auth-emails';
 import { MailSender } from '../mail/mail-sender';
 
 const LINK_TTL_MS = 24 * 60 * 60 * 1000;
@@ -91,40 +92,16 @@ export class EmailVerificationService {
     const link = `${this.webUrl()}/verify-email#token=${token}${fromApp}`;
     await this.mail.send({
       to: user.email,
-      subject: 'Verify your MoFin email',
-      text: [
-        'Open this link within 24 hours to verify your email address:',
-        link,
-        '',
-        "If you didn't create a MoFin account, ignore this email.",
-      ].join('\n'),
-      html: [
-        `<p><a href="${link}">Verify your email address</a> (the link works once, within 24 hours).</p>`,
-        "<p>If you didn't create a MoFin account, ignore this email.</p>",
-      ].join('\n'),
+      ...verificationEmail({ email: user.email, link }),
     });
     return { alreadyVerified: false };
   }
 
   /** Sign-up with an address that already has an account: tell the owner instead of the screen. */
   async sendAccountExistsNotice(email: string): Promise<void> {
-    const webUrl = this.webUrl();
     await this.mail.send({
       to: email,
-      subject: 'You already have a MoFin account',
-      text: [
-        'Someone tried to create a MoFin account with this email, but you already have one.',
-        '',
-        `Sign in: ${webUrl}/login`,
-        `Forgot your password? Reset it: ${webUrl}/forgot-password`,
-        '',
-        "If this wasn't you, you can ignore this email. Nothing has changed.",
-      ].join('\n'),
-      html: [
-        '<p>Someone tried to create a MoFin account with this email, but you already have one.</p>',
-        `<p><a href="${webUrl}/login">Sign in</a> or, if you forgot your password, <a href="${webUrl}/forgot-password">reset it</a>.</p>`,
-        "<p>If this wasn't you, you can ignore this email. Nothing has changed.</p>",
-      ].join('\n'),
+      ...accountExistsEmail({ email, webUrl: this.webUrl() }),
     });
   }
 
