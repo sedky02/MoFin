@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { AlertCircle, MailCheck } from "lucide-react";
+import { AlertCircle, ArrowRight, Check, Clock } from "lucide-react";
 import {
   Form,
   FormControl,
@@ -17,6 +17,17 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SubmitButton } from "@/components/common/submit-button";
+import {
+  AUTH_BUTTON,
+  AUTH_INPUT,
+  AUTH_LABEL,
+  AUTH_LINK,
+  AuthChip,
+  AuthChips,
+  AuthHeading,
+  AuthSwitch,
+} from "@/components/auth/auth-parts";
+import { AuthMailScene } from "@/components/auth/auth-scenes";
 import { ApiClientError } from "@/lib/api";
 import { handleApiError } from "@/lib/form-errors";
 
@@ -71,33 +82,38 @@ export default function ForgotPasswordPage() {
 
   if (sentTo) {
     return (
-      <div>
-        <div className="mb-6">
-          <MailCheck className="mb-4 size-8 text-primary-text" aria-hidden />
-          <h1
-            ref={confirmationRef}
-            tabIndex={-1}
-            className="font-heading text-3xl font-bold leading-tight tracking-tight outline-none"
-          >
-            Check your email
-          </h1>
-          <p role="status" className="mt-3 text-sm leading-relaxed text-muted-foreground">
-            If an account exists for <span className="font-medium text-foreground">{sentTo}</span>,
-            we have sent it a link to reset the password. The link works once and expires in
-            30 minutes.
-          </p>
-          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-            Nothing arrived? Check your spam folder, or try again in a few minutes.
-          </p>
-        </div>
-        <div className="flex flex-col gap-3">
-          <Button asChild className="h-11 w-full text-sm font-semibold">
-            <Link href="/login">Back to sign in</Link>
+      <div className="text-center">
+        <AuthMailScene className="mb-7" />
+        <AuthHeading
+          align="center"
+          headingRef={confirmationRef}
+          title="Check your"
+          accent="email"
+          subtitle={
+            <span role="status">
+              If an account exists for <span className="font-semibold text-foreground">{sentTo}</span>, we have
+              sent it a link to reset the password.
+            </span>
+          }
+        />
+        <AuthChips>
+          <AuthChip icon={Clock}>Expires in 30 minutes</AuthChip>
+          <AuthChip icon={Check}>Works once</AuthChip>
+        </AuthChips>
+        <p className="mt-8 text-[15px] leading-relaxed text-muted-foreground">
+          Nothing arrived? Check your spam folder, or try again in a few minutes.
+        </p>
+        <div className="mt-11 flex flex-col gap-3.5">
+          <Button asChild className={AUTH_BUTTON}>
+            <Link href="/login">
+              Back to sign in
+              <ArrowRight className="size-[18px]" aria-hidden />
+            </Link>
           </Button>
           <Button
             type="button"
             variant="ghost"
-            className="h-11 w-full text-sm"
+            className="h-11 w-full text-[15px] font-semibold text-muted-foreground"
             onClick={() => {
               setSentTo(null);
               form.reset({ email: "" });
@@ -112,21 +128,17 @@ export default function ForgotPasswordPage() {
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="font-heading text-3xl font-bold leading-tight tracking-tight">
-          Forgot your
-          <br />
-          <span className="text-primary-text">password?</span>
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Enter the email you sign in with and we&apos;ll send you a link to choose a new one.
-        </p>
-      </div>
+      <AuthHeading
+        eyebrow="Reset password"
+        title="Forgot your"
+        accent="password?"
+        subtitle="Enter the email you sign in with and we'll send you a link to choose a new one."
+      />
 
       {rateLimited && (
         <div
           role="alert"
-          className="mb-5 flex items-start gap-2.5 rounded-lg border border-destructive/30 bg-destructive/10 px-3.5 py-3 text-sm text-destructive"
+          className="mb-6 flex items-start gap-2.5 rounded-xl border border-destructive/30 bg-destructive/10 px-3.5 py-3 text-sm text-destructive"
         >
           <AlertCircle className="mt-0.5 size-4 shrink-0" />
           <span>Too many attempts. Please wait a few minutes and try again.</span>
@@ -134,18 +146,19 @@ export default function ForgotPasswordPage() {
       )}
 
       <Form {...form}>
-        <form action={action} className="space-y-4">
+        <form action={action} className="space-y-6">
           <FormField
             control={form.control}
             name="email"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel>Email</FormLabel>
+              <FormItem className="gap-2.5">
+                <FormLabel className={AUTH_LABEL}>Email</FormLabel>
                 <FormControl>
                   <Input
                     type="email"
                     autoComplete="email"
                     placeholder="you@example.com"
+                    className={AUTH_INPUT}
                     {...field}
                   />
                 </FormControl>
@@ -153,24 +166,18 @@ export default function ForgotPasswordPage() {
               </FormItem>
             )}
           />
-          <SubmitButton
-            className="h-11 w-full text-sm font-semibold"
-            pendingText="Sending link…"
-          >
+          <SubmitButton className={AUTH_BUTTON} pendingText="Sending link…">
             Send reset link
+            <ArrowRight className="size-[18px]" aria-hidden />
           </SubmitButton>
         </form>
       </Form>
 
-      <p className="mt-6 text-center text-sm text-muted-foreground">
-        Remembered it?{" "}
-        <Link
-          href="/login"
-          className="font-medium text-primary-text underline-offset-4 hover:underline"
-        >
+      <AuthSwitch>
+        <Link href="/login" className={AUTH_LINK}>
           Back to sign in
         </Link>
-      </p>
+      </AuthSwitch>
     </div>
   );
 }

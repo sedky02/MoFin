@@ -3,7 +3,9 @@ import { Controller, type Control, type FieldValues, type Path } from 'react-hoo
 import { Pressable, TextInput, View, type TextInputProps } from 'react-native';
 
 import { Input } from '@/components/ui/input';
+import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
+import { Eye, EyeOff } from '@/lib/icons';
 import { cn } from '@/lib/utils';
 
 export type TextFieldHandle = React.ComponentRef<typeof TextInput>;
@@ -14,6 +16,8 @@ type Props<T extends FieldValues> = {
   label: string;
   /** Shown after the label, muted (e.g. "(optional)"). */
   labelHint?: string;
+  /** Sits on the label's row, on the right ("Forgot password?"). */
+  labelAction?: React.ReactNode;
   description?: string;
   password?: boolean;
   children?: React.ReactNode;
@@ -25,6 +29,7 @@ export function FormField<T extends FieldValues>({
   name,
   label,
   labelHint,
+  labelAction,
   description,
   password,
   children,
@@ -39,11 +44,14 @@ export function FormField<T extends FieldValues>({
       render={({ field, fieldState }) => {
         const error = fieldState.error?.message;
         return (
-          <View className="gap-1.5">
-            <Text className="text-sm font-medium">
-              {label}
-              {labelHint ? <Text className="text-sm text-muted-foreground"> {labelHint}</Text> : null}
-            </Text>
+          <View className="gap-2">
+            <View className="flex-row items-baseline justify-between">
+              <Text className="text-[13px] font-semibold">
+                {label}
+                {labelHint ? <Text className="text-[13px] font-normal text-muted-foreground"> {labelHint}</Text> : null}
+              </Text>
+              {labelAction}
+            </View>
             <View className="justify-center">
               <Input
                 // The Reusables Input types its ref as both RN's TextInput type and the instance type.
@@ -57,7 +65,7 @@ export function FormField<T extends FieldValues>({
                 secureTextEntry={password && !revealed}
                 accessibilityLabel={label}
                 accessibilityHint={error}
-                className={cn('min-h-11', password && 'pr-16', error && 'border-destructive')}
+                className={cn('min-h-[52px] rounded-xl bg-card px-3.5 text-[15px]', password && 'pr-12', error && 'border-destructive')}
                 {...inputProps}
               />
               {password ? (
@@ -66,8 +74,8 @@ export function FormField<T extends FieldValues>({
                   accessibilityLabel={revealed ? 'Hide password' : 'Show password'}
                   hitSlop={8}
                   onPress={() => setRevealed((r) => !r)}
-                  className="absolute right-3 h-full justify-center">
-                  <Text className="text-xs font-medium text-muted-foreground">{revealed ? 'Hide' : 'Show'}</Text>
+                  className="absolute right-1 size-11 items-center justify-center">
+                  <Icon as={revealed ? EyeOff : Eye} size={18} className="text-muted-foreground" />
                 </Pressable>
               ) : null}
             </View>

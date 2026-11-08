@@ -56,7 +56,7 @@ export default function LoginScreen() {
       {justRegistered && !rateLimited ? <Notice kind="success">{AUTH_COPY.registered}</Notice> : null}
       {expired && !justRegistered && !rateLimited ? <Notice kind="info">{AUTH_COPY.expired}</Notice> : null}
 
-      <View className="gap-4">
+      <View className="gap-6">
         <FormField
           control={form.control}
           name="email"
@@ -76,7 +76,13 @@ export default function LoginScreen() {
           control={form.control}
           name="password"
           label="Password"
+          labelAction={
+            <Link href="/forgot-password" className="text-[13px] font-semibold text-primary-text">
+              Forgot password?
+            </Link>
+          }
           testID="login-password"
+          placeholder="Your password"
           password
           inputRef={passwordRef}
           autoCapitalize="none"
@@ -85,12 +91,7 @@ export default function LoginScreen() {
           returnKeyType="go"
           onSubmitEditing={() => onSubmit()}
         />
-        <View className="-mt-1 flex-row justify-end">
-          <Link href="/forgot-password" className="py-1 text-sm font-medium text-primary-text">
-            Forgot password?
-          </Link>
-        </View>
-        <SubmitButton testID="login-submit" pending={isSubmitting} pendingText="Signing in…" onPress={() => onSubmit()}>
+        <SubmitButton testID="login-submit" arrow pending={isSubmitting} pendingText="Signing in…" onPress={() => onSubmit()}>
           Sign in
         </SubmitButton>
       </View>
@@ -98,9 +99,9 @@ export default function LoginScreen() {
       <OrDivider />
       <OtherSignIn />
 
-      <Text className="mt-6 text-center text-sm text-muted-foreground">
+      <Text className="mt-8 text-center text-sm text-muted-foreground">
         New to MoFin?{' '}
-        <Link href="/register" className="font-medium text-primary-text">
+        <Link href="/register" className="font-semibold text-primary-text">
           Create an account
         </Link>
       </Text>

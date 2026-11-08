@@ -6,11 +6,10 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, ArrowRight } from "lucide-react";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -20,9 +19,18 @@ import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/common/password-input";
 import { SubmitButton } from "@/components/common/submit-button";
 import { GoogleButton } from "@/components/common/google-button";
+import {
+  AUTH_BUTTON,
+  AUTH_INPUT,
+  AUTH_LABEL,
+  AUTH_LINK,
+  AuthDivider,
+  AuthHeading,
+  AuthSwitch,
+  PasswordStrengthMeter,
+} from "@/components/auth/auth-parts";
 import { ApiClientError } from "@/lib/api";
 import { handleApiError } from "@/lib/form-errors";
-import { cn } from "@/lib/utils";
 import { MIN_PASSWORD_LENGTH, scorePassword } from "@/lib/password-strength";
 
 const registerSchema = z.object({
@@ -31,14 +39,6 @@ const registerSchema = z.object({
   displayName: z.string().trim().max(80).optional(),
 });
 type RegisterValues = z.infer<typeof registerSchema>;
-
-const STRENGTH = [
-  { label: "Too short", cls: "bg-destructive" },
-  { label: "Weak", cls: "bg-destructive" },
-  { label: "Fair", cls: "bg-warning" },
-  { label: "Good", cls: "bg-primary" },
-  { label: "Strong", cls: "bg-success" },
-];
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -101,21 +101,18 @@ export default function RegisterPage() {
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="font-heading text-3xl font-bold leading-tight tracking-tight">
-          Create your
-          <br />
-          <span className="text-primary-text">account</span>
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Track your money with precision.
-        </p>
-      </div>
+      <AuthHeading
+        compact
+        eyebrow="Create account"
+        title="Create your"
+        accent="account"
+        subtitle="Track your money with precision."
+      />
 
       {rateLimited && (
         <div
           role="alert"
-          className="mb-5 flex items-start gap-2.5 rounded-lg border border-destructive/30 bg-destructive/10 px-3.5 py-3 text-sm text-destructive"
+          className="mb-6 flex items-start gap-2.5 rounded-xl border border-destructive/30 bg-destructive/10 px-3.5 py-3 text-sm text-destructive"
         >
           <AlertCircle className="mt-0.5 size-4 shrink-0" />
           <span>Too many attempts. Please wait a moment and try again.</span>
@@ -123,20 +120,18 @@ export default function RegisterPage() {
       )}
 
       <Form {...form}>
-        <form action={action} className="space-y-4">
+        <form action={action} className="space-y-[18px]">
           <FormField
             control={form.control}
             name="displayName"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel>
+              <FormItem className="gap-2">
+                <FormLabel className={AUTH_LABEL}>
                   Display name{" "}
-                  <span className="font-normal text-muted-foreground">
-                    (optional)
-                  </span>
+                  <span className="font-normal text-muted-foreground">(optional)</span>
                 </FormLabel>
                 <FormControl>
-                  <Input autoComplete="name" placeholder="Alex Rivera" {...field} />
+                  <Input autoComplete="name" placeholder="Alex Rivera" className={AUTH_INPUT} {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -146,13 +141,14 @@ export default function RegisterPage() {
             control={form.control}
             name="email"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel>Email</FormLabel>
+              <FormItem className="gap-2">
+                <FormLabel className={AUTH_LABEL}>Email</FormLabel>
                 <FormControl>
                   <Input
                     type="email"
                     autoComplete="email"
                     placeholder="you@example.com"
+                    className={AUTH_INPUT}
                     {...field}
                   />
                 </FormControl>
@@ -164,68 +160,45 @@ export default function RegisterPage() {
             control={form.control}
             name="password"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel>Password</FormLabel>
+              <FormItem className="gap-2">
+                <FormLabel className={AUTH_LABEL}>Password</FormLabel>
                 <FormControl>
                   <PasswordInput
                     autoComplete="new-password"
                     placeholder="At least 8 characters"
+                    className={AUTH_INPUT}
                     {...field}
                   />
                 </FormControl>
-                {!passwordError && (
-                  <FormDescription>Use at least 8 characters.</FormDescription>
-                )}
-                <div className="mt-1.5 flex items-center gap-2">
-                  <div className="flex h-1.5 flex-1 gap-1">
-                    {[0, 1, 2, 3].map((i) => (
-                      <div
-                        key={i}
-                        className={cn(
-                          "h-full flex-1 rounded-full transition-colors",
-                          i < strength
-                            ? STRENGTH[strength].cls
-                            : "bg-border",
-                        )}
-                      />
-                    ))}
-                  </div>
-                  <span className="w-14 text-right text-xs text-muted-foreground">
-                    {password ? STRENGTH[strength].label : ""}
-                  </span>
-                </div>
+                <PasswordStrengthMeter
+                  compact
+                  strength={strength}
+                  hasValue={Boolean(password)}
+                  hint={passwordError ? undefined : "Use at least 8 characters"}
+                />
                 <FormMessage />
               </FormItem>
             )}
           />
-          <SubmitButton
-            className="h-11 w-full text-sm font-semibold"
-            pendingText="Creating account…"
-          >
+          <SubmitButton className={AUTH_BUTTON} pendingText="Creating account…">
             Create account
+            <ArrowRight className="size-[18px]" aria-hidden />
           </SubmitButton>
-          <p className="text-center text-xs text-muted-foreground">
-            By continuing you agree to keep your finances honest. 🙂
+          <p className="text-center text-[12.5px] text-muted-foreground">
+            By continuing you agree to keep your finances honest.
           </p>
         </form>
       </Form>
 
-      <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground">
-        <span className="h-px flex-1 bg-border" />
-        OR
-        <span className="h-px flex-1 bg-border" />
-      </div>
+      <AuthDivider compact />
       <GoogleButton label="Sign up with Google" />
 
-      <p className="mt-6 text-center text-sm text-muted-foreground">
+      <AuthSwitch>
         Already have an account?{" "}
-        <Link
-          href="/login"
-          className="font-medium text-primary-text underline-offset-4 hover:underline"
-        >
+        <Link href="/login" className={AUTH_LINK}>
           Sign in
         </Link>
-      </p>
+      </AuthSwitch>
     </div>
   );
 }

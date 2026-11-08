@@ -8,13 +8,13 @@ import { ApiClientError, authApi } from '@/api/client';
 import { AuthScreen, OrDivider } from '@/components/auth/auth-screen';
 import { FormField, type TextFieldHandle } from '@/components/auth/form-field';
 import { Notice } from '@/components/auth/notice';
+import { PasswordStrengthMeter } from '@/components/auth/password-strength-meter';
 import { OtherSignIn } from '@/components/auth/other-sign-in';
 import { SubmitButton } from '@/components/auth/submit-button';
 import { Text } from '@/components/ui/text';
 import { handleApiError } from '@/core/form-errors';
 import { scorePassword } from '@/core/password-strength';
-import { AUTH_COPY, registerSchema, STRENGTH, type RegisterValues } from '@/lib/auth-forms';
-import { cn } from '@/lib/utils';
+import { AUTH_COPY, registerSchema, type RegisterValues } from '@/lib/auth-forms';
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -54,7 +54,7 @@ export default function RegisterScreen() {
     <AuthScreen title="Create your" accent="account" subtitle="Track your money with precision.">
       {rateLimited ? <Notice kind="error">{AUTH_COPY.rateLimited}</Notice> : null}
 
-      <View className="gap-4">
+      <View className="gap-[18px]">
         <FormField
           control={form.control}
           name="displayName"
@@ -92,27 +92,18 @@ export default function RegisterScreen() {
           password
           inputRef={passwordRef}
           placeholder="At least 8 characters"
-          description={errors.password ? undefined : 'Use at least 8 characters.'}
           autoCapitalize="none"
           autoComplete="new-password"
           textContentType="newPassword"
           returnKeyType="go"
           onSubmitEditing={() => onSubmit()}>
-          <View className="mt-1.5 flex-row items-center gap-2">
-            <View className="h-1.5 flex-1 flex-row gap-1">
-              {[0, 1, 2, 3].map((i) => (
-                <View
-                  key={i}
-                  className={cn('h-full flex-1 rounded-full', i < strength ? STRENGTH[strength].cls : 'bg-border')}
-                />
-              ))}
-            </View>
-            <Text className="w-14 text-right text-xs text-muted-foreground">
-              {password ? STRENGTH[strength].label : ''}
-            </Text>
-          </View>
+          <PasswordStrengthMeter
+            strength={strength}
+            hasValue={Boolean(password)}
+            hint={errors.password ? undefined : 'Use at least 8 characters'}
+          />
         </FormField>
-        <SubmitButton testID="register-submit" pending={isSubmitting} pendingText="Creating account…" onPress={() => onSubmit()}>
+        <SubmitButton testID="register-submit" arrow pending={isSubmitting} pendingText="Creating account…" onPress={() => onSubmit()}>
           Create account
         </SubmitButton>
       </View>
@@ -120,9 +111,9 @@ export default function RegisterScreen() {
       <OrDivider />
       <OtherSignIn googleLabel="Sign up with Google" showDemo={false} />
 
-      <Text className="mt-6 text-center text-sm text-muted-foreground">
+      <Text className="mt-8 text-center text-sm text-muted-foreground">
         Already have an account?{' '}
-        <Link href="/login" className="font-medium text-primary-text">
+        <Link href="/login" className="font-semibold text-primary-text">
           Sign in
         </Link>
       </Text>

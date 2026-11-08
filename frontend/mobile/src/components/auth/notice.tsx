@@ -15,7 +15,7 @@ export function Notice({ kind, children, className }: { kind: keyof typeof STYLE
     <View
       role={kind === 'error' ? 'alert' : 'status'}
       accessibilityLiveRegion={kind === 'error' ? 'assertive' : 'polite'}
-      className={cn('mb-5 rounded-lg border px-3.5 py-3', s.box, className)}>
+      className={cn('mb-6 rounded-xl border px-3.5 py-3', s.box, className)}>
       <Text className={cn('text-sm leading-5', s.text)}>{children}</Text>
     </View>
   );

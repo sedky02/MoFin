@@ -6,11 +6,10 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, ArrowRight } from "lucide-react";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -21,6 +20,17 @@ import { PasswordInput } from "@/components/common/password-input";
 import { SubmitButton } from "@/components/common/submit-button";
 import { ApiClientError } from "@/lib/api";
 import { handleApiError } from "@/lib/form-errors";
+import { scorePassword } from "@/lib/password-strength";
+import {
+  AUTH_BUTTON,
+  AUTH_INPUT,
+  AUTH_LABEL,
+  AUTH_LINK,
+  AuthHeading,
+  AuthSwitch,
+  PasswordStrengthMeter,
+} from "@/components/auth/auth-parts";
+import { AuthBrokenLinkScene } from "@/components/auth/auth-scenes";
 
 const resetSchema = z
   .object({
@@ -56,6 +66,7 @@ export default function ResetPasswordPage() {
     resolver: zodResolver(resetSchema),
     defaultValues: { password: "", confirmPassword: "" },
   });
+  const password = form.watch("password");
 
   async function action() {
     if (!token) return;
@@ -96,31 +107,31 @@ export default function ResetPasswordPage() {
 
   if (!token || linkRejected) {
     return (
-      <div>
-        <div className="mb-6">
-          <h1 className="font-heading text-3xl font-bold leading-tight tracking-tight">
-            This link can&apos;t be used
-          </h1>
-          <div
-            role="alert"
-            className="mt-4 flex items-start gap-2.5 rounded-lg border border-destructive/30 bg-destructive/10 px-3.5 py-3 text-sm text-destructive"
-          >
-            <AlertCircle className="mt-0.5 size-4 shrink-0" />
-            <span>
-              {linkRejected
-                ? "This reset link is invalid, was already used, or has expired."
-                : "This reset link is incomplete. Open the link from the email again, or copy the whole address."}
-            </span>
-          </div>
-          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-            Reset links work once and expire after 30 minutes. You can ask for a new one.
-          </p>
+      <div className="text-center">
+        <AuthBrokenLinkScene className="mb-7" />
+        <AuthHeading align="center" title="This link can't be" accent="used" />
+        <div
+          role="alert"
+          className="flex items-start gap-2.5 rounded-xl border border-destructive/30 bg-destructive/10 px-3.5 py-3 text-left text-sm leading-relaxed text-destructive"
+        >
+          <AlertCircle className="mt-0.5 size-4 shrink-0" />
+          <span>
+            {linkRejected
+              ? "This reset link is invalid, was already used, or has expired."
+              : "This reset link is incomplete. Open the link from the email again, or copy the whole address."}
+          </span>
         </div>
-        <div className="flex flex-col gap-3">
-          <Button asChild className="h-11 w-full text-sm font-semibold">
-            <Link href="/forgot-password">Request a new link</Link>
+        <p className="mt-7 text-[15px] leading-relaxed text-muted-foreground">
+          Reset links work once and expire after 30 minutes. You can ask for a new one.
+        </p>
+        <div className="mt-11 flex flex-col gap-3.5">
+          <Button asChild className={AUTH_BUTTON}>
+            <Link href="/forgot-password">
+              Request a new link
+              <ArrowRight className="size-[18px]" aria-hidden />
+            </Link>
           </Button>
-          <Button asChild variant="ghost" className="h-11 w-full text-sm">
+          <Button asChild variant="ghost" className="h-11 w-full text-[15px] font-semibold text-muted-foreground">
             <Link href="/login">Back to sign in</Link>
           </Button>
         </div>
@@ -130,21 +141,17 @@ export default function ResetPasswordPage() {
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="font-heading text-3xl font-bold leading-tight tracking-tight">
-          Choose a new
-          <br />
-          <span className="text-primary-text">password</span>
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          You&apos;ll be signed out everywhere and can then sign in with the new password.
-        </p>
-      </div>
+      <AuthHeading
+        eyebrow="Reset password"
+        title="Choose a new"
+        accent="password"
+        subtitle="You'll be signed out everywhere and can then sign in with the new password."
+      />
 
       {rateLimited && (
         <div
           role="alert"
-          className="mb-5 flex items-start gap-2.5 rounded-lg border border-destructive/30 bg-destructive/10 px-3.5 py-3 text-sm text-destructive"
+          className="mb-6 flex items-start gap-2.5 rounded-xl border border-destructive/30 bg-destructive/10 px-3.5 py-3 text-sm text-destructive"
         >
           <AlertCircle className="mt-0.5 size-4 shrink-0" />
           <span>Too many attempts. Please wait a moment and try again.</span>
@@ -152,21 +159,26 @@ export default function ResetPasswordPage() {
       )}
 
       <Form {...form}>
-        <form action={action} className="space-y-4">
+        <form action={action} className="space-y-6">
           <FormField
             control={form.control}
             name="password"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel>New password</FormLabel>
+              <FormItem className="gap-2.5">
+                <FormLabel className={AUTH_LABEL}>New password</FormLabel>
                 <FormControl>
                   <PasswordInput
                     autoComplete="new-password"
                     placeholder="At least 8 characters"
+                    className={AUTH_INPUT}
                     {...field}
                   />
                 </FormControl>
-                <FormDescription>Use at least 8 characters.</FormDescription>
+                <PasswordStrengthMeter
+                  strength={scorePassword(password ?? "")}
+                  hasValue={Boolean(password)}
+                  hint="Use at least 8 characters"
+                />
                 <FormMessage />
               </FormItem>
             )}
@@ -175,32 +187,27 @@ export default function ResetPasswordPage() {
             control={form.control}
             name="confirmPassword"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel>Repeat new password</FormLabel>
+              <FormItem className="gap-2.5">
+                <FormLabel className={AUTH_LABEL}>Repeat new password</FormLabel>
                 <FormControl>
-                  <PasswordInput autoComplete="new-password" {...field} />
+                  <PasswordInput autoComplete="new-password" className={AUTH_INPUT} {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
-          <SubmitButton
-            className="h-11 w-full text-sm font-semibold"
-            pendingText="Saving…"
-          >
+          <SubmitButton className={AUTH_BUTTON} pendingText="Saving…">
             Reset password
+            <ArrowRight className="size-[18px]" aria-hidden />
           </SubmitButton>
         </form>
       </Form>
 
-      <p className="mt-6 text-center text-sm text-muted-foreground">
-        <Link
-          href="/login"
-          className="font-medium text-primary-text underline-offset-4 hover:underline"
-        >
+      <AuthSwitch>
+        <Link href="/login" className={AUTH_LINK}>
           Back to sign in
         </Link>
-      </p>
+      </AuthSwitch>
     </div>
   );
 }

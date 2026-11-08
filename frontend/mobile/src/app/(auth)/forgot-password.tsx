@@ -2,17 +2,20 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, useRouter } from 'expo-router';
 import * as React from 'react';
 import { useForm } from 'react-hook-form';
-import { View } from 'react-native';
+import { Linking, View } from 'react-native';
 
 import { ApiClientError, authApi } from '@/api/client';
+import { AuthMailScene } from '@/components/auth/auth-scenes';
 import { AuthScreen } from '@/components/auth/auth-screen';
 import { FormField } from '@/components/auth/form-field';
 import { Notice } from '@/components/auth/notice';
 import { SubmitButton } from '@/components/auth/submit-button';
 import { Button } from '@/components/ui/button';
+import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { handleApiError } from '@/core/form-errors';
 import { AUTH_COPY, forgotSchema, type ForgotValues } from '@/lib/auth-forms';
+import { Check, Clock, Mail } from '@/lib/icons';
 
 // The emailed link opens the MoFin website's reset page (the backend builds it from the web URL),
 // where the new password is chosen. The app has no reset screen of its own.
@@ -43,19 +46,37 @@ export default function ForgotPasswordScreen() {
 
   if (sentTo) {
     return (
-      <AuthScreen title="Check your email">
-        <Text role="status" className="-mt-4 text-sm leading-6 text-muted-foreground">
-          If an account exists for <Text className="text-sm font-medium">{sentTo}</Text>, we have sent it a link to
-          reset the password. The link works once and expires in 30 minutes.
-        </Text>
-        <Text className="mt-3 text-sm leading-6 text-muted-foreground">
+      <AuthScreen
+        centered
+        scene={<AuthMailScene />}
+        title="Check your"
+        accent="email"
+        subtitle={
+          <Text role="status" className="text-sm leading-6 text-muted-foreground">
+            If an account exists for <Text className="text-sm font-semibold text-foreground">{sentTo}</Text>, we have
+            sent it a link to reset the password.
+          </Text>
+        }>
+        <View className="flex-row flex-wrap justify-center gap-2.5">
+          <Chip icon={Clock}>Expires in 30 minutes</Chip>
+          <Chip icon={Check}>Works once</Chip>
+        </View>
+        <Text className="mt-6 text-center text-sm leading-6 text-muted-foreground">
           The link opens the MoFin website, where you choose the new password. Then come back here and sign in.
         </Text>
-        <Text className="mt-3 text-sm leading-6 text-muted-foreground">
+        <Text className="mt-3 text-center text-sm leading-6 text-muted-foreground">
           Nothing arrived? Check your spam folder, or try again in a few minutes.
         </Text>
-        <View className="mt-6 gap-3">
-          <SubmitButton pending={false} pendingText="" onPress={() => router.replace('/login')}>
+        <View className="mt-9 gap-3.5">
+          <SubmitButton
+            arrow
+            pending={false}
+            pendingText=""
+            leading={<Icon as={Mail} size={18} className="text-primary-foreground" />}
+            onPress={() => void Linking.openURL('mailto:')}>
+            Open email app
+          </SubmitButton>
+          <SubmitButton variant="outline" pending={false} pendingText="" onPress={() => router.replace('/login')}>
             Back to sign in
           </SubmitButton>
           <Button
@@ -65,7 +86,7 @@ export default function ForgotPasswordScreen() {
               setSentTo(null);
               form.reset({ email: '' });
             }}>
-            <Text className="text-sm">Use a different email</Text>
+            <Text className="text-[15px] font-semibold text-muted-foreground">Use a different email</Text>
           </Button>
         </View>
       </AuthScreen>
@@ -79,7 +100,7 @@ export default function ForgotPasswordScreen() {
       subtitle="Enter the email you sign in with and we'll send you a link to choose a new one.">
       {rateLimited ? <Notice kind="error">{AUTH_COPY.rateLimitedForgot}</Notice> : null}
 
-      <View className="gap-4">
+      <View className="gap-6">
         <FormField
           control={form.control}
           name="email"
@@ -93,17 +114,25 @@ export default function ForgotPasswordScreen() {
           returnKeyType="send"
           onSubmitEditing={() => onSubmit()}
         />
-        <SubmitButton pending={isSubmitting} pendingText="Sending link…" onPress={() => onSubmit()}>
+        <SubmitButton arrow pending={isSubmitting} pendingText="Sending link…" onPress={() => onSubmit()}>
           Send reset link
         </SubmitButton>
       </View>
 
-      <Text className="mt-6 text-center text-sm text-muted-foreground">
-        Remembered it?{' '}
-        <Link href="/login" className="font-medium text-primary-text">
+      <Text className="mt-8 text-center text-sm text-muted-foreground">
+        <Link href="/login" className="font-semibold text-primary-text">
           Back to sign in
         </Link>
       </Text>
     </AuthScreen>
+  );
+}
+
+function Chip({ icon, children }: { icon: React.ComponentProps<typeof Icon>['as']; children: string }) {
+  return (
+    <View className="flex-row items-center gap-1.5 rounded-full border border-border px-3 py-1.5">
+      <Icon as={icon} size={14} className="text-muted-foreground" />
+      <Text className="text-[13px] text-muted-foreground">{children}</Text>
+    </View>
   );
 }

@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { AlertCircle, CheckCircle2, Info } from "lucide-react";
+import { AlertCircle, ArrowRight, CheckCircle2, Info } from "lucide-react";
 import {
   Form,
   FormControl,
@@ -23,6 +23,17 @@ import { ApiClientError } from "@/lib/api";
 import { handleApiError } from "@/lib/form-errors";
 import { safeNextPath } from "@/lib/safe-next";
 import { loginNotice } from "@/lib/auth-feedback";
+import { DemoButton } from "@/components/landing/demo-button";
+import {
+  AUTH_BUTTON,
+  AUTH_INPUT,
+  AUTH_LABEL,
+  AUTH_LINK,
+  AuthDivider,
+  AuthHeading,
+  AuthSwitch,
+} from "@/components/auth/auth-parts";
+import { cn } from "@/lib/utils";
 
 const loginSchema = z.object({
   email: z.string().email("Enter a valid email address."),
@@ -104,21 +115,12 @@ export default function LoginPage() {
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="font-heading text-3xl font-bold leading-tight tracking-tight">
-          Sign in to
-          <br />
-          <span className="text-primary-text">MoFin</span>
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Pick up where you left off.
-        </p>
-      </div>
+      <AuthHeading eyebrow="Sign in" title="Sign in to" accent="MoFin" subtitle="Pick up where you left off." />
 
       {justRegistered && !rateLimited && (
         <div
           role="status"
-          className="mb-5 flex items-start gap-2.5 rounded-lg border border-success/30 bg-success/10 px-3.5 py-3 text-sm text-success"
+          className="mb-6 flex items-start gap-2.5 rounded-xl border border-success/30 bg-success/10 px-3.5 py-3 text-sm text-success"
         >
           <CheckCircle2 className="mt-0.5 size-4 shrink-0" />
           <span>If that email can be used, your account has been created. Sign in with the password you just chose.</span>
@@ -128,7 +130,7 @@ export default function LoginPage() {
       {justReset && !rateLimited && (
         <div
           role="status"
-          className="mb-5 flex items-start gap-2.5 rounded-lg border border-success/30 bg-success/10 px-3.5 py-3 text-sm text-success"
+          className="mb-6 flex items-start gap-2.5 rounded-xl border border-success/30 bg-success/10 px-3.5 py-3 text-sm text-success"
         >
           <CheckCircle2 className="mt-0.5 size-4 shrink-0" />
           <span>Your password has been reset. Sign in with your new password.</span>
@@ -140,8 +142,8 @@ export default function LoginPage() {
           role="alert"
           className={
             notice.kind === "error"
-              ? "mb-5 flex items-start gap-2.5 rounded-lg border border-destructive/30 bg-destructive/10 px-3.5 py-3 text-sm text-destructive"
-              : "mb-5 flex items-start gap-2.5 rounded-lg border border-border bg-muted px-3.5 py-3 text-sm text-foreground"
+              ? "mb-6 flex items-start gap-2.5 rounded-xl border border-destructive/30 bg-destructive/10 px-3.5 py-3 text-sm text-destructive"
+              : "mb-6 flex items-start gap-2.5 rounded-xl border border-border bg-muted px-3.5 py-3 text-sm text-foreground"
           }
         >
           {notice.kind === "error" ? (
@@ -156,7 +158,7 @@ export default function LoginPage() {
       {rateLimited && (
         <div
           role="alert"
-          className="mb-5 flex items-start gap-2.5 rounded-lg border border-destructive/30 bg-destructive/10 px-3.5 py-3 text-sm text-destructive"
+          className="mb-6 flex items-start gap-2.5 rounded-xl border border-destructive/30 bg-destructive/10 px-3.5 py-3 text-sm text-destructive"
         >
           <AlertCircle className="mt-0.5 size-4 shrink-0" />
           <span>Too many attempts. Please wait a moment and try again.</span>
@@ -164,18 +166,19 @@ export default function LoginPage() {
       )}
 
       <Form {...form}>
-        <form action={action} className="space-y-4">
+        <form action={action} className="space-y-6">
           <FormField
             control={form.control}
             name="email"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel>Email</FormLabel>
+              <FormItem className="gap-2.5">
+                <FormLabel className={AUTH_LABEL}>Email</FormLabel>
                 <FormControl>
                   <Input
                     type="email"
                     autoComplete="email"
                     placeholder="you@example.com"
+                    className={AUTH_INPUT}
                     {...field}
                   />
                 </FormControl>
@@ -187,53 +190,46 @@ export default function LoginPage() {
             control={form.control}
             name="password"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel>Password</FormLabel>
+              <FormItem className="gap-2.5">
+                <FormLabel className={cn(AUTH_LABEL, "col-start-1 row-start-1")}>Password</FormLabel>
                 <FormControl>
                   <PasswordInput
                     autoComplete="current-password"
+                    placeholder="Your password"
+                    className={AUTH_INPUT}
                     {...field}
                   />
                 </FormControl>
+                {/* Last in the DOM so tabbing goes email, password, then this; drawn on the label's row. */}
+                <Link
+                  href="/forgot-password"
+                  className={cn(AUTH_LINK, "col-start-1 row-start-1 justify-self-end text-[13px]")}
+                >
+                  Forgot password?
+                </Link>
                 <FormMessage />
               </FormItem>
             )}
           />
-          {/* After the field (not beside its label) so tabbing from email goes
-              straight to the password input. */}
-          <div className="-mt-1 flex justify-end">
-            <Link
-              href="/forgot-password"
-              className="inline-flex min-h-6 items-center text-sm font-medium text-primary-text underline-offset-4 hover:underline"
-            >
-              Forgot password?
-            </Link>
-          </div>
-          <SubmitButton
-            className="h-11 w-full text-sm font-semibold"
-            pendingText="Signing in…"
-          >
+          <SubmitButton className={AUTH_BUTTON} pendingText="Signing in…">
             Sign in
+            <ArrowRight className="size-[18px]" aria-hidden />
           </SubmitButton>
         </form>
       </Form>
 
-      <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground">
-        <span className="h-px flex-1 bg-border" />
-        OR
-        <span className="h-px flex-1 bg-border" />
+      <AuthDivider />
+      <div className="space-y-3.5">
+        <GoogleButton />
+        <DemoButton size="quiet" />
       </div>
-      <GoogleButton />
 
-      <p className="mt-6 text-center text-sm text-muted-foreground">
+      <AuthSwitch>
         New to MoFin?{" "}
-        <Link
-          href="/register"
-          className="font-medium text-primary-text underline-offset-4 hover:underline"
-        >
+        <Link href="/register" className={AUTH_LINK}>
           Create an account
         </Link>
-      </p>
+      </AuthSwitch>
     </div>
   );
 }

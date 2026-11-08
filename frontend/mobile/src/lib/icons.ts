@@ -33,6 +33,7 @@ export { default as ChevronsUpDown } from 'lucide-react-native/icons/chevrons-up
 export { default as CircleAlert } from 'lucide-react-native/icons/circle-alert';
 export { default as CircleCheck } from 'lucide-react-native/icons/circle-check';
 export { default as Clapperboard } from 'lucide-react-native/icons/clapperboard';
+export { default as Clock } from 'lucide-react-native/icons/clock';
 export { default as Coffee } from 'lucide-react-native/icons/coffee';
 export { default as Copy } from 'lucide-react-native/icons/copy';
 export { default as Crown } from 'lucide-react-native/icons/crown';
@@ -60,6 +61,7 @@ export { default as Layers } from 'lucide-react-native/icons/layers';
 export { default as LayoutDashboard } from 'lucide-react-native/icons/layout-dashboard';
 export { default as Lock } from 'lucide-react-native/icons/lock';
 export { default as LogOut } from 'lucide-react-native/icons/log-out';
+export { default as Mail } from 'lucide-react-native/icons/mail';
 export { default as Menu } from 'lucide-react-native/icons/menu';
 export { default as MessageCircle } from 'lucide-react-native/icons/message-circle';
 export { default as Mic } from 'lucide-react-native/icons/mic';
