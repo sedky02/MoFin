@@ -41,10 +41,11 @@ async function TransactionContent({
 
 function TransactionDetailSkeleton() {
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
+    <div className="mx-auto max-w-2xl space-y-4">
       <Skeleton className="h-8 w-48" />
-      <Skeleton className="h-40 w-full rounded-xl" />
-      <Skeleton className="h-48 w-full rounded-xl" />
+      <Skeleton className="h-60 w-full rounded-card" />
+      <Skeleton className="h-36 w-full rounded-card" />
+      <Skeleton className="h-32 w-full rounded-card" />
     </div>
   );
 }

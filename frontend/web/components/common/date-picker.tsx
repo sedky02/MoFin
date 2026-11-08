@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { CalendarIcon, Clock } from "lucide-react";
+import { CalendarIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -74,7 +74,7 @@ export function DatePicker({
           mode="single"
           selected={selected}
           defaultMonth={selected}
-          captionLayout="dropdown"
+          captionLayout="label"
           onSelect={(date) => {
             if (date) onChange(toDayString(date));
             else if (clearable) onChange("");
@@ -103,48 +103,56 @@ export function DatePicker({
   );
 }
 
-const TIME_LABEL = new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" });
 const HOURS = Array.from({ length: 24 }, (_, h) => h);
 const MINUTES = Array.from({ length: 60 }, (_, m) => m);
 const pad2 = (n: number) => String(n).padStart(2, "0");
 
-/** A time field ("HH:mm") that opens hour and minute columns instead of the browser's own time box. */
-export function TimePicker({
-  value,
-  onChange,
-  disabled,
-  className,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  disabled?: boolean;
-  className?: string;
-}) {
-  const [open, setOpen] = React.useState(false);
-  const [hour, minute] = value.split(":").map(Number);
-  const label = TIME_LABEL.format(new Date(2000, 0, 1, hour || 0, minute || 0));
-  const hourLabel = (h: number) =>
-    new Intl.DateTimeFormat(undefined, { hour: "numeric" }).format(new Date(2000, 0, 1, h));
+const DATE_TIME_LABEL = new Intl.DateTimeFormat(undefined, {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+});
 
-  const column = (
-    items: number[],
-    current: number,
-    text: (n: number) => string,
-    pick: (n: number) => void,
-    name: string,
-  ) => (
-    <div role="listbox" aria-label={name} className="flex max-h-56 w-20 flex-col gap-0.5 overflow-y-auto p-1">
+function TimeColumn({
+  items,
+  current,
+  text,
+  onPick,
+  name,
+}: {
+  items: number[];
+  current: number;
+  text: (n: number) => string;
+  onPick: (n: number) => void;
+  name: string;
+}) {
+  const listRef = React.useRef<HTMLDivElement>(null);
+  // Centres the chosen value inside the column only; scrollIntoView would also scroll the page.
+  React.useLayoutEffect(() => {
+    const list = listRef.current;
+    const chosen = list?.querySelector<HTMLElement>('[aria-selected="true"]');
+    if (list && chosen) list.scrollTop = chosen.offsetTop - list.clientHeight / 2 + chosen.offsetHeight / 2;
+  }, [current]);
+
+  return (
+    <div
+      ref={listRef}
+      role="listbox"
+      aria-label={name}
+      className="relative flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto overscroll-contain px-1.5 py-1 [scrollbar-width:none]"
+    >
       {items.map((n) => (
         <button
           key={n}
           type="button"
           role="option"
           aria-selected={n === current}
-          ref={n === current ? (el) => el?.scrollIntoView({ block: "center" }) : undefined}
-          onClick={() => pick(n)}
+          onClick={() => onPick(n)}
           className={cn(
-            "rounded-md px-2 py-1.5 text-sm tabular transition-colors hover:bg-muted",
-            n === current && "bg-primary font-medium text-primary-foreground hover:bg-primary",
+            "h-9 shrink-0 rounded-lg text-sm tabular transition-colors hover:bg-muted",
+            n === current && "bg-primary font-semibold text-primary-foreground hover:bg-primary",
           )}
         >
           {text(n)}
@@ -152,39 +160,12 @@ export function TimePicker({
       ))}
     </div>
   );
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          type="button"
-          variant="outline"
-          disabled={disabled}
-          aria-label={`Time, ${label}`}
-          className={cn("h-9 justify-start gap-2 px-3 font-normal tabular", className)}
-        >
-          <Clock className="size-4 text-muted-foreground" aria-hidden />
-          {label}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="flex w-auto divide-x p-0" align="end">
-        {column(HOURS, hour, hourLabel, (h) => onChange(`${pad2(h)}:${pad2(minute || 0)}`), "Hour")}
-        {column(
-          MINUTES,
-          minute,
-          pad2,
-          (m) => {
-            onChange(`${pad2(hour || 0)}:${pad2(m)}`);
-            setOpen(false);
-          },
-          "Minute",
-        )}
-      </PopoverContent>
-    </Popover>
-  );
 }
 
-/** A date and time field ("YYYY-MM-DDTHH:mm"): the app's calendar for the day, the time picker beside it. */
+/**
+ * A date and time field ("YYYY-MM-DDTHH:mm") as one control: it shows "Nov 8, 2026, 9:59 PM" and
+ * opens one picker with the calendar beside hour and minute columns.
+ */
 export function DateTimePicker({
   value,
   onChange,
@@ -193,24 +174,82 @@ export function DateTimePicker({
   className,
   ...aria
 }: Omit<DatePickerProps, "clearable" | "placeholder">) {
-  const day = value?.slice(0, 10) ?? "";
-  const time = value?.slice(11, 16) || "12:00";
+  const [open, setOpen] = React.useState(false);
+  const day = parseDay(value);
+  const [hour, minute] = (value?.slice(11, 16) || "12:00").split(":").map(Number);
+  const dayString = day ? toDayString(day) : toDayString(new Date());
+  const set = (nextDay: string, h: number, m: number) => onChange(`${nextDay}T${pad2(h)}:${pad2(m)}`);
+  const hourLabel = (h: number) =>
+    new Intl.DateTimeFormat(undefined, { hour: "numeric" }).format(new Date(2000, 0, 1, h));
+  const timeLabel = new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(
+    new Date(2000, 0, 1, hour, minute),
+  );
+  const label = day
+    ? DATE_TIME_LABEL.format(new Date(day.getFullYear(), day.getMonth(), day.getDate(), hour, minute))
+    : null;
+
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
-      <DatePicker
-        id={id}
-        value={day}
-        disabled={disabled}
-        className={className}
-        onChange={(next) => onChange(`${next}T${time}`)}
-        {...aria}
-      />
-      <TimePicker
-        value={time}
-        disabled={disabled || !day}
-        className={className}
-        onChange={(next) => onChange(`${day}T${next}`)}
-      />
-    </div>
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          id={id}
+          type="button"
+          variant="outline"
+          disabled={disabled}
+          {...aria}
+          className={cn(
+            "h-9 w-full justify-start gap-2 px-3 text-left font-normal tabular",
+            !label && "text-muted-foreground",
+            className,
+          )}
+        >
+          <CalendarIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+          <span className="truncate">{label ?? "Pick a date and time"}</span>
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start">
+        <div className="flex max-sm:flex-col">
+          <Calendar
+            mode="single"
+            selected={day}
+            defaultMonth={day}
+            captionLayout="label"
+            fixedWeeks
+            onSelect={(date) => date && set(toDayString(date), hour, minute)}
+            autoFocus
+          />
+          {/* Takes the calendar's height: the columns sit in an absolute box so they never stretch it. */}
+          <div className="relative w-36 border-l max-sm:h-52 max-sm:w-full max-sm:border-t max-sm:border-l-0">
+            <div className="absolute inset-0 flex flex-col pt-3 pb-3">
+              <div className="flex h-9 shrink-0 items-center justify-between px-3">
+                <span className="text-[15px] font-semibold">Time</span>
+                <span className="text-sm text-muted-foreground tabular">{timeLabel}</span>
+              </div>
+              <div className="mt-4 flex min-h-0 flex-1 divide-x">
+                <TimeColumn
+                  items={HOURS}
+                  current={hour}
+                  text={hourLabel}
+                  onPick={(h) => set(dayString, h, minute)}
+                  name="Hour"
+                />
+                <TimeColumn
+                  items={MINUTES}
+                  current={minute}
+                  text={pad2}
+                  onPick={(m) => set(dayString, hour, m)}
+                  name="Minute"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="flex justify-end border-t px-3 py-2.5">
+          <Button type="button" size="sm" onClick={() => setOpen(false)}>
+            Done
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
