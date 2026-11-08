@@ -4,6 +4,7 @@ export const SETTINGS_SECTIONS = [
   { id: "security", label: "Security" },
   { id: "connected-apps", label: "Connected AI apps" },
   { id: "ai-provider", label: "AI provider" },
+  { id: "mobile-app", label: "Mobile app" },
   { id: "data", label: "Data" },
   { id: "delete-account", label: "Delete account" },
 ] as const;

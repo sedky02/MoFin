@@ -5,6 +5,7 @@ import {
   Database,
   Plug,
   ShieldCheck,
+  Smartphone,
   SlidersHorizontal,
   Sparkles,
   Trash2,
@@ -24,6 +25,7 @@ const ICONS: Record<SettingsSectionId, LucideIcon> = {
   security: ShieldCheck,
   "connected-apps": Plug,
   "ai-provider": Sparkles,
+  "mobile-app": Smartphone,
   data: Database,
   "delete-account": Trash2,
 };

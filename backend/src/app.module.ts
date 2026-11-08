@@ -21,6 +21,7 @@ import { DraftTransactionsModule } from './modules/draft-transactions/draft-tran
 import { ExportModule } from './modules/export/export.module';
 import { DemoModule } from './modules/demo/demo.module';
 import { DemoRestrictionsGuard } from './common/guards/demo-restrictions.guard';
+import { AppReleaseModule } from './modules/app-release/app-release.module';
 import { GoalsModule } from './modules/goals/goals.module';
 import { LedgerModule } from './modules/ledger/ledger.module';
 import { MaintenanceModule } from './modules/maintenance/maintenance.module';
@@ -57,6 +58,7 @@ import { UsersModule } from './modules/users/users.module';
     NotificationsModule,
     SearchModule,
     GoalsModule,
+    AppReleaseModule,
     ExportModule,
     DemoModule,
     MaintenanceModule,

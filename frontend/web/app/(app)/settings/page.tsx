@@ -27,6 +27,7 @@ import { ThemeSetting } from "@/components/settings/theme-setting";
 import { ConnectedAppsCard } from "@/components/settings/connected-apps-card";
 import { AiProviderCard } from "@/components/settings/ai-provider-card";
 import { DataCard } from "@/components/settings/data-card";
+import { MobileAppCard } from "@/components/settings/mobile-app-card";
 import { DeleteAccountCard } from "@/components/settings/delete-account-card";
 import { useUser, useUpdateUser } from "@/hooks/useUser";
 import { useAccounts } from "@/hooks/useAccounts";
@@ -291,6 +292,8 @@ export default function SettingsPage() {
           <ConnectedAppsCard />
 
           <AiProviderCard user={user} isLoading={isLoading} />
+
+          <MobileAppCard />
 
           <DataCard user={user} isLoading={isLoading} />
 

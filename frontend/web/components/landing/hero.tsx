@@ -9,6 +9,9 @@ import { DemoNotice } from "./demo-notice";
 import { AppFrame } from "./mock/app-frame";
 import { MockDashboard } from "./mock/mock-dashboard";
 import { useSignedIn } from "./use-signed-in";
+import { ArrowDown, ArrowRight } from "lucide-react";
+import { LogoMark } from "@/components/brand/logo";
+import { useAppRelease } from "@/hooks/useAppRelease";
 
 const SCROLL_SPRING = { stiffness: 140, damping: 30, mass: 0.6 };
 
@@ -20,6 +23,7 @@ export function Hero() {
   const frameRef = React.useRef<HTMLDivElement>(null);
   const play = useInView(frameRef, { once: true, amount: 0.25 });
   const signedIn = useSignedIn();
+  const { data: release } = useAppRelease();
 
   const { scrollYProgress } = useScroll({ target: frameRef, offset: ["start end", "center center"] });
   const scale = useSpring(useTransform(scrollYProgress, [0, 1], [0.86, 1.04]), SCROLL_SPRING);
@@ -27,15 +31,25 @@ export function Hero() {
   const y = useSpring(useTransform(scrollYProgress, [0, 1], [32, 0]), SCROLL_SPRING);
 
   return (
-    <section className="px-4 pt-12 pb-16 sm:px-6 sm:pt-20">
+    <section className="relative px-4 pt-12 pb-16 sm:px-6 sm:pt-20">
+      {release?.android && <AndroidSticker version={release.android.version} />}
       <div className="mx-auto flex max-w-3xl flex-col items-center text-center">
+        {release?.android && (
+          <a
+            href="#get-the-app"
+            className="group mb-7 inline-flex min-h-11 items-center gap-2.5 rounded-full border border-border bg-card py-1.5 pr-4 pl-1.5 text-base shadow-surface transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring xl:hidden"
+          >
+            <span className="rounded-full bg-primary px-2.5 py-1 text-sm font-semibold text-primary-foreground">New</span>
+            <span className="font-medium">Get MoFin for Android</span>
+            <ArrowRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" aria-hidden />
+          </a>
+        )}
         <h1 className="text-[2.9rem] leading-[1] font-semibold tracking-[-0.045em] text-balance sm:text-7xl">
           Know where your money goes.
         </h1>
 
         <p className="mt-6 max-w-2xl text-lg leading-relaxed text-pretty text-muted-foreground sm:text-xl">
-          Tell MoFin what you spent in a sentence, or ask Claude or ChatGPT to log it for you. Nothing is saved until you
-          approve it, and every balance is added up from the entries behind it.
+          Say what you spent in a sentence, or let Claude or ChatGPT log it. You approve every entry before it counts.
         </p>
 
         <div className="mt-8 flex w-full flex-col justify-center gap-3 sm:w-auto sm:flex-row">
@@ -83,5 +97,36 @@ export function Hero() {
         </motion.div>
       </div>
     </section>
+  );
+}
+
+/**
+ * A tilted "sticker" in the hero's right margin on wide screens, pointing to the Android download.
+ * Narrower screens get the pill above the headline instead, since the margin isn't there.
+ */
+function AndroidSticker({ version }: { version: string }) {
+  return (
+    <a
+      href="#get-the-app"
+      className="group absolute top-24 right-[max(1.5rem,calc(50%-37rem))] z-10 hidden w-56 rotate-[5deg] transition-transform duration-300 ease-out hover:rotate-[2deg] focus-visible:outline-none xl:block motion-reduce:transition-none"
+    >
+      <span aria-hidden className="absolute -top-6 -right-8 size-28 rounded-full bg-primary/35 blur-2xl" />
+      <span className="relative block rounded-[1.75rem] bg-[#11120D] p-4 text-[#F4F4EF] shadow-hero ring-1 ring-black/5 group-focus-visible:ring-3 group-focus-visible:ring-ring">
+        <span className="flex items-center gap-3">
+          <span aria-hidden className="flex h-14 w-9 shrink-0 flex-col items-center rounded-lg border-2 border-[#F4F4EF]/80 pt-1">
+            <span className="h-0.5 w-3 rounded-full bg-[#F4F4EF]/60" />
+            <LogoMark className="mt-2 size-5" />
+          </span>
+          <span className="min-w-0">
+            <span className="block text-xs font-medium text-[#D7F205]">New · v{version}</span>
+            <span className="mt-0.5 block text-base leading-tight font-semibold">MoFin is on Android</span>
+          </span>
+        </span>
+        <span className="mt-4 flex items-center justify-between rounded-full bg-[#D7F205] px-4 py-2 text-sm font-semibold text-[#11120D]">
+          Download the app
+          <ArrowDown className="size-4 transition-transform group-hover:translate-y-0.5" aria-hidden />
+        </span>
+      </span>
+    </a>
   );
 }

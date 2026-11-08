@@ -620,3 +620,31 @@ model AiChatMessage {
 
   @@index([chatId, createdAt])
 }
+
+// --- Mobile app releases (installable builds published outside the stores) ---
+
+enum AppPlatform {
+  ANDROID
+  IOS
+}
+
+/// One published build. Rows are never edited: a new build is a new row, and a bad one is
+/// withdrawn (hidden) rather than deleted, so the history stays.
+model AppRelease {
+  id          String      @id @default(uuid())
+  platform    AppPlatform
+  /// Shown to people, e.g. "1.0.3".
+  version     String
+  /// The build number (Android versionCode); what the update check compares.
+  build       Int
+  url         String
+  /// An armeabi-v7a build for older phones, when one is published.
+  legacyUrl   String?
+  notes       String[]
+  publishedAt DateTime    @default(now())
+  withdrawnAt DateTime?
+  createdAt   DateTime    @default(now())
+
+  @@unique([platform, build])
+  @@index([platform, withdrawnAt, build])
+}

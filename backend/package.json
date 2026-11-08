@@ -15,7 +15,9 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "test:db": "jest --config ./test/jest-db.json --runInBand"
+    "test:db": "jest --config ./test/jest-db.json --runInBand",
+    "app-release:publish": "ts-node scripts/app-release.ts publish",
+    "app-release:withdraw": "ts-node scripts/app-release.ts withdraw"
   },
   "jest": {
     "moduleFileExtensions": [

@@ -1,4 +1,5 @@
 import { Link } from 'expo-router';
+import { AppVersionRow } from '@/components/settings/app-version-row';
 import * as React from 'react';
 import { Pressable, View } from 'react-native';
 
@@ -35,6 +36,7 @@ export function SettingsMenu() {
           <MenuRow section={last} />
         </View>
       ) : null}
+      <AppVersionRow />
     </View>
   );
 }

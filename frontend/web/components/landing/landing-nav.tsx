@@ -5,6 +5,7 @@ import { Logo } from "@/components/brand/logo";
 import { ThemeToggle } from "@/components/shell/theme-toggle";
 import { DemoButton } from "./demo-button";
 import { useSignedIn } from "./use-signed-in";
+import { useAppRelease } from "@/hooks/useAppRelease";
 
 const navLink =
   "inline-flex min-h-11 items-center rounded-lg px-2.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:px-3";
@@ -15,6 +16,7 @@ const navLink =
  */
 export function LandingNav() {
   const signedIn = useSignedIn();
+  const { data: release } = useAppRelease();
   return (
     // The nav really sits over scrolling content, so it keeps its blur. avoid-ai-design-ignore: K3
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-md">
@@ -22,6 +24,11 @@ export function LandingNav() {
         <Link href="/" aria-label="MoFin home" className="mr-auto">
           <Logo />
         </Link>
+        {release?.android && (
+          <a href="#get-the-app" className={`${navLink} max-sm:hidden`}>
+            Get the app
+          </a>
+        )}
         <ThemeToggle />
         {signedIn ? (
           <Link href="/dashboard" className={navLink}>

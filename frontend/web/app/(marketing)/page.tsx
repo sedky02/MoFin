@@ -4,6 +4,7 @@ import { Logo } from "@/components/brand/logo";
 import { AiChat } from "@/components/landing/ai-chat";
 import { HowItWorks } from "@/components/landing/draft-flow";
 import { FinalCta } from "@/components/landing/final-cta";
+import { GetTheApp } from "@/components/landing/get-the-app";
 import { GoalsShowcase } from "@/components/landing/goals-showcase";
 import { Hero } from "@/components/landing/hero";
 import { LandingNav } from "@/components/landing/landing-nav";
@@ -89,7 +90,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section aria-labelledby="promises-title" className="px-4 py-24 sm:px-6">
+        {/* <section aria-labelledby="promises-title" className="px-4 py-24 sm:px-6">
           <div className="mx-auto max-w-3xl">
             <h2 id="promises-title" className="text-3xl font-semibold tracking-[-0.035em] sm:text-4xl">
               What you can count on
@@ -103,7 +104,9 @@ export default function LandingPage() {
               ))}
             </dl>
           </div>
-        </section>
+        </section> */}
+
+        <GetTheApp />
 
         <FinalCta />
       </main>
@@ -125,6 +128,9 @@ export default function LandingPage() {
               <Link href="/register" className={footerLink}>
                 Create an account
               </Link>
+              <a href="#get-the-app" className={footerLink}>
+                Get the app
+              </a>
             </nav>
           </div>
           <p className="mt-8 text-xs text-muted-foreground">© 2026 MoFin</p>

@@ -1,4 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
+import { UpdateBanner } from '@/components/shell/update-banner';
 import { KeyboardScrollView } from '@/components/common/keyboard-scroll-view';
 import * as React from 'react';
 import { RefreshControl, View } from 'react-native';
@@ -46,6 +47,7 @@ export function DashboardScreen() {
       contentContainerStyle={{ paddingBottom: 24 }}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
       <View className="mx-auto w-full max-w-xl">
+        <UpdateBanner />
         {failed ? (
           <ErrorState
             description="Couldn't load your dashboard."

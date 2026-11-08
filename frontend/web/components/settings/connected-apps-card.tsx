@@ -28,7 +28,7 @@ export function ConnectedAppsCard() {
       action={
         <div className="flex items-center gap-1">
           <HelpHint label="What disconnecting does">
-            A disconnected app can't renew its access. A session it already holds can keep working for up to 15 minutes.
+            A disconnected app can&apos;t renew its access. A session it already holds can keep working for up to 15 minutes.
           </HelpHint>
           <Button variant="outline" size="sm" asChild>
             <Link href="/connect">Connect an app</Link>
