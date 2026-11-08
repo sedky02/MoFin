@@ -51,7 +51,7 @@ export function DataCard({ user, isLoading }: { user?: User; isLoading: boolean 
       id="data"
       icon={Database}
       title="Data"
-      description="Download your accounts, categories, transactions and goals (deleted transactions are left out), or delete it all and start over."
+      description="Download a copy of your data, or delete it and start over."
     >
       <div className="space-y-3">
         {FORMATS.map(({ format, label, title, description }) => (

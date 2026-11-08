@@ -33,15 +33,21 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe("FirstAccountForm", () => {
-  it("starts with everything filled in: a bank account, a name for it, and the device's currency, said so", () => {
+  it("starts with everything filled in: a bank account, a name for it, and the device's currency, said so", async () => {
     renderForm();
     expect(type("Bank").getAttribute("aria-pressed")).toBe("true");
     expect(name().value).toBe("Main bank account");
     expect(screen.getByRole("combobox", { name: /currency/i }).textContent).toContain("TND");
-    expect(screen.getByText(/Picked from where your device is\. It can't be changed later\./)).toBeTruthy();
+    // Radix positions the tooltip with ResizeObserver, which jsdom doesn't have.
+    vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
+    await userEvent.click(screen.getByRole("button", { name: "About the currency" }));
+    expect(
+      (await screen.findAllByText(/Picked from where your device is\. It can't be changed later\./)).length,
+    ).toBeGreaterThan(0);
   });
 
   it("renames the account with its type until the name is edited by hand", async () => {

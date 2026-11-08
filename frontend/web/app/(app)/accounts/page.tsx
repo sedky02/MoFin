@@ -1,5 +1,6 @@
 "use client";
 
+import { HelpHint } from "@/components/common/help-hint";
 import * as React from "react";
 import { Archive, ArrowLeft, Plus, Wallet } from "lucide-react";
 import { useAccounts, useArchiveAccount, useRestoreAccount, useUpdateAccount } from "@/hooks/useAccounts";
@@ -45,8 +46,11 @@ function Group({
   return (
     <section aria-label={title}>
       <div className="mb-3 flex items-center gap-3 px-1">
-        <h2 className="text-sm font-semibold">{title}</h2>
-        <span className="text-xs text-muted-foreground">{hint ?? items.length}</span>
+        <div className="-my-1 flex items-center gap-0.5">
+          <h2 className="text-sm font-semibold">{title}</h2>
+          {hint && <HelpHint label={`About ${title.toLowerCase()} accounts`}>{hint}</HelpHint>}
+        </div>
+        <span className="text-xs text-muted-foreground tabular">{items.length}</span>
         <span aria-hidden className="h-px flex-1 bg-border" />
       </div>
       <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -204,7 +208,7 @@ export default function AccountsPage() {
         <div>
           <Group
             title="Archived"
-            hint="hidden from your list, history kept"
+            hint="Hidden from your list. Their history is kept."
             items={archived.data ?? []}
             onRestore={(a) => restore.mutate(a.id)}
             onMembers={setMembersOf}

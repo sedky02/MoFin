@@ -1,5 +1,6 @@
 "use client";
 
+import { FormLabelWithHint } from "@/components/common/form-label-hint";
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
@@ -11,7 +12,6 @@ import { Loader2, ShieldCheck } from "lucide-react";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -114,11 +114,12 @@ function ChangePasswordForm({ email }: { email: string }) {
           name="newPassword"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>New password</FormLabel>
+              <FormLabelWithHint hintLabel="About the password" hint="Use at least 8 characters.">
+                New password
+              </FormLabelWithHint>
               <FormControl>
                 <PasswordInput autoComplete="new-password" placeholder="At least 8 characters" {...field} />
               </FormControl>
-              <FormDescription>Use at least 8 characters.</FormDescription>
               <FormMessage />
             </FormItem>
           )}

@@ -1,5 +1,6 @@
 "use client";
 
+import { FormLabelWithHint } from "@/components/common/form-label-hint";
 import * as React from "react";
 import { SlidersHorizontal, User as UserIcon } from "lucide-react";
 import { useForm } from "react-hook-form";
@@ -8,7 +9,6 @@ import { z } from "zod";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -168,11 +168,12 @@ export default function SettingsPage() {
                       name="displayName"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Display name</FormLabel>
+                          <FormLabelWithHint hintLabel="About the display name" hint="Shown across the app.">
+                            Display name
+                          </FormLabelWithHint>
                           <FormControl>
                             <Input placeholder="Your name" autoComplete="name" {...field} />
                           </FormControl>
-                          <FormDescription>Shown across the app.</FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -192,7 +193,12 @@ export default function SettingsPage() {
                       name="defaultCurrency"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Primary currency</FormLabel>
+                          <FormLabelWithHint
+                            hintLabel="About the primary currency"
+                            hint="Leads the dashboard balance and monthly summary when you have accounts in several currencies."
+                          >
+                            Primary currency
+                          </FormLabelWithHint>
                           <Select value={field.value} onValueChange={field.onChange}>
                             <FormControl>
                               <SelectTrigger className="w-full">
@@ -208,9 +214,6 @@ export default function SettingsPage() {
                               ))}
                             </SelectContent>
                           </Select>
-                          <FormDescription>
-                            Leads the dashboard balance and monthly summary when you have accounts in several currencies.
-                          </FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -221,7 +224,12 @@ export default function SettingsPage() {
                       name="mainAccountId"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Default account</FormLabel>
+                          <FormLabelWithHint
+                            hintLabel="About the default account"
+                            hint="The dashboard and new transactions start here. Pick another from the account menu at the top any time."
+                          >
+                            Default account
+                          </FormLabelWithHint>
                           <Select value={field.value} onValueChange={field.onChange}>
                             <FormControl>
                               <SelectTrigger className="w-full">
@@ -237,10 +245,6 @@ export default function SettingsPage() {
                               ))}
                             </SelectContent>
                           </Select>
-                          <FormDescription>
-                            The dashboard and new transactions start here. Pick another from the account menu at the top
-                            any time.
-                          </FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}

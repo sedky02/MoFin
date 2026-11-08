@@ -1,5 +1,6 @@
 "use client";
 
+import { HelpHint } from "@/components/common/help-hint";
 import * as React from "react";
 import { Archive, ArchiveRestore, ArrowLeft, Plus, Search, Tags, Lock, Pencil } from "lucide-react";
 import {
@@ -123,8 +124,11 @@ function Group({
   return (
     <Card className="gap-0 border-0 py-0">
       <div className="flex items-baseline justify-between gap-3 px-4 pb-2 pt-4">
-        <h2 className="text-sm font-semibold">{title}</h2>
-        <span className="text-xs text-muted-foreground">{hint ?? items.length}</span>
+        <div className="-my-1 flex items-center gap-0.5">
+          <h2 className="text-sm font-semibold">{title}</h2>
+          {hint && <HelpHint label={`About ${title.toLowerCase()} categories`}>{hint}</HelpHint>}
+        </div>
+        <span className="text-xs text-muted-foreground tabular">{items.length}</span>
       </div>
       <ul className="divide-y divide-border pb-1">
         {items.map((c) => (
@@ -278,7 +282,7 @@ export default function CategoriesPage() {
           <div className="max-w-2xl">
             <Group
               title="Archived"
-              hint="hidden from pickers, kept on past transactions"
+              hint="Hidden from pickers, kept on past transactions."
               items={archivedList}
               onRestore={(c) => restoreCategory.mutate(c.id)}
               busyId={busyId}

@@ -1,5 +1,6 @@
 "use client";
 
+import { HelpHint } from "@/components/common/help-hint";
 import { Check, Moon, Sun } from "lucide-react";
 import { useTheme } from "@/components/providers/theme-provider";
 import { cn } from "@/lib/utils";
@@ -13,9 +14,12 @@ export function ThemeSetting() {
   const { theme, setTheme } = useTheme();
   return (
     <div>
-      <p id="theme-label" className="text-sm font-medium leading-none">
-        Appearance
-      </p>
+      <div className="-my-1 flex items-center gap-0.5">
+        <p id="theme-label" className="text-sm font-medium leading-none">
+          Appearance
+        </p>
+        <HelpHint label="About the appearance">Applies right away, on this device.</HelpHint>
+      </div>
       <div role="group" aria-labelledby="theme-label" className="mt-3 grid max-w-sm grid-cols-2 gap-3">
         {OPTIONS.map(({ value, label, Icon, page, card, line }) => {
           const selected = theme === value;
@@ -47,7 +51,6 @@ export function ThemeSetting() {
           );
         })}
       </div>
-      <p className="mt-3 text-sm text-muted-foreground">Applies right away, on this device.</p>
     </div>
   );
 }

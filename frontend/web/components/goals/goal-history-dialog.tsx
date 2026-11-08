@@ -1,5 +1,6 @@
 "use client";
 
+import { HelpHint } from "@/components/common/help-hint";
 import {
   Dialog,
   DialogContent,
@@ -17,6 +18,9 @@ import { useGoalHistory } from "@/hooks/useGoals";
 import { goalProgressSourceLabel } from "@/lib/goal-scope";
 import type { Account, Goal } from "@/lib/types";
 
+
+const HISTORY_HINT =
+  "Past periods keep their final result. Editing an old transaction only changes the current period.";
 export function GoalHistoryDialog({
   open,
   onOpenChange,
@@ -35,11 +39,11 @@ export function GoalHistoryDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{goal?.name} — history</DialogTitle>
-          <DialogDescription>
-            Newest first. Finished periods keep the result recorded when they ended; editing an old
-            transaction only changes the current period.
-          </DialogDescription>
+          <DialogTitle className="flex items-center gap-1 pr-8">
+            <span className="truncate">{goal?.name} — history</span>
+            <HelpHint label="How the history works">{HISTORY_HINT}</HelpHint>
+          </DialogTitle>
+          <DialogDescription className="sr-only">{HISTORY_HINT}</DialogDescription>
         </DialogHeader>
 
         {isLoading ? (

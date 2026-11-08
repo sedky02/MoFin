@@ -1,5 +1,6 @@
 "use client";
 
+import { FormLabelWithHint } from "@/components/common/form-label-hint";
 import * as React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -14,7 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { SubmitButton } from "@/components/common/submit-button";
@@ -119,7 +120,7 @@ export function CategoryDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         // Header and footer stay put; only the form body scrolls, so a short screen never clips the buttons.
-        className="flex max-h-[calc(100dvh-2rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-md"
+        className="flex max-h-[calc(100dvh-2rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-md sm:p-0"
         // The close button lives in the header row (below), level with the title like the footer's buttons.
         showCloseButton={false}
         // The name is the one thing everyone fills in, so the cursor starts there.
@@ -128,7 +129,7 @@ export function CategoryDialog({
           nameRef.current?.focus();
         }}
       >
-        <DialogHeader className="flex-row items-center gap-3 border-b px-4 py-3 sm:gap-3.5 sm:px-6 sm:py-4">
+        <DialogHeader className="flex-row items-center gap-3 sm:gap-3.5 border-b px-5 py-3.5 sm:px-6 sm:py-4">
           <CategoryAvatar category={{ name: name || "Category", color, icon }} className="size-10 sm:size-12" />
           <div className="min-w-0 flex-1">
             <DialogTitle className="text-base sm:text-lg">{isEdit ? "Edit category" : "New category"}</DialogTitle>
@@ -146,7 +147,7 @@ export function CategoryDialog({
 
         <Form {...form}>
           <form action={action} className="flex min-h-0 flex-1 flex-col">
-            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:space-y-6 sm:px-6 sm:py-5">
+            <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5 sm:px-6 sm:py-6">
               <FormField
                 control={form.control}
                 name="name"
@@ -222,7 +223,9 @@ export function CategoryDialog({
                     return (
                       <FormItem>
                         <div className="flex items-center justify-between gap-3">
-                          <FormLabel>Icon</FormLabel>
+                          <FormLabelWithHint hintLabel="About the icon" hint="Pick an icon, or let MoFin choose one from the name.">
+                            Icon
+                          </FormLabelWithHint>
                           <button
                             type="button"
                             aria-pressed={!field.value}
@@ -281,7 +284,6 @@ export function CategoryDialog({
                           {showAllIcons ? "Show fewer icons" : `Show all ${icons.length} icons`}
                           <ChevronDown className={cn("size-3.5 transition-transform", showAllIcons && "rotate-180")} aria-hidden />
                         </button>
-                        <FormDescription className="max-sm:hidden">Pick an icon, or let MoFin choose one from the name.</FormDescription>
                       </FormItem>
                     );
                   }}
@@ -319,7 +321,7 @@ export function CategoryDialog({
               </div>
             </div>
 
-            <DialogFooter className="m-0 flex-row justify-end gap-2 px-4 py-3 sm:gap-2 sm:px-6 sm:py-4">
+            <DialogFooter className="m-0 flex-row justify-end gap-2 rounded-none border-t px-5 py-3.5 sm:m-0 sm:gap-2 sm:px-6 sm:py-4">
               <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>

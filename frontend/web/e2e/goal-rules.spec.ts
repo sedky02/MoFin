@@ -36,7 +36,8 @@ test("goal history labels the open period as live, matching the card", async ({ 
   await card.getByRole("button", { name: "Actions for Monthly spending cap" }).click();
   await page.getByRole("menuitem", { name: "View history" }).click();
   const dialog = page.getByRole("dialog", { name: /Monthly spending cap/ });
-  await expect(dialog.getByText(/Finished periods keep the result recorded when they ended/)).toBeVisible();
+  await dialog.getByRole("button", { name: "How the history works" }).click();
+  await expect(page.getByRole("tooltip")).toContainText("Past periods keep their final result");
 
   const current = dialog.getByTestId("goal-history-row").first();
   await expect(current.getByTestId("goal-history-source")).toHaveText("Current period (live)");

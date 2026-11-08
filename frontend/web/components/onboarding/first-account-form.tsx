@@ -1,5 +1,6 @@
 "use client";
 
+import { FormLabelWithHint } from "@/components/common/form-label-hint";
 import * as React from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -106,14 +107,15 @@ export function FirstAccountForm() {
             name="currency"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Currency</FormLabel>
+                <FormLabelWithHint
+                  hintLabel="About the currency"
+                  hint={`${field.value === guess ? "Picked from where your device is. " : ""}It can't be changed later.`}
+                >
+                  Currency
+                </FormLabelWithHint>
                 <FormControl>
                   <CurrencyPicker value={field.value} onChange={field.onChange} />
                 </FormControl>
-                <FormDescription>
-                  {field.value === guess ? `Picked from where your device is. ` : ""}
-                  It can&apos;t be changed later.
-                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -124,7 +126,9 @@ export function FirstAccountForm() {
             name="openingBalance"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Balance today (optional)</FormLabel>
+                <FormLabelWithHint hintLabel="About the balance" hint="What it holds now. It isn't counted as income.">
+                  Balance today (optional)
+                </FormLabelWithHint>
                 <FormControl>
                   <MoneyInput
                     value={field.value}
@@ -134,7 +138,6 @@ export function FirstAccountForm() {
                     allowNegative
                   />
                 </FormControl>
-                <FormDescription>What it holds now. It isn&apos;t counted as income.</FormDescription>
                 <FormMessage />
               </FormItem>
             )}

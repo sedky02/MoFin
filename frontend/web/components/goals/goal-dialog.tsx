@@ -374,11 +374,11 @@ export function GoalDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="flex max-h-[calc(100dvh-2rem)] flex-col gap-0 overflow-hidden rounded-[20px] p-0 sm:max-w-[440px]"
+        className="flex max-h-[calc(100dvh-2rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[440px] sm:p-0"
         showCloseButton={false}
         onOpenAutoFocus={(event) => event.preventDefault()}
       >
-        <DialogHeader className="flex-row items-center gap-2 space-y-0 border-b px-4 py-2.5 sm:px-5 sm:py-3">
+        <DialogHeader className="flex-row items-center gap-2 space-y-0 border-b px-5 py-3.5 sm:px-6 sm:py-4">
           {step === "details" && !isEdit && (
             <Button
               type="button"
@@ -412,7 +412,7 @@ export function GoalDialog({
         </DialogHeader>
 
         {step === "intent" ? (
-          <div className="overflow-y-auto p-5 sm:p-6">
+          <div className="overflow-y-auto px-5 py-5 sm:px-6 sm:py-6">
             <h3 className="mb-4 text-xl font-semibold tracking-tight">What&apos;s this goal for?</h3>
             <ul className="space-y-2.5">
               {INTENTS.map(({ type: value, label, hint, Icon, tint }, index) => (
@@ -439,7 +439,7 @@ export function GoalDialog({
         ) : (
           <Form {...form}>
             <form action={action} className="flex min-h-0 flex-1 flex-col">
-              <div className="min-h-0 flex-1 space-y-[18px] overflow-y-auto p-5 sm:p-6">
+              <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5 sm:px-6 sm:py-6">
                 <FormField
                   control={form.control}
                   name="targetAmount"
@@ -613,7 +613,7 @@ export function GoalDialog({
                   control={form.control}
                   name="name"
                   render={({ field }) => (
-                    <FormItem className="gap-1.5 border-t pt-[18px]">
+                    <FormItem className="gap-1.5 border-t pt-5">
                       <Word
                         tip={isEdit ? undefined : "Written for you from the choices above. Type to change it."}
                         tipLabel="About the goal name"
@@ -639,7 +639,7 @@ export function GoalDialog({
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-2 border-t px-4 py-3 sm:px-5">
+              <div className="flex items-center justify-end gap-2 border-t px-5 py-3.5 sm:px-6 sm:py-4">
                 <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
                   Cancel
                 </Button>

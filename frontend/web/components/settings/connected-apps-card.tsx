@@ -1,5 +1,6 @@
 "use client";
 
+import { HelpHint } from "@/components/common/help-hint";
 import * as React from "react";
 import Link from "next/link";
 import { Plug } from "lucide-react";
@@ -23,11 +24,16 @@ export function ConnectedAppsCard() {
       id="connected-apps"
       title="Connected AI apps"
       icon={Plug}
-      description="Apps you've approved to read your data and suggest transactions. Disconnecting stops an app from renewing access; a session it already holds can keep working for up to 15 minutes."
+      description="Apps you've approved to read your data and suggest transactions."
       action={
-        <Button variant="outline" size="sm" asChild>
-          <Link href="/connect">Connect an app</Link>
-        </Button>
+        <div className="flex items-center gap-1">
+          <HelpHint label="What disconnecting does">
+            A disconnected app can't renew its access. A session it already holds can keep working for up to 15 minutes.
+          </HelpHint>
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/connect">Connect an app</Link>
+          </Button>
+        </div>
       }
     >
       {apps.isLoading ? (
@@ -38,8 +44,7 @@ export function ConnectedAppsCard() {
         <div className="flex items-center gap-3 rounded-xl border border-dashed border-border p-4">
           <Plug className="size-5 shrink-0 text-muted-foreground" aria-hidden />
           <p className="text-sm text-muted-foreground">
-            No apps connected. Connect Claude, ChatGPT or another assistant to ask about your money and have it
-            suggest transactions for your approval.
+            No apps connected yet. Connect Claude or ChatGPT to ask about your money.
           </p>
         </div>
       ) : (

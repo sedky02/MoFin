@@ -27,7 +27,7 @@ export function DeleteDataRow({ user, isLoading }: { user?: User; isLoading: boo
       <SettingsRow
         tone="danger"
         title="Delete all data"
-        description="Wipes everything you recorded: accounts, transactions, goals and drafts. Keeps your account, your sign-in and your connected AI apps. This can't be undone."
+        description="Deletes your accounts, transactions, goals and drafts. Your sign-in and connected apps stay."
       >
         {isLoading ? (
           <Skeleton className="h-9 w-32" />

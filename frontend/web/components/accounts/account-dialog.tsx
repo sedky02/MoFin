@@ -1,5 +1,6 @@
 "use client";
 
+import { FormLabelWithHint } from "@/components/common/form-label-hint";
 import * as React from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -16,7 +17,6 @@ import {
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -24,7 +24,6 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { TYPE_ICON } from "@/components/accounts/account-card";
 import { AccountTypePicker } from "@/components/accounts/account-type-picker";
 import { SubmitButton } from "@/components/common/submit-button";
 import { CurrencyPicker } from "@/components/common/currency-picker";
@@ -81,9 +80,7 @@ export function AccountDialog({
     },
   });
   const currency = useWatch({ control: form.control, name: "currency" });
-  const type = useWatch({ control: form.control, name: "type" });
   const nameRef = React.useRef<HTMLInputElement | null>(null);
-  const TypeIcon = TYPE_ICON[type];
 
   React.useEffect(() => {
     if (open) {
@@ -127,7 +124,7 @@ export function AccountDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         // Header and footer stay put; only the form body scrolls, so a short screen never clips the buttons.
-        className="flex max-h-[calc(100dvh-2rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-md"
+        className="flex max-h-[calc(100dvh-2rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-md sm:p-0"
         showCloseButton={false}
         // The name is the one thing everyone fills in, so the cursor starts there.
         onOpenAutoFocus={(event) => {
@@ -135,25 +132,17 @@ export function AccountDialog({
           nameRef.current?.focus();
         }}
       >
-        <DialogHeader className="flex-row items-center gap-3 border-b px-4 py-3 sm:gap-3.5 sm:px-6 sm:py-4">
-          <span
-            aria-hidden
-            className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-secondary text-muted-foreground sm:size-12"
-          >
-            <TypeIcon className="size-5 sm:size-6" />
-          </span>
+        <DialogHeader className="flex-row items-center gap-3 border-b px-5 py-3.5 sm:px-6 sm:py-4">
           <div className="min-w-0 flex-1">
-            <DialogTitle className="truncate text-base sm:text-lg">
-              {isEdit ? "Edit account" : "New account"}
-            </DialogTitle>
-            <DialogDescription className="mt-1 max-sm:hidden">
+            <DialogTitle className="truncate">{isEdit ? "Edit account" : "New account"}</DialogTitle>
+            <DialogDescription className="sr-only">
               {isEdit
                 ? "Update this account's name, type or opening balance."
                 : "Add an account to track its balance via the ledger."}
             </DialogDescription>
           </div>
           <DialogClose asChild>
-            <Button variant="ghost" size="icon" className="shrink-0 text-muted-foreground">
+            <Button variant="ghost" size="icon" className="-mr-2 shrink-0 text-muted-foreground">
               <X aria-hidden />
               <span className="sr-only">Close</span>
             </Button>
@@ -162,7 +151,7 @@ export function AccountDialog({
 
         <Form {...form}>
           <form action={action} className="flex min-h-0 flex-1 flex-col">
-            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:space-y-5 sm:px-6 sm:py-5">
+            <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5 sm:px-6 sm:py-6">
               <FormField
                 control={form.control}
                 name="name"
@@ -202,7 +191,13 @@ export function AccountDialog({
                 name="currency"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Currency</FormLabel>
+                    {isEdit ? (
+                      <FormLabelWithHint hintLabel="About the currency" hint="Currency can't be changed after an account is created.">
+                        Currency
+                      </FormLabelWithHint>
+                    ) : (
+                      <FormLabel>Currency</FormLabel>
+                    )}
                     <FormControl>
                       <CurrencyPicker
                         value={field.value}
@@ -211,11 +206,6 @@ export function AccountDialog({
                         disabled={isEdit} // currency is fixed after creation
                       />
                     </FormControl>
-                    {isEdit && (
-                      <FormDescription>
-                        Currency can&apos;t be changed after an account is created.
-                      </FormDescription>
-                    )}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -226,7 +216,12 @@ export function AccountDialog({
                 name="openingBalance"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Opening balance (optional)</FormLabel>
+                    <FormLabelWithHint
+                      hintLabel="About the opening balance"
+                      hint="What the account held before you started tracking it. It isn't counted as income. Use a minus for money owed."
+                    >
+                      Opening balance (optional)
+                    </FormLabelWithHint>
                     <FormControl>
                       <MoneyInput
                         value={field.value}
@@ -236,17 +231,13 @@ export function AccountDialog({
                         allowNegative
                       />
                     </FormControl>
-                    <FormDescription>
-                      What the account held before you started tracking it. It
-                      isn&apos;t counted as income. Use a minus for money owed.
-                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
               />
             </div>
 
-            <DialogFooter className="m-0 flex-row justify-end gap-2 border-t px-4 py-3 sm:gap-2 sm:px-6 sm:py-4">
+            <DialogFooter className="m-0 flex-row justify-end gap-2 rounded-none border-t px-5 py-3.5 sm:m-0 sm:gap-2 sm:px-6 sm:py-4">
               <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>

@@ -1,5 +1,6 @@
 "use client";
 
+import { HelpHint } from "@/components/common/help-hint";
 import { DatePicker } from "@/components/common/date-picker";
 import { CategoryGlyph } from "@/components/categories/category-glyph";
 import * as React from "react";
@@ -9,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -195,13 +197,14 @@ export function RecurringSeriesActions({ tx, className }: { tx: Transaction; cla
         </DialogTrigger>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit recurring transaction</DialogTitle>
-            <DialogDescription>
-              Changes only affect occurrences generated from now on.
-            </DialogDescription>
+            <DialogTitle className="flex items-center gap-1">
+              Edit recurring transaction
+              <HelpHint label="What an edit changes">Changes only affect occurrences generated from now on.</HelpHint>
+            </DialogTitle>
+            <DialogDescription className="sr-only">Changes only affect occurrences generated from now on.</DialogDescription>
           </DialogHeader>
           <Form {...form}>
-            <form action={action} className="space-y-4">
+            <form action={action} className="space-y-5">
               <FormField
                 control={form.control}
                 name="description"
@@ -342,6 +345,11 @@ export function RecurringSeriesActions({ tx, className }: { tx: Transaction; cla
                 />
               </div>
               <DialogFooter>
+                <DialogClose asChild>
+                  <Button type="button" variant="ghost">
+                    Cancel
+                  </Button>
+                </DialogClose>
                 <SubmitButton pendingText="Saving…">Save changes</SubmitButton>
               </DialogFooter>
             </form>

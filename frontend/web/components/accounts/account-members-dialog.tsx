@@ -73,13 +73,15 @@ function InviteForm({ accountId }: { accountId: string }) {
 
   return (
     <form onSubmit={submit} className="space-y-2">
+      <label htmlFor="invite-email" className="block text-sm font-medium">
+        Invite
+      </label>
       <div className="flex flex-wrap gap-2">
         <Input
           id="invite-email"
           type="email"
           required
           autoComplete="off"
-          aria-label="Email to invite"
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
