@@ -1,5 +1,6 @@
 "use client";
 
+import { DateTimePicker } from "@/components/common/date-picker";
 import { CategoryGlyph } from "@/components/categories/category-glyph";
 import * as React from "react";
 import { useFieldArray, useForm } from "react-hook-form";
@@ -205,7 +206,7 @@ export function DraftReviewForm({
               <FormItem>
                 <FormLabel>Date</FormLabel>
                 <FormControl>
-                  <Input type="datetime-local" className="tabular" {...field} />
+                  <DateTimePicker value={field.value} onChange={field.onChange} />
                 </FormControl>
                 <FormMessage />
               </FormItem>

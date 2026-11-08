@@ -198,10 +198,7 @@ describe('CategoriesService archiving', () => {
     archivedAt: null as Date | null,
   };
 
-  function makeService(
-    found: unknown,
-    counts = { transactions: 3, budgets: 0 },
-  ) {
+  function makeService(found: unknown, counts = { transactions: 3, goals: 0 }) {
     const prisma = {
       category: {
         findFirst: jest.fn(async () => found),
@@ -216,7 +213,7 @@ describe('CategoriesService archiving', () => {
         updateMany: jest.fn(),
       },
       transactionItem: { updateMany: jest.fn() },
-      budget: { count: jest.fn(async () => counts.budgets) },
+      goal: { count: jest.fn(async () => counts.goals) },
       paginated: {
         category: {
           paginate: jest.fn(async () => ({
@@ -323,14 +320,14 @@ describe('CategoriesService archiving', () => {
     );
   });
 
-  it('usage() counts live transactions using it directly or on a split line, plus budgets', async () => {
+  it('usage() counts live transactions using it directly or on a split line, plus goals', async () => {
     const { service, prisma } = makeService(used, {
       transactions: 4,
-      budgets: 1,
+      goals: 1,
     });
     await expect(service.usage('u1', 'c1')).resolves.toEqual({
       transactions: 4,
-      budgets: 1,
+      goals: 1,
     });
     expect(prisma.transaction.count).toHaveBeenCalledWith({
       where: {
@@ -348,8 +345,8 @@ describe('CategoriesService archiving', () => {
     expect(prisma.category.delete).not.toHaveBeenCalled();
   });
 
-  it('remove() still counts budgets', async () => {
-    const { service } = makeService(used, { transactions: 0, budgets: 1 });
+  it('remove() still counts goals using the category', async () => {
+    const { service } = makeService(used, { transactions: 0, goals: 1 });
     await expect(service.remove('u1', 'c1')).rejects.toBeInstanceOf(
       ConflictException,
     );
@@ -358,7 +355,7 @@ describe('CategoriesService archiving', () => {
   it('remove() deletes an unused category', async () => {
     const { service, prisma } = makeService(used, {
       transactions: 0,
-      budgets: 0,
+      goals: 0,
     });
     await service.remove('u1', 'c1');
     expect(prisma.category.delete).toHaveBeenCalledWith({

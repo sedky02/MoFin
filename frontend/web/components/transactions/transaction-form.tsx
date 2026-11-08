@@ -1,5 +1,6 @@
 "use client";
 
+import { DatePicker, DateTimePicker } from "@/components/common/date-picker";
 import { CategoryGlyph } from "@/components/categories/category-glyph";
 import * as React from "react";
 import Link from "next/link";
@@ -713,7 +714,11 @@ export function TransactionForm({ transaction }: { transaction?: Transaction }) 
                   <FormItem className={type === "TRANSFER" ? "sm:col-span-2" : undefined}>
                     <FormLabel className="text-xs font-medium text-muted-foreground">Date</FormLabel>
                     <FormControl>
-                      <Input type="datetime-local" className="tabular h-12 rounded-xl border-0 bg-muted/50 shadow-none dark:bg-muted/50" {...field} />
+                      <DateTimePicker
+                        value={field.value}
+                        onChange={field.onChange}
+                        className="h-12 rounded-xl border-0 bg-muted/50 shadow-none dark:bg-muted/50"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -778,7 +783,7 @@ export function TransactionForm({ transaction }: { transaction?: Transaction }) 
                             </span>
                           </FormLabel>
                           <FormControl>
-                            <Input type="date" className="tabular" {...field} />
+                            <DatePicker clearable placeholder="No end date" value={field.value} onChange={field.onChange} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>

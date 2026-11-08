@@ -1,5 +1,6 @@
 "use client";
 
+import { DatePicker } from "@/components/common/date-picker";
 import { formatPeriodDate, normalizeMoneyTyping } from "@/lib/format";
 import * as React from "react";
 import { useRouter, usePathname } from "next/navigation";
@@ -363,10 +364,10 @@ export function SearchView({ initial, active = true }: { initial: SearchInitial;
             </div>
 
             <Field label="From date">
-              <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="tabular" />
+              <DatePicker clearable placeholder="Any date" value={from} onChange={setFrom} />
             </Field>
             <Field label="To date">
-              <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="tabular" />
+              <DatePicker clearable placeholder="Any date" value={to} onChange={setTo} />
             </Field>
             <div className="col-span-2 grid grid-cols-2 gap-2 lg:col-span-1">
               <Field label="Min amount">

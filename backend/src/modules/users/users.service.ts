@@ -150,7 +150,6 @@ export class UsersService {
     await tx.draftTransaction.deleteMany({ where: mine });
     await tx.goalInstance.deleteMany({ where: { goal: mine } });
     await tx.goal.deleteMany({ where: mine });
-    await tx.budget.deleteMany({ where: mine });
     await tx.account.deleteMany({ where: mine });
     await tx.category.deleteMany({ where: mine });
     await tx.analyticsCache.deleteMany({ where: mine });

@@ -266,6 +266,7 @@ function makeFakeDb() {
       id: `g${++seq}`,
       userId: 'u1',
       accountId: 'a1',
+      categoryId: null,
       name: 'Goal',
       targetAmount: new Prisma.Decimal(100),
       isRecurring: false,
@@ -306,7 +307,11 @@ function makeFakeDb() {
     return row;
   }
 
-  const service = new GoalsService(prisma as never, fakeAccess() as never);
+  const service = new GoalsService(
+    prisma as never,
+    fakeAccess() as never,
+    { assertAssignable: async () => null } as never,
+  );
   const instancesOf = (goalId: string) =>
     instances.filter((i) => i.goalId === goalId).sort(byStartDesc);
   return { service, addGoal, addTransaction, instancesOf };

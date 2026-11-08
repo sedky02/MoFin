@@ -3,9 +3,6 @@ import type { GoalTone } from "@/lib/goal-standing";
 
 // The ring itself, a soft disc of the same colour behind it, and the text in that colour (a few are a shade
 // darker than the ring, to read as text on white).
-/** Tones whose progress amount takes the state colour; on track and cancelled rows keep it black. */
-export const COLOURED_AMOUNT: GoalTone[] = ["failed", "behind", "achieved"];
-
 export const TONE_STYLE: Record<GoalTone, { ring: string; percent: string }> = {
   failed: { ring: "text-destructive bg-destructive/3", percent: "text-destructive" },
   behind: { ring: "text-warning bg-warning/4", percent: "text-warning" },

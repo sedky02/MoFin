@@ -14,6 +14,7 @@ const baseGoalSchema = z.object({
   accountId: z.string().min(1),
   name: z.string().min(1),
   type: z.nativeEnum(GoalType),
+  categoryId: z.string().min(1).nullish(),
   targetAmount: amountStringSchema,
   isRecurring: z.boolean().default(false),
   recurrenceUnit: z.nativeEnum(GoalRecurrenceUnit).optional(),
@@ -22,6 +23,14 @@ const baseGoalSchema = z.object({
 });
 
 export const createGoalSchema = baseGoalSchema.superRefine((value, ctx) => {
+  if (value.type === GoalType.BALANCE && value.categoryId) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['categoryId'],
+      message:
+        'A balance goal tracks the whole account and cannot have a category',
+    });
+  }
   if (value.isRecurring && !value.recurrenceUnit) {
     ctx.addIssue({
       code: 'custom',

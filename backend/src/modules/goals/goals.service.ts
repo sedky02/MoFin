@@ -17,6 +17,7 @@ import { withAdvisoryLock } from '../../common/utils/advisory-lock';
 import { PrismaService } from '../../database/prisma.service';
 import { AccountAction, accountScope } from '../account-access/account-access';
 import { AccountAccessService } from '../account-access/account-access.service';
+import { CategoriesService } from '../categories/categories.service';
 import {
   CreateGoalDto,
   GoalHistoryQueryDto,
@@ -86,6 +87,31 @@ function startOfDay(now: Date): Date {
   return lowerBound(now.toISOString().slice(0, 10));
 }
 
+const GOAL_CATEGORY_SELECT = {
+  id: true,
+  name: true,
+  color: true,
+  archivedAt: true,
+} satisfies Prisma.CategorySelect;
+
+/**
+ * Same attribution as analytics: a split line counts under its own category; a line without one
+ * falls back to the transaction's category only when no line of it carries one (an unsplit one).
+ */
+function categoryLineFilter(
+  categoryId: string,
+): Prisma.TransactionItemWhereInput {
+  return {
+    OR: [
+      { categoryId },
+      {
+        categoryId: null,
+        transaction: { categoryId, items: { every: { categoryId: null } } },
+      },
+    ],
+  };
+}
+
 /** Arbitrary but stable key of the rollover's advisory lock (see withAdvisoryLock). */
 const ROLLOVER_LOCK_KEY = 727_002_002;
 
@@ -96,6 +122,7 @@ export class GoalsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly access: AccountAccessService,
+    private readonly categories: CategoriesService,
   ) {}
 
   async create(
@@ -108,6 +135,17 @@ export class GoalsService {
       dto.accountId,
       'goals',
       { db, activeOnly: true },
+    );
+    // The category must belong to the ledger the goal counts, and match its type.
+    const categoryId =
+      dto.type === GoalType.BALANCE ? null : (dto.categoryId ?? null);
+    await this.categories.assertAssignable(
+      account.userId,
+      dto.type === GoalType.INCOME
+        ? TransactionType.INCOME
+        : TransactionType.EXPENSE,
+      categoryId,
+      db,
     );
 
     let periodStart: Date;
@@ -129,6 +167,7 @@ export class GoalsService {
         // Goals sit with the account: its owner's, whoever on it created them.
         userId: account.userId,
         accountId: account.id,
+        categoryId,
         name: dto.name,
         type: dto.type,
         targetAmount: new Prisma.Decimal(dto.targetAmount),
@@ -144,7 +183,7 @@ export class GoalsService {
           },
         },
       },
-      include: { instances: true },
+      include: { instances: true, category: { select: GOAL_CATEGORY_SELECT } },
     });
   }
 
@@ -158,7 +197,10 @@ export class GoalsService {
     const page = await this.prisma.paginated.goal.paginate({
       where: { account: accountScope(userId, 'view'), ...archivedFilter },
       orderBy: { createdAt: 'desc' },
-      include: { instances: { orderBy: { periodStart: 'desc' }, take: 1 } },
+      include: {
+        instances: { orderBy: { periodStart: 'desc' }, take: 1 },
+        category: { select: GOAL_CATEGORY_SELECT },
+      },
       limit: query.limit,
       offset: query.offset,
     });
@@ -192,7 +234,10 @@ export class GoalsService {
     await this.assertAccess(userId, goalId);
     const goal = await this.prisma.goal.findFirstOrThrow({
       where: { id: goalId },
-      include: { instances: { orderBy: { periodStart: 'desc' }, take: 1 } },
+      include: {
+        instances: { orderBy: { periodStart: 'desc' }, take: 1 },
+        category: { select: GOAL_CATEGORY_SELECT },
+      },
     });
     return this.withLiveProgress(goal);
   }
@@ -437,7 +482,8 @@ export class GoalsService {
   }
 
   async computeProgressAmount(
-    goal: Pick<Goal, 'type' | 'accountId' | 'userId'>,
+    goal: Pick<Goal, 'type' | 'accountId' | 'userId'> &
+      Partial<Pick<Goal, 'categoryId'>>,
     periodStart: Date,
     periodEnd: Date,
     now: Date,
@@ -487,6 +533,7 @@ export class GoalsService {
           type: transactionType,
           deletedAt: null,
         },
+        ...(goal.categoryId ? categoryLineFilter(goal.categoryId) : {}),
       },
       _sum: { amount: true },
     });

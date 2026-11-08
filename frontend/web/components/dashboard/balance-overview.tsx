@@ -299,7 +299,6 @@ export function BalanceOverview({
                 ))}
               </div>
               <table className="sr-only">
-                <caption>{weekRange(monday)}</caption>
                 <thead>
                   <tr>
                     {["Day", "Income", "Expenses", "Balance"].map((h) => (

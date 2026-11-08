@@ -16,7 +16,6 @@ import { AccountsModule } from './modules/accounts/accounts.module';
 import { AiModule } from './modules/ai/ai.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { AuthModule } from './modules/auth/auth.module';
-import { BudgetsModule } from './modules/budgets/budgets.module';
 import { CategoriesModule } from './modules/categories/categories.module';
 import { DraftTransactionsModule } from './modules/draft-transactions/draft-transactions.module';
 import { ExportModule } from './modules/export/export.module';
@@ -57,7 +56,6 @@ import { UsersModule } from './modules/users/users.module';
     AnalyticsModule,
     NotificationsModule,
     SearchModule,
-    BudgetsModule,
     GoalsModule,
     ExportModule,
     DemoModule,

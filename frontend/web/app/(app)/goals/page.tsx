@@ -5,8 +5,7 @@ import { Ban, ArrowLeft, Plus, Target } from "lucide-react";
 import { useGoals, useArchiveGoal, useRestoreGoal } from "@/hooks/useGoals";
 import { useAccounts } from "@/hooks/useAccounts";
 import { canPost } from "@/lib/account-sharing";
-import { GoalRow } from "@/components/goals/goal-row";
-import { GoalPanel } from "@/components/goals/goal-panel";
+import { GoalCard } from "@/components/goals/goal-card";
 import { GoalDialog } from "@/components/goals/goal-dialog";
 import { CancelledGoalsList } from "@/components/goals/cancelled-goals-list";
 import { GoalHistoryDialog } from "@/components/goals/goal-history-dialog";
@@ -37,6 +36,7 @@ export default function GoalsPage() {
     (state: Goal[], id: string) => state.filter((g) => g.id !== id),
   );
 
+  const showAccount = (accounts?.length ?? 0) > 1;
   const accountsById = React.useMemo(
     () => new Map((accounts ?? []).map((a) => [a.id, a])),
     [accounts],
@@ -105,20 +105,26 @@ export default function GoalsPage() {
             }
           />
         ) : (
-          <div className="space-y-8">
+          <div className="space-y-10">
             {groupGoalsByStanding(optimisticActive).map(({ standing, goals }) => (
-              <GoalPanel key={standing} id={`goals-${standing}`} title={STANDING_LABEL[standing]}>
-                {goals.map((goal) => (
-                  <GoalRow
-                    key={goal.id}
-                    goal={goal}
-                    account={accountsById.get(goal.accountId)}
-                    onEdit={canPost(accountsById.get(goal.accountId)) ? openEdit : undefined}
-                    onStop={canPost(accountsById.get(goal.accountId)) ? setToStop : undefined}
-                    onViewHistory={setHistoryGoal}
-                  />
-                ))}
-              </GoalPanel>
+              <section key={standing} aria-labelledby={`goals-${standing}`}>
+                <h2 id={`goals-${standing}`} className="mb-3 px-1 text-[13px] font-semibold text-muted-foreground">
+                  {STANDING_LABEL[standing]} · {goals.length}
+                </h2>
+                <ul className="space-y-3">
+                  {goals.map((goal) => (
+                    <GoalCard
+                      key={goal.id}
+                      goal={goal}
+                      account={accountsById.get(goal.accountId)}
+                      showAccount={showAccount}
+                      onEdit={canPost(accountsById.get(goal.accountId)) ? openEdit : undefined}
+                      onStop={canPost(accountsById.get(goal.accountId)) ? setToStop : undefined}
+                      onViewHistory={setHistoryGoal}
+                    />
+                  ))}
+                </ul>
+              </section>
             ))}
           </div>
         )
@@ -132,6 +138,7 @@ export default function GoalsPage() {
         <CancelledGoalsList
           goals={cancelled.data ?? []}
           accountsById={accountsById}
+          showAccount={showAccount}
           onViewHistory={setHistoryGoal}
           onRestore={(g) => restoreMut.mutate(g.id)}
           busyId={(restoreMut.isPending && restoreMut.variables) || undefined}

@@ -1,5 +1,6 @@
 "use client";
 
+import { DatePicker } from "@/components/common/date-picker";
 import { CategoryGlyph } from "@/components/categories/category-glyph";
 import * as React from "react";
 import { useForm, useWatch } from "react-hook-form";
@@ -333,7 +334,7 @@ export function RecurringSeriesActions({ tx, className }: { tx: Transaction; cla
                         Ends <span className="font-normal text-muted-foreground">(optional)</span>
                       </FormLabel>
                       <FormControl>
-                        <Input type="date" {...field} />
+                        <DatePicker clearable placeholder="No end date" value={field.value} onChange={field.onChange} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

@@ -50,7 +50,6 @@ describe('UsersService.deleteAccount and resetData', () => {
     'draftTransaction',
     'goalInstance',
     'goal',
-    'budget',
     'account',
     'category',
     'analyticsCache',

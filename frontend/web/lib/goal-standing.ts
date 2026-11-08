@@ -1,5 +1,6 @@
 import type { Goal } from "@/lib/types";
 import { isGreaterThan, tryParse } from "@/lib/decimal";
+import { formatDate } from "@/lib/format";
 
 /** Which group a goal sits in on the Goals page. */
 export type GoalStanding = "attention" | "on-track" | "achieved";
@@ -92,8 +93,31 @@ export function goalTimeLeft(goal: Goal, now: Date = new Date()): string | null 
   return daysLeft === 2 ? "Ends tomorrow" : `Ends in ${daysLeft - 1} days`;
 }
 
-/** "Monthly" / "Yearly" for a repeating goal, or null for a one-off. */
-export function goalRepeatLabel(goal: Goal): string | null {
-  if (!goal.isRecurring) return null;
-  return goal.recurrenceUnit === "YEAR" ? "Yearly" : "Monthly";
+/** Why a goal sits under Needs attention, for its badge; null when it doesn't. */
+export function goalAttentionReason(goal: Goal, now: Date = new Date()): string | null {
+  const tone = goalTone(goal, now);
+  if (tone === "failed") return goal.type === "EXPENSE" ? "Over limit" : "Missed";
+  if (tone === "behind") return goal.type === "EXPENSE" ? "Spending fast" : "Behind pace";
+  return null;
+}
+
+/** Where the bar's pace tick sits (0-1): the share of the open period gone. Null when there is no pace to keep. */
+export function goalPaceShare(goal: Goal, now: Date = new Date()): number | null {
+  if (goal.archivedAt || goal.currentInstance?.status === "ACHIEVED") return null;
+  return elapsedShare(goal, now);
+}
+
+const SHORT_PERIOD_DATE = new Intl.DateTimeFormat(undefined, {
+  month: "short",
+  day: "numeric",
+  timeZone: "UTC",
+});
+
+/** The time badge: "Resets in 23 days", "Until Dec 31", "Cancelled Oct 12, 2026". */
+export function goalPeriodBadge(goal: Goal, now: Date = new Date()): string | null {
+  if (goal.archivedAt) return `Cancelled ${formatDate(goal.archivedAt)}`;
+  if (goal.isRecurring) return goalTimeLeft(goal, now);
+  const end = goal.currentInstance?.periodEnd ?? goal.periodEnd;
+  if (!end || Number.isNaN(new Date(end).getTime())) return null;
+  return goalTimeLeft(goal, now) === "Ends today" ? "Ends today" : `Until ${SHORT_PERIOD_DATE.format(new Date(end))}`;
 }

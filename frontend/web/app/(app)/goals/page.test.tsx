@@ -104,7 +104,7 @@ describe("GoalsPage", () => {
     const row = screen.getByRole("heading", { name: "Wedding fund" }).closest("li")!;
     expect(within(row).getByText(/Cancelled Oct 12, 2026$/)).toBeTruthy();
     expect(within(row).getAllByText("$250.00").length).toBeGreaterThan(0);
-    expect(within(row).getByText("25%")).toBeTruthy();
+    expect(within(row).getByText(/to go$/).textContent).toMatch(/\$750\.00 to go$/);
     expect(within(row).queryByText("In progress")).toBeNull();
   });
 
@@ -119,14 +119,14 @@ describe("GoalsPage", () => {
     ];
     render(<GoalsPage />);
     const groups = screen.getAllByRole("heading", { level: 2 });
-    expect(groups.map((h) => h.textContent)).toEqual(["Needs attention", "On track", "Achieved"]);
+    expect(groups.map((h) => h.textContent)).toEqual(["Needs attention · 1", "On track · 1", "Achieved · 1"]);
     const names = (title: string) =>
       within(screen.getByRole("heading", { name: title }).closest("section")!)
         .getAllByRole("heading", { level: 3 })
         .map((h) => h.textContent);
-    expect(names("Needs attention")).toEqual(["Spending cap"]);
-    expect(names("On track")).toEqual(["Emergency fund"]);
-    expect(names("Achieved")).toEqual(["Holiday trip"]);
+    expect(names("Needs attention · 1")).toEqual(["Spending cap"]);
+    expect(names("On track · 1")).toEqual(["Emergency fund"]);
+    expect(names("Achieved · 1")).toEqual(["Holiday trip"]);
   });
 
   it("goes back to the active goals", async () => {

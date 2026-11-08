@@ -77,11 +77,6 @@ enum RecurringStatus {
   CANCELLED
 }
 
-enum BudgetPeriod {
-  MONTHLY
-  YEARLY
-}
-
 enum GoalType {
   BALANCE
   INCOME
@@ -127,7 +122,6 @@ model User {
   transactions        Transaction[]
   transactionItems    TransactionItem[]
   drafts              DraftTransaction[]
-  budgets             Budget[]
   goals               Goal[]
   analyticsCaches     AnalyticsCache[]
   oauthCodes          AuthorizationCode[]
@@ -234,7 +228,7 @@ model Category {
   archivedAt       DateTime?
   transactions     Transaction[]
   transactionItems TransactionItem[]
-  budgets          Budget[]
+  goals            Goal[]
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
 
@@ -372,23 +366,6 @@ model AnalyticsCache {
   @@index([expiresAt])
 }
 
-model Budget {
-  id         String       @id @default(uuid())
-  userId     String
-  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  categoryId String?
-  category   Category?    @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  name       String
-  amount     Decimal      @db.Decimal(18, 4)
-  currency   String
-  period     BudgetPeriod @default(MONTHLY)
-  createdAt  DateTime     @default(now())
-  updatedAt  DateTime     @updatedAt
-
-  @@index([userId])
-  @@index([categoryId])
-}
-
 model Goal {
   id             String              @id @default(uuid())
   /// The owner of `account`. Access goes through the account.
@@ -396,6 +373,9 @@ model Goal {
   user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   accountId      String
   account        Account             @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  /// Only for INCOME/EXPENSE goals: counts just this category. Null counts every category.
+  categoryId     String?
+  category       Category?           @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   name           String
   type           GoalType
   targetAmount   Decimal             @db.Decimal(18, 4)
@@ -410,6 +390,7 @@ model Goal {
 
   @@index([userId, archivedAt])
   @@index([accountId])
+  @@index([categoryId])
 }
 
 model GoalInstance {

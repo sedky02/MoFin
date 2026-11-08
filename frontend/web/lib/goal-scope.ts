@@ -1,4 +1,6 @@
 import type { Goal, GoalProgressSource } from "@/lib/types";
+import { tryParse } from "@/lib/decimal";
+import { formatMoney } from "@/lib/format";
 
 /**
  * Income/Expense goals count every transaction of that type on the goal's account (transfers
@@ -31,30 +33,6 @@ export function goalRuleHint(type: Goal["type"]): string {
   }
 }
 
-/**
- * What the two figures on a goal row mean for each type: the target, and the progress counted
- * against it. Shown under the type picker in the goal dialog. Matches GoalsService on the backend.
- */
-export function goalExplainer(type: Goal["type"]): { target: string; progress: string } {
-  switch (type) {
-    case "INCOME":
-      return {
-        target: "The income you want to bring into the account during the period.",
-        progress: "Income received so far. Transfers in don't count.",
-      };
-    case "EXPENSE":
-      return {
-        target: "A spending limit: the most you want to spend during the period.",
-        progress: "What you've spent so far. Transfers out don't count. Going over the limit fails the goal.",
-      };
-    default:
-      return {
-        target: "The balance you want the account to reach.",
-        progress: "The account's balance right now, so transfers in count.",
-      };
-  }
-}
-
 /** Caption for a goal history row, saying where its progress comes from. */
 export function goalProgressSourceLabel(source: GoalProgressSource): string {
   switch (source) {
@@ -65,4 +43,51 @@ export function goalProgressSourceLabel(source: GoalProgressSource): string {
     default:
       return "Recorded at period end";
   }
+}
+
+/** The card's big figure: what is left or over (a cap), or still to go or above (a reach goal). */
+export interface GoalHeadline {
+  amount: string;
+  label: "left" | "over" | "to go" | "above";
+}
+
+export function goalHeadline(goal: Goal): GoalHeadline | null {
+  const instance = goal.currentInstance;
+  const target = tryParse(instance?.targetAmount ?? goal.targetAmount);
+  const progress = tryParse(instance?.progressAmount ?? "0");
+  if (!target || !progress) return null;
+  const remaining = target.minus(progress);
+  if (goal.type === "EXPENSE") {
+    return remaining.isNegative()
+      ? { amount: remaining.negated().toString(), label: "over" }
+      : { amount: remaining.toString(), label: "left" };
+  }
+  return remaining.isPositive() && !remaining.isZero()
+    ? { amount: remaining.toString(), label: "to go" }
+    : { amount: remaining.negated().toString(), label: "above" };
+}
+
+/** A whole amount loses its zero cents ("$300"), the way people say a target out loud. */
+export function formatTargetAmount(amount: string, currency: string): string {
+  const formatted = formatMoney(amount, currency);
+  return tryParse(amount)?.isInteger() ? formatted.replace(/[.,]0+(?=\D*$)/, "") : formatted;
+}
+
+/** The line under the big figure: the target it is measured against. */
+export function goalTargetLine(goal: Goal, currency: string): string {
+  const target = formatTargetAmount(goal.currentInstance?.targetAmount ?? goal.targetAmount, currency);
+  const period = goal.isRecurring ? (goal.recurrenceUnit === "YEAR" ? " yearly" : " monthly") : "";
+  switch (goal.type) {
+    case "EXPENSE":
+      return `of your ${target}${period} limit`;
+    case "INCOME":
+      return `of your ${target}${period} target`;
+    default:
+      return `to save ${target}`;
+  }
+}
+
+/** What an Income/Expense goal counts when it has no category. */
+export function goalAllCategoriesLabel(type: Goal["type"]): string {
+  return type === "INCOME" ? "All income" : "All spending";
 }

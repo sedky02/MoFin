@@ -186,7 +186,7 @@ export class CategoriesService {
 
   /**
    * Live transactions that use the category (on the transaction or a split line, each counted once)
-   * and budgets. Deleted transactions don't count.
+   * and goals. Deleted transactions don't count.
    */
   async usage(userId: string, categoryId: string) {
     await this.assertOwned(userId, categoryId);
@@ -194,16 +194,16 @@ export class CategoriesService {
   }
 
   private async countUsage(categoryId: string) {
-    const [transactions, budgets] = await Promise.all([
+    const [transactions, goals] = await Promise.all([
       this.prisma.transaction.count({
         where: {
           deletedAt: null,
           OR: [{ categoryId }, { items: { some: { categoryId } } }],
         },
       }),
-      this.prisma.budget.count({ where: { categoryId } }),
+      this.prisma.goal.count({ where: { categoryId } }),
     ]);
-    return { transactions, budgets };
+    return { transactions, goals };
   }
 
   async archive(userId: string, categoryId: string) {
@@ -232,10 +232,10 @@ export class CategoriesService {
   async remove(userId: string, categoryId: string) {
     await this.assertOwned(userId, categoryId);
 
-    const { transactions, budgets } = await this.countUsage(categoryId);
-    if (transactions > 0 || budgets > 0) {
+    const { transactions, goals } = await this.countUsage(categoryId);
+    if (transactions > 0 || goals > 0) {
       throw new ConflictException(
-        'This category is used by existing transactions or budgets and cannot be deleted. Archive it instead.',
+        'This category is used by existing transactions or goals and cannot be deleted. Archive it instead.',
       );
     }
 

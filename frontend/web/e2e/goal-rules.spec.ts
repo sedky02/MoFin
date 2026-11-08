@@ -4,43 +4,34 @@ import { formatViolations, runAxe } from "./helpers/axe";
 // Goal cards, history labels and the Cancel confirm say what they really do. Read-only; needs `npm
 // run e2e:seed`.
 
-const RULES = {
-  Balance: "Saving? A Balance goal tracks the account's balance, so transfers in count.",
-  Income: "Transfers in don't count.",
-  Expense: "Transfers out don't count. Judged when the period ends.",
-} as const;
-
 function goalCard(page: Page, name: string) {
-  return page.locator("h3", { hasText: name }).locator("xpath=ancestor::*[contains(@class,'group')][1]");
+  return page.getByRole("listitem").filter({ has: page.locator("h3", { hasText: name }) });
 }
 
-test("the goal dialog shows helper text for each goal type", async ({ page }) => {
+test("the goal dialog keeps its rules in a tip beside the category", async ({ page }) => {
   await page.goto("/goals");
   await page.getByRole("button", { name: "New goal" }).first().click();
-  const dialog = page.getByRole("dialog", { name: "New goal" });
-  const rule = dialog.getByTestId("goal-rule");
+  const dialog = page.getByRole("dialog");
+  await dialog.getByRole("button", { name: /Spend less/ }).click();
 
-  await expect(rule).toContainText(RULES.Balance);
-
-  for (const type of ["Income", "Expense", "Balance"] as const) {
-    await dialog.getByRole("radio", { name: new RegExp(`^${type}`) }).click();
-    await expect(rule).toContainText(RULES[type]);
-  }
-
-  await expect(dialog.getByLabel("Goal type")).toHaveAccessibleDescription(/so transfers in count/);
+  await dialog.getByRole("button", { name: "What counts" }).hover();
+  await expect(page.getByRole("tooltip")).toContainText("Transfers don't count.");
 
   const violations = await runAxe(page);
   expect(violations, formatViolations(violations)).toEqual([]);
 
-  await dialog.getByRole("button", { name: "Cancel" }).click();
+  await dialog.getByRole("button", { name: "Close" }).click();
 });
 
 test("goal history labels the open period as live, matching the card", async ({ page }) => {
   await page.goto("/goals");
   const card = goalCard(page, "Monthly spending cap");
-  // The card's progress amount (the bold one before " / target"). innerText can repeat the amount
+  // The card's real progress amount (before " / target"). innerText can repeat the amount
   // (visible + screen-reader copy) on two lines.
-  const cardAmount = (await card.locator(".tabular.font-semibold").first().innerText()).trim().split("\n")[0].trim();
+  const cardAmount = (await card.getByTestId("goal-amounts").locator(".font-medium").first().innerText())
+    .trim()
+    .split("\n")[0]
+    .trim();
 
   await card.getByRole("button", { name: "Actions for Monthly spending cap" }).click();
   await page.getByRole("menuitem", { name: "View history" }).click();

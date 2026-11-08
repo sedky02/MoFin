@@ -7,15 +7,15 @@ const EXPENSE = "Counts all expenses from Main checking";
 const INCOME = "Counts all income into Main checking";
 const BALANCE = "Tracks the balance of Emergency fund";
 
-test("goal cards carry the scope line for screen readers", async ({ page }) => {
+test("goal cards say what they count with badges", async ({ page }) => {
   await page.goto("/goals");
   await expect(page.getByRole("heading", { level: 1, name: "Goals" })).toBeVisible();
 
-  const card = (name: string) =>
-    page.locator("h3", { hasText: name }).locator("xpath=ancestor::*[contains(@class,'group')][1]");
-  await expect(card("Monthly spending cap").getByTestId("goal-scope")).toHaveText(EXPENSE);
-  await expect(card("Freelance income target").getByTestId("goal-scope")).toHaveText(INCOME);
-  await expect(card("Emergency fund target").getByTestId("goal-scope")).toHaveText(BALANCE);
+  const card = (name: string) => page.getByRole("listitem").filter({ has: page.locator("h3", { hasText: name }) });
+  await expect(card("Monthly spending cap")).toContainText("All spending");
+  await expect(card("Freelance income target")).toContainText("All income");
+  await expect(card("Emergency fund target")).toContainText("Emergency fund");
+  await expect(card("Emergency fund target")).not.toContainText("All spending");
 });
 
 test("dashboard tiles keep the scope out of the tile and show it on hover and focus", async ({ page }) => {
@@ -35,22 +35,21 @@ test("dashboard tiles keep the scope out of the tile and show it on hover and fo
   await expect(page.getByTestId("goal-scope-tooltip")).toContainText(EXPENSE);
 });
 
-test("the goal dialog updates the scope line as type and account change", async ({ page }) => {
+test("the goal dialog labels its fields for each kind of goal", async ({ page }) => {
   await page.goto("/goals");
   await page.getByRole("button", { name: "New goal" }).first().click();
-  const dialog = page.getByRole("dialog", { name: "New goal" });
-  const scope = dialog.getByTestId("goal-scope");
-  await expect(scope).toContainText("Tracks the balance of");
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByRole("heading", { name: "What's this goal for?" })).toBeVisible();
 
-  await dialog.getByLabel("Account").click();
-  await page.getByRole("option", { name: /Main checking/ }).click();
-  await expect(scope).toHaveText("Tracks the balance of Main checking");
+  await dialog.getByRole("button", { name: /Spend less/ }).click();
+  await expect(dialog.getByLabel("Spending limit")).toBeFocused();
+  await expect(dialog.getByRole("combobox", { name: "Spending category" })).toContainText("All spending");
+  await expect(dialog.getByLabel("Goal name")).toHaveValue("Spending limit");
 
-  await dialog.getByRole("radio", { name: /^Expense/ }).click();
-  await expect(scope).toHaveText(EXPENSE);
+  await dialog.getByRole("button", { name: "Back to goal types" }).click();
+  await dialog.getByRole("button", { name: /Save up/ }).click();
+  await expect(dialog.getByLabel("Amount to save")).toBeVisible();
+  await expect(dialog.getByRole("combobox", { name: /category/ })).toHaveCount(0);
 
-  await dialog.getByRole("radio", { name: /^Income/ }).click();
-  await expect(scope).toHaveText(INCOME);
-
-  await dialog.getByRole("button", { name: "Cancel" }).click();
+  await dialog.getByRole("button", { name: "Close" }).click();
 });

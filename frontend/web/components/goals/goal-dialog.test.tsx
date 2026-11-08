@@ -1,37 +1,79 @@
 // @vitest-environment jsdom
 import * as React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { GoalDialog } from "@/components/goals/goal-dialog";
 import type { Goal } from "@/lib/types";
 
+const create = vi.fn();
+const update = vi.fn();
+
 vi.mock("@/hooks/useAccounts", () => ({
   useAccounts: () => ({
-    data: [{ id: "a1", name: "Main checking", type: "BANK", currency: "USD", createdAt: "", updatedAt: "" }],
+    data: [
+      {
+        id: "a1",
+        name: "Main checking",
+        type: "BANK",
+        currency: "USD",
+        createdAt: "",
+        updatedAt: "",
+      },
+    ],
   }),
 }));
-vi.mock("@/hooks/useActiveAccount", () => ({ useActiveAccount: () => ({ accountId: "a1" }) }));
+vi.mock("@/hooks/useActiveAccount", () => ({
+  useActiveAccount: () => ({ accountId: "a1" }),
+}));
+vi.mock("@/hooks/useCategories", () => ({
+  useCategories: () => ({
+    data: [
+      {
+        id: "c1",
+        name: "Restaurants",
+        type: "EXPENSE",
+        color: "#e05d2a",
+        isSystem: false,
+      },
+      {
+        id: "c2",
+        name: "Freelance",
+        type: "INCOME",
+        color: "#2e5bff",
+        isSystem: false,
+      },
+    ],
+  }),
+}));
 vi.mock("@/hooks/useGoals", () => ({
-  useCreateGoal: () => ({ mutateAsync: vi.fn() }),
-  useUpdateGoal: () => ({ mutateAsync: vi.fn() }),
+  useCreateGoal: () => ({ mutateAsync: create }),
+  useUpdateGoal: () => ({ mutateAsync: update }),
 }));
 
 const existing: Goal = {
   id: "g1",
   accountId: "a1",
-  name: "Emergency fund",
-  type: "INCOME",
-  targetAmount: "3000",
-  isRecurring: false,
-  periodStart: "2026-10-01T00:00:00Z",
-  periodEnd: "2026-12-31T23:59:59Z",
+  categoryId: "c1",
+  category: {
+    id: "c1",
+    name: "Restaurants",
+    color: "#e05d2a",
+    archivedAt: null,
+  },
+  name: "Restaurants cap",
+  type: "EXPENSE",
+  targetAmount: "300",
+  isRecurring: true,
+  recurrenceUnit: "MONTH",
+  periodStart: "2026-11-01T00:00:00Z",
+  periodEnd: null,
   createdAt: "",
   updatedAt: "",
   currentInstance: null,
 };
 
-// Radix's switch and select measure themselves with ResizeObserver, which jsdom doesn't have.
+// Radix's select measures itself with ResizeObserver, which jsdom doesn't have.
 beforeEach(() => {
   vi.stubGlobal(
     "ResizeObserver",
@@ -41,141 +83,121 @@ beforeEach(() => {
       disconnect() {}
     },
   );
+  create.mockReset();
+  update.mockReset();
 });
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
 });
 
+const labelsInOrder = () =>
+  Array.from(screen.getByRole("dialog").querySelectorAll("label:not(.sr-only)")).map((l) => l.textContent);
+
 describe("GoalDialog", () => {
-  it("puts the cursor in Name, not on the close button", async () => {
+  it("starts with only the three goal choices, focused on the first", async () => {
     render(<GoalDialog open onOpenChange={() => {}} />);
-    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText("Name")));
+    expect(screen.getByRole("heading", { name: "What's this goal for?" })).toBeTruthy();
+    const choices = within(screen.getByRole("list")).getAllByRole("button");
+    expect(choices.map((c) => c.textContent)).toEqual([
+      "Save upGrow an account to an amount",
+      "Earn moreReach an income target",
+      "Spend lessStay under a spending limit",
+    ]);
+    expect(screen.queryByRole("textbox")).toBeNull();
+    await waitFor(() => expect(document.activeElement).toBe(choices[0]));
   });
 
-  it("offers the goal types as a radio group, Balance first", () => {
+  it("labels each Spend less field plainly and moves the cursor to the amount", async () => {
     render(<GoalDialog open onOpenChange={() => {}} />);
-    const group = screen.getByRole("radiogroup", { name: "Goal type" });
-    const radios = screen.getAllByRole("radio");
-    expect(radios).toHaveLength(3);
-    expect(radios.map((r) => r.getAttribute("aria-checked"))).toEqual(["true", "false", "false"]);
-    expect(group.getAttribute("aria-describedby")).toBe("goal-type-hint");
+    await userEvent.click(screen.getByRole("button", { name: /Spend less/ }));
+    expect(screen.getByRole("heading", { name: "Spend less" })).toBeTruthy();
+    expect(labelsInOrder()).toEqual([
+      "Spending limit",
+      "Spending category",
+      "Account you pay from",
+      "Repeats",
+      "Goal name",
+    ]);
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText("Spending limit")));
   });
 
-  it("updates the scope line and the rule as the type changes", async () => {
+  it("asks no category for Save up", async () => {
     render(<GoalDialog open onOpenChange={() => {}} />);
-    expect(screen.getByTestId("goal-scope").textContent).toBe("Tracks the balance of Main checking");
-    await userEvent.click(screen.getByRole("radio", { name: /^Expense/ }));
-    expect(screen.getByTestId("goal-scope").textContent).toBe("Counts all expenses from Main checking");
-    expect(screen.getByTestId("goal-rule").textContent).toMatch(/Judged when the period ends/);
-    await userEvent.click(screen.getByRole("radio", { name: /^Income/ }));
-    expect(screen.getByTestId("goal-scope").textContent).toBe("Counts all income into Main checking");
+    await userEvent.click(screen.getByRole("button", { name: /Save up/ }));
+    expect(labelsInOrder()).toEqual(["Amount to save", "Account you save in", "Repeats", "Goal name"]);
   });
 
-  it("explains the target in a help beside it, following the chosen type", async () => {
+  it("counts every category by default and suggests a name from the choice", async () => {
     render(<GoalDialog open onOpenChange={() => {}} />);
-    expect(screen.queryByTestId("goal-explainer")).toBeNull();
-    await userEvent.click(screen.getByRole("button", { name: "What the target means" }));
-    expect(screen.getByTestId("goal-explainer").textContent).toContain("The balance you want the account to reach.");
-    await userEvent.keyboard("{Escape}");
-
-    await userEvent.click(screen.getByRole("radio", { name: /^Expense/ }));
-    await userEvent.click(screen.getByRole("button", { name: "What the target means" }));
-    const text = screen.getByTestId("goal-explainer").textContent ?? "";
-    expect(text).toContain("Expense goal");
-    expect(text).toContain("A spending limit: the most you want to spend during the period.");
-    expect(text).toContain("What you've spent so far");
+    await userEvent.click(screen.getByRole("button", { name: /Earn more/ }));
+    expect(screen.getByRole("combobox", { name: "Income category" }).textContent).toContain("All income");
+    expect((screen.getByLabelText("Goal name") as HTMLInputElement).value).toBe("Income target");
   });
 
-  it("explains each type when you hover or focus it", async () => {
+  it("goes back to the choices without closing", async () => {
     render(<GoalDialog open onOpenChange={() => {}} />);
-    await userEvent.hover(screen.getByRole("radio", { name: /^Income/ }).parentElement!);
-    const tip = await screen.findByRole("tooltip");
-    expect(tip.textContent).toContain("The income you want to bring into the account");
-    expect(tip.textContent).toContain("Income received so far");
+    await userEvent.click(screen.getByRole("button", { name: /Spend less/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Back to goal types" }));
+    expect(screen.getByRole("heading", { name: "What's this goal for?" })).toBeTruthy();
   });
 
-  it("moves between the types with the arrow keys", async () => {
+  it("keeps the rules in a tip beside the category", async () => {
     render(<GoalDialog open onOpenChange={() => {}} />);
-    const balance = screen.getByRole("radio", { name: /^Balance/ });
-    // The dialog moves focus to Name once it has opened; wait for that before taking focus ourselves.
-    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText("Name")));
-    balance.focus();
-    await userEvent.keyboard("{ArrowRight}");
-    expect(screen.getByRole("radio", { name: /^Income/ }).getAttribute("aria-checked")).toBe("true");
-    expect(document.activeElement).toBe(screen.getByRole("radio", { name: /^Income/ }));
-    await userEvent.keyboard("{ArrowLeft}{ArrowLeft}");
-    expect(screen.getByRole("radio", { name: /^Expense/ }).getAttribute("aria-checked")).toBe("true");
+    await userEvent.click(screen.getByRole("button", { name: /Spend less/ }));
+    await userEvent.hover(screen.getByRole("button", { name: "What counts" }));
+    expect((await screen.findAllByText(/Transfers don't count/)).length).toBeGreaterThan(0);
   });
 
-  it("makes only the chosen type a tab stop", () => {
+  it("creates a monthly cap on all spending", async () => {
     render(<GoalDialog open onOpenChange={() => {}} />);
-    expect(screen.getAllByRole("radio").map((r) => r.getAttribute("tabindex"))).toEqual(["0", "-1", "-1"]);
+    await userEvent.click(screen.getByRole("button", { name: /Spend less/ }));
+    await userEvent.type(screen.getByLabelText("Spending limit"), "300");
+    await userEvent.click(screen.getByRole("button", { name: "Create goal" }));
+    await waitFor(() => expect(create).toHaveBeenCalled());
+    expect(create.mock.calls[0][0]).toMatchObject({
+      accountId: "a1",
+      name: "Spend under $300 a month",
+      type: "EXPENSE",
+      categoryId: null,
+      targetAmount: "300.00",
+      isRecurring: true,
+      recurrenceUnit: "MONTH",
+    });
   });
 
-  it("freezes the type and the period when editing, leaving name and target", () => {
+  it("writes the name from the amount and type, then keeps what the user types", async () => {
+    render(<GoalDialog open onOpenChange={() => {}} />);
+    await userEvent.click(screen.getByRole("button", { name: /Spend less/ }));
+    const nameInput = screen.getByLabelText("Goal name") as HTMLInputElement;
+    expect(nameInput.value).toBe("Spending limit");
+    await userEvent.type(screen.getByLabelText("Spending limit"), "300");
+    expect(nameInput.value).toBe("Spend under $300 a month");
+
+    await userEvent.clear(nameInput);
+    await userEvent.type(nameInput, "Eating out");
+    await userEvent.type(screen.getByLabelText("Spending limit"), "0");
+    expect(nameInput.value).toBe("Eating out");
+  });
+
+  it("keeps Create goal apart from the name, beside Cancel", async () => {
+    render(<GoalDialog open onOpenChange={() => {}} />);
+    await userEvent.click(screen.getByRole("button", { name: /Spend less/ }));
+    const create = screen.getByRole("button", { name: "Create goal" });
+    expect(create.parentElement).toBe(screen.getByRole("button", { name: "Cancel" }).parentElement);
+    expect(create.parentElement!.contains(screen.getByLabelText("Goal name"))).toBe(false);
+  });
+
+  it("opens an edit on the details, with the frozen parts as plain text", () => {
     render(<GoalDialog open onOpenChange={() => {}} goal={existing} />);
-    expect(screen.getByRole("heading", { name: "Edit goal" })).toBeTruthy();
-    for (const radio of screen.getAllByRole("radio")) expect((radio as HTMLButtonElement).disabled).toBe(true);
-    expect(screen.getByRole("radio", { name: /^Income/ }).getAttribute("aria-checked")).toBe("true");
-    expect(screen.queryByLabelText("Start date")).toBeNull();
-    expect(screen.queryByText("Recurring")).toBeNull();
-    expect((screen.getByLabelText("Name") as HTMLInputElement).value).toBe("Emergency fund");
-  });
-
-  it("asks for the period only when creating, and switches the end date for an interval when recurring", async () => {
-    render(<GoalDialog open onOpenChange={() => {}} />);
-    expect(screen.getByLabelText("End date")).toBeTruthy();
-    await userEvent.click(screen.getByRole("switch"));
-    expect(screen.queryByLabelText("End date")).toBeNull();
-    expect(screen.getByText("Repeats every")).toBeTruthy();
-    expect(screen.getByText("First period starts")).toBeTruthy();
-  });
-
-  it("shows only the fields, with the explanations kept for screen readers", () => {
-    render(<GoalDialog open onOpenChange={() => {}} />);
-    // Hidden from view, still part of what a screen reader announces.
-    expect(screen.getByTestId("goal-rule").closest("#goal-type-hint")?.className).toContain("sr-only");
-    expect(screen.getByRole("radiogroup", { name: "Goal type" }).getAttribute("aria-describedby")).toBe("goal-type-hint");
-    const visible = document.body.textContent ?? "";
-    expect(visible).toContain("Save up"); // each type card keeps its short label
-    // Gone from sight: the long rule, the intro line, and the helper lines under Recurring and End date.
-    for (const gone of [
-      /Saving\? A Balance goal/,
-      /Automatically start a new period/,
-      /Transactions on this day still count/,
-    ]) {
-      const hits = Array.from(document.querySelectorAll("*")).filter(
-        (el) => el.children.length === 0 && gone.test(el.textContent ?? "") && !el.closest(".sr-only"),
-      );
-      expect(hits, String(gone)).toHaveLength(0);
-    }
-    expect(document.querySelector('[data-slot="dialog-description"]')?.className).toContain("sr-only");
-  });
-
-  it("keeps each type's one-word hint short enough for a single line", () => {
-    render(<GoalDialog open onOpenChange={() => {}} />);
-    const hints = screen.getAllByRole("radio").map((r) => r.querySelector("span:last-child")!);
-    expect(hints.map((h) => h.textContent)).toEqual(["Save up", "Earn more", "Spend less"]);
-    // A narrow phone card fits about 14 characters of this size; truncate is the safety net, not the plan.
-    for (const hint of hints) {
-      expect((hint.textContent ?? "").length).toBeLessThanOrEqual(14);
-      expect(hint.className).toContain("truncate");
-    }
-  });
-
-  it("has no decorative icon beside the title, so the title and close button share the whole header", () => {
-    render(<GoalDialog open onOpenChange={() => {}} />);
-    const header = document.querySelector('[data-slot="dialog-header"]') as HTMLElement;
-    expect(header.querySelector("svg:not(button svg)")).toBeNull();
-    expect(header.children).toHaveLength(2); // the title block and the close button
-    expect(screen.getByRole("heading", { name: "New goal" })).toBeTruthy();
-  });
-
-  it("has a close button and a footer that stay in the dialog", () => {
-    render(<GoalDialog open onOpenChange={() => {}} />);
-    expect(screen.getByRole("button", { name: "Close" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Create goal" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Cancel" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Edit · Spend less" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Back to goal types" })).toBeNull();
+    expect(screen.queryByRole("combobox")).toBeNull();
+    const dialog = screen.getByRole("dialog");
+    expect(dialog.textContent).toContain("Restaurants");
+    expect(dialog.textContent).toContain("Main checking");
+    expect(dialog.textContent).toContain("Every month");
+    expect(screen.getByLabelText("Spending limit")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Save changes" })).toBeTruthy();
   });
 });
