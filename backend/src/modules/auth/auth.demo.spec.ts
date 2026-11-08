@@ -5,6 +5,14 @@ import { OAuthService } from '../oauth/oauth.service';
 import { AuthService, demoHasEnded } from './auth.service';
 import { registerSchema } from './dto/auth.dto';
 
+// Stands in for EmailVerificationService where verification is not under test.
+const NO_EMAIL_VERIFICATION = {
+  isRequiredFor: () => false,
+  runInBackground: () => undefined,
+  sendLink: async () => ({ alreadyVerified: false }),
+  sendAccountExistsNotice: async () => undefined,
+};
+
 const config = {
   getOrThrow: (key: string) =>
     key === 'OAUTH_ISSUER' ? 'http://localhost:3000' : `${key}-secret`,
@@ -36,6 +44,7 @@ function makeAuth(user: unknown) {
     {} as never,
     { signAsync: jest.fn(async () => 'access-jwt') } as never,
     config as never,
+    NO_EMAIL_VERIFICATION as never,
   );
   return { service, prisma };
 }

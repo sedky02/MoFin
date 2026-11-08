@@ -22,6 +22,7 @@ import { GoogleButton } from "@/components/common/google-button";
 import { ApiClientError } from "@/lib/api";
 import { handleApiError } from "@/lib/form-errors";
 import { safeNextPath } from "@/lib/safe-next";
+import { checkEmailUrl } from "@/lib/pending-signup";
 import { loginNotice } from "@/lib/auth-feedback";
 import { DemoButton } from "@/components/landing/demo-button";
 import {
@@ -56,7 +57,6 @@ export default function LoginPage() {
     () => "",
   );
   const params = new URLSearchParams(search);
-  const justRegistered = params.get("registered") === "1";
   const justReset = params.get("reset") === "1";
   const notice = loginNotice(params);
 
@@ -102,6 +102,10 @@ export default function LoginPage() {
       router.replace(safeNextPath(new URLSearchParams(window.location.search).get("next")));
       router.refresh();
     } catch (err) {
+      if (err instanceof ApiClientError && err.status === 403 && err.body && "code" in err.body && err.body.code === "EMAIL_NOT_VERIFIED") {
+        router.replace(checkEmailUrl(values.email, "signin", new URLSearchParams(window.location.search)));
+        return;
+      }
       if (err instanceof ApiClientError && err.status === 401) {
         form.setError("password", {
           type: "server",
@@ -116,16 +120,6 @@ export default function LoginPage() {
   return (
     <div>
       <AuthHeading eyebrow="Sign in" title="Sign in to" accent="MoFin" subtitle="Pick up where you left off." />
-
-      {justRegistered && !rateLimited && (
-        <div
-          role="status"
-          className="mb-6 flex items-start gap-2.5 rounded-xl border border-success/30 bg-success/10 px-3.5 py-3 text-sm text-success"
-        >
-          <CheckCircle2 className="mt-0.5 size-4 shrink-0" />
-          <span>If that email can be used, your account has been created. Sign in with the password you just chose.</span>
-        </div>
-      )}
 
       {justReset && !rateLimited && (
         <div

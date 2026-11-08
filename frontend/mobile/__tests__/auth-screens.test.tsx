@@ -5,10 +5,12 @@ import ForgotPasswordScreen from '@/app/(auth)/forgot-password';
 import LoginScreen from '@/app/(auth)/login';
 import RegisterScreen from '@/app/(auth)/register';
 import { getSessionState, resetSessionForTests } from '@/api/session';
+import { forgetPendingSignup, pendingSignupFor } from '@/lib/pending-signup';
 
 jest.mock('react-native-safe-area-context', () => require('react-native-safe-area-context/jest/mock').default);
 
 const mockReplace = jest.fn();
+const mockPush = jest.fn();
 let mockParams: Record<string, string> = {};
 jest.mock('expo-router', () => {
   const { Text } = require('react-native');
@@ -16,7 +18,7 @@ jest.mock('expo-router', () => {
     Link: ({ children, href }: { children: React.ReactNode; href: string }) => (
       <Text accessibilityHint={`link to ${href}`}>{children}</Text>
     ),
-    useRouter: () => ({ replace: mockReplace, push: jest.fn(), back: jest.fn() }),
+    useRouter: () => ({ replace: mockReplace, push: mockPush, back: jest.fn() }),
     useLocalSearchParams: () => mockParams,
   };
 });
@@ -34,6 +36,8 @@ function mockFetch(status: number, body?: unknown) {
 beforeEach(() => {
   resetSessionForTests();
   mockReplace.mockClear();
+  mockPush.mockClear();
+  forgetPendingSignup();
   mockParams = {};
   calls = [];
 });
@@ -79,11 +83,27 @@ describe('login', () => {
     expect(calls[0].url).toBe('https://api.test/api/v1/auth/login');
   });
 
-  it('after registering: the success banner and the email filled in', async () => {
-    mockParams = { registered: '1', email: 'alex@example.com' };
+  it('after verifying in the browser: the verified banner and the email filled in', async () => {
+    mockParams = { verified: '1', email: 'alex@example.com' };
     await render(<LoginScreen />);
-    expect(screen.getByText(/your account has been created/)).toBeTruthy();
+    expect(screen.getByText('Your email is verified. Sign in to continue.')).toBeTruthy();
     expect(screen.getByLabelText('Email').props.value).toBe('alex@example.com');
+  });
+
+  it('an unverified email goes to the check-email screen, keeping the sign-in for later', async () => {
+    mockFetch(403, { statusCode: 403, code: 'EMAIL_NOT_VERIFIED', message: 'Verify your email to sign in.' });
+    await render(<LoginScreen />);
+    await fireEvent.changeText(screen.getByLabelText('Email'), 'alex@example.com');
+    await fireEvent.changeText(screen.getByLabelText('Password'), 'long-enough-1');
+    await fireEvent.press(screen.getByText('Sign in'));
+    await waitFor(() =>
+      expect(mockPush).toHaveBeenCalledWith({
+        pathname: '/check-email',
+        params: { email: 'alex@example.com', reason: 'signin' },
+      }),
+    );
+    expect(pendingSignupFor('alex@example.com')?.password).toBe('long-enough-1');
+    expect(getSessionState().status).not.toBe('signedIn');
   });
 
   it('the demo failing for the rate limit shows the web copy', async () => {
@@ -132,16 +152,20 @@ describe('register', () => {
     expect(await screen.findByText('Use your own email address')).toBeTruthy();
   });
 
-  it('on success goes to sign-in with the email, without signing in', async () => {
-    mockFetch(201, { message: 'If this email can be used, your account has been created. Please log in.' });
+  it('on success waits for the emailed link, without signing in', async () => {
+    mockFetch(201, { message: 'Check your email: we sent a link to finish creating your account.' });
     await render(<RegisterScreen />);
     await fireEvent.changeText(screen.getByLabelText('Email'), 'alex@example.com');
     await fireEvent.changeText(screen.getByLabelText('Password'), 'long-enough-1');
     await fireEvent.press(screen.getByText('Create account'));
     await waitFor(() =>
-      expect(mockReplace).toHaveBeenCalledWith({ pathname: '/login', params: { registered: '1', email: 'alex@example.com' } }),
+      expect(mockReplace).toHaveBeenCalledWith({
+        pathname: '/check-email',
+        params: { email: 'alex@example.com', reason: 'signup' },
+      }),
     );
-    expect(calls[0].body).toEqual({ email: 'alex@example.com', password: 'long-enough-1' });
+    expect(calls[0].body).toEqual({ email: 'alex@example.com', password: 'long-enough-1', client: 'mobile' });
+    expect(pendingSignupFor('alex@example.com')).not.toBeNull();
     expect(getSessionState().status).toBe('restoring');
   });
 });

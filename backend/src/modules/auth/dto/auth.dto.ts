@@ -8,6 +8,12 @@ const emailField = z.string().trim().toLowerCase().email();
 // The one rule every new password follows: register, reset and change.
 const newPasswordField = z.string().min(8);
 
+// Random value from the web BFF's httpOnly cookie; only its hash is stored with the link.
+const browserBindingField = z.string().min(32).max(256);
+
+// The app asks for links that send people back to it; anything else gets a web link.
+const signupClientField = z.enum(['web', 'mobile']).default('web');
+
 export const registerSchema = z.object({
   // Demo users are recognised by this domain alone, so nobody may register on it.
   email: emailField.refine((email) => !isDemoEmail(email), {
@@ -15,6 +21,8 @@ export const registerSchema = z.object({
   }),
   password: newPasswordField,
   displayName: z.string().optional(),
+  browserBinding: browserBindingField.optional(),
+  client: signupClientField,
 });
 export type RegisterDto = z.infer<typeof registerSchema>;
 
@@ -49,8 +57,16 @@ export type ResetPasswordDto = z.infer<typeof resetPasswordSchema>;
 
 export const verifyEmailSchema = z.object({
   token: z.string().min(1).max(256),
+  browserBinding: browserBindingField.optional(),
 });
 export type VerifyEmailDto = z.infer<typeof verifyEmailSchema>;
+
+export const resendVerificationSchema = z.object({
+  email: emailField,
+  browserBinding: browserBindingField.optional(),
+  client: signupClientField,
+});
+export type ResendVerificationDto = z.infer<typeof resendVerificationSchema>;
 
 // `refreshToken` is the caller's own session, forwarded by the BFF so it survives the change;
 // without it every session is signed out, the caller's included.

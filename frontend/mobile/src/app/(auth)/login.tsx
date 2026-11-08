@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Link, useLocalSearchParams } from 'expo-router';
+import { Link, useLocalSearchParams, useRouter } from 'expo-router';
 import * as React from 'react';
 import { useForm } from 'react-hook-form';
 import { View } from 'react-native';
@@ -14,9 +14,11 @@ import { SubmitButton } from '@/components/auth/submit-button';
 import { Text } from '@/components/ui/text';
 import { handleApiError } from '@/core/form-errors';
 import { AUTH_COPY, loginSchema, type LoginValues } from '@/lib/auth-forms';
+import { rememberPendingSignup } from '@/lib/pending-signup';
 
 export default function LoginScreen() {
-  const params = useLocalSearchParams<{ registered?: string; email?: string }>();
+  const router = useRouter();
+  const params = useLocalSearchParams<{ verified?: string; email?: string }>();
   const { endReason } = useSession();
   const [rateLimited, setRateLimited] = React.useState(false);
   const [submitted, setSubmitted] = React.useState(false);
@@ -39,6 +41,11 @@ export default function LoginScreen() {
         setRateLimited(true);
         return;
       }
+      if (err instanceof ApiClientError && err.status === 403 && err.body && 'code' in err.body && err.body.code === 'EMAIL_NOT_VERIFIED') {
+        rememberPendingSignup({ email: values.email, password: values.password });
+        router.push({ pathname: '/check-email', params: { email: values.email, reason: 'signin' } });
+        return;
+      }
       if (err instanceof ApiClientError && err.status === 401) {
         form.setError('password', { type: 'server', message: AUTH_COPY.incorrect }, { shouldFocus: true });
         return;
@@ -47,14 +54,14 @@ export default function LoginScreen() {
     }
   });
 
-  const justRegistered = params.registered === '1';
+  const justVerified = params.verified === '1';
   const expired = endReason === 'expired' && !submitted;
 
   return (
     <AuthScreen title="Sign in to" accent="MoFin" subtitle="Pick up where you left off.">
       {rateLimited ? <Notice kind="error">{AUTH_COPY.rateLimited}</Notice> : null}
-      {justRegistered && !rateLimited ? <Notice kind="success">{AUTH_COPY.registered}</Notice> : null}
-      {expired && !justRegistered && !rateLimited ? <Notice kind="info">{AUTH_COPY.expired}</Notice> : null}
+      {justVerified && !rateLimited ? <Notice kind="success">{AUTH_COPY.verified}</Notice> : null}
+      {expired && !justVerified && !rateLimited ? <Notice kind="info">{AUTH_COPY.expired}</Notice> : null}
 
       <View className="gap-6">
         <FormField

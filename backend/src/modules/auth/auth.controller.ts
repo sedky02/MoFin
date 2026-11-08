@@ -41,6 +41,7 @@ import {
   LogoutDto,
   RefreshTokenDto,
   RegisterDto,
+  ResendVerificationDto,
   ResetPasswordDto,
   VerifyEmailDto,
   changePasswordSchema,
@@ -51,9 +52,13 @@ import {
   logoutSchema,
   refreshTokenSchema,
   registerSchema,
+  resendVerificationSchema,
   resetPasswordSchema,
   verifyEmailSchema,
 } from './dto/auth.dto';
+
+export const RESEND_VERIFICATION_MESSAGE =
+  'If this email is waiting to be verified, we have sent a new link.';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -134,16 +139,54 @@ export class AuthController {
     return this.emailVerificationService.sendLink(user.id);
   }
 
-  // Limited per presented token (see authTracker), not per IP.
+  /**
+   * Public resend for the "check your email" screens. Always 202 with the same body, run after the
+   * response; limited per email + IP and per IP like forgot-password, since it sends mail.
+   */
+  @Public()
+  @UseGuards(ForgotPasswordThrottlerGuard)
+  @Throttle({ default: FORGOT_PASSWORD_IP_THROTTLE })
+  @Post('email/verification/resend')
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiZodBody(resendVerificationSchema)
+  resendEmailVerification(
+    @Body(new ZodValidationPipe(resendVerificationSchema))
+    dto: ResendVerificationDto,
+  ) {
+    this.emailVerificationService.resendInBackground(dto.email, {
+      browserBinding: dto.browserBinding,
+      client: dto.client,
+    });
+    return { message: RESEND_VERIFICATION_MESSAGE };
+  }
+
+  /**
+   * Verifies the address; a session comes back only when the link is redeemed by the browser that
+   * signed up (its binding cookie, forwarded by the BFF). Limited per presented token, not per IP.
+   */
   @Public()
   @UseGuards(AuthThrottlerGuard)
   @Post('email/verify')
   @HttpCode(HttpStatus.OK)
   @ApiZodBody(verifyEmailSchema)
-  verifyEmail(
+  async verifyEmail(
     @Body(new ZodValidationPipe(verifyEmailSchema)) dto: VerifyEmailDto,
   ) {
-    return this.emailVerificationService.verify(dto.token);
+    const verified = await this.emailVerificationService.verify(
+      dto.token,
+      dto.browserBinding,
+    );
+    const session = verified.sameBrowser
+      ? await this.authService.startVerifiedSession(
+          verified.userId,
+          verified.email,
+        )
+      : null;
+    return {
+      message: 'Your email is verified.',
+      email: verified.email,
+      ...(session ?? {}),
+    };
   }
 
   // Limited per user (see ChangePasswordThrottlerGuard) so a signed-in

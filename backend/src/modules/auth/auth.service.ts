@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   GatewayTimeoutException,
   Injectable,
   ServiceUnavailableException,
@@ -16,6 +17,7 @@ import { sha256 } from '../../common/utils/hash';
 import { UsersService } from '../users/users.service';
 import { ChangePasswordDto, LoginDto, RegisterDto } from './dto/auth.dto';
 import { WEB_AUDIENCE } from './auth.constants';
+import { EmailVerificationService } from './email-verification.service';
 
 // Computed once at load so login always pays the same bcrypt cost, or unknown emails would answer
 // measurably faster (account enumeration).
@@ -34,6 +36,11 @@ export interface GoogleIdentity {
   displayName?: string;
 }
 
+export const REGISTER_MESSAGE =
+  'Check your email: we sent a link to finish creating your account.';
+
+export const EMAIL_NOT_VERIFIED = 'EMAIL_NOT_VERIFIED';
+
 export const GOOGLE_ONLY_PASSWORD_MESSAGE =
   'This account signs in with Google, so it has no password to change.';
 
@@ -44,35 +51,69 @@ export class AuthService {
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
+    private readonly emailVerification: EmailVerificationService,
   ) {}
 
   /**
-   * Always the same message, whether or not the email exists, and no auto-login, so responses can't
-   * be used to probe for accounts.
+   * Always the same message and no session, whether or not the email exists, so responses can't be
+   * used to probe for accounts; the inbox learns which case it was. Mail goes out after the response.
    */
   async register(dto: RegisterDto): Promise<{ message: string }> {
     const passwordHash = await bcrypt.hash(dto.password, 12);
+    const link = { browserBinding: dto.browserBinding, client: dto.client };
     const existing = await this.usersService.findByEmail(dto.email);
+
     if (!existing) {
-      try {
-        await this.usersService.createUser({
-          email: dto.email,
-          displayName: dto.displayName,
-          passwordHash,
-        });
-      } catch (err) {
-        // A concurrent registration of the same new email lost the race and
-        // hit the unique constraint — still not a signal worth exposing.
-        const isDuplicate =
-          err instanceof Prisma.PrismaClientKnownRequestError &&
-          err.code === 'P2002';
-        if (!isDuplicate) throw err;
+      const created = await this.createPasswordUser(dto, passwordHash);
+      if (created) {
+        this.emailVerification.runInBackground(
+          'Sign-up verification',
+          this.emailVerification.sendLink(created.id, link),
+        );
       }
+    } else if (this.emailVerification.isRequiredFor(existing)) {
+      // Nobody has proven this inbox yet and the account can't hold data, so the latest sign-up
+      // wins: otherwise whoever registers someone else's address first keeps a password on it.
+      await this.prisma.user.update({
+        where: { id: existing.id },
+        data: {
+          passwordHash,
+          ...(dto.displayName ? { displayName: dto.displayName } : {}),
+        },
+      });
+      this.emailVerification.runInBackground(
+        'Sign-up verification',
+        this.emailVerification.sendLink(existing.id, link),
+      );
+    } else {
+      this.emailVerification.runInBackground(
+        'Account-exists notice',
+        this.emailVerification.sendAccountExistsNotice(existing.email),
+      );
     }
-    return {
-      message:
-        'If this email can be used, your account has been created. Please log in.',
-    };
+    return { message: REGISTER_MESSAGE };
+  }
+
+  private async createPasswordUser(dto: RegisterDto, passwordHash: string) {
+    try {
+      return await this.usersService.createUser({
+        email: dto.email,
+        displayName: dto.displayName,
+        passwordHash,
+      });
+    } catch (err) {
+      // A concurrent registration of the same new email won the race; it sends the link.
+      const isDuplicate =
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2002';
+      if (!isDuplicate) throw err;
+      return null;
+    }
+  }
+
+  /** A session for an email just verified in the browser that signed up. */
+  startVerifiedSession(userId: string, email: string) {
+    return this.issueTokens(userId, email, randomBytes(16).toString('hex'));
   }
 
   async login(dto: LoginDto) {
@@ -85,6 +126,13 @@ export class AuthService {
     );
     if (!user?.passwordHash || !passwordMatches) {
       throw new UnauthorizedException('Invalid credentials');
+    }
+    // Only after the password matched, so this reveals nothing to someone guessing.
+    if (this.emailVerification.isRequiredFor(user)) {
+      throw new ForbiddenException({
+        code: EMAIL_NOT_VERIFIED,
+        message: 'Verify your email to sign in. Check your inbox for the link.',
+      });
     }
     return this.issueTokens(
       user.id,

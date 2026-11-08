@@ -30,6 +30,7 @@ import {
   PasswordStrengthMeter,
 } from "@/components/auth/auth-parts";
 import { ApiClientError } from "@/lib/api";
+import { checkEmailUrl } from "@/lib/pending-signup";
 import { handleApiError } from "@/lib/form-errors";
 import { MIN_PASSWORD_LENGTH, scorePassword } from "@/lib/password-strength";
 
@@ -80,17 +81,8 @@ export default function RegisterPage() {
         }
         throw new ApiClientError(res.status, body.message ?? "Registration failed.", body);
       }
-      // No auto-login (the backend never signals whether the email was new): send the user to log
-      // in, keeping the MCP bridge param.
-      const params = new URLSearchParams(window.location.search);
-      const mcpAuthorize = params.get("mcp_authorize");
-      const loginUrl = new URL("/login", window.location.origin);
-      loginUrl.searchParams.set("registered", "1");
-      loginUrl.searchParams.set("email", values.email);
-      if (mcpAuthorize) loginUrl.searchParams.set("mcp_authorize", mcpAuthorize);
-      const next = params.get("next");
-      if (next) loginUrl.searchParams.set("next", next);
-      router.replace(`${loginUrl.pathname}${loginUrl.search}`);
+      // No session yet: the account opens once the emailed link is used.
+      router.replace(checkEmailUrl(values.email, "signup", new URLSearchParams(window.location.search)));
     } catch (err) {
       handleApiError(err, {
         setError: form.setError,

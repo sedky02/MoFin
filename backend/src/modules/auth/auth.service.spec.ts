@@ -1,11 +1,21 @@
 import {
+  ForbiddenException,
   GatewayTimeoutException,
   ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
+import { Prisma } from '@prisma/client';
 import { sha256 } from '../../common/utils/hash';
 import { AuthService } from './auth.service';
+
+// Stands in for EmailVerificationService where verification is not under test.
+const NO_EMAIL_VERIFICATION = {
+  isRequiredFor: () => false,
+  runInBackground: () => undefined,
+  sendLink: async () => ({ alreadyVerified: false }),
+  sendAccountExistsNotice: async () => undefined,
+};
 
 describe('AuthService refresh token rotation', () => {
   const FUTURE = new Date(Date.now() + 60_000);
@@ -40,6 +50,7 @@ describe('AuthService refresh token rotation', () => {
       {} as never,
       jwtService as never,
       config as never,
+      NO_EMAIL_VERIFICATION as never,
     );
     return { service, prisma };
   }
@@ -243,6 +254,7 @@ describe('AuthService refresh grace window', () => {
       {} as never,
       jwtService as never,
       config as never,
+      NO_EMAIL_VERIFICATION as never,
     );
     const login = async () => {
       const { refreshToken: token } = await service['issueTokens'](
@@ -368,6 +380,7 @@ describe('AuthService refresh grace window', () => {
         ...config,
         getOrThrow: () => 'another-refresh-token-key-of-32-chars',
       } as never,
+      NO_EMAIL_VERIFICATION as never,
     );
 
     expect(other['successorOf'](r0)).not.toBe(viaDefault);
@@ -403,6 +416,7 @@ describe('AuthService.loginWithGoogle timeout handling', () => {
       {} as never,
       {} as never,
       config as never,
+      NO_EMAIL_VERIFICATION as never,
     );
     await expect(
       service.loginWithGoogle('code', 'https://web.example/callback'),
@@ -418,6 +432,7 @@ describe('AuthService.loginWithGoogle timeout handling', () => {
       {} as never,
       {} as never,
       config as never,
+      NO_EMAIL_VERIFICATION as never,
     );
     await expect(
       service.loginWithGoogle('code', 'https://web.example/callback'),
@@ -440,6 +455,7 @@ describe('AuthService.login timing-safe unknown-email handling (audit SEC-XX)', 
       usersService as never,
       jwtService as never,
       config as never,
+      NO_EMAIL_VERIFICATION as never,
     );
   }
 
@@ -487,12 +503,54 @@ describe('AuthService.login timing-safe unknown-email handling (audit SEC-XX)', 
     });
     expect(result.accessToken).toBe('access-jwt');
   });
+
+  describe('accounts that must verify their email first', () => {
+    function makePendingService(passwordHash: string) {
+      const prisma = { refreshToken: { create: jest.fn(async () => ({})) } };
+      return new AuthService(
+        prisma as never,
+        {
+          findByEmail: jest.fn(async () => ({
+            id: 'u1',
+            email: 'a@b.com',
+            passwordHash,
+          })),
+        } as never,
+        { signAsync: jest.fn(async () => 'access-jwt') } as never,
+        config as never,
+        { ...NO_EMAIL_VERIFICATION, isRequiredFor: () => true } as never,
+      );
+    }
+
+    it('refuses a correct password with EMAIL_NOT_VERIFIED and no session', async () => {
+      const service = makePendingService(await bcrypt.hash('correct-horse', 4));
+
+      const attempt = service.login({
+        email: 'a@b.com',
+        password: 'correct-horse',
+      });
+
+      await expect(attempt).rejects.toBeInstanceOf(ForbiddenException);
+      await expect(attempt).rejects.toMatchObject({
+        response: { code: 'EMAIL_NOT_VERIFIED' },
+      });
+    });
+
+    it('still answers a wrong password with the generic invalid-credentials error', async () => {
+      const service = makePendingService(await bcrypt.hash('correct-horse', 4));
+
+      await expect(
+        service.login({ email: 'a@b.com', password: 'wrong-guess' }),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
+    });
+  });
 });
 
 describe('AuthService.register uniform response (audit SEC-XX)', () => {
   function makeService(overrides: {
     findByEmail: unknown;
     createUser?: jest.Mock;
+    verificationRequired?: boolean;
   }) {
     const usersService = {
       findByEmail: jest.fn(async () => overrides.findByEmail),
@@ -500,14 +558,103 @@ describe('AuthService.register uniform response (audit SEC-XX)', () => {
         overrides.createUser ??
         jest.fn(async () => ({ id: 'new-user', email: 'a@b.com' })),
     };
+    const prisma = { user: { update: jest.fn(async () => ({})) } };
+    const verification = {
+      isRequiredFor: jest.fn(() => overrides.verificationRequired ?? false),
+      runInBackground: jest.fn(),
+      sendLink: jest.fn(async () => ({ alreadyVerified: false })),
+      sendAccountExistsNotice: jest.fn(async () => undefined),
+    };
     const service = new AuthService(
-      {} as never,
+      prisma as never,
       usersService as never,
       {} as never,
       {} as never,
+      verification as never,
     );
-    return { service, usersService };
+    return { service, usersService, prisma, verification };
   }
+
+  const BINDING = 'b'.repeat(43);
+
+  it('mails a verification link bound to the signing-up browser for a new email', async () => {
+    const { service, verification } = makeService({ findByEmail: null });
+
+    await service.register({
+      email: 'new@example.com',
+      password: 'password123',
+      browserBinding: BINDING,
+      client: 'web',
+    });
+
+    expect(verification.sendLink).toHaveBeenCalledWith('new-user', {
+      browserBinding: BINDING,
+      client: 'web',
+    });
+    expect(verification.sendAccountExistsNotice).not.toHaveBeenCalled();
+  });
+
+  it('tells the owner of an existing account by email instead of on screen', async () => {
+    const { service, verification, prisma } = makeService({
+      findByEmail: { id: 'existing', email: 'a@b.com' },
+    });
+
+    await service.register({
+      email: 'a@b.com',
+      password: 'password123',
+      client: 'web',
+    });
+
+    expect(verification.sendAccountExistsNotice).toHaveBeenCalledWith(
+      'a@b.com',
+    );
+    expect(verification.sendLink).not.toHaveBeenCalled();
+    expect(prisma.user.update).not.toHaveBeenCalled();
+  });
+
+  it('lets the latest sign-up replace the password of an account still waiting for verification', async () => {
+    const { service, verification, prisma } = makeService({
+      findByEmail: { id: 'pending', email: 'a@b.com' },
+      verificationRequired: true,
+    });
+
+    await service.register({
+      email: 'a@b.com',
+      password: 'password123',
+      client: 'mobile',
+    });
+
+    expect(prisma.user.update).toHaveBeenCalledWith({
+      where: { id: 'pending' },
+      data: { passwordHash: expect.any(String) },
+    });
+    expect(verification.sendLink).toHaveBeenCalledWith('pending', {
+      browserBinding: undefined,
+      client: 'mobile',
+    });
+  });
+
+  it('sends nothing when a concurrent sign-up of the same email won the race', async () => {
+    const duplicate = new Prisma.PrismaClientKnownRequestError('dup', {
+      code: 'P2002',
+      clientVersion: 'test',
+    });
+    const { service, verification } = makeService({
+      findByEmail: null,
+      createUser: jest.fn(async () => {
+        throw duplicate;
+      }),
+    });
+
+    await expect(
+      service.register({
+        email: 'new@example.com',
+        password: 'password123',
+        client: 'web',
+      }),
+    ).resolves.toEqual({ message: expect.any(String) });
+    expect(verification.sendLink).not.toHaveBeenCalled();
+  });
 
   it('creates the user and returns the generic message for a brand-new email', async () => {
     const { service, usersService } = makeService({ findByEmail: null });
@@ -515,6 +662,7 @@ describe('AuthService.register uniform response (audit SEC-XX)', () => {
     const result = await service.register({
       email: 'new@example.com',
       password: 'password123',
+      client: 'web',
     });
 
     expect(usersService.createUser).toHaveBeenCalledWith(
@@ -532,6 +680,7 @@ describe('AuthService.register uniform response (audit SEC-XX)', () => {
     const result = await service.register({
       email: 'a@b.com',
       password: 'password123',
+      client: 'web',
     });
 
     expect(usersService.createUser).not.toHaveBeenCalled();
@@ -542,12 +691,14 @@ describe('AuthService.register uniform response (audit SEC-XX)', () => {
     const fresh = await makeService({ findByEmail: null }).service.register({
       email: 'new@example.com',
       password: 'password123',
+      client: 'web',
     });
     const existing = await makeService({
       findByEmail: { id: 'existing', email: 'a@b.com' },
     }).service.register({
       email: 'a@b.com',
       password: 'password123',
+      client: 'web',
     });
 
     expect(fresh).toEqual(existing);
@@ -630,6 +781,7 @@ describe('AuthService.signInWithGoogle (shared by the code flow and the mobile I
       usersService as never,
       jwtService as never,
       config as never,
+      NO_EMAIL_VERIFICATION as never,
     );
     return { service, users, sessions, prisma, revoked };
   }

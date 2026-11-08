@@ -27,8 +27,7 @@ export const AUTH_COPY = {
   incorrect: 'Incorrect email or password.',
   rateLimited: 'Too many attempts. Please wait a moment and try again.',
   rateLimitedForgot: 'Too many attempts. Please wait a few minutes and try again.',
-  registered:
-    'If that email can be used, your account has been created. Sign in with the password you just chose.',
+  verified: 'Your email is verified. Sign in to continue.',
   expired: 'Your session expired. Sign in to continue.',
   loginFailed: 'Login failed.',
   registerFailed: 'Registration failed.',

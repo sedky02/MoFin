@@ -63,9 +63,15 @@ export type DemoSession = AuthTokens & { expiresAt: string; reused: boolean };
  */
 export const authApi = {
   login: (body: { email: string; password: string }) => send<AuthTokens>('POST', '/auth/login', { body }),
-  /** Always the same message whether or not the email was new; no tokens (sign in afterwards). */
+  /**
+   * Always the same message whether or not the email was new, and no tokens: the account signs in
+   * once its emailed link is opened. `client` makes that link offer to come back to the app.
+   */
   register: (body: { email: string; password: string; displayName?: string }) =>
-    send<{ message: string }>('POST', '/auth/register', { body }),
+    send<{ message: string }>('POST', '/auth/register', { body: { ...body, client: 'mobile' } }),
+  /** 202 with the same message whether or not the email is waiting for verification. */
+  resendVerification: (body: { email: string }) =>
+    send<{ message: string }>('POST', '/auth/email/verification/resend', { body: { ...body, client: 'mobile' } }),
   /** 202 with the same message whether or not the email has an account. */
   forgotPassword: (body: { email: string }) => send<{ message: string }>('POST', '/auth/password/forgot', { body }),
   demo: () => send<DemoSession>('POST', '/auth/demo', { body: {}, timeoutMs: DEMO_TIMEOUT_MS }),

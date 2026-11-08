@@ -85,6 +85,8 @@ describeWithDb('Password recovery (e2e)', () => {
     process.env.JWT_MCP_SECRET ??= `e2e-mcp-${'b'.repeat(32)}`;
     process.env.REFRESH_TOKEN_SECRET ??= `e2e-refresh-${'c'.repeat(32)}`;
     process.env.WEB_URL = 'http://web.e2e';
+    // These users sign in straight after signing up; verification has its own tests.
+    process.env.EMAIL_VERIFICATION_REQUIRED_FROM = '2999-01-01T00:00:00Z';
 
     // Imported after the env is set: ConfigModule validates on import.
     const { AppModule } = await import('../src/app.module');

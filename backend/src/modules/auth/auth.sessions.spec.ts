@@ -3,6 +3,14 @@ import * as bcrypt from 'bcrypt';
 import { sha256 } from '../../common/utils/hash';
 import { AuthService, GOOGLE_ONLY_PASSWORD_MESSAGE } from './auth.service';
 
+// Stands in for EmailVerificationService where verification is not under test.
+const NO_EMAIL_VERIFICATION = {
+  isRequiredFor: () => false,
+  runInBackground: () => undefined,
+  sendLink: async () => ({ alreadyVerified: false }),
+  sendAccountExistsNotice: async () => undefined,
+};
+
 describe('AuthService password change and sign-out everywhere', () => {
   type Row = {
     id: string;
@@ -115,6 +123,7 @@ describe('AuthService password change and sign-out everywhere', () => {
       {} as never,
       jwtService as never,
       config as never,
+      NO_EMAIL_VERIFICATION as never,
     );
     let families = 0;
     const login = async (userId = 'u1') => {

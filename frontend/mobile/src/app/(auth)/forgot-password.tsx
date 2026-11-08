@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form';
 import { Linking, View } from 'react-native';
 
 import { ApiClientError, authApi } from '@/api/client';
+import { AuthChip } from '@/components/auth/auth-chip';
 import { AuthMailScene } from '@/components/auth/auth-scenes';
 import { AuthScreen } from '@/components/auth/auth-screen';
 import { FormField } from '@/components/auth/form-field';
@@ -58,8 +59,8 @@ export default function ForgotPasswordScreen() {
           </Text>
         }>
         <View className="flex-row flex-wrap justify-center gap-2.5">
-          <Chip icon={Clock}>Expires in 30 minutes</Chip>
-          <Chip icon={Check}>Works once</Chip>
+          <AuthChip icon={Clock}>Expires in 30 minutes</AuthChip>
+          <AuthChip icon={Check}>Works once</AuthChip>
         </View>
         <Text className="mt-6 text-center text-sm leading-6 text-muted-foreground">
           The link opens the MoFin website, where you choose the new password. Then come back here and sign in.
@@ -125,14 +126,5 @@ export default function ForgotPasswordScreen() {
         </Link>
       </Text>
     </AuthScreen>
-  );
-}
-
-function Chip({ icon, children }: { icon: React.ComponentProps<typeof Icon>['as']; children: string }) {
-  return (
-    <View className="flex-row items-center gap-1.5 rounded-full border border-border px-3 py-1.5">
-      <Icon as={icon} size={14} className="text-muted-foreground" />
-      <Text className="text-[13px] text-muted-foreground">{children}</Text>
-    </View>
   );
 }

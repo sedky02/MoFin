@@ -51,6 +51,21 @@ export function setAuthCookies(
   res.cookies.set(SIGNED_IN_COOKIE, "1", { ...baseCookieOptions(REFRESH_MAX_AGE), httpOnly: false });
 }
 
+/**
+ * Ties an emailed verification link to the browser that signed up: only a browser holding this
+ * value gets a session when it redeems the link. Lives as long as the link.
+ */
+export const SIGNUP_BINDING_COOKIE = "signup_binding";
+export const SIGNUP_BINDING_MAX_AGE = 60 * 60 * 24;
+
+export function setSignupBindingCookie(res: NextResponse, value: string): void {
+  res.cookies.set(SIGNUP_BINDING_COOKIE, value, baseCookieOptions(SIGNUP_BINDING_MAX_AGE));
+}
+
+export function clearSignupBindingCookie(res: NextResponse): void {
+  res.cookies.set(SIGNUP_BINDING_COOKIE, "", { ...baseCookieOptions(0), maxAge: 0 });
+}
+
 export function clearAuthCookies(res: NextResponse): void {
   res.cookies.set(ACCESS_COOKIE, "", { ...baseCookieOptions(0), maxAge: 0 });
   res.cookies.set(REFRESH_COOKIE, "", { ...baseCookieOptions(0), maxAge: 0 });

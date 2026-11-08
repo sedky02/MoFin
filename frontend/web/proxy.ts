@@ -8,7 +8,7 @@ export default function proxy(request: NextRequest) {
   const refresh = request.cookies.get(REFRESH_COOKIE)?.value;
   const { pathname } = request.nextUrl;
   const isAuthRoute =
-    pathname.startsWith("/login") || pathname.startsWith("/register");
+    pathname.startsWith("/login") || pathname.startsWith("/register") || pathname.startsWith("/check-email");
 
   // Password recovery is reachable signed in or not: a reset link can be
   // opened in a browser that still holds an (about to be revoked) session.

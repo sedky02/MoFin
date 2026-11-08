@@ -586,13 +586,16 @@ model PasswordResetToken {
 // PasswordResetToken: only the SHA-256 is stored, `usedAt` is set when it is
 // redeemed or a newer link supersedes it.
 model EmailVerificationToken {
-  id        String    @id @default(uuid())
-  tokenHash String    @unique
-  userId    String
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  expiresAt DateTime
-  usedAt    DateTime?
-  createdAt DateTime  @default(now())
+  id                 String    @id @default(uuid())
+  tokenHash          String    @unique
+  userId             String
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt          DateTime
+  usedAt             DateTime?
+  // SHA-256 of a random value kept in an httpOnly cookie of the browser that signed up: only that
+  // browser gets a session when it redeems the link.
+  browserBindingHash String?
+  createdAt          DateTime  @default(now())
 
   @@index([userId])
   @@index([expiresAt])

@@ -397,6 +397,7 @@ describe('Public routes across every controller', () => {
     'POST /auth/password/reset',
     'POST /auth/logout',
     'POST /auth/email/verify',
+    'POST /auth/email/verification/resend',
     'POST /auth/google',
     'POST /auth/google/id-token',
     'POST /auth/demo',

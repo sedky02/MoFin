@@ -15,6 +15,7 @@ import { Text } from '@/components/ui/text';
 import { handleApiError } from '@/core/form-errors';
 import { scorePassword } from '@/core/password-strength';
 import { AUTH_COPY, registerSchema, type RegisterValues } from '@/lib/auth-forms';
+import { rememberPendingSignup } from '@/lib/pending-signup';
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -39,8 +40,9 @@ export default function RegisterScreen() {
         password: values.password,
         ...(values.displayName ? { displayName: values.displayName } : {}),
       });
-      // No auto-login: the backend answers the same whether or not the email was new.
-      router.replace({ pathname: '/login', params: { registered: '1', email: values.email } });
+      // No session yet: the account opens once the emailed link is used.
+      rememberPendingSignup({ email: values.email, password: values.password });
+      router.replace({ pathname: '/check-email', params: { email: values.email, reason: 'signup' } });
     } catch (err) {
       if (err instanceof ApiClientError && err.status === 429) {
         setRateLimited(true);
