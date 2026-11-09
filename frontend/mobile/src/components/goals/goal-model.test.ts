@@ -75,3 +75,28 @@ describe('goalRowModel', () => {
     expect(m.currency).toBe('USD');
   });
 });
+
+describe('goalRowModel, card fields', () => {
+  it('says what a cap has left and over, with its target and the reason it needs attention', () => {
+    const left = goalRowModel(goal({ type: 'EXPENSE' }, { progressAmount: '310.00', targetAmount: '1000.00' }), account, NOW);
+    expect(left.headline).toEqual({ amount: '690', label: 'left' });
+    const over = goalRowModel(goal({ type: 'EXPENSE' }, { progressAmount: '1170.00' }), account, NOW);
+    expect(over.headline?.label).toBe('over');
+    expect(over.reason).toBe('Over limit');
+  });
+
+  it('names the category, or every category, and none for a balance goal', () => {
+    const scoped = goalRowModel(
+      goal({ type: 'EXPENSE', category: { id: 'c1', name: 'Dining out', color: '#e05d2a', archivedAt: null } }),
+      account,
+      NOW,
+    );
+    expect(scoped.category).toEqual({ name: 'Dining out', color: '#e05d2a' });
+    expect(goalRowModel(goal({ type: 'INCOME' }), account, NOW).category?.name).toBe('All income');
+    expect(goalRowModel(goal(), account, NOW).category).toBeNull();
+  });
+
+  it('folds an achieved goal', () => {
+    expect(goalRowModel(goal({}, { progressAmount: '1500.00', status: 'ACHIEVED' }), account, NOW).folded).toBe(true);
+  });
+});

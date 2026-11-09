@@ -20,19 +20,14 @@ import { GoalDialog } from './goal-dialog';
 import { GoalHistoryDialog } from './goal-history-dialog';
 import { GoalRow } from './goal-row';
 
-function Panel({ title, children }: { title: string; children: React.ReactNode }) {
+/** A group of goal cards under a heading with its count, like the web's "Needs attention · 2". */
+function Panel({ title, count, children }: { title: string; count?: number; children: React.ReactNode }) {
   return (
     <View accessibilityLabel={title} className="gap-3">
-      <Text role="heading" aria-level={2} className="px-1 text-sm font-semibold text-muted-foreground">
-        {title}
+      <Text role="heading" aria-level={2} className="px-1 text-[13px] font-semibold text-muted-foreground">
+        {count === undefined ? title : `${title} · ${count}`}
       </Text>
-      <View className="overflow-hidden rounded-xl border border-border bg-card">
-        {React.Children.toArray(children).map((child, i) => (
-          <View key={i} className={i > 0 ? 'border-t border-border' : undefined}>
-            {child}
-          </View>
-        ))}
-      </View>
+      <View className="gap-3">{children}</View>
     </View>
   );
 }
@@ -146,6 +141,7 @@ export function GoalsScreen() {
       key={goal.id}
       goal={goal}
       account={accountsById.get(goal.accountId)}
+      showAccount={accountsById.size > 1}
       onOpenActions={setActionsGoal}
       busy={restoringId === goal.id}
     />
@@ -194,7 +190,7 @@ export function GoalsScreen() {
         ) : (
           <View className="gap-8">
             {groupGoalsByStanding(active.data ?? []).map(({ standing, goals }) => (
-              <Panel key={standing} title={STANDING_LABEL[standing]}>
+              <Panel key={standing} title={STANDING_LABEL[standing]} count={goals.length}>
                 {goals.map(renderRow)}
               </Panel>
             ))}
