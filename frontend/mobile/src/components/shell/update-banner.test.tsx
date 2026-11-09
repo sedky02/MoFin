@@ -40,7 +40,7 @@ afterAll(() => Object.defineProperty(Platform, 'OS', { configurable: true, get: 
 
 describe('UpdateBanner', () => {
   it('offers the newer build and opens its download', async () => {
-    const open = jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
+    const open = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
     await render(<UpdateBanner />);
     expect(screen.getByText('Version 1.0.3 is available.')).toBeTruthy();
     fireEvent.press(screen.getByText('Update'));

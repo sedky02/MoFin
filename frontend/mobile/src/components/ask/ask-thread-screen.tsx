@@ -1,6 +1,7 @@
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import * as React from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { SUGGESTIONS } from '@/components/ask/ask-chat-list';
@@ -144,7 +145,8 @@ export function AskThreadScreen() {
       onLayout={() => frameRef.current?.measureInWindow((_x, y) => setFrameTop((prev) => (Math.abs(prev - y) > 1 ? y : prev)))}
       className="flex-1 bg-background">
       <Stack.Screen options={{ title }} />
-      <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={frameTop}>
+      {/* keyboard-controller's version: React Native's own can't see the keyboard under Android's edge-to-edge layout. */}
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding" keyboardVerticalOffset={frameTop}>
         <ScrollView
           ref={scrollRef}
           className="flex-1"
