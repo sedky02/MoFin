@@ -19,7 +19,7 @@
  *
  * It publishes through the backend (POST /app/releases), authenticated with APP_RELEASE_TOKEN, the
  * same value as the backend's env var. RELEASE_API_URL picks another backend (default: production).
- * The token is read from the environment and never written anywhere.
+ * The token is read from the shell or mobile/.env and never written anywhere.
  */
 import { execFileSync, spawnSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -29,6 +29,13 @@ import { parseArgs } from 'node:util';
 import { bumpFor, nextVersion, parseCommit, releaseNotes } from './release-version.mjs';
 
 const mobileDir = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+// The token can live in mobile/.env (gitignored, and not EXPO_PUBLIC_, so never in the app bundle).
+// A value already set in the shell wins.
+try {
+  process.loadEnvFile(resolve(mobileDir, '.env'));
+} catch {
+  // No .env: the shell has to provide the token.
+}
 const DEFAULT_API_URL = 'https://mo-fin-backend.vercel.app/api/v1';
 const apiUrl = (process.env.RELEASE_API_URL ?? DEFAULT_API_URL).replace(/\/+$/, '');
 const configPath = resolve(mobileDir, 'app.config.ts');
