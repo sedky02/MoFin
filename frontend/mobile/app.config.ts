@@ -6,7 +6,7 @@ const config: ExpoConfig = {
   name: 'MoFin',
   slug: 'mofin',
   owner: 'sedky02',
-  version: '1.1.0',
+  version: '1.1.1',
   scheme: 'mofin',
   orientation: 'portrait',
   icon: './assets/images/icon.png',
