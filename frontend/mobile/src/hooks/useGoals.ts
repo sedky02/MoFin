@@ -47,6 +47,7 @@ export interface CreateGoalInput {
   accountId: string;
   name: string;
   type: GoalType;
+  categoryId?: string | null;
   targetAmount: string;
   isRecurring: boolean;
   recurrenceUnit?: GoalRecurrenceUnit;

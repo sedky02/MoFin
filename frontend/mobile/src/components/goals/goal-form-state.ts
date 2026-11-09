@@ -10,6 +10,7 @@ const schema = z
     accountId: z.string().min(1, 'Select an account.'),
     name: z.string().trim().min(1, 'Name is required.').max(60),
     type: z.enum(['BALANCE', 'INCOME', 'EXPENSE']),
+    categoryId: z.string().optional(),
     targetAmount: z.string().refine((v) => !!parseMoneyInput(v), 'Enter a valid amount.'),
     isRecurring: z.boolean(),
     recurrenceUnit: z.enum(['MONTH', 'YEAR']).optional(),
@@ -21,7 +22,7 @@ const schema = z
       ctx.addIssue({ code: 'custom', path: ['recurrenceUnit'], message: 'Pick how often this goal repeats.' });
     }
     if (!value.isRecurring && !value.periodEnd) {
-      ctx.addIssue({ code: 'custom', path: ['periodEnd'], message: 'End date is required for a fixed goal.' });
+      ctx.addIssue({ code: 'custom', path: ['periodEnd'], message: 'Pick the last day of the goal.' });
     }
     // The end date counts in full, so a one-day goal (start = end) is fine.
     if (!value.isRecurring && value.periodEnd && value.periodEnd < value.periodStart) {
@@ -33,6 +34,8 @@ export type GoalDraft = {
   accountId: string;
   name: string;
   type: GoalType;
+  /** Income/Expense only; unset counts every category. */
+  categoryId?: string;
   targetAmount: string;
   isRecurring: boolean;
   recurrenceUnit?: GoalRecurrenceUnit;
@@ -48,6 +51,7 @@ export function initialGoalDraft(goal: Goal | undefined, activeAccountId: string
       accountId: goal.accountId,
       name: goal.name,
       type: goal.type,
+      categoryId: goal.categoryId ?? undefined,
       targetAmount: goal.targetAmount,
       isRecurring: goal.isRecurring,
       recurrenceUnit: goal.recurrenceUnit ?? undefined,
@@ -58,10 +62,11 @@ export function initialGoalDraft(goal: Goal | undefined, activeAccountId: string
   return {
     accountId: activeAccountId ?? '',
     name: '',
-    type: 'BALANCE',
+    type: 'EXPENSE',
+    categoryId: undefined,
     targetAmount: '',
-    isRecurring: false,
-    recurrenceUnit: undefined,
+    isRecurring: true,
+    recurrenceUnit: 'MONTH',
     periodStart: today,
     periodEnd: '',
   };
@@ -84,6 +89,7 @@ export function validateGoalDraft(draft: GoalDraft): { ok: true; input: CreateGo
       accountId: v.accountId,
       name: v.name,
       type: v.type,
+      categoryId: v.type === 'BALANCE' ? null : (v.categoryId ?? null),
       // The parsed decimal, not the typed text (a submit can land before the field's blur tidy).
       targetAmount: parseMoneyInput(v.targetAmount) ?? v.targetAmount,
       isRecurring: v.isRecurring,

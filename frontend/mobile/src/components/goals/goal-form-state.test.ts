@@ -34,7 +34,7 @@ describe('validateGoalDraft', () => {
         accountId: 'Select an account.',
         name: 'Name is required.',
         targetAmount: 'Enter a valid amount.',
-        periodEnd: 'End date is required for a fixed goal.',
+        periodEnd: 'Pick the last day of the goal.',
       },
     });
   });
@@ -54,11 +54,12 @@ describe('validateGoalDraft', () => {
 });
 
 describe('initialGoalDraft', () => {
-  it('starts a new goal on the active account, as a fixed Balance goal today', () => {
+  it('starts a new goal on the active account, as a monthly spending cap from today', () => {
     expect(initialGoalDraft(undefined, 'a9', '2026-11-03')).toMatchObject({
       accountId: 'a9',
-      type: 'BALANCE',
-      isRecurring: false,
+      type: 'EXPENSE',
+      isRecurring: true,
+      recurrenceUnit: 'MONTH',
       periodStart: '2026-11-03',
     });
   });

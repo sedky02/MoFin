@@ -1,14 +1,14 @@
 import * as React from 'react';
+import { HelpHint } from '@/components/common/help-hint';
 import { useWindowDimensions, View } from 'react-native';
 
 import { SheetScrollView } from '@/components/ui/sheet-parts';
 
-import { AccountTypePicker, TYPE_ICON } from '@/components/common/account-type-picker';
+import { AccountTypePicker } from '@/components/common/account-type-picker';
 import { CurrencyPicker } from '@/components/common/currency-picker';
 import { MoneyInput } from '@/components/common/money-input';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Text } from '@/components/ui/text';
 import type { Account } from '@/core/types';
@@ -86,13 +86,10 @@ function AccountDialogBody({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="gap-0 p-0 sm:max-w-md" style={{ maxHeight: height - 32 }}>
-        <DialogHeader className="flex-row items-center gap-3 border-b border-border px-4 py-3 pr-12">
-          <View aria-hidden className="size-10 items-center justify-center rounded-xl bg-secondary">
-            <Icon as={TYPE_ICON[draft.type]} size={20} className="text-muted-foreground" />
-          </View>
+        <DialogHeader className="border-b border-border px-4 py-3.5 pr-12">
           <View className="min-w-0 flex-1">
             <DialogTitle>{isEdit ? 'Edit account' : 'New account'}</DialogTitle>
-            <DialogDescription className="mt-1">
+            <DialogDescription className="sr-only">
               {isEdit
                 ? "Update this account's name, type or opening balance."
                 : 'Add an account to track its balance via the ledger.'}
@@ -100,7 +97,7 @@ function AccountDialogBody({
           </View>
         </DialogHeader>
 
-        <SheetScrollView contentContainerClassName="gap-4 px-4 py-4">
+        <SheetScrollView contentContainerClassName="gap-5 px-4 py-5">
           <View className="gap-1.5">
             <Text className="text-sm font-medium">Name</Text>
             <Input
@@ -125,16 +122,19 @@ function AccountDialogBody({
           </View>
 
           <View className="gap-1.5">
-            <Text className="text-sm font-medium">Currency</Text>
+            {isEdit ? (
+              <LabelWithHint label="Currency" hintLabel="About the currency">
+                Currency can&apos;t be changed after an account is created.
+              </LabelWithHint>
+            ) : (
+              <Text className="text-sm font-medium">Currency</Text>
+            )}
             <CurrencyPicker
               value={draft.currency}
               onChange={(c) => setDraft((d) => ({ ...d, currency: c }))}
               pinned={usedCurrencies}
               disabled={isEdit}
             />
-            {isEdit ? (
-              <Text className="text-xs text-muted-foreground">Currency can&apos;t be changed after an account is created.</Text>
-            ) : null}
             {errors.currency ? (
               <Text role="alert" className="text-sm text-destructive">
                 {errors.currency}
@@ -143,7 +143,9 @@ function AccountDialogBody({
           </View>
 
           <View className="gap-1.5">
-            <Text className="text-sm font-medium">Opening balance (optional)</Text>
+            <LabelWithHint label="Opening balance (optional)" hintLabel="About the opening balance">
+              What the account held before you started tracking it. It isn&apos;t counted as income. Use a minus for money owed.
+            </LabelWithHint>
             <MoneyInput
               value={draft.openingBalance}
               onChange={(v) => setDraft((d) => ({ ...d, openingBalance: v }))}
@@ -152,9 +154,6 @@ function AccountDialogBody({
               invalid={!!errors.openingBalance}
               accessibilityLabel="Opening balance"
             />
-            <Text className="text-xs text-muted-foreground">
-              What the account held before you started tracking it. It isn&apos;t counted as income. Use a minus for money owed.
-            </Text>
             {errors.openingBalance ? (
               <Text role="alert" className="text-sm text-destructive">
                 {errors.openingBalance}
@@ -173,6 +172,16 @@ function AccountDialogBody({
         </View>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/** A field label with its explanation behind an info button, as on the web. */
+function LabelWithHint({ label, hintLabel, children }: { label: string; hintLabel: string; children: string }) {
+  return (
+    <View className="-my-2 flex-row items-center">
+      <Text className="text-sm font-medium">{label}</Text>
+      <HelpHint label={hintLabel}>{children}</HelpHint>
+    </View>
   );
 }
 

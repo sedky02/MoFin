@@ -1,4 +1,6 @@
 import {
+  goalAttentionReason,
+  goalPaceShare,
   goalStanding,
   goalTimeLeft,
   goalTone,
@@ -118,5 +120,36 @@ describe("goalTimeLeft", () => {
   it("says nothing for a cancelled goal or a period already over", () => {
     expect(goalTimeLeft(end("2026-10-31T23:59:59.999Z", { archivedAt: "2026-10-10T00:00:00Z" }), NOW)).toBeNull();
     expect(goalTimeLeft(end("2026-10-01T23:59:59.999Z"), NOW)).toBeNull();
+  });
+});
+
+describe("goalAttentionReason", () => {
+  const now = new Date("2026-11-08T12:00:00Z");
+  const g = (type: Goal["type"], progressAmount: string, status: "IN_PROGRESS" | "FAILED" = "IN_PROGRESS") =>
+    ({
+      type,
+      targetAmount: "450",
+      archivedAt: null,
+      currentInstance: {
+        periodStart: "2026-11-01T00:00:00Z",
+        periodEnd: "2026-11-30T23:59:59.999Z",
+        targetAmount: "450",
+        progressAmount,
+        status,
+      },
+    }) as Goal;
+
+  it("names an over-limit cap and one spending ahead of the clock", () => {
+    expect(goalAttentionReason(g("EXPENSE", "500"), now)).toBe("Over limit");
+    expect(goalAttentionReason(g("EXPENSE", "310"), now)).toBe("Spending fast");
+  });
+
+  it("calls a reach goal behind pace, and gives no reason when on track", () => {
+    expect(goalAttentionReason(g("INCOME", "0", "IN_PROGRESS"), new Date("2026-11-25T00:00:00Z"))).toBe("Behind pace");
+    expect(goalAttentionReason(g("EXPENSE", "50"), now)).toBeNull();
+  });
+
+  it("puts the pace tick at the share of the period gone", () => {
+    expect(goalPaceShare(g("EXPENSE", "50"), now)).toBeCloseTo(0.25, 1);
   });
 });

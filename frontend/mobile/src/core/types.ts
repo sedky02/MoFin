@@ -211,9 +211,15 @@ export interface GoalHistoryInstance extends GoalInstance {
 
 // BALANCE/INCOME are "reach" goals: achieved once progress hits the target, and it stays so.
 // EXPENSE is "stay under": over the cap is Failed, achieved only at period end.
+/** The category a goal counts, as the goal endpoints return it. */
+export type GoalCategory = Pick<Category, "id" | "name" | "color" | "archivedAt">;
+
 export interface Goal {
   id: string;
   accountId: string;
+  /** INCOME/EXPENSE only: counts just this category. Null counts every category. */
+  categoryId?: string | null;
+  category?: GoalCategory | null;
   name: string;
   type: GoalType;
   targetAmount: string;
