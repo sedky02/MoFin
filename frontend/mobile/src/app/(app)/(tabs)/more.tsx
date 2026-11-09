@@ -1,7 +1,8 @@
 import { Link } from 'expo-router';
+import { Spinner } from '@/components/ui/themed-native';
 import type { LucideIcon } from 'lucide-react-native';
 import * as React from 'react';
-import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { signOut } from '@/api/session';
@@ -147,7 +148,7 @@ export default function MoreScreen() {
           await signOut();
         }}
         className="min-h-12 flex-row items-center justify-center gap-2 rounded-2xl border border-border bg-card active:bg-accent">
-        {signingOut ? <ActivityIndicator /> : <Icon as={LogOut} size={18} aria-hidden className="text-destructive" />}
+        {signingOut ? <Spinner /> : <Icon as={LogOut} size={18} aria-hidden className="text-destructive" />}
         <Text className="text-base font-medium text-destructive">{signingOut ? 'Signing out…' : 'Sign out'}</Text>
       </Pressable>
     </ScrollView>

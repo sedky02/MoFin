@@ -1,8 +1,9 @@
 // The Recurring view of the transactions screen: every series once (by its root), with its
 // schedule and actions. Same request and wording as the web's recurring-series-list.
+import { ThemedRefreshControl } from '@/components/ui/themed-native';
 import { router } from 'expo-router';
 import * as React from 'react';
-import { FlatList, Pressable, RefreshControl, View } from 'react-native';
+import { FlatList, Pressable, View } from 'react-native';
 
 import { MoneyAmount } from '@/components/common/money-amount';
 import { EmptyState, ErrorState, SkeletonRows } from '@/components/common/states';
@@ -95,7 +96,7 @@ export function RecurringSeriesList({ header }: { header: React.ReactElement }) 
           <SeriesRow tx={item} accountsById={accountsById} last={index === rows.length - 1} />
         </View>
       )}
-      refreshControl={<RefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} />}
+      refreshControl={<ThemedRefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} />}
       keyboardShouldPersistTaps="handled"
       className="flex-1 bg-background"
       contentContainerClassName="mx-auto w-full max-w-3xl p-4"

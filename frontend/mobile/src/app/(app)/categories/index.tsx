@@ -1,6 +1,8 @@
 import * as React from 'react';
+import { ThemedRefreshControl } from '@/components/ui/themed-native';
+import { usePlaceholderColor } from '@/hooks/use-placeholder-color';
 import { KeyboardScrollView } from '@/components/common/keyboard-scroll-view';
-import { RefreshControl, TextInput, View } from 'react-native';
+import { TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CategoryDialog } from '@/components/categories/category-dialog';
@@ -10,7 +12,6 @@ import { EmptyState, ErrorState, SkeletonRows } from '@/components/common/states
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
-import { PLACEHOLDER_CLASS } from '@/components/ui/input';
 import { Text } from '@/components/ui/text';
 import type { Category } from '@/core/types';
 import { useArchiveCategory, useCategories, useRestoreCategory } from '@/hooks/useCategories';
@@ -36,6 +37,7 @@ function Group({ title, hint, items, ...actions }: { title: string; hint?: strin
 }
 
 export default function CategoriesScreen() {
+  const placeholderColor = usePlaceholderColor();
   const insets = useSafeAreaInsets();
   const [view, setView] = React.useState<'active' | 'archived'>('active');
   const { data, isLoading, isError, refetch, isRefetching } = useCategories('active');
@@ -88,7 +90,7 @@ export default function CategoriesScreen() {
       contentContainerClassName="mx-auto w-full max-w-3xl p-4"
       contentContainerStyle={{ paddingBottom: 16 + insets.bottom }}
       refreshControl={
-        <RefreshControl
+        <ThemedRefreshControl
           refreshing={isRefetching && !isLoading}
           onRefresh={async () => {
             await Promise.all([refetch(), archived.refetch()]);
@@ -125,7 +127,7 @@ export default function CategoriesScreen() {
             autoCapitalize="none"
             autoCorrect={false}
             className="border-input bg-background text-foreground min-h-11 rounded-md border pl-9 pr-3 text-base"
-            placeholderClassName={PLACEHOLDER_CLASS}
+            placeholderTextColor={placeholderColor}
           />
         </View>
       ) : null}

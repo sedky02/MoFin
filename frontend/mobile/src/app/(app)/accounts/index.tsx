@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
+import { ThemedRefreshControl } from '@/components/ui/themed-native';
 import * as React from 'react';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AccountDialog } from '@/components/accounts/account-dialog';
@@ -120,7 +121,7 @@ export default function AccountsScreen() {
       keyboardShouldPersistTaps="handled"
       contentContainerClassName="mx-auto w-full max-w-3xl p-4"
       contentContainerStyle={{ paddingBottom: 16 + insets.bottom }}
-      refreshControl={<RefreshControl refreshing={list.isRefetching && !list.isLoading} onRefresh={async () => void (await list.refetch())} />}>
+      refreshControl={<ThemedRefreshControl refreshing={list.isRefetching && !list.isLoading} onRefresh={async () => void (await list.refetch())} />}>
 
       <View className="mb-5 flex-row flex-wrap gap-2">
         {view === 'active' ? (

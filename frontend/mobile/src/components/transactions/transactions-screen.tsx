@@ -1,7 +1,8 @@
 // Transactions list with search, filters, day groups and infinite scroll, or recurring schedules
 // under More filters. Queries and chips come from transactions-list-model.
+import { ThemedRefreshControl, Spinner } from '@/components/ui/themed-native';
 import * as React from 'react';
-import { ActivityIndicator, FlatList, Platform, Pressable, RefreshControl, View } from 'react-native';
+import { FlatList, Platform, Pressable, View } from 'react-native';
 
 import { EmptyState, ErrorState, SkeletonRows } from '@/components/common/states';
 import { FilterSheet } from '@/components/transactions/filter-sheet';
@@ -230,7 +231,7 @@ export function TransactionsScreen() {
   const footer =
     rows.length > 0 ? (
       <View className="mt-4 items-center gap-3">
-        {isFetchingNextPage ? <ActivityIndicator accessibilityLabel="Loading more transactions" /> : null}
+        {isFetchingNextPage ? <Spinner accessibilityLabel="Loading more transactions" /> : null}
         {/* Scrolling loads more by itself; the button is for screen readers, keyboards and short lists. */}
         {hasNextPage && !isFetchingNextPage ? (
           <Button variant="outline" className="min-h-11 bg-card" accessibilityLabel="Load more transactions" onPress={loadMore}>
@@ -262,7 +263,7 @@ export function TransactionsScreen() {
             </View>
           )
         }
-        refreshControl={<RefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} />}
+        refreshControl={<ThemedRefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} />}
         onEndReached={loadMore}
         onEndReachedThreshold={0.5}
         keyboardShouldPersistTaps="handled"

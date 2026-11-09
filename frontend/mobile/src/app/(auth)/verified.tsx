@@ -1,6 +1,7 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Spinner } from '@/components/ui/themed-native';
 import * as React from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { View } from 'react-native';
 
 import { authApi } from '@/api/client';
 import { startSession } from '@/api/session';
@@ -39,7 +40,7 @@ export default function VerifiedScreen() {
 
   return (
     <View className="flex-1 items-center justify-center bg-background">
-      <ActivityIndicator accessibilityLabel="Signing you in" />
+      <Spinner accessibilityLabel="Signing you in" />
     </View>
   );
 }

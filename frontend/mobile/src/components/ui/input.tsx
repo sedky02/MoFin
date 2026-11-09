@@ -1,14 +1,14 @@
 import { cn } from '@/lib/utils';
+import { usePlaceholderColor } from '@/hooks/use-placeholder-color';
 import { Platform, TextInput } from 'react-native';
 
-/** Fainter than the typed text in both themes (it follows the theme's muted colour). */
-export const PLACEHOLDER_CLASS = 'text-muted-foreground/70';
 
 function Input({
   className,
   placeholderClassName,
   ...props
 }: React.ComponentProps<typeof TextInput> & React.RefAttributes<TextInput>) {
+  const placeholderColor = usePlaceholderColor();
   return (
     <TextInput
       className={cn(
@@ -29,7 +29,8 @@ function Input({
       )}
       // Without an explicit colour Android uses the phone's hint colour, near-white in a light-mode
       // app on a dark-mode phone, so the placeholder vanished.
-      placeholderClassName={cn(PLACEHOLDER_CLASS, placeholderClassName)}
+      placeholderTextColor={placeholderColor}
+      placeholderClassName={placeholderClassName}
       {...props}
     />
   );

@@ -1,5 +1,6 @@
 import * as React from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { Spinner } from '@/components/ui/themed-native';
+import { View } from 'react-native';
 
 import {
   AlertDialog,
@@ -132,7 +133,7 @@ export function TypeToConfirmDialog({
             aria-busy={pending}
             accessibilityLabel={pending ? pendingText : actionLabel}
             onPress={action}>
-            {pending ? <ActivityIndicator size="small" color="#fff" /> : null}
+            {pending ? <Spinner size="small" color="#fff" /> : null}
             <Text>{pending ? pendingText : actionLabel}</Text>
           </Button>
         </AlertDialogFooter>

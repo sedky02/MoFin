@@ -1,5 +1,6 @@
 import * as React from 'react';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { ThemedRefreshControl } from '@/components/ui/themed-native';
+import { ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ConfirmDialog } from '@/components/common/confirm-dialog';
@@ -154,7 +155,7 @@ export function GoalsScreen() {
       keyboardShouldPersistTaps="handled"
       contentContainerClassName="mx-auto w-full max-w-3xl p-4"
       contentContainerStyle={{ paddingBottom: 16 + insets.bottom }}
-      refreshControl={<RefreshControl refreshing={list.isRefetching && !list.isLoading} onRefresh={async () => void (await list.refetch())} />}>
+      refreshControl={<ThemedRefreshControl refreshing={list.isRefetching && !list.isLoading} onRefresh={async () => void (await list.refetch())} />}>
 
       {showToolbar ? (
         <View className="mb-5 flex-row flex-wrap gap-2">

@@ -1,5 +1,6 @@
 import * as React from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { Spinner } from '@/components/ui/themed-native';
+import { View } from 'react-native';
 
 import { ApiClientError } from '@/api/client';
 import { TypeToConfirmDialog } from '@/components/common/type-to-confirm-dialog';
@@ -50,7 +51,7 @@ export function DataSection() {
               disabled={pending !== null}
               aria-busy={pending === format}
               accessibilityLabel={label}>
-              {pending === format ? <ActivityIndicator size="small" /> : <Icon as={Download} size={16} aria-hidden />}
+              {pending === format ? <Spinner size="small" /> : <Icon as={Download} size={16} aria-hidden />}
               <Text>{label}</Text>
             </Button>
           </SettingsRow>

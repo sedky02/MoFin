@@ -1,6 +1,7 @@
 import * as React from 'react';
+import { ThemedRefreshControl } from '@/components/ui/themed-native';
 import { KeyboardScrollView } from '@/components/common/keyboard-scroll-view';
-import { RefreshControl, View } from 'react-native';
+import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
@@ -44,7 +45,7 @@ export function DraftsScreen() {
       keyboardShouldPersistTaps="handled"
       contentContainerClassName="mx-auto w-full max-w-2xl p-4"
       contentContainerStyle={{ paddingBottom: 16 + insets.bottom }}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} />}>
+      refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={refresh} />}>
       <Tabs value={mode} onValueChange={(v) => setMode(v as 'draft' | 'ask')} className="mb-4">
         <TabsList className="h-12 w-full">
           <TabsTrigger value="draft" className="min-h-11 flex-1" accessibilityLabel="Draft">

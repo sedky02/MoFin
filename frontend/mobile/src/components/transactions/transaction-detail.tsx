@@ -1,6 +1,7 @@
 import { router, Stack } from 'expo-router';
+import { ThemedRefreshControl } from '@/components/ui/themed-native';
 import * as React from 'react';
-import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ApiClientError } from '@/api/client';
@@ -102,7 +103,7 @@ export function TransactionDetail({ id }: { id: string }) {
       className="flex-1 bg-background"
       contentContainerClassName="mx-auto w-full max-w-2xl gap-4 p-4"
       contentContainerStyle={{ paddingBottom: 16 + insets.bottom }}
-      refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={async () => void (await refetch())} />}>
+      refreshControl={<ThemedRefreshControl refreshing={isRefetching} onRefresh={async () => void (await refetch())} />}>
       {title}
 
       <View className="rounded-2xl bg-card p-5 shadow-sm shadow-black/5">

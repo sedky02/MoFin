@@ -1,8 +1,9 @@
 import { useQueryClient } from '@tanstack/react-query';
+import { ThemedRefreshControl } from '@/components/ui/themed-native';
 import { UpdateBanner } from '@/components/shell/update-banner';
 import { KeyboardScrollView } from '@/components/common/keyboard-scroll-view';
 import * as React from 'react';
-import { RefreshControl, View } from 'react-native';
+import { View } from 'react-native';
 
 import { DashboardBody } from '@/components/dashboard/dashboard-body';
 import { currentUtcMonth } from '@/components/dashboard/dashboard-logic';
@@ -45,7 +46,7 @@ export function DashboardScreen() {
       className="flex-1 bg-background"
       contentContainerClassName="p-4"
       contentContainerStyle={{ paddingBottom: 24 }}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
+      refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
       <View className="mx-auto w-full max-w-xl">
         <UpdateBanner />
         {failed ? (

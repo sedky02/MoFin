@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import { usePlaceholderColor } from '@/hooks/use-placeholder-color';
 import * as React from 'react';
 import { Pressable, ScrollView, TextInput, useWindowDimensions, View } from 'react-native';
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
@@ -7,7 +8,6 @@ import { AssistantMessage, FailedMessage, ThinkingMessage, UserMessage } from '@
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Icon } from '@/components/ui/icon';
-import { PLACEHOLDER_CLASS } from '@/components/ui/input';
 import { SheetScrollView } from '@/components/ui/sheet-parts';
 import { Text } from '@/components/ui/text';
 import { chatErrorMessage, useAiChatDetail, useSendChatMessage } from '@/hooks/useAiChat';
@@ -60,6 +60,7 @@ export function VoiceOverlay() {
 }
 
 function VoiceSheet() {
+  const placeholderColor = usePlaceholderColor();
   const [chatId, setChatId] = React.useState<string | null>(null);
   const detail = useAiChatDetail(chatId);
   const send = useSendChatMessage();
@@ -185,7 +186,7 @@ function VoiceSheet() {
                 maxLength={2000}
                 accessibilityLabel="Type your question"
                 className="max-h-28 min-h-10 flex-1 py-2 text-base text-foreground"
-                placeholderClassName={PLACEHOLDER_CLASS}
+                placeholderTextColor={placeholderColor}
               />
               <Pressable
                 role="button"

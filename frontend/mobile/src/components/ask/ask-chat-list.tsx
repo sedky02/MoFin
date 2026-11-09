@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
+import { Spinner } from '@/components/ui/themed-native';
 import * as React from 'react';
-import { ActivityIndicator, Pressable, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import { ConfirmDialog } from '@/components/common/confirm-dialog';
 import { Button } from '@/components/ui/button';
@@ -188,7 +189,7 @@ export function AskChatList() {
 
       {hasNextPage ? (
         <Button variant="ghost" onPress={() => fetchNextPage()} disabled={isFetchingNextPage} className="min-h-11">
-          {isFetchingNextPage ? <ActivityIndicator /> : <Text>Show older chats</Text>}
+          {isFetchingNextPage ? <Spinner /> : <Text>Show older chats</Text>}
         </Button>
       ) : null}
     </View>

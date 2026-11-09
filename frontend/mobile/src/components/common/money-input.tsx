@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { usePlaceholderColor } from '@/hooks/use-placeholder-color';
 import { Platform, TextInput, View } from 'react-native';
 
 import { Input } from '@/components/ui/input';
@@ -50,6 +51,7 @@ export function MoneyInput({
   accessibilityLabel,
   testID,
 }: Props) {
+  const placeholderColor = usePlaceholderColor(0.4);
   const hint = allowNegative ? signedMoneyInputHint(value, currency) : moneyInputHint(value, currency);
   // Phone decimal keypads have no minus key, so a signed field asks for the full keyboard.
   const keyboardType = allowNegative
@@ -114,7 +116,7 @@ export function MoneyInput({
             includeFontPadding: false,
             textAlignVertical: 'center',
           }}
-          placeholderClassName="text-muted-foreground/40"
+          placeholderTextColor={placeholderColor}
           className={cn(
             'w-full bg-transparent text-center font-semibold tracking-tight text-foreground',
             invalid && 'text-destructive',

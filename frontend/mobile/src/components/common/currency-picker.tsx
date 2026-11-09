@@ -1,9 +1,9 @@
 import * as React from 'react';
+import { usePlaceholderColor } from '@/hooks/use-placeholder-color';
 import { FlatList, Pressable, TextInput, View } from 'react-native';
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Icon } from '@/components/ui/icon';
-import { PLACEHOLDER_CLASS } from '@/components/ui/input';
 import { Text } from '@/components/ui/text';
 import { currencyName } from '@/core/currency-names';
 import { currencyOptions } from '@/lib/currency-options';
@@ -24,6 +24,7 @@ type Props = {
  * the search is empty. A dialog on a phone, since a popover has no room for a keyboard and a list.
  */
 export function CurrencyPicker({ value, onChange, pinned = [], disabled, className, accessibilityLabel = 'Currency' }: Props) {
+  const placeholderColor = usePlaceholderColor();
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState('');
   const options = React.useMemo(() => currencyOptions(query, pinned), [query, pinned]);
@@ -82,7 +83,7 @@ export function CurrencyPicker({ value, onChange, pinned = [], disabled, classNa
               spellCheck={false}
               returnKeyType="search"
               className="border-input bg-background text-foreground min-h-11 rounded-md border pl-9 pr-3 text-base"
-              placeholderClassName={PLACEHOLDER_CLASS}
+              placeholderTextColor={placeholderColor}
             />
           </View>
           {options.length === 0 ? (
