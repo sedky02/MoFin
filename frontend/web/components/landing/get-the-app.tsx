@@ -36,8 +36,8 @@ export function GetTheApp() {
       className="scroll-mt-16 overflow-hidden"
       style={{ backgroundColor: INK, color: PAPER }}
     >
-      <div className="mx-auto grid max-w-6xl gap-12 px-4 pt-20 sm:px-6 sm:pt-24 lg:grid-cols-[minmax(0,1fr)_24rem] lg:gap-16">
-        <div className="pb-20 sm:pb-24">
+      <div className="mx-auto grid max-w-6xl gap-10 px-4 pt-16 sm:px-6 sm:pt-24 lg:grid-cols-[minmax(0,1fr)_24rem] lg:gap-16">
+        <div className="lg:pb-24">
           <p className="text-sm font-semibold tabular" style={{ color: LIME }}>
             Android · v{android.version} · {RELEASE_DATE.format(new Date(android.publishedAt))}
           </p>
@@ -49,11 +49,11 @@ export function GetTheApp() {
             <br />
             <span style={{ color: LIME }}>in your pocket.</span>
           </h2>
-          <p className="mt-6 max-w-md text-lg text-pretty" style={{ color: SOFT }}>
+          <p className="mt-6 max-w-md text-lg text-pretty max-sm:hidden" style={{ color: SOFT }}>
             The same account and the same numbers as on the web, made for the moment you pay.
           </p>
 
-          <ul className="mt-10 max-w-lg border-t" style={{ borderColor: RULE }}>
+          <ul className="mt-10 max-w-lg border-t max-sm:hidden" style={{ borderColor: RULE }}>
             {FACTS.map(([lead, rest]) => (
               <li key={lead} className="border-b py-3.5 text-base" style={{ borderColor: RULE }}>
                 <span className="font-semibold">{lead}:</span> <span style={{ color: SOFT }}>{rest}</span>
@@ -61,7 +61,7 @@ export function GetTheApp() {
             ))}
           </ul>
 
-          <div className="mt-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
+          <div className="mt-8 flex flex-col gap-4 sm:mt-10 sm:flex-row sm:items-center sm:gap-6">
             <a
               href={android.url}
               download
@@ -101,13 +101,13 @@ function PhoneMockup() {
   const ref = React.useRef<HTMLDivElement>(null);
   const play = useInView(ref, { once: true, amount: 0.3 });
   return (
-    <div ref={ref} aria-hidden className="relative hidden self-end lg:block">
+    <div ref={ref} aria-hidden className="relative self-end">
       <span
         className="absolute top-10 left-1/2 size-72 -translate-x-1/2 rounded-full blur-3xl"
         style={{ backgroundColor: `${LIME}33` }}
       />
       <div
-        className="relative mx-auto w-[19rem] translate-y-10 rotate-[-4deg] rounded-t-[2.75rem] p-2.5 pb-0"
+        className="relative mx-auto w-[16.5rem] translate-y-6 rotate-[-4deg] rounded-t-[2.75rem] p-2.5 pb-0 sm:w-[19rem] lg:translate-y-10"
         style={{ backgroundColor: "#2E2E2B" }}
       >
         <div className="overflow-hidden rounded-t-[2.25rem] bg-background text-foreground">
