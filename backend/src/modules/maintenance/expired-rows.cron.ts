@@ -4,6 +4,9 @@ import { PrismaService } from '../../database/prisma.service';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+/** Anyone may register an OAuth client, so one that never got a grant or token goes after a day. */
+const UNUSED_OAUTH_CLIENT_MS = DAY_MS;
+
 /** An expired credential stays this long, so a late "expired" answer still has its row. */
 const CREDENTIAL_GRACE_MS = 7 * DAY_MS;
 
@@ -32,6 +35,7 @@ export class ExpiredRowsCron {
     const credentialCutoff = new Date(now.getTime() - CREDENTIAL_GRACE_MS);
     const resetCutoff = new Date(now.getTime() - PASSWORD_RESET_RETENTION_MS);
     const linkCutoff = new Date(now.getTime() - EMAILED_LINK_RETENTION_MS);
+    const unusedClientCutoff = new Date(now.getTime() - UNUSED_OAUTH_CLIENT_MS);
     const expiredBefore = (cutoff: Date) => ({ expiresAt: { lt: cutoff } });
 
     const [
@@ -43,6 +47,7 @@ export class ExpiredRowsCron {
       resets,
       verifications,
       invitations,
+      unusedClients,
     ] = await this.prisma.$transaction([
       this.prisma.analyticsCache.deleteMany({ where: expiredBefore(now) }),
       this.prisma.authSession.deleteMany({
@@ -66,6 +71,15 @@ export class ExpiredRowsCron {
       this.prisma.accountInvitation.deleteMany({
         where: expiredBefore(linkCutoff),
       }),
+      // Runs after the code and token deletes above, so a client whose last code just went counts as unused.
+      this.prisma.oAuthClient.deleteMany({
+        where: {
+          createdAt: { lt: unusedClientCutoff },
+          grants: { none: {} },
+          authorizationCodes: { none: {} },
+          refreshTokens: { none: {} },
+        },
+      }),
     ]);
 
     const deleted = {
@@ -77,6 +91,7 @@ export class ExpiredRowsCron {
       passwordResetToken: resets.count,
       emailVerificationToken: verifications.count,
       accountInvitation: invitations.count,
+      oAuthClient: unusedClients.count,
     };
     const total = Object.values(deleted).reduce((sum, n) => sum + n, 0);
     if (total > 0)
