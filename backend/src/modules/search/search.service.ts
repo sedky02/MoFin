@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { lowerBound, upperBoundFilter } from '../../common/utils/date-bounds';
 import { PrismaService } from '../../database/prisma.service';
@@ -64,6 +64,8 @@ export class SearchService {
   ) {}
 
   async searchTransactions(userId: string, query: SearchTransactionsDto) {
+    if (query.from && query.to && Date.parse(query.from) > Date.parse(query.to))
+      throw new BadRequestException('`from` must be on or before `to`');
     if (query.accountId)
       await this.access.assertAccess(userId, query.accountId, 'view');
     if (query.categoryId)

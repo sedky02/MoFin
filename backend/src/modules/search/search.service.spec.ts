@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common';
 import { fakeAccess } from '../../../test/support/fake-account-access';
 import { Prisma } from '@prisma/client';
 import { TRANSACTION_INCLUDE } from '../transactions/transaction-include';
@@ -120,6 +121,26 @@ describe('SearchService.searchTransactions', () => {
         include: TRANSACTION_INCLUDE,
       }),
     );
+  });
+});
+
+describe('SearchService date range', () => {
+  it('rejects a range whose start is after its end, before querying', async () => {
+    const paginate = jest.fn();
+    const service = new SearchService(
+      { paginated: { transaction: { paginate } } } as never,
+      fakeAccess() as never,
+      {} as never,
+    );
+    await expect(
+      service.searchTransactions('u1', {
+        limit: 20,
+        offset: 0,
+        from: '2026-05-01',
+        to: '2026-04-01',
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(paginate).not.toHaveBeenCalled();
   });
 });
 
