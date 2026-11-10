@@ -17,6 +17,7 @@ describe('ExpiredRowsCron', () => {
       passwordResetToken: table(6),
       emailVerificationToken: table(7),
       accountInvitation: table(8),
+      oAuthClient: table(9),
       $transaction: jest.fn(async (ops: { count: number }[]) => ops),
     };
     return { prisma, cron: new ExpiredRowsCron(prisma as never) };
@@ -40,6 +41,7 @@ describe('ExpiredRowsCron', () => {
       passwordResetToken: 6,
       emailVerificationToken: 7,
       accountInvitation: 8,
+      oAuthClient: 9,
     });
   });
 
@@ -73,5 +75,32 @@ describe('ExpiredRowsCron', () => {
     const { cron, prisma } = setup();
     await cron.deleteExpired(now);
     expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+  });
+
+  it('deletes OAuth clients older than a day that never got a grant, code or token', async () => {
+    const { cron, prisma } = setup();
+    await cron.deleteExpired(now);
+    expect(prisma.oAuthClient.deleteMany).toHaveBeenCalledWith({
+      where: {
+        createdAt: { lt: new Date(now.getTime() - DAY) },
+        grants: { none: {} },
+        authorizationCodes: { none: {} },
+        refreshTokens: { none: {} },
+      },
+    });
+  });
+
+  it('deletes clients after the codes and tokens that might reference them', async () => {
+    const { cron, prisma } = setup();
+    await cron.deleteExpired(now);
+    const ops = prisma.$transaction.mock.calls[0][0] as unknown[];
+    const order = (table: { deleteMany: jest.Mock }) =>
+      ops.indexOf(table.deleteMany.mock.results[0].value);
+    expect(order(prisma.oAuthClient)).toBeGreaterThan(
+      order(prisma.authorizationCode),
+    );
+    expect(order(prisma.oAuthClient)).toBeGreaterThan(
+      order(prisma.oAuthRefreshToken),
+    );
   });
 });
