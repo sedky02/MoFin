@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { colorAt, Donut } from "./donut";
+import { Donut } from "./donut";
 import { useMonthlySummary } from "@/hooks/useAnalytics";
 import { useAccounts } from "@/hooks/useAccounts";
 import { useMainAccount } from "@/hooks/useMainAccount";
@@ -15,10 +15,13 @@ import { SummaryBreakdownSkeleton } from "@/components/dashboard/dashboard-skele
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ErrorState, EmptyState } from "@/components/common/states";
 import { subtract, tryParse } from "@/lib/decimal";
+import { breakdownSegments } from "./breakdown-segments";
 import { summaryApiCurrency, summaryCurrencyOptions } from "@/lib/dashboard-scope";
 import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight, PieChart, RotateCcw } from "lucide-react";
 import { CurrencyMenu } from "./currency-switch";
+
+const signOf = (amount: string) => tryParse(amount)?.comparedTo(0) ?? 0;
 
 type Kind = "expense" | "income";
 
@@ -147,37 +150,18 @@ export function MonthlySummaryCard({
   const raw = (data && (isExpense ? data.categoryBreakdown : data.incomeBreakdown)) ?? [];
   const total = (data && (isExpense ? data.expenses : data.income)) ?? "0";
 
-  // Colours come from the chart ramp in rank order (biggest slice first), not from each
-  // category's own colour: the ramp is built to stay distinguishable and on-palette.
-  const sorted = raw
-    .map((item) => ({
-      label: item.category,
-      amount: item.amount,
-      value: tryParse(item.amount)?.toNumber() ?? 0,
-    }))
-    .filter((s) => s.value > 0)
-    .sort((a, b) => b.value - a.value)
-    .map((s, i) => ({ ...s, color: colorAt(i) }));
-
-  // Long tails make an unreadable ring: keep the biggest categories, fold the rest into "Other".
-  const head = sorted.slice(0, MAX_SEGMENTS);
-  const rest = sorted.slice(MAX_SEGMENTS);
-  const restValue = rest.reduce((sum, s) => sum + s.value, 0);
-  const segments =
-    restValue > 0
-      ? [...head, { label: "Other", amount: String(restValue), value: restValue, color: "var(--muted-foreground)" }]
-      : head;
+  const { sorted, segments } = breakdownSegments(raw, MAX_SEGMENTS);
 
   const sum = sorted.reduce((acc, s) => acc + s.value, 0);
   const hasData = segments.length > 0;
   const noun = isExpense ? "spending" : "income";
 
   const net = data ? subtract(data.income, data.expenses) : "0";
-  const incomeValue = tryParse(data?.income ?? "0")?.toNumber() ?? 0;
-  const expensesValue = tryParse(data?.expenses ?? "0")?.toNumber() ?? 0;
-  const netValue = tryParse(net)?.toNumber() ?? 0;
+  const incomeSign = signOf(data?.income ?? "0");
+  const expensesSign = signOf(data?.expenses ?? "0");
+  const netSign = signOf(net);
   const savedPct = Math.round((tryParse(data?.savingsRate ?? "0")?.toNumber() ?? 0) * 100);
-  const tone = (value: number, nonZero: string) => (value === 0 ? "text-foreground" : nonZero);
+  const tone = (sign: number, nonZero: string) => (sign === 0 ? "text-foreground" : nonZero);
   const isPastMonth = offset > 0;
   const otherActive = !accountId && onCurrencyChange ? (data?.activeCurrencies ?? []).filter((c) => c !== currency) : [];
 
@@ -204,9 +188,9 @@ export function MonthlySummaryCard({
         <div className="min-w-0">
           <dt className="flex items-baseline gap-1.5 text-xs text-muted-foreground">
             Net
-            {incomeValue > 0 && <span aria-hidden>·</span>}
+            {incomeSign > 0 && <span aria-hidden>·</span>}
             {/* A negative rate ("-800% saved") means nothing to a reader; say what happened instead. */}
-            {incomeValue > 0 &&
+            {incomeSign > 0 &&
               (savedPct >= 0 ? (
                 <span className="tabular">{savedPct}% saved</span>
               ) : (
@@ -219,7 +203,7 @@ export function MonthlySummaryCard({
               currency={scopedCurrency}
               className={cn(
                 "text-3xl font-semibold leading-tight tracking-[-0.025em]",
-                tone(netValue, netValue < 0 ? "text-destructive" : "text-success"),
+                tone(netSign, netSign < 0 ? "text-destructive" : "text-success"),
               )}
             />
             <span className="block text-xs leading-tight text-muted-foreground">income − expenses, excl. transfers</span>
@@ -232,7 +216,7 @@ export function MonthlySummaryCard({
               <MoneyAmount
                 amount={data.income}
                 currency={scopedCurrency}
-                className={cn("text-sm font-semibold", tone(incomeValue, "text-success"))}
+                className={cn("text-sm font-semibold", tone(incomeSign, "text-success"))}
               />
             </dd>
           </div>
@@ -242,7 +226,7 @@ export function MonthlySummaryCard({
               <MoneyAmount
                 amount={data.expenses}
                 currency={scopedCurrency}
-                className={cn("text-sm font-semibold", tone(expensesValue, "text-destructive"))}
+                className={cn("text-sm font-semibold", tone(expensesSign, "text-destructive"))}
               />
             </dd>
           </div>
