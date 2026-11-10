@@ -80,7 +80,13 @@ export class DemoSeeder {
     const passwordHash = await bcrypt.hash(password, 12);
     const { userId, counts } = await this.prisma.$transaction(async (tx) => {
       const user = await this.usersService.createUser(
-        { email: DEMO_EMAIL, displayName: DEMO_DISPLAY_NAME, passwordHash },
+        {
+          email: DEMO_EMAIL,
+          displayName: DEMO_DISPLAY_NAME,
+          passwordHash,
+          // Nobody receives mail at the demo address, so it could never be verified by link.
+          emailVerifiedAt: new Date(),
+        },
         tx,
       );
       return {

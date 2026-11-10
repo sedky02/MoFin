@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="300" viewBox="0 0 1200 300" role="img" aria-labelledby="t d">
+  <title id="t">How an AI entry reaches your balance</title>
+  <desc id="d">An AI assistant calls an MCP tool and creates a draft. You review and approve it. Only then does MoFin record the transaction and update your balances. The assistant has no direct path to transactions.</desc>
+  <style>
+    text { font-family: Inter, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; }
+    .node rect { fill: #1A1A17; stroke: #2E2E2B; stroke-width: 1.5; }
+    .hl { fill: none; stroke: #D7F205; stroke-width: 2; opacity: 0; animation: hl 7s linear infinite; }
+    .h1 { animation-delay: 0s } .h2 { animation-delay: 1s } .h3 { animation-delay: 2.25s } .h4 { animation-delay: 4.35s } .h5 { animation-delay: 5.75s }
+    .packet { animation: travel 7s cubic-bezier(.65,0,.35,1) infinite; }
+    .wait { animation: waitRing 7s linear infinite; transform-box: fill-box; transform-origin: center; opacity: 0; }
+    .blocked { animation: blink 7s ease-in-out infinite; }
+    @keyframes hl { 0% { opacity: 0 } 4% { opacity: 1 } 20% { opacity: 1 } 26%,100% { opacity: 0 } }
+    @keyframes travel {
+      0%   { transform: translateX(0) }
+      14%  { transform: translateX(225px) }
+      20%  { transform: translateX(225px) }
+      32%  { transform: translateX(450px) }
+      52%  { transform: translateX(450px) }
+      62%  { transform: translateX(675px) }
+      72%  { transform: translateX(675px) }
+      82%  { transform: translateX(900px) }
+      94%  { transform: translateX(900px); opacity: 1 }
+      100% { transform: translateX(900px); opacity: 0 }
+    }
+    @keyframes waitRing { 0%,32% { opacity: 0; transform: scale(.6) } 36% { opacity: 1 } 50% { opacity: 0; transform: scale(1.6) } 100% { opacity: 0 } }
+    @keyframes blink { 0%,100% { opacity: .45 } 50% { opacity: 1 } }
+    @media (prefers-reduced-motion: reduce) { * { animation: none !important } .packet { transform: translateX(450px) } }
+  </style>
+
+  <rect width="1200" height="300" rx="28" fill="#11120D"/>
+
+  <g class="blocked">
+    <path d="M150 119 C 320 20, 880 20, 1050 119" fill="none" stroke="#9A9D95" stroke-width="1.5" stroke-dasharray="5 7"/>
+    <circle cx="600" cy="45" r="15" fill="#11120D" stroke="#9A9D95" stroke-width="1.5"/>
+    <path d="M594 39l12 12M606 39l-12 12" stroke="#F4F4EF" stroke-width="2" stroke-linecap="round"/>
+    <text x="600" y="84" text-anchor="middle" font-size="13" fill="#9A9D95">no direct writes</text>
+  </g>
+
+  <line x1="150" y1="170" x2="1050" y2="170" stroke="#2E2E2B" stroke-width="2"/>
+
+  <g class="node" font-size="17" font-weight="700" fill="#F4F4EF">
+    <g transform="translate(60 120)"><rect width="180" height="100" rx="18"/>
+      <text x="90" y="46" text-anchor="middle">AI assistant</text>
+      <text x="90" y="70" text-anchor="middle" font-size="12.5" font-weight="400" fill="#9A9D95">Claude · ChatGPT · MCP</text></g>
+    <g transform="translate(285 120)"><rect width="180" height="100" rx="18"/>
+      <text x="90" y="46" text-anchor="middle">Draft</text>
+      <text x="90" y="70" text-anchor="middle" font-size="12.5" font-weight="400" fill="#9A9D95">parsed, not counted</text></g>
+    <g transform="translate(510 120)"><rect width="180" height="100" rx="18" style="fill:#D7F205;stroke:#D7F205"/>
+      <text x="90" y="46" text-anchor="middle" fill="#11120D">You approve</text>
+      <text x="90" y="70" text-anchor="middle" font-size="12.5" font-weight="500" fill="#11120D">review · edit · reject</text></g>
+    <g transform="translate(735 120)"><rect width="180" height="100" rx="18"/>
+      <text x="90" y="46" text-anchor="middle">Transaction</text>
+      <text x="90" y="70" text-anchor="middle" font-size="12.5" font-weight="400" fill="#9A9D95">checked, then saved</text></g>
+    <g transform="translate(960 120)"><rect width="180" height="100" rx="18"/>
+      <text x="90" y="46" text-anchor="middle">Balances</text>
+      <text x="90" y="70" text-anchor="middle" font-size="12.5" font-weight="400" fill="#9A9D95">added up, never stored</text></g>
+  </g>
+
+  <g>
+    <rect class="hl h1" x="60" y="120" width="180" height="100" rx="18"/>
+    <rect class="hl h2" x="285" y="120" width="180" height="100" rx="18"/>
+    <rect class="hl h3" x="510" y="120" width="180" height="100" rx="18" style="stroke:#F4F4EF"/>
+    <rect class="hl h4" x="735" y="120" width="180" height="100" rx="18"/>
+    <rect class="hl h5" x="960" y="120" width="180" height="100" rx="18"/>
+  </g>
+
+  <g class="packet">
+    <circle class="wait" cx="150" cy="232" r="9" fill="none" stroke="#D7F205" stroke-width="2" style="transform-origin:150px 232px"/>
+    <rect x="128" y="226" width="44" height="12" rx="6" fill="#D7F205"/>
+  </g>
+
+  <text x="600" y="276" text-anchor="middle" font-size="13" fill="#9A9D95">Every entry an assistant makes waits as a draft until you approve it.</text>
+</svg>

@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { PrismaModule } from '../database/prisma.module';
+import { AccountAccessService } from '../modules/account-access/account-access.service';
 import { AccountsService } from '../modules/accounts/accounts.service';
 import { CategoriesService } from '../modules/categories/categories.service';
 import { GoalsService } from '../modules/goals/goals.service';
@@ -22,6 +23,7 @@ import { DemoSeeder } from './demo-seeder';
   ],
   providers: [
     UsersService,
+    AccountAccessService,
     AccountsService,
     CategoriesService,
     LedgerService,
