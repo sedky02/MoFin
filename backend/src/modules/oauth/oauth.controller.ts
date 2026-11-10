@@ -29,6 +29,7 @@ import { Public } from '../../common/decorators/public.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { AuthenticatedUser } from '../../common/types/authenticated-user';
 import { OAuthService } from './oauth.service';
+import { parseOAuthBody } from './parse-oauth-body';
 
 const SESSION_COOKIE = 'mofin_as_session';
 const SESSION_COOKIE_PATH = '/api/v1/oauth';
@@ -46,7 +47,7 @@ export class OAuthController {
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post('register')
   async register(@Body() body: unknown, @Res() res: Response) {
-    const dto = registerClientSchema.parse(body);
+    const dto = parseOAuthBody(registerClientSchema, body);
     const client = await this.oauth.registerClient(dto);
     res.status(201).json(client);
   }
@@ -147,7 +148,7 @@ export class OAuthController {
     @Req() req: Request,
     @Res() res: Response,
   ) {
-    const dto = consentBodySchema.parse(body);
+    const dto = parseOAuthBody(consentBodySchema, body);
 
     // SameSite=Lax on the session cookie already blocks cross-site POSTs; we also
     // re-resolve the session here so consent can never be granted unauthenticated.
@@ -181,7 +182,7 @@ export class OAuthController {
   @Public()
   @Post('token')
   async token(@Body() body: unknown, @Res() res: Response) {
-    const dto = tokenBodySchema.parse(body);
+    const dto = parseOAuthBody(tokenBodySchema, body);
 
     if (dto.grant_type === 'authorization_code') {
       if (
@@ -219,7 +220,7 @@ export class OAuthController {
   @Public()
   @Post('revoke')
   async revoke(@Body() body: unknown, @Res() res: Response) {
-    const dto = revokeBodySchema.parse(body);
+    const dto = parseOAuthBody(revokeBodySchema, body);
     await this.oauth.revokeToken(dto.token);
     return res.status(200).json({});
   }
