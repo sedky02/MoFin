@@ -743,4 +743,55 @@ describe('goal rules (B-26)', () => {
       ]);
     });
   });
+
+  describe('rollover isolates each goal', () => {
+    it('keeps opening other goals when one recurring goal has no recurrence unit', async () => {
+      const db = makeFakeDb();
+      const broken = monthlyGoal(db, GoalType.INCOME, '500');
+      const healthy = monthlyGoal(db, GoalType.INCOME, '300');
+      broken.recurrenceUnit = null;
+      jest.spyOn(db.service['logger'], 'error').mockImplementation();
+
+      at('2026-11-01T00:00:00.000Z');
+      await expect(
+        db.service.rolloverExpiredInstances(),
+      ).resolves.toBeUndefined();
+
+      expect(db.instancesOf(healthy.id)).toHaveLength(2);
+      expect(db.instancesOf(broken.id)).toHaveLength(1);
+      expect(db.service['logger'].error).toHaveBeenCalledWith(
+        expect.stringContaining(broken.id),
+      );
+    });
+
+    it('finalizes the other instances when one fails', async () => {
+      const db = makeFakeDb();
+      const failing = monthlyGoal(db, GoalType.INCOME, '500');
+      const healthy = monthlyGoal(db, GoalType.EXPENSE, '100');
+      const compute = db.service['computeProgressAmount'].bind(db.service);
+      jest
+        .spyOn(db.service as never, 'computeProgressAmount')
+        .mockImplementation(((goal: Goal, ...rest: unknown[]) =>
+          goal.id === failing.id
+            ? Promise.reject(new Error('boom'))
+            : (compute as (...a: unknown[]) => unknown)(
+                goal,
+                ...rest,
+              )) as never);
+      jest.spyOn(db.service['logger'], 'error').mockImplementation();
+
+      at('2026-11-01T00:00:00.000Z');
+      await db.service.rolloverExpiredInstances();
+
+      const october = (id: string) =>
+        db
+          .instancesOf(id)
+          .find((i) => i.periodStart.getTime() === OCT_START.getTime())!;
+      expect(october(healthy.id).status).toBe(GoalStatus.ACHIEVED);
+      expect(october(failing.id).status).toBe(GoalStatus.IN_PROGRESS);
+      expect(db.service['logger'].error).toHaveBeenCalledWith(
+        expect.stringContaining(failing.id),
+      );
+    });
+  });
 });

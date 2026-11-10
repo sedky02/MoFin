@@ -594,27 +594,35 @@ export class GoalsService {
       },
       include: { goal: true },
     });
+    let finalized = 0;
     for (const instance of expired) {
-      const progressAmount = await this.computeProgressAmount(
-        instance.goal,
-        instance.periodStart,
-        instance.periodEnd,
-        now,
-      );
-      const status = this.evaluateStatus(
-        instance.goal.type,
-        progressAmount,
-        instance.targetAmount,
-        true,
-        instance.status,
-      );
-      await this.prisma.goalInstance.update({
-        where: { id: instance.id },
-        data: { progressAmount, status, computedAt: now },
-      });
+      try {
+        const progressAmount = await this.computeProgressAmount(
+          instance.goal,
+          instance.periodStart,
+          instance.periodEnd,
+          now,
+        );
+        const status = this.evaluateStatus(
+          instance.goal.type,
+          progressAmount,
+          instance.targetAmount,
+          true,
+          instance.status,
+        );
+        await this.prisma.goalInstance.update({
+          where: { id: instance.id },
+          data: { progressAmount, status, computedAt: now },
+        });
+        finalized += 1;
+      } catch (error) {
+        this.logger.error(
+          `Could not finalize goal instance ${instance.id} (goal ${instance.goalId}): ${(error as Error).message}`,
+        );
+      }
     }
-    if (expired.length)
-      this.logger.log(`Finalized ${expired.length} expired goal instance(s)`);
+    if (finalized)
+      this.logger.log(`Finalized ${finalized} expired goal instance(s)`);
 
     const recurringGoals = await this.prisma.goal.findMany({
       where: { isRecurring: true, archivedAt: null },
@@ -625,24 +633,32 @@ export class GoalsService {
       const latest = goal.instances[0];
       if (latest && latest.periodEnd >= now) continue;
 
-      const anchor = latest
-        ? new Date(latest.periodEnd.getTime() + 1)
-        : goal.periodStart;
-      const [periodStart, periodEnd] = resolvePeriodBounds(
-        anchor,
-        goal.recurrenceUnit!,
-      );
-      await this.prisma.goalInstance.upsert({
-        where: { goalId_periodStart: { goalId: goal.id, periodStart } },
-        create: {
-          goalId: goal.id,
-          periodStart,
-          periodEnd,
-          targetAmount: goal.targetAmount,
-        },
-        update: {},
-      });
-      created += 1;
+      try {
+        if (!goal.recurrenceUnit)
+          throw new Error('recurring goal has no recurrence unit');
+        const anchor = latest
+          ? new Date(latest.periodEnd.getTime() + 1)
+          : goal.periodStart;
+        const [periodStart, periodEnd] = resolvePeriodBounds(
+          anchor,
+          goal.recurrenceUnit,
+        );
+        await this.prisma.goalInstance.upsert({
+          where: { goalId_periodStart: { goalId: goal.id, periodStart } },
+          create: {
+            goalId: goal.id,
+            periodStart,
+            periodEnd,
+            targetAmount: goal.targetAmount,
+          },
+          update: {},
+        });
+        created += 1;
+      } catch (error) {
+        this.logger.error(
+          `Could not open the next period of goal ${goal.id}: ${(error as Error).message}`,
+        );
+      }
     }
     if (created)
       this.logger.log(`Opened ${created} new recurring goal instance(s)`);
