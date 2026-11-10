@@ -298,6 +298,8 @@ model Transaction {
   // cursor cannot double-create the same occurrence on retry (SEC-XX).
   @@unique([parentTransactionId, occurredAt])
   @@index([userId, occurredAt])
+  // Search matches `description` with ILIKE '%q%', which only a trigram index can serve.
+  @@index([description(ops: raw("gin_trgm_ops"))], type: Gin)
   @@index([userId, deletedAt])
   @@index([userId, categoryId])
   @@index([isRecurring, recurringStatus, nextOccurrenceAt])
