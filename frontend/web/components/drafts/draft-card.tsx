@@ -209,9 +209,9 @@ export function DraftCard({
         </div>
       )}
 
-      {draft.status === "REJECTED" && draft.reason && (
+      {draft.status === "REJECTED" && draft.rejectionReason && (
         <div className="border-t border-border bg-secondary/30 px-4 py-2.5 text-xs text-muted-foreground">
-          Reason: {draft.reason}
+          Reason: {draft.rejectionReason}
         </div>
       )}
     </Card>

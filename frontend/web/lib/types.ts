@@ -180,7 +180,7 @@ export interface DraftTransaction {
   // Prisma Decimal serializes to a string over the wire, not a number.
   confidenceScore: string;
   status: DraftStatus;
-  reason?: string | null;
+  rejectionReason?: string | null;
   /** Where it came from: the Drafts page input, the chat (typed or spoken), or a connected app. */
   source: DraftSource;
   sourceClient?: string | null;
